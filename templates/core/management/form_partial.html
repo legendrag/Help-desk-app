@@ -1,0 +1,253 @@
+<div class="modal-header">
+    <h2>{% if object %}Edit{% else %}Add{% endif %} {{ model_name|default:"Entry" }}</h2>
+    <button type="button" class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
+<form hx-post="{{ request.path }}" 
+      hx-target="#modal-content" hx-on::after-request="if(event.detail.xhr.status===204){closeModal()}" 
+      class="management-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="notice notice-error">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {% if model_name == "Role" %}
+    <div class="form-stack">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="field-error">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group full">
+                <label>{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <div class="field-error">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="perm-grid">
+            <div class="perm-card">
+                <h4>Tickets</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_ticket }} <span>{{ form.can_create_ticket.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_ticket }} <span>{{ form.can_update_ticket.label }}</span></label>
+                    <label class="perm-item">{{ form.can_pick_ticket }} <span>{{ form.can_pick_ticket.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_status }} <span>{{ form.can_update_status.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_closed_ticket }} <span>{{ form.can_update_closed_ticket.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Messages</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_send_message }} <span>{{ form.can_send_message.label }}</span></label>
+                    <label class="perm-item">{{ form.can_edit_message }} <span>{{ form.can_edit_message.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_message }} <span>{{ form.can_delete_message.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Access</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_access_dashboard }} <span>{{ form.can_access_dashboard.label }}</span></label>
+                    <label class="perm-item">{{ form.can_access_settings }} <span>{{ form.can_access_settings.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Users</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_user }} <span>{{ form.can_create_user.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_user }} <span>{{ form.can_update_user.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_user }} <span>{{ form.can_delete_user.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Branches</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_branch }} <span>{{ form.can_create_branch.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_branch }} <span>{{ form.can_update_branch.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_branch }} <span>{{ form.can_delete_branch.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Departments</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_department }} <span>{{ form.can_create_department.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_department }} <span>{{ form.can_update_department.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_department }} <span>{{ form.can_delete_department.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Categories</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_category }} <span>{{ form.can_create_category.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_category }} <span>{{ form.can_update_category.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_category }} <span>{{ form.can_delete_category.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Roles</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_create_role }} <span>{{ form.can_create_role.label }}</span></label>
+                    <label class="perm-item">{{ form.can_update_role }} <span>{{ form.can_update_role.label }}</span></label>
+                    <label class="perm-item">{{ form.can_delete_role }} <span>{{ form.can_delete_role.label }}</span></label>
+                </div>
+            </div>
+
+            <div class="perm-card">
+                <h4>Email</h4>
+                <div class="perm-list">
+                    <label class="perm-item">{{ form.can_manage_email }} <span>{{ form.can_manage_email.label }}</span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+    {% elif model_name == "Email Setting" %}
+    <div class="form-stack">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>{{ form.smtp_host.label }}</label>
+                {{ form.smtp_host }}
+                {% if form.smtp_host.errors %}
+                <div class="field-error">{{ form.smtp_host.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.smtp_port.label }}</label>
+                {{ form.smtp_port }}
+                {% if form.smtp_port.errors %}
+                <div class="field-error">{{ form.smtp_port.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.smtp_email.label }}</label>
+                {{ form.smtp_email }}
+                {% if form.smtp_email.errors %}
+                <div class="field-error">{{ form.smtp_email.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.smtp_password.label }}</label>
+                {{ form.smtp_password }}
+                {% if form.smtp_password.errors %}
+                <div class="field-error">{{ form.smtp_password.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.encryption.label }}</label>
+                {{ form.encryption }}
+                {% if form.encryption.errors %}
+                <div class="field-error">{{ form.encryption.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.from_name.label }}</label>
+                {{ form.from_name }}
+                {% if form.from_name.errors %}
+                <div class="field-error">{{ form.from_name.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.from_email.label }}</label>
+                {{ form.from_email }}
+                {% if form.from_email.errors %}
+                <div class="field-error">{{ form.from_email.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="checkbox-row">
+            <div class="form-group checkbox-field full">
+                {{ form.is_active }}
+                <label class="checkbox-label">{{ form.is_active.label }}</label>
+                {% if form.is_active.errors %}
+                <div class="field-error">{{ form.is_active.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="checkbox-grid">
+            <div class="form-group checkbox-field">
+                {{ form.notify_new_ticket }}
+                <label class="checkbox-label">{{ form.notify_new_ticket.label }}</label>
+            </div>
+            <div class="form-group checkbox-field">
+                {{ form.notify_ticket_picked }}
+                <label class="checkbox-label">{{ form.notify_ticket_picked.label }}</label>
+            </div>
+            <div class="form-group checkbox-field">
+                {{ form.notify_ticket_message }}
+                <label class="checkbox-label">{{ form.notify_ticket_message.label }}</label>
+            </div>
+            <div class="form-group checkbox-field">
+                {{ form.notify_ticket_status }}
+                <label class="checkbox-label">{{ form.notify_ticket_status.label }}</label>
+            </div>
+            <div class="form-group checkbox-field">
+                {{ form.notify_ticket_update }}
+                <label class="checkbox-label">{{ form.notify_ticket_update.label }}</label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="form-stack">
+        <div class="form-grid">
+            {% for field in form %}
+            {% if field.field.widget.input_type == "checkbox" %}
+            <div class="form-group checkbox-field">
+                {{ field }}
+                <label class="checkbox-label">{{ field.label }}</label>
+                {% if field.errors %}
+                <div class="field-error">{{ field.errors }}</div>
+                {% endif %}
+                {% if field.help_text %}
+                <div class="help-text">{{ field.help_text|safe }}</div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="field-error">{{ field.errors }}</div>
+                {% endif %}
+                {% if field.help_text %}
+                <div class="help-text">{{ field.help_text|safe }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+    {% endif %}
+</form>

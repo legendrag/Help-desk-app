@@ -1,0 +1,89 @@
+<div id="tickets-live"
+     hx-get="{% url 'tickets_list' %}{% if filters_query %}?{{ filters_query }}{% endif %}"
+     hx-trigger="every 20s, refreshTickets from:body"
+     hx-swap="outerHTML">
+    <div class="table-wrap tickets-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticket ID</th>
+                    <th>Title</th>
+                    <th>Branch</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assigned</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}">
+                    <td data-label="Ticket ID"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
+                    <td data-label="Title"><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
+                    <td data-label="Branch"><span>{{ ticket.branch.name }}</span></td>
+                    <td data-label="Department"><span>{{ ticket.department.name }}</span></td>
+                    <td data-label="Status">
+                        <span class="badge badge-{{ ticket.status }}">
+                            {{ ticket.get_status_display }}
+                        </span>
+                    </td>
+                    <td data-label="Priority"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+                    <td data-label="Assigned">
+                        {% if ticket.assigned_to %}
+                        <span>{{ ticket.assigned_to.username }}</span>
+                        {% else %}
+                        <span class="muted">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Date">
+                        <div class="date-stack">
+                            <span>{{ ticket.created_at|date:"m/d/Y" }}</span>
+                            <small>{{ ticket.created_at|date:"h:i A" }}</small>
+                        </div>
+                    </td>
+                    <td data-label="Action" class="action-cell">
+                        {% if user.is_superuser or user.role.can_pick_ticket %}
+                            {% if not ticket.assigned_to and ticket.status != "closed" %}
+                            <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
+                                {% csrf_token %}
+                                <button type="submit" class="pick-btn">Pick</button>
+                            </form>
+                            {% elif ticket.assigned_to %}
+                            <span class="pill">Picked</span>
+                            {% else %}
+                            <span class="pill muted">Closed</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="pill muted">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align: center; padding: 2rem;">No tickets found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if filters_query %}&{{ filters_query }}{% endif %}">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if filters_query %}&{{ filters_query }}{% endif %}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if filters_query %}&{{ filters_query }}{% endif %}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if filters_query %}&{{ filters_query }}{% endif %}">last &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

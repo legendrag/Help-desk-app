@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Ticket - Help Desk{% endblock %}
+
+{% block content %}
+<div class="create-ticket-page">
+    <div class="page-header">
+        <h1>Edit Ticket</h1>
+    </div>
+
+    <div class="panel">
+        <form method="post" class="create-form">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="notice notice-error">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ form.title.id_for_label }}">Title</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
+                </div>
+
+                {% if not user.user_type == 'branch' %}
+                <div class="form-group">
+                    <label for="{{ form.branch.id_for_label }}">Branch</label>
+                    {{ form.branch }}
+                    {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="{{ form.department.id_for_label }}">Department</label>
+                    {{ form.department }}
+                    {% if form.department.errors %}<div class="field-error">{{ form.department.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.category.id_for_label }}">Category</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.priority.id_for_label }}">Priority</label>
+                    {{ form.priority }}
+                    {% if form.priority.errors %}<div class="field-error">{{ form.priority.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+                <label for="{{ form.description.id_for_label }}">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit">Save Changes</button>
+                <a href="{% url 'ticket_detail' ticket.id %}" class="secondary button">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.field-error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+.create-form input, .create-form select, .create-form textarea {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,48 @@
+<div class="modal-header">
+    <h2>Manage Users</h2>
+    <div style="display: flex; gap: 0.5rem;">
+        <button hx-get="{% url 'user_create' %}" hx-target="#modal-content" class="secondary" style="padding: 0.25rem 0.5rem;">
+            + New User
+        </button>
+        <button type="button" class="modal-close" onclick="closeModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+</div>
+
+<div class="user-list-container" style="max-height: 60vh; overflow-y: auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Branch</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td><span class="badge">{{ user.get_user_type_display }}</span></td>
+                <td>
+                    <span class="badge {% if user.status == 'active' %}success{% else %}warning{% endif %}">
+                        {{ user.status }}
+                    </span>
+                </td>
+                <td>{{ user.branch.name|default:"-" }}</td>
+                <td>
+                    <button hx-get="{% url 'user_update' user.pk %}" hx-target="#modal-content" class="secondary small">
+                        Edit
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted);">No users found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

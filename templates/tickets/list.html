@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets - Help Desk{% endblock %}
+
+{% block content %}
+<div class="tickets-page">
+    <div class="panel tickets-panel">
+        <div class="tickets-toolbar">
+            <div class="tickets-title">
+                <h2>Support Tickets</h2>
+                {% if user.is_superuser or user.role.can_create_ticket %}
+                <button type="button"
+                        hx-get="{% url 'ticket_create' %}"
+                        hx-target="#modal-content"
+                        hx-trigger="click"
+                        onclick="openModal()"
+                        class="tickets-new-btn">+ New Ticket</button>
+                {% endif %}
+            </div>
+
+            <form class="tickets-filters" method="get" autocomplete="off">
+                <div class="search-field">
+                    <span class="search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="text" name="q" placeholder="Search ID, Title, or Description..." value="{{ filter_values.q }}">
+                </div>
+                <div class="filter-row">
+                    <select name="branch" onchange="this.form.submit()">
+                        <option value="all">All Branches</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="all">All Statuses</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}"{% if filter_values.status == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="assignment" onchange="this.form.submit()">
+                        <option value="all">All Assignments</option>
+                        <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>Unassigned</option>
+                        {% for assignee in assignees %}
+                        <option value="{{ assignee.id }}"{% if filter_values.assignment|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="visually-hidden">Apply</button>
+            </form>
+        </div>
+
+        {% include "tickets/list_live_partial.html" %}
+    </div>
+</div>
+
+<script>
+(function () {
+    var navType = "navigate";
+    if (performance && performance.getEntriesByType) {
+        var entries = performance.getEntriesByType("navigation");
+        if (entries && entries.length) {
+            navType = entries[0].type;
+        } else if (performance.navigation) {
+            navType = performance.navigation.type === 1 ? "reload" : "navigate";
+        }
+    }
+
+    if (navType === "reload" && window.location.search) {
+        window.location.replace(window.location.pathname);
+        return;
+    }
+
+    document.addEventListener("click", function (event) {
+        var row = event.target.closest(".clickable-row");
+        if (!row) return;
+        var interactive = event.target.closest("a, button, input, select, textarea, form, .action-cell");
+        if (interactive) {
+            return;
+        }
+        var href = row.getAttribute("data-href");
+        if (href) {
+            window.location.href = href;
+        }
+    });
+
+    // WebSocket connection for real-time ticket list updates
+    function initTicketListWS() {
+        var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        var host = window.location.host;
+        var socket = new WebSocket(protocol + "//" + host + "/ws/tickets/");
+
+        socket.onopen = function() {
+            console.log("[Ticket List WS] Connected");
+        };
+
+        socket.onmessage = function(e) {
+            var data = JSON.parse(e.data);
+            console.log("[Ticket List WS] event:", data);
+
+            if (data.event === "ticket_status_changed" || data.event === "ticket_picked" || data.event === "ticket_created") {
+                // Trigger HTMX refresh of the tickets table
+                document.body.dispatchEvent(new CustomEvent("refreshTickets"));
+            }
+        };
+
+        socket.onclose = function() {
+            console.log("[Ticket List WS] Closed. Reconnecting in 3s...");
+            setTimeout(initTicketListWS, 3000);
+        };
+
+        socket.onerror = function(err) {
+            console.error("[Ticket List WS] Error:", err);
+        };
+    }
+
+    if (window.userIsAuthenticated) {
+        initTicketListWS();
+    }
+})();
+</script>
+
+<style>
+.tickets-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.tickets-panel {
+    padding: 1.75rem 1.5rem;
+}
+
+.tickets-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.tickets-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tickets-title h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.tickets-new-btn {
+    padding: 0.45rem 0.95rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+}
+
+.tickets-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: min(560px, 100%);
+}
+
+.search-field {
+    position: relative;
+}
+
+.search-field input {
+    padding-left: 2.6rem;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.tickets-table {
+    margin-top: 1rem;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+    background-color: #f8fafc;
+}
+
+.clickable-row td a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.priority-text {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.muted {
+    color: var(--text-muted);
+}
+
+.date-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.date-stack span {
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.action-cell {
+    width: 110px;
+}
+
+.pick-btn {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+}
+
+.pick-btn:hover {
+    box-shadow: none;
+    transform: none;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.pagination {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    align-items: center;
+}
+
+.pagination a {
+    padding: 0.5rem 1rem;
+    background: #f1f5f9;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+.pagination a:hover {
+    background: #e2e8f0;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 1100px) {
+    .tickets-filters {
+        min-width: 100%;
+    }
+
+    .filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .tickets-title {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

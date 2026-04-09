@@ -1,0 +1,32 @@
+<div class="modal-header">
+    <h2>Edit Ticket</h2>
+    <button type="button" class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
+<form hx-post="{% url 'ticket_update' ticket.id %}" 
+      hx-target="#modal-content" hx-on::after-request="if(event.detail.xhr.status===204){closeModal()}" 
+      enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-stack">
+        <div class="form-grid">
+            {% for field in form %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="field-error">
+                    {{ field.errors }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</form>

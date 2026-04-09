@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Help Desk{% endblock %}
+
+{% block content %}
+<div class="settings-hub">
+    <div class="panel settings-hero">
+        <div class="settings-hero-text">
+            <h1>Administrative Settings</h1>
+            <p>Configure and manage system entities from a unified interface.</p>
+        </div>
+
+        <div class="settings-tabs">
+            <button class="settings-tab active"
+                    hx-get="{% url 'branch_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Branches
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'department_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Departments
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'category_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Categories
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'role_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Roles
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'user_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Users
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'email_setting_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)">
+                Email Settings
+            </button>
+        </div>
+    </div>
+
+    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load, refreshSettings from:body" hx-get="{% url 'branch_list' %}">
+        <div class="settings-loading">
+            <div class="loader"></div>
+            <p>Loading settings...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(el) {
+    document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+
+    const target = document.getElementById('settings-content');
+    const url = el.getAttribute('hx-get');
+    if (target && url) {
+        target.dataset.currentUrl = url;
+    }
+}
+
+// Listen for refresh events
+document.body.addEventListener('refreshSettings', function() {
+    const target = document.getElementById('settings-content');
+    if (!target) return;
+    const url = target.dataset.currentUrl || target.getAttribute('hx-get');
+    if (url && window.htmx) {
+        window.htmx.ajax('GET', url, { target: '#settings-content' });
+    }
+});
+</script>
+{% endblock %}

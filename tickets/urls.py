@@ -1,0 +1,30 @@
+from django.urls import path
+from .template_views import (
+    TicketListView,
+    TicketDetailView,
+    TicketCreateView,
+    TicketUpdateView,
+    DashboardView,
+    SettingsView,
+    post_message,
+    update_ticket_status,
+    pick_ticket,
+    delete_message,
+    edit_message,
+    ticket_category_options,
+)
+
+urlpatterns = [
+    path("", TicketListView.as_view(), name="tickets_list"),
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("settings/", SettingsView.as_view(), name="settings"),
+    path("create/", TicketCreateView.as_view(), name="ticket_create"),
+    path("<int:ticket_id>/edit/", TicketUpdateView.as_view(), name="ticket_update"),
+    path("category-options/", ticket_category_options, name="ticket_category_options"),
+    path("<int:ticket_id>/", TicketDetailView.as_view(), name="ticket_detail"),
+    path("<int:ticket_id>/message/", post_message, name="post_message"),
+    path("message/<int:message_id>/delete/", delete_message, name="delete_message"),
+    path("message/<int:message_id>/edit/", edit_message, name="edit_message"),
+    path("<int:ticket_id>/status/", update_ticket_status, name="update_status"),
+    path("<int:ticket_id>/pick/", pick_ticket, name="pick_ticket"),
+]

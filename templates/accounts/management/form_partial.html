@@ -1,0 +1,56 @@
+﻿<div class="modal-header">
+    <h2>{% if object %}Edit{% else %}Add{% endif %} {{ model_name|default:"Entry" }}</h2>
+    <button type="button" class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
+<form hx-post="{{ request.path }}" 
+      hx-target="#modal-content" hx-on::after-request="if(event.detail.xhr.status===204){closeModal()}" 
+      class="management-form">
+    {% csrf_token %}
+    <div class="form-stack">
+        <div class="form-grid">
+        {% for field in form %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-group checkbox-field" data-field="{{ field.name }}">
+            {{ field }}
+            <label class="checkbox-label">{{ field.label }}</label>
+            {% if field.errors %}
+            <div class="field-error">
+                {{ field.errors }}
+            </div>
+            {% endif %}
+            {% if field.help_text %}
+            <div class="help-text">
+                {{ field.help_text|safe }}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="form-group" data-field="{{ field.name }}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div class="field-error">
+                {{ field.errors }}
+            </div>
+            {% endif %}
+            {% if field.help_text %}
+            <div class="help-text">
+                {{ field.help_text|safe }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" >Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()" >Cancel</button>
+        </div>
+    </div>
+</form>
+
+

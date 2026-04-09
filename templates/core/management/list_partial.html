@@ -1,0 +1,45 @@
+<div class="modal-header">
+    <h2>Manage {{ model_name|default:"Entries" }}</h2>
+    <div style="display: flex; gap: 0.5rem;">
+        <button hx-get="{{ create_url }}" hx-target="#modal-content" class="secondary" style="padding: 0.25rem 0.5rem;">
+            + Add New
+        </button>
+        <button type="button" class="modal-close" onclick="closeModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+</div>
+
+<div class="list-container" style="max-height: 60vh; overflow-y: auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                {% if has_code %}<th>Code</th>{% endif %}
+                {% if has_dept %}<th>Department</th>{% endif %}
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in object_list %}
+            <tr>
+                <td>{{ item.name }}</td>
+                {% if has_code %}<td>{{ item.code }}</td>{% endif %}
+                {% if has_dept %}<td>{{ item.department.name }}</td>{% endif %}
+                <td style="display: flex; gap: 0.5rem;">
+                    <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" class="secondary small">
+                        Edit
+                    </button>
+                    <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" class="danger small">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">No entries found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

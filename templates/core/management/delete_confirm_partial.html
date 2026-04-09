@@ -1,0 +1,20 @@
+<div class="modal-header">
+    <h2 style="color: var(--danger);">Confirm Deletion</h2>
+    <button type="button" class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
+<div style="padding: 1.5rem; text-align: center;">
+    <div style="background: var(--danger-light); color: var(--danger); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+    </div>
+    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">Are you sure you want to delete this {{ object|lower }}?</p>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">This action cannot be undone.</p>
+    
+    <form hx-post="{{ request.path }}" hx-target="#modal-content" style="display: flex; gap: 1rem;">
+        {% csrf_token %}
+        <button type="submit" style="flex: 1; background: var(--danger); border-color: var(--danger);">Yes, Delete</button>
+        <button type="button" class="secondary" onclick="closeModal()" style="flex: 1;">Cancel</button>
+    </form>
+</div>

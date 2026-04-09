@@ -1,0 +1,256 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Dashboard - Help Desk{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="panel dashboard-filters">
+        <div class="dashboard-filters-header">
+            <h2>Filters</h2>
+            <a class="btn secondary" href="{% url 'dashboard' %}">Clear Filters</a>
+        </div>
+        <form method="get" class="dashboard-filters-form" autocomplete="off">
+            <div class="filter-group">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" name="start_date" value="{{ filter_values.start_date }}" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" name="end_date" value="{{ filter_values.end_date }}" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label for="department">Department</label>
+                <select id="department" name="department" onchange="this.form.submit()">
+                    <option value="all">All Departments</option>
+                    {% for department in departments %}
+                    <option value="{{ department.id }}"{% if filter_values.department|stringformat:"s" == department.id|stringformat:"s" %} selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="branch">Branch</label>
+                <select id="branch" name="branch" onchange="this.form.submit()">
+                    <option value="all">All Branches</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="assigned_to">Assigned User</label>
+                <select id="assigned_to" name="assigned_to" onchange="this.form.submit()">
+                    <option value="all">All Users</option>
+                    <option value="unassigned"{% if filter_values.assigned_to == "unassigned" %} selected{% endif %}>Unassigned</option>
+                    {% for assignee in assignees %}
+                    <option value="{{ assignee.id }}"{% if filter_values.assigned_to|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="visually-hidden">Apply</button>
+        </form>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 3h6a2 2 0 0 1 2 2v2H7V5a2 2 0 0 1 2-2z"></path>
+                    <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+                    <path d="M8 12h8"></path>
+                </svg>
+            </div>
+            <div>
+                <p>Total Tickets</p>
+                <h3>{{ total_tickets }}</h3>
+            </div>
+        </div>
+        <div class="stat-card stat-secondary">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div>
+                <p>Total Users</p>
+                <h3>{{ total_users }}</h3>
+            </div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                    <path d="M7 8h10"></path>
+                    <path d="M7 12h6"></path>
+                </svg>
+            </div>
+            <div>
+                <p>Branches</p>
+                <h3>{{ branches_count }}</h3>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+                    <path d="M8 7V5a4 4 0 0 1 8 0v2"></path>
+                    <path d="M12 11v4"></path>
+                </svg>
+            </div>
+            <div>
+                <p>Departments</p>
+                <h3>{{ departments_count }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid three">
+        <div class="panel dashboard-card">
+            <div class="card-header">
+                <h3>Tickets by Status</h3>
+            </div>
+            <div class="metric-list">
+                {% for item in status_summary %}
+                <div class="metric-row">
+                    <div class="metric-label">
+                        <span class="badge badge-{{ item.value }}">{{ item.label }}</span>
+                    </div>
+                    <div class="metric-bar">
+                        <span class="metric-bar-fill status-{{ item.value }}" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">No data available.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="panel dashboard-card">
+            <div class="card-header">
+                <h3>Tickets by Department</h3>
+            </div>
+            <div class="metric-list">
+                {% for item in tickets_by_department %}
+                <div class="metric-row">
+                    <div class="metric-label">{{ item.label }}</div>
+                    <div class="metric-bar">
+                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">No data available.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="panel dashboard-card">
+            <div class="card-header">
+                <h3>Tickets by Category</h3>
+            </div>
+            <div class="metric-list">
+                {% for item in tickets_by_category %}
+                <div class="metric-row">
+                    <div class="metric-label">{{ item.label }}</div>
+                    <div class="metric-bar">
+                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">No data available.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid full">
+        <div class="panel dashboard-card">
+            <div class="card-header card-header-split">
+                <h3>Tickets by Date</h3>
+                <div class="date-controls">
+                    <span class="muted">View: {{ date_view|capfirst }}</span>
+                    <div class="date-drill">
+                        {% if drill_up_query %}
+                        <a class="btn secondary" href="?{{ drill_up_query }}">Drill Up</a>
+                        {% else %}
+                        <button type="button" class="btn secondary disabled" disabled>Drill Up</button>
+                        {% endif %}
+                        {% if drill_down_query %}
+                        <a class="btn secondary" href="?{{ drill_down_query }}">Drill Down</a>
+                        {% else %}
+                        <button type="button" class="btn secondary disabled" disabled>Drill Down</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="metric-list">
+                {% for item in tickets_by_date %}
+                <div class="metric-row">
+                    <div class="metric-label">{{ item.label }}</div>
+                    <div class="metric-bar">
+                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">No data available.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid full">
+        <div class="panel dashboard-card">
+            <div class="card-header">
+                <h3>Tickets by Branch</h3>
+            </div>
+            <div class="metric-list">
+                {% for item in tickets_by_branch %}
+                <div class="metric-row">
+                    <div class="metric-label">{{ item.label }}</div>
+                    <div class="metric-bar">
+                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">No data available.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    function isReloadNavigation(event) {
+        var navType = "navigate";
+        if (performance && performance.getEntriesByType) {
+            var entries = performance.getEntriesByType("navigation");
+            if (entries && entries.length) {
+                navType = entries[0].type;
+            } else if (performance.navigation) {
+                navType = performance.navigation.type === 1 ? "reload" : "navigate";
+            }
+        } else if (performance && performance.navigation) {
+            navType = performance.navigation.type === 1 ? "reload" : "navigate";
+        }
+        if (event && event.persisted) {
+            navType = "reload";
+        }
+        return navType === "reload";
+    }
+
+    window.addEventListener("pageshow", function (event) {
+        if (isReloadNavigation(event) && window.location.search) {
+            window.location.replace(window.location.pathname);
+        }
+    });
+})();
+</script>
+
+{% endblock %}

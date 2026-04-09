@@ -1,0 +1,10 @@
+﻿{
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "off",
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    "media"
+  ]
+}

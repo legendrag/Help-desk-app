@@ -1,0 +1,38 @@
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
+
+from .models import InAppNotification
+
+
+@require_GET
+@login_required
+def notifications_list(request):
+    limit = int(request.GET.get("limit", 10))
+    qs = (
+        InAppNotification.objects.filter(recipient=request.user)
+        .order_by("-created_at")
+    )
+    notifications = [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "link": n.link,
+            "is_read": n.is_read,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+        }
+        for n in qs[:limit]
+    ]
+    unread_count = InAppNotification.objects.filter(
+        recipient=request.user,
+        is_read=False,
+    ).count()
+    return JsonResponse({"notifications": notifications, "unread_count": unread_count})
+
+
+@require_POST
+@login_required
+def mark_notifications_read(request):
+    InAppNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})
