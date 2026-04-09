@@ -111,9 +111,9 @@ function initChat(ticketId) {
 
     function updateTicketPicked(payload) {
         // Update assigned to
-        const assignedSpan = document.querySelector('.meta-grid .meta-item:nth-child(4) span:last-child');
+        const assignedSpan = document.getElementById('ticket-assigned-to') || document.querySelector('.meta-grid .meta-item:nth-child(4) span:last-child');
         if (assignedSpan) {
-            assignedSpan.textContent = payload.assigned_to || 'Unassigned';
+            assignedSpan.textContent = payload.assigned_to || 'Pending Support Agent';
         }
 
         // Update status badge

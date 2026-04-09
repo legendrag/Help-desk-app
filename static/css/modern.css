@@ -1,0 +1,156 @@
+/* modern.css - UI/UX Enhancements Overlay */
+
+/* High-end SaaS Color Palette & Variables */
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --panel-bg: rgba(255, 255, 255, 0.75);
+  --glass: rgba(255, 255, 255, 0.4);
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border: rgba(226, 232, 240, 0.8);
+  --radius: 16px;
+  --shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+/* Premium Background */
+body {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.08), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.06), transparent 35%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Topbar Frost */
+.topbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--text-main);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.topbar .brand {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.menu-btn-universal {
+  color: var(--text-main);
+}
+.menu-btn-universal:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.notification-btn {
+  color: var(--text-main);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Panels with true glassmorphism & hover effects */
+.panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.panel:hover {
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+}
+
+/* Energetic Buttons */
+button, .btn {
+  border-radius: 10px;
+  padding: 0.6rem 1.4rem;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -4px rgba(79, 70, 229, 0.4), 0 4px 12px -2px rgba(79, 70, 229, 0.25);
+}
+
+button:active:not(:disabled), .btn:active:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.btn.secondary, button.secondary {
+  background: rgba(241, 245, 249, 0.8);
+  backdrop-filter: blur(8px);
+  color: var(--text-main); border: 1px solid #e2e8f0;
+}
+.btn.secondary:hover, button.secondary:hover {
+  background: #fff;
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Dashboard Enhancements */
+.stat-card {
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.8);
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.7);
+  box-shadow: 0 8px 16px -4px rgba(0,0,0,0.05);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px -8px rgba(0,0,0,0.1);
+}
+
+.stat-card::before {
+  content: ''; position: absolute; z-index: -1;
+  top: -50px; right: -50px; width: 100px; height: 100px;
+  border-radius: 50%; opacity: 0.15; filter: blur(30px);
+}
+.stat-primary::before { background: var(--primary); }
+.stat-secondary::before { background: var(--secondary); }
+.stat-success::before { background: var(--success); }
+.stat-warning::before { background: var(--warning); }
+
+/* Table Improvements */
+.clickable-row {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.clickable-row:hover {
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px -2px rgba(0,0,0,0.05);
+  transform: scale(1.002);
+  position: relative;
+  z-index: 10;
+}
+
+/* Empty States */
+.empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.empty-state::before {
+  content: "📂";
+  font-size: 2.5rem;
+  opacity: 0.5;
+}

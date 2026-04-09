@@ -29,18 +29,23 @@
                     <input type="text" name="q" placeholder="Search ID, Title, or Description..." value="{{ filter_values.q }}">
                 </div>
                 <div class="filter-row">
+                    {% if not user.user_type == 'branch' %}
                     <select name="branch" onchange="this.form.submit()">
                         <option value="all">All Branches</option>
                         {% for branch in branches %}
                         <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
+                    
                     <select name="status" onchange="this.form.submit()">
                         <option value="all">All Statuses</option>
                         {% for value, label in status_choices %}
                         <option value="{{ value }}"{% if filter_values.status == value %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
+                    
+                    {% if not user.user_type == 'branch' %}
                     <select name="assignment" onchange="this.form.submit()">
                         <option value="all">All Assignments</option>
                         <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>Unassigned</option>
@@ -48,6 +53,7 @@
                         <option value="{{ assignee.id }}"{% if filter_values.assignment|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </div>
                 <button type="submit" class="visually-hidden">Apply</button>
             </form>

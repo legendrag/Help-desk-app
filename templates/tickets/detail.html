@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block body_class %}ticket-detail-page{% endblock %}
 {% load static %}
 {% load ticket_extras %}
@@ -180,10 +180,12 @@
             </section>
 
             <div class="meta-grid">
+                {% if not user.user_type == 'branch' %}
                 <div class="meta-item">
                     <label>Branch</label>
                     <span>{{ ticket.branch.name }}</span>
                 </div>
+                {% endif %}
                 <div class="meta-item">
                     <label>Department</label>
                     <span>{{ ticket.department.name }}</span>
@@ -194,7 +196,7 @@
                 </div>
                 <div class="meta-item">
                     <label>Assigned To</label>
-                    <span>{{ ticket.assigned_to.username|default:"Unassigned" }}</span>
+                    <span id="ticket-assigned-to">{{ ticket.assigned_to.username|default:"Pending Support Agent" }}</span>
                 </div>
                 <div class="meta-item">
                     <label>Priority</label>
@@ -253,6 +255,7 @@
             </div>
         </aside>
 
+        {% if not user.user_type == 'branch' %}
         <section class="panel">
             <h4 style="margin: 0 0 1rem; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase;">
                 Performance</h4>
@@ -267,6 +270,7 @@
                 </div>
             </div>
         </section>
+        {% endif %}
 
         <section class="panel">
             <h4 style="text-transform: uppercase; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
@@ -377,6 +381,31 @@
             displayDiv.style.display = 'block';
         }
     }
+
+    document.addEventListener('keydown', function(e) {
+        const isMsgTextarea = e.target && e.target.matches('.chat-form textarea[name="message"], form[id^="msg-edit-"] textarea[name="message"]');
+        if (isMsgTextarea) {
+            if (e.key === 'Enter' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
+                e.preventDefault();
+                const form = e.target.closest('form');
+                if (form) {
+                    // Try requestSubmit first for full event bubbling including HTMX
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                }
+            } else if (e.key === 'Enter' && e.altKey) {
+                e.preventDefault();
+                const start = e.target.selectionStart;
+                const end = e.target.selectionEnd;
+                e.target.value = e.target.value.substring(0, start) + "\n" + e.target.value.substring(end);
+                e.target.selectionStart = e.target.selectionEnd = start + 1;
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+    });
 </script>
 
 <!-- Lightbox Modal -->
