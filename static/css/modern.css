@@ -133,9 +133,6 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
 .clickable-row:hover {
   background-color: #ffffff;
   box-shadow: 0 4px 12px -2px rgba(0,0,0,0.05);
-  transform: scale(1.002);
-  position: relative;
-  z-index: 10;
 }
 
 /* Empty States */

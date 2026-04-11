@@ -112,8 +112,8 @@
         {% if ticket.status != 'closed' %}
         {% if user.is_superuser or user.role.can_send_message %}
         <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none"
-            hx-on::after-request="if(event.detail.successful) { this.reset(); clearReply(); document.getElementById('file-label').textContent = '📎 Attach File'; }" method="post"
-            enctype="multipart/form-data" class="chat-form">
+            hx-on::after-request="if(event.detail.successful) { this.reset(); clearReply(); document.getElementById('file-label').textContent = '📎 Attach File'; }"
+            method="post" enctype="multipart/form-data" class="chat-form">
             <div class="reply-preview" id="reply-preview" style="display: none;">
                 <div class="reply-preview-bar"></div>
                 <div class="reply-preview-content">
@@ -234,8 +234,11 @@
                         <label>Update Status</label>
                         <select name="status" style="width: auto;">
                             {% for value, label in ticket.Status.choices %}
-                            <option value="{{ value }}" {% if ticket.status == value %}selected{% endif %}>{{ label }}
-                            </option>
+                            {% if ticket.status == value %}
+                            <option value="{{ value }}" selected>{{ label }}</option>
+                            {% else %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endif %}
                             {% endfor %}
                         </select>
                     </div>
@@ -302,8 +305,8 @@
         editMessage: "{% url 'edit_message' 0 %}"
     };
     window.chatPermissions = {
-        canEdit: {% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_edit_message|yesno:"true,false" }}{% else %}false{% endif %},
-        canDelete: {% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_delete_message|yesno:"true,false" }}{% else %}false{% endif %}
+        canEdit: '{% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_edit_message|yesno:"true,false" }}{% else %}false{% endif %}' === 'true',
+        canDelete: '{% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_delete_message|yesno:"true,false" }}{% else %}false{% endif %}' === 'true'
     };
     // Scroll chat to bottom
     const chatBox = document.getElementById('chat-box');
@@ -382,7 +385,7 @@
         }
     }
 
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         const isMsgTextarea = e.target && e.target.matches('.chat-form textarea[name="message"], form[id^="msg-edit-"] textarea[name="message"]');
         if (isMsgTextarea) {
             if (e.key === 'Enter' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
