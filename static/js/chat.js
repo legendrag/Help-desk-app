@@ -52,8 +52,92 @@ function initChat(ticketId) {
             removeMessage(data.payload);
         } else if (data.event === "message_edited") {
             updateMessage(data.payload);
+        } else if (data.event === "typing") {
+            showTypingIndicator(data.payload);
         }
     };
+
+    // --- Typing indicator logic ---
+    let lastTypingSent = 0;
+    const TYPING_THROTTLE_MS = 1500;
+    const TYPING_EXPIRE_MS = 3000;
+    const activeTypers = {};  // { sender_id: { username, timeout } }
+
+    const chatTextarea = document.querySelector('.chat-form textarea[name="message"]');
+    if (chatTextarea) {
+        chatTextarea.addEventListener('input', function() {
+            if (!this.value.trim()) return;  // Don't signal on empty/clearing
+            const now = Date.now();
+            if (now - lastTypingSent > TYPING_THROTTLE_MS && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: "typing" }));
+                lastTypingSent = now;
+            }
+        });
+    }
+
+    function showTypingIndicator(payload) {
+        if (String(payload.sender) === window.userId) return;
+
+        const key = String(payload.sender);
+
+        // Clear existing timeout for this user
+        if (activeTypers[key]) clearTimeout(activeTypers[key].timeout);
+
+        // Set auto-expire
+        activeTypers[key] = {
+            username: payload.sender_username,
+            timeout: setTimeout(() => {
+                delete activeTypers[key];
+                renderTypingIndicator();
+            }, TYPING_EXPIRE_MS),
+        };
+
+        renderTypingIndicator();
+    }
+
+    function hideTypingForUser(senderId) {
+        const key = String(senderId);
+        if (activeTypers[key]) {
+            clearTimeout(activeTypers[key].timeout);
+            delete activeTypers[key];
+            renderTypingIndicator();
+        }
+    }
+
+    function renderTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        const usernameEl = document.getElementById('typing-username');
+        if (!indicator || !usernameEl) return;
+
+        const names = Object.values(activeTypers).map(t => t.username);
+
+        if (names.length === 0) {
+            indicator.classList.remove('visible');
+            return;
+        }
+
+        if (names.length === 1) {
+            usernameEl.textContent = names[0];
+        } else if (names.length === 2) {
+            usernameEl.textContent = names.join(' and ');
+        } else {
+            usernameEl.textContent = names.slice(0, 2).join(', ') + ' and others';
+        }
+
+        indicator.style.display = 'flex';
+        // Force reflow then add class for smooth transition
+        void indicator.offsetWidth;
+        indicator.classList.add('visible');
+
+        // Auto-scroll chat to keep indicator visible
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox) {
+            const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
+            if (isNearBottom) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+    }
 
     function removeMessage(payload) {
         const el = document.getElementById('message-' + payload.id) ||
@@ -167,6 +251,9 @@ function initChat(ticketId) {
     }
 
     function appendMessage(payload) {
+        // Instantly clear typing indicator for this sender
+        hideTypingForUser(payload.sender);
+
         let chatBox = document.getElementById('chat-box');
         
         // If chatBox doesn't exist (e.g., initial empty state), try to find/create container
@@ -311,3 +398,92 @@ function closeLightbox() {
 if (window.currentTicketId) {
     initChat(window.currentTicketId);
 }
+
+// --- Drag-and-drop, paste, and file preview ---
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function showFilePreview(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    const bar = document.getElementById('file-preview-bar');
+    const nameEl = document.getElementById('file-preview-name');
+    const sizeEl = document.getElementById('file-preview-size');
+    if (!bar || !nameEl || !sizeEl) return;
+
+    nameEl.textContent = file.name;
+    sizeEl.textContent = '(' + formatFileSize(file.size) + ')';
+    bar.style.display = 'flex';
+}
+
+function clearFilePreview() {
+    const bar = document.getElementById('file-preview-bar');
+    const input = document.getElementById('file-upload');
+    if (bar) bar.style.display = 'none';
+    if (input) input.value = '';
+}
+
+function setFileOnInput(file) {
+    const input = document.getElementById('file-upload');
+    if (!input) return;
+
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    showFilePreview(input);
+}
+
+// Drag-and-drop on the chat form
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.querySelector('.chat-form');
+    const overlay = document.getElementById('drop-zone-overlay');
+    if (!chatForm || !overlay) return;
+
+    let dragCounter = 0;
+
+    chatForm.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        dragCounter++;
+        overlay.classList.add('active');
+    });
+
+    chatForm.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter === 0) overlay.classList.remove('active');
+    });
+
+    chatForm.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+
+    chatForm.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dragCounter = 0;
+        overlay.classList.remove('active');
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            setFileOnInput(e.dataTransfer.files[0]);
+        }
+    });
+
+    // Clipboard paste (Ctrl+V) on textarea
+    const textarea = chatForm.querySelector('textarea[name="message"]');
+    if (textarea) {
+        textarea.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) setFileOnInput(file);
+                    return;
+                }
+            }
+        });
+    }
+});

@@ -430,14 +430,15 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             return queryset.filter(branch_id=user.branch_id)
         if user.user_type == "support":
             return queryset.filter(department_id=user.department_id)
-        
+
         return queryset.none()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         ticket = self.get_object()
-        
-        # Calculate metrics (similar to serializer)
+        user = self.request.user
+
+        # Calculate metrics
         context['response_time'] = int((ticket.picked_at - ticket.created_at).total_seconds()) if ticket.picked_at else None
         if ticket.closed_at and ticket.picked_at:
             duration = (ticket.closed_at - ticket.picked_at).total_seconds()
@@ -445,7 +446,16 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         else:
             context['resolution_time'] = None
         context['time_to_close'] = int((ticket.closed_at - ticket.created_at).total_seconds()) if ticket.closed_at else None
-        
+
+        can_chat = False
+        if user.is_superuser:
+            can_chat = True
+        elif user.user_type == "branch":
+            can_chat = (ticket.created_by_id == user.id)
+        elif user.user_type == "support":
+            can_chat = (ticket.assigned_to_id == user.id)
+        context['can_chat'] = can_chat
+
         return context
 
 from django.core.exceptions import PermissionDenied
@@ -469,8 +479,14 @@ def post_message(request, ticket_id):
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_send_message)):
         raise PermissionDenied("You do not have permission to send messages.")
 
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not request.user.is_superuser:
+        if request.user.user_type == "branch" and ticket.created_by_id != request.user.id:
+            raise PermissionDenied("You can only send messages on tickets you created.")
+        elif request.user.user_type == "support" and ticket.assigned_to_id != request.user.id:
+            raise PermissionDenied("You can only send messages on tickets assigned to you.")
+
     if request.method == "POST":
-        ticket = get_object_or_404(Ticket, pk=ticket_id)
         message_text = request.POST.get("message")
         attachment = request.FILES.get("attachment")
         reply_to_id = request.POST.get("reply_to")
@@ -651,7 +667,7 @@ def update_ticket_status(request, ticket_id):
         ticket = get_object_or_404(Ticket, pk=ticket_id)
 
         if ticket.status == Ticket.Status.CLOSED:
-            if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_closed_ticket)):
+            if not (request.user.is_superuser or request.user.user_type == 'support' or (request.user.role and request.user.role.can_update_closed_ticket)):
                 raise PermissionDenied("You do not have permission to update a closed ticket.")
 
         new_status = request.POST.get("status")

@@ -26,7 +26,7 @@ body {
   margin: 0;
   font-family: 'Outfit', sans-serif;
   background-color: var(--bg);
-  background: 
+  background:
     radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.06), transparent 35%),
     radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.04), transparent 35%),
     var(--bg);
@@ -440,6 +440,7 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  min-width: 0;
 }
 
 /* Components */
@@ -1173,6 +1174,15 @@ button.danger:hover {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
+button.success, .btn.success {
+  background: var(--success, #10b981);
+}
+
+button.success:hover, .btn.success:hover {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
 .notice {
   display: flex;
   align-items: center;
@@ -1501,7 +1511,7 @@ button.danger:hover {
 
 .metric-row {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(120px, 2fr) auto;
+  grid-template-columns: minmax(100px, 1fr) minmax(80px, 2fr) auto;
   align-items: center;
   gap: 0.75rem;
 }
@@ -1551,6 +1561,12 @@ button.danger:hover {
 .metric-bar-fill.neutral {
   background: linear-gradient(90deg, #64748b, #cbd5f5);
 }
+
+.metric-row:nth-child(5n+1) .metric-bar-fill.neutral { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
+.metric-row:nth-child(5n+2) .metric-bar-fill.neutral { background: linear-gradient(90deg, #ec4899, #f43f5e); }
+.metric-row:nth-child(5n+3) .metric-bar-fill.neutral { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+.metric-row:nth-child(5n+4) .metric-bar-fill.neutral { background: linear-gradient(90deg, #10b981, #14b8a6); }
+.metric-row:nth-child(5n) .metric-bar-fill.neutral { background: linear-gradient(90deg, #f59e0b, #ef4444); }
 
 .empty-state {
   padding: 1.5rem;
@@ -2100,26 +2116,25 @@ button.danger:hover {
 
 .message-menu {
   position: absolute;
-  top: 50%;
-  left: 100%;
-  right: auto;
-  transform: translateY(-50%);
-  margin-left: 10px;
+  top: calc(100% + 0.35rem);
+  left: auto;
+  right: 0;
+  transform: none;
+  margin: 0;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
-  min-width: 140px;
+  min-width: 128px;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   padding: 0.35rem;
   display: none;
-  z-index: 5;
+  z-index: 10;
 }
 
 .chat-item.me .message-menu {
-  left: auto;
-  right: 100%;
-  margin-left: 0;
-  margin-right: 10px;
+  left: 0;
+  right: auto;
+  margin: 0;
 }
 
 .message-menu.open {
@@ -2451,6 +2466,7 @@ body.ticket-detail-page,
 .lightbox-close:hover {
   color: var(--primary);
 }
+
 /* Ticket Detail Mobile Overflow Fix */
 html {
   -webkit-text-size-adjust: 100%;
@@ -2525,18 +2541,12 @@ body {
   }
 
   .ticket-detail-page .message-menu {
-    top: calc(100% + 0.35rem);
-    left: auto;
-    right: 0;
-    transform: none;
-    margin-left: 0;
     min-width: 128px;
   }
 
   .ticket-detail-page .chat-item.me .message-menu {
-    right: 0;
-    left: auto;
-    margin-right: 0;
+    left: 0;
+    right: auto;
   }
 }
 

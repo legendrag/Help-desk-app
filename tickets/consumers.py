@@ -37,6 +37,22 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive_json(self, content, **kwargs):
+        # Handle typing indicator
+        if content.get("type") == "typing":
+            user = self.scope.get("user")
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "chat.event",
+                    "event": "typing",
+                    "payload": {
+                        "sender": user.id,
+                        "sender_username": user.username,
+                    },
+                },
+            )
+            return
+
         message_text = (content.get("message") or "").strip()
         reply_to_id = content.get("reply_to")
         if not message_text:
@@ -123,8 +139,12 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         elif user.user_type == "branch":
             if not user.branch_id or ticket.branch_id != user.branch_id:
                 return None
+            if ticket.created_by_id != user.id:
+                return None
         elif user.user_type == "support":
             if not user.department_id or ticket.department_id != user.department_id:
+                return None
+            if ticket.assigned_to_id != user.id:
                 return None
         else:
             return None
