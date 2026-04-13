@@ -539,6 +539,18 @@ textarea {
   color: var(--text-main);
   font-size: 16px;
   /* Prevents auto-zoom on mobile */
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select {
+  cursor: pointer;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
 }
 
 
@@ -1351,6 +1363,8 @@ button.success:hover, .btn.success:hover {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  position: relative;
+  z-index: 50;
 }
 
 .dashboard-filters-header {

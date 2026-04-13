@@ -32,6 +32,10 @@ function initNotifications() {
 }
 
 function getCsrfToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
     const match = document.cookie.match(/csrftoken=([^;]+)/);
     return match ? match[1] : "";
 }
@@ -147,7 +151,18 @@ function markAllRead() {
         },
         credentials: "same-origin",
     })
-        .then(() => updateBadge(0))
+        .then(() => {
+            updateBadge(0);
+            
+            // Immediately visually update DOM items
+            const unreadItems = document.querySelectorAll('.notification-item.unread');
+            unreadItems.forEach(item => {
+                item.classList.remove('unread');
+                item.classList.add('read');
+                const dot = item.querySelector('.notification-dot');
+                if (dot) dot.remove();
+            });
+        })
         .catch((err) => console.error("[Notifications] Mark read error:", err));
 }
 

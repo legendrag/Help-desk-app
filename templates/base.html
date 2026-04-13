@@ -5,15 +5,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>{% block title %}Help Desk{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2.5">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=1.3">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2.9">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link rel="icon" href="{% static 'favicon.ico' %}">
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         window.userIsAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
         window.userId = "{{ user.id }}";
+
+        // Defeat browser bfcache: when the page is restored from
+        // back/forward cache, verify the session is still alive.
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                fetch('/accounts/auth-check/', {
+                    credentials: 'same-origin'
+                }).then(function(r) { return r.json(); })
+                  .then(function(data) {
+                    if (!data.authenticated) {
+                        window.location.replace('/accounts/login/');
+                    }
+                }).catch(function() {});
+            }
+        });
     </script>
-    <script src="{% static 'js/notifications.js' %}" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.2" defer></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -252,6 +269,34 @@
             if (trigger.includes('reloadPage')) {
                 window.location.reload();
             }
+        });
+
+        // Initialize Choices.js robustly
+        function initializeChoices(targetElement) {
+            // Find descendants
+            const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.choices-initialized)') : []);
+            
+            // Check if targetElement itself is a select
+            if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select' && !targetElement.classList.contains('choices-initialized')) {
+                selects.push(targetElement);
+            }
+
+            selects.forEach(select => {
+                new Choices(select, {
+                    searchEnabled: false,
+                    itemSelectText: '',
+                    shouldSort: false,
+                });
+                select.classList.add('choices-initialized');
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChoices(document);
+        });
+
+        document.body.addEventListener('htmx:afterSwap', (evt) => {
+            initializeChoices(evt.detail.elt);
         });
     </script>
 </body>
