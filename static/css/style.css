@@ -2799,14 +2799,8 @@ body.ticket-detail-page .content {
   color: var(--primary);
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
   margin-right: 0.5rem;
   letter-spacing: 0.02em;
-}
-
-.action-bar-accept:hover {
-  background: var(--primary);
-  color: #fff;
 }
 
 /* Button group: action + toggle share a border */
@@ -2829,26 +2823,13 @@ body.ticket-detail-page .content {
   color: var(--text-main);
   border-radius: 10px 0 0 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
   letter-spacing: 0.02em;
   white-space: nowrap;
-}
-
-.action-bar-execute:hover {
-  background: #f1f5f9;
-}
-
-.action-bar-execute:active {
-  background: #e2e8f0;
 }
 
 .action-bar-execute.danger-action {
   color: #dc2626;
   border-color: #fca5a5;
-}
-
-.action-bar-execute.danger-action:hover {
-  background: #fef2f2;
 }
 
 .action-bar-toggle {
@@ -2860,15 +2841,9 @@ body.ticket-detail-page .content {
   color: #64748b;
   border-radius: 0 10px 10px 0;
   cursor: pointer;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.action-bar-toggle:hover {
-  background: #e2e8f0;
-  color: var(--text-main);
 }
 
 .action-bar-toggle svg {
@@ -2928,12 +2903,7 @@ body.ticket-detail-page .content {
   font-weight: 600;
   color: var(--text-main);
   cursor: pointer;
-  transition: background 0.15s ease;
   white-space: nowrap;
-}
-
-.action-bar-menu-item:hover {
-  background: #f1f5f9;
 }
 
 .action-bar-menu-item.active {
@@ -2945,17 +2915,9 @@ body.ticket-detail-page .content {
   color: #dc2626;
 }
 
-.action-bar-menu-item.danger:hover {
-  background: #fef2f2;
-}
-
 .action-bar-menu-item.disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.action-bar-menu-item.disabled:hover {
-  background: transparent;
 }
 
 .action-bar-menu-divider {
@@ -2974,13 +2936,7 @@ body.ticket-detail-page .content {
   color: #10b981;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
   letter-spacing: 0.02em;
-}
-
-.action-bar-reopen:hover {
-  background: #10b981;
-  color: #fff;
 }
 
 /* Closed badge */
