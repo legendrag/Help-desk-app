@@ -2775,3 +2775,256 @@ body.ticket-detail-page .content {
     padding-top: calc(0.75rem + 72px) !important;
   }
 }
+
+/* ── Split-Button Action Bar ── */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+  row-gap: 0.75rem;
+}
+
+.action-bar-accept {
+  padding: 0.6rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 2px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.action-bar-accept:hover {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+  transform: translateY(-1px);
+}
+
+.action-bar-accept:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Button group: action + toggle share a border */
+.action-bar-group {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
+  border-radius: 10px;
+  overflow: visible;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.action-bar-execute {
+  padding: 0.6rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-right: none;
+  background: #fff;
+  color: var(--text-main);
+  border-radius: 10px 0 0 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.action-bar-execute:hover {
+  background: #f1f5f9;
+}
+
+.action-bar-execute:active {
+  background: #e2e8f0;
+}
+
+.action-bar-execute.danger-action {
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.action-bar-execute.danger-action:hover {
+  background: #fef2f2;
+}
+
+.action-bar-toggle {
+  padding: 0.6rem 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-bar-toggle:hover {
+  background: #e2e8f0;
+  color: var(--text-main);
+}
+
+.action-bar-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.action-bar-toggle.open svg {
+  transform: rotate(180deg);
+}
+
+/* Dropdown menu */
+.action-bar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  padding: 0.4rem;
+  display: none;
+  z-index: 100;
+  animation: actionMenuSlide 0.15s ease;
+}
+
+@keyframes actionMenuSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.action-bar-menu.open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.action-bar-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.action-bar-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.action-bar-menu-item.active {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary);
+}
+
+.action-bar-menu-item.danger {
+  color: #dc2626;
+}
+
+.action-bar-menu-item.danger:hover {
+  background: #fef2f2;
+}
+
+.action-bar-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-bar-menu-item.disabled:hover {
+  background: transparent;
+}
+
+.action-bar-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.3rem 0.4rem;
+}
+
+/* Reopen button (shown when ticket is closed) */
+.action-bar-reopen {
+  padding: 0.6rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 2px solid #10b981;
+  background: transparent;
+  color: #10b981;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.action-bar-reopen:hover {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  transform: translateY(-1px);
+}
+
+.action-bar-reopen:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Closed badge */
+.action-bar-closed-badge {
+  padding: 0.6rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-right: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-bar-accept,
+  .action-bar-reopen {
+    margin-right: 0;
+    text-align: center;
+  }
+
+  .action-bar-group {
+    width: 100%;
+  }
+
+  .action-bar-execute {
+    flex: 1;
+    text-align: center;
+  }
+}
