@@ -2495,6 +2495,10 @@ body {
   overflow-x: clip;
 }
 
+.ticket-detail-page .info-main-panel {
+  overflow: visible;
+}
+
 .ticket-detail-page .chat-panel,
 .ticket-detail-page .ticket-info-grid .panel,
 .ticket-detail-page .chat-row,
@@ -2803,13 +2807,6 @@ body.ticket-detail-page .content {
 .action-bar-accept:hover {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
-  transform: translateY(-1px);
-}
-
-.action-bar-accept:active {
-  transform: translateY(0);
-  box-shadow: none;
 }
 
 /* Button group: action + toggle share a border */
@@ -2887,8 +2884,8 @@ body.ticket-detail-page .content {
 /* Dropdown menu */
 .action-bar-menu {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  bottom: calc(100% + 6px);
+  left: 0;
   min-width: 200px;
   background: #fff;
   border: 1px solid var(--border);
@@ -2897,13 +2894,13 @@ body.ticket-detail-page .content {
   padding: 0.4rem;
   display: none;
   z-index: 100;
-  animation: actionMenuSlide 0.15s ease;
+  animation: actionMenuSlideUp 0.15s ease;
 }
 
-@keyframes actionMenuSlide {
+@keyframes actionMenuSlideUp {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -2984,13 +2981,6 @@ body.ticket-detail-page .content {
 .action-bar-reopen:hover {
   background: #10b981;
   color: #fff;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-  transform: translateY(-1px);
-}
-
-.action-bar-reopen:active {
-  transform: translateY(0);
-  box-shadow: none;
 }
 
 /* Closed badge */
