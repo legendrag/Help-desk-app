@@ -336,6 +336,10 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
 }
 
 .choices__list--dropdown {
+  position: absolute !important;
+  top: 100%;
+  left: 0;
+  width: 100%;
   border: 1px solid var(--border) !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
@@ -344,6 +348,13 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   z-index: 100 !important;
   background: white !important;
   box-sizing: border-box !important;
+}
+
+.choices.is-flipped .choices__list--dropdown {
+  top: auto !important;
+  bottom: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
 }
 
 .choices__list--dropdown .choices__list {
