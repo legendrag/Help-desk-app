@@ -111,10 +111,7 @@
         }
         function closeModal() {
             document.getElementById('modal-container').style.display = 'none';
-            setTimeout(() => {
-                const content = document.getElementById('modal-content');
-                if (content) content.innerHTML = '';
-            }, 100);
+            document.getElementById('modal-content').innerHTML = '';
         }
 
 
@@ -263,8 +260,22 @@
 
         document.addEventListener('htmx:afterRequest', function(evt) {
             const xhr = evt.detail.xhr;
-            if (xhr && xhr.status === 204) {
+            if (!xhr) return;
+            
+            const trigger = xhr.getResponseHeader('HX-Trigger') || '';
+            const isNoContent = xhr.status === 204;
+            
+            if (isNoContent || trigger.includes('closeModal')) {
                 closeModal();
+            }
+            if (trigger.includes('refreshSettings')) {
+                document.body.dispatchEvent(new CustomEvent('refreshSettings'));
+            }
+            if (trigger.includes('refreshTickets')) {
+                document.body.dispatchEvent(new CustomEvent('refreshTickets'));
+            }
+            if (trigger.includes('reloadPage')) {
+                window.location.reload();
             }
         });
 

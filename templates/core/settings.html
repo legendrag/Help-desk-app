@@ -50,7 +50,7 @@
         </div>
     </div>
 
-    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load, refreshSettings from:body" hx-get="{% url 'branch_list' %}">
+    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load" hx-get="{% url 'branch_list' %}">
         <div class="settings-loading">
             <div class="loader"></div>
             <p>Loading settings...</p>
