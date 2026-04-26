@@ -243,7 +243,7 @@
 
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {
             // Re-bind items if needed after HTMX swaps
-            if (evt.detail.target.id === 'modal-content') {
+            if (evt.detail.target.id === 'modal-content' && evt.detail.xhr && evt.detail.xhr.status !== 204) {
                 openModal();
                 initUserTypeToggle(evt.detail.target);
             }
