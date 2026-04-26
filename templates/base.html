@@ -111,7 +111,10 @@
         }
         function closeModal() {
             document.getElementById('modal-container').style.display = 'none';
-            document.getElementById('modal-content').innerHTML = '';
+            setTimeout(() => {
+                const content = document.getElementById('modal-content');
+                if (content) content.innerHTML = '';
+            }, 100);
         }
 
 
