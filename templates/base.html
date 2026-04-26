@@ -111,7 +111,10 @@
         }
         function closeModal() {
             document.getElementById('modal-container').style.display = 'none';
-            document.getElementById('modal-content').innerHTML = '';
+            setTimeout(() => {
+                const content = document.getElementById('modal-content');
+                if (content) content.innerHTML = '';
+            }, 100);
         }
 
 
@@ -247,27 +250,21 @@
             initPasswordToggles(document);
         });
 
-        // Close modal if HTMX request was successful (e.g. after form submit)
+        document.body.addEventListener('reloadPage', function() {
+            window.location.reload();
+        });
 
-        
-        document.addEventListener('htmx:afterRequest', function(evt) {
-            const xhr = evt.detail.xhr;
-            if (!xhr) return;
-            const trigger = xhr.getResponseHeader('HX-Trigger') || '';
-            if (xhr.status === 204 || trigger.includes('closeModal')) {
-                // Defer to ensure any DOM updates finish
-                setTimeout(() => closeModal(), 0);
+        document.body.addEventListener('refreshTickets', function() {
+            const list = document.getElementById('ticket-list');
+            if (list && window.htmx) {
+                window.htmx.ajax('GET', window.location.href, {target: '#ticket-list'});
             }
         });
 
-        document.body.addEventListener('htmx:beforeSwap', function(evt) {
-            const trigger = evt.detail.xhr.getResponseHeader('HX-Trigger') || '';
-            const isNoContent = evt.detail.xhr.status === 204;
-            if (isNoContent || trigger.includes('closeModal')) {
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            const xhr = evt.detail.xhr;
+            if (xhr && xhr.status === 204) {
                 closeModal();
-            }
-            if (trigger.includes('reloadPage')) {
-                window.location.reload();
             }
         });
 
