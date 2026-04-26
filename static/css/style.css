@@ -1186,11 +1186,13 @@ button.danger:hover {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
-button.success, .btn.success {
+button.success,
+.btn.success {
   background: var(--success, #10b981);
 }
 
-button.success:hover, .btn.success:hover {
+button.success:hover,
+.btn.success:hover {
   background: #059669;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
@@ -1576,11 +1578,25 @@ button.success:hover, .btn.success:hover {
   background: linear-gradient(90deg, #64748b, #cbd5f5);
 }
 
-.metric-row:nth-child(5n+1) .metric-bar-fill.neutral { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
-.metric-row:nth-child(5n+2) .metric-bar-fill.neutral { background: linear-gradient(90deg, #ec4899, #f43f5e); }
-.metric-row:nth-child(5n+3) .metric-bar-fill.neutral { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
-.metric-row:nth-child(5n+4) .metric-bar-fill.neutral { background: linear-gradient(90deg, #10b981, #14b8a6); }
-.metric-row:nth-child(5n) .metric-bar-fill.neutral { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.metric-row:nth-child(5n+1) .metric-bar-fill.neutral {
+  background: linear-gradient(90deg, #8b5cf6, #d946ef);
+}
+
+.metric-row:nth-child(5n+2) .metric-bar-fill.neutral {
+  background: linear-gradient(90deg, #ec4899, #f43f5e);
+}
+
+.metric-row:nth-child(5n+3) .metric-bar-fill.neutral {
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+}
+
+.metric-row:nth-child(5n+4) .metric-bar-fill.neutral {
+  background: linear-gradient(90deg, #10b981, #14b8a6);
+}
+
+.metric-row:nth-child(5n) .metric-bar-fill.neutral {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
 
 .empty-state {
   padding: 1.5rem;
@@ -2799,8 +2815,15 @@ body.ticket-detail-page .content {
   color: var(--primary);
   border-radius: 10px;
   cursor: pointer;
+  transition: all 0.2s ease;
   margin-right: 0.5rem;
   letter-spacing: 0.02em;
+}
+
+.action-bar-accept:hover {
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: none;
+  transform: none;
 }
 
 /* Button group: action + toggle share a border */
@@ -2823,13 +2846,31 @@ body.ticket-detail-page .content {
   color: var(--text-main);
   border-radius: 10px 0 0 10px;
   cursor: pointer;
+  transition: all 0.2s ease;
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.action-bar-execute:hover {
+  background: #f1f5f9;
+  box-shadow: none;
+  transform: none;
+}
+
+.action-bar-execute:active {
+  background: #e2e8f0;
+  transform: none;
 }
 
 .action-bar-execute.danger-action {
   color: #dc2626;
   border-color: #fca5a5;
+}
+
+.action-bar-execute.danger-action:hover {
+  background: #fef2f2;
+  box-shadow: none;
+  transform: none;
 }
 
 .action-bar-toggle {
@@ -2841,9 +2882,17 @@ body.ticket-detail-page .content {
   color: #64748b;
   border-radius: 0 10px 10px 0;
   cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.action-bar-toggle:hover {
+  background: #e2e8f0;
+  color: var(--text-main);
+  box-shadow: none;
+  transform: none;
 }
 
 .action-bar-toggle svg {
@@ -2877,6 +2926,7 @@ body.ticket-detail-page .content {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2903,7 +2953,14 @@ body.ticket-detail-page .content {
   font-weight: 600;
   color: var(--text-main);
   cursor: pointer;
+  transition: background 0.15s ease;
   white-space: nowrap;
+}
+
+.action-bar-menu-item:hover {
+  background: #f1f5f9;
+  box-shadow: none;
+  transform: none;
 }
 
 .action-bar-menu-item.active {
@@ -2915,9 +2972,21 @@ body.ticket-detail-page .content {
   color: #dc2626;
 }
 
+.action-bar-menu-item.danger:hover {
+  background: #fef2f2;
+  box-shadow: none;
+  transform: none;
+}
+
 .action-bar-menu-item.disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.action-bar-menu-item.disabled:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .action-bar-menu-divider {
@@ -2936,7 +3005,14 @@ body.ticket-detail-page .content {
   color: #10b981;
   border-radius: 10px;
   cursor: pointer;
+  transition: all 0.2s ease;
   letter-spacing: 0.02em;
+}
+
+.action-bar-reopen:hover {
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: none;
+  transform: none;
 }
 
 /* Closed badge */
