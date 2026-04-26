@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>{% block title %}Help Desk{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.6">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.7">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.5">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link rel="icon" href="{% static 'favicon.ico' %}">
@@ -107,9 +107,14 @@
 
     <script>
         function openModal() {
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
+            document.documentElement.classList.add('modal-open');
             document.getElementById('modal-container').style.display = 'flex';
         }
         function closeModal() {
+            document.documentElement.classList.remove('modal-open');
+            document.documentElement.style.removeProperty('--scrollbar-width');
             document.getElementById('modal-container').style.display = 'none';
             setTimeout(() => {
                 const content = document.getElementById('modal-content');

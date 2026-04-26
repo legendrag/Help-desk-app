@@ -3050,3 +3050,11 @@ body.ticket-detail-page .content {
     text-align: center;
   }
 }
+/* Scroll lock for modals */
+html.modal-open {
+  overflow: hidden !important;
+  padding-right: var(--scrollbar-width, 0px) !important;
+}
+html.modal-open body {
+  overflow: hidden !important;
+}
