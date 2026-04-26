@@ -316,8 +316,19 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   box-shadow: none !important;
   font-size: 16px;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-  display: flex !important;
-  align-items: center;
+}
+
+/* Fix Choices.js hidden input taking up space and causing layout jumps */
+.choices[data-type*='select-one'] .choices__input {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  z-index: -1 !important;
 }
 
 .choices[data-type*='select-one'] .choices__inner {
