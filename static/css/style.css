@@ -1122,8 +1122,8 @@ tr:hover td {
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  overflow-y: scroll !important;
   padding: 2rem;
   position: relative;
   margin: auto;
