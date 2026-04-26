@@ -278,9 +278,36 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
 .password-toggle:hover, .password-toggle:active,
 .ticket-back-btn:hover, .ticket-back-btn:active,
 .btn-link:hover, .btn-link:active,
-.sidebar-action-btn:hover, .sidebar-action-btn:active {
+.sidebar-action-btn:hover, .sidebar-action-btn:active,
+.action-bar-accept:hover, .action-bar-accept:active,
+.action-bar-execute:hover, .action-bar-execute:active,
+.action-bar-toggle:hover, .action-bar-toggle:active,
+.action-bar-menu-item:hover, .action-bar-menu-item:active,
+.action-bar-reopen:hover, .action-bar-reopen:active {
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Restore subtle hover feedback for action-bar buttons (matches secondary button feel) */
+.action-bar-accept:hover {
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+.action-bar-execute:hover {
+  background: #fff !important;
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.action-bar-toggle:hover {
+  background: #e2e8f0 !important;
+}
+
+.action-bar-menu-item:hover {
+  background: #f1f5f9 !important;
+}
+
+.action-bar-reopen:hover {
+  background: rgba(16, 185, 129, 0.08) !important;
 }
 
 /* Restore distinct interaction feedback for static text links */
