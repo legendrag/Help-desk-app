@@ -284,16 +284,20 @@
 
         // Initialize Choices.js robustly
         function initializeChoices(targetElement) {
-            // Find descendants
             const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.choices-initialized)') : []);
             
-            // Check if targetElement itself is a select
-            if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select' && !targetElement.classList.contains('choices-initialized')) {
-                selects.push(targetElement);
+            if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select') {
+                if (targetElement.classList.contains('choices-initialized') && targetElement.choicesInstance) {
+                    targetElement.choicesInstance.destroy();
+                    targetElement.classList.remove('choices-initialized');
+                }
+                if (!targetElement.classList.contains('choices-initialized')) {
+                    selects.push(targetElement);
+                }
             }
 
             selects.forEach(select => {
-                new Choices(select, {
+                select.choicesInstance = new Choices(select, {
                     searchEnabled: false,
                     itemSelectText: '',
                     shouldSort: false,
