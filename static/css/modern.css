@@ -74,13 +74,11 @@ button, .btn {
 }
 
 button:hover:not(:disabled), .btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px -4px rgba(79, 70, 229, 0.4), 0 4px 12px -2px rgba(79, 70, 229, 0.25);
+  /* Subtle hovers managed per-button or globally in style.css */
 }
 
 button:active:not(:disabled), .btn:active:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  /* No transform on click */
 }
 
 .btn.secondary, button.secondary {
@@ -264,29 +262,7 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Undo energetic button hover for UI icon buttons and dropdown items */
-.notification-btn:hover, .notification-btn:active,
-.message-menu-btn:hover, .message-menu-btn:active,
-.message-reply-btn:hover, .message-reply-btn:active,
-.message-menu-item:hover, .message-menu-item:active,
-.menu-btn-universal:hover, .menu-btn-universal:active,
-.modal-close:hover, .modal-close:active,
-.file-preview-remove:hover, .file-preview-remove:active,
-.reply-cancel:hover, .reply-cancel:active,
-.settings-tab:hover, .settings-tab:active,
-.chat-send-btn:hover, .chat-send-btn:active,
-.password-toggle:hover, .password-toggle:active,
-.ticket-back-btn:hover, .ticket-back-btn:active,
-.btn-link:hover, .btn-link:active,
-.sidebar-action-btn:hover, .sidebar-action-btn:active,
-.action-bar-accept:hover, .action-bar-accept:active,
-.action-bar-execute:hover, .action-bar-execute:active,
-.action-bar-toggle:hover, .action-bar-toggle:active,
-.action-bar-menu-item:hover, .action-bar-menu-item:active,
-.action-bar-reopen:hover, .action-bar-reopen:active {
-  transform: none !important;
-  box-shadow: none !important;
-}
+
 
 /* Restore subtle hover feedback for action-bar buttons (matches secondary button feel) */
 .action-bar-accept:hover {

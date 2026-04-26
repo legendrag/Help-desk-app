@@ -478,32 +478,13 @@ button {
 
 button:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 button:active {
-  transform: translateY(0);
+  background: var(--primary-hover);
 }
 
-/* Neutralize global button hover for action-bar buttons */
-button.action-bar-accept:hover,
-button.action-bar-execute:hover,
-button.action-bar-toggle:hover,
-button.action-bar-menu-item:hover,
-button.action-bar-reopen:hover {
-  background: inherit;
-  box-shadow: none;
-  transform: none;
-}
 
-button.action-bar-accept:active,
-button.action-bar-execute:active,
-button.action-bar-toggle:active,
-button.action-bar-menu-item:active,
-button.action-bar-reopen:active {
-  transform: none;
-}
 
 .btn {
   cursor: pointer;
@@ -523,8 +504,6 @@ button.action-bar-reopen:active {
 
 .btn:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .btn.secondary {
