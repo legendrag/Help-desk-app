@@ -12,6 +12,8 @@ from .template_views import (
     delete_message,
     edit_message,
     ticket_category_options,
+    merge_ticket,
+    ticket_search_options,
 )
 
 urlpatterns = [
@@ -27,4 +29,6 @@ urlpatterns = [
     path("message/<int:message_id>/edit/", edit_message, name="edit_message"),
     path("<int:ticket_id>/status/", update_ticket_status, name="update_status"),
     path("<int:ticket_id>/pick/", pick_ticket, name="pick_ticket"),
+    path("<int:ticket_id>/merge/", merge_ticket, name="merge_ticket"),
+    path("search-options/", ticket_search_options, name="ticket_search_options"),
 ]
