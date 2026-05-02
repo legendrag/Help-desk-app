@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from datetime import datetime
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
@@ -13,6 +14,7 @@ from .models import Ticket, TicketMessage, TicketStatusHistory
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm
+from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
 # ... (existing code)
 
@@ -674,6 +676,9 @@ def update_ticket_status(request, ticket_id):
         if new_status in Ticket.Status.values:
             try:
                 if ticket.status != new_status:
+                    if ticket.status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
+                        ticket.assigned_to = request.user
+                        
                     ticket.status = new_status
                     ticket.save()
                     TicketStatusHistory.objects.create(
@@ -738,5 +743,89 @@ def pick_ticket(request, ticket_id):
         resp = HttpResponse(status=204)
         resp['HX-Trigger'] = 'reloadPage,refreshTickets'
         return resp
+
+    return redirect("ticket_detail", ticket_id=ticket_id)
+
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def ticket_search_options(request):
+    user = request.user
+    query = request.GET.get("q", "") or request.GET.get("target_ticket_number", "")
+    query = query.strip()
+    exclude_id = request.GET.get("exclude")
+    
+    if len(query) < 2:
+        return HttpResponse('<div id="search-results-container"></div>')
+        
+    tickets = Ticket.objects.filter(
+        Q(ticket_number__icontains=query) | Q(title__icontains=query)
+    ).exclude(merged_into__isnull=False)
+    
+    if not user.is_superuser:
+        if user.user_type == "branch" and user.branch_id:
+            tickets = tickets.filter(branch_id=user.branch_id)
+        elif user.user_type == "support" and user.department_id:
+            # Optionally restrict to their department if required by business logic
+            # For now, support users can typically search all tickets
+            pass
+    
+    if exclude_id and exclude_id.isdigit():
+        tickets = tickets.exclude(id=exclude_id)
+        
+    tickets = tickets[:15]
+    
+    if not tickets.exists():
+        return HttpResponse('<div id="search-results-container"></div>')
+
+    options = ['<div id="search-results-container" style="position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 1000; max-height: 250px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.15); margin-top: 4px;">']
+    for t in tickets:
+        options.append(
+            f'<div style="padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid #e2e8f0; transition: background 0.15s ease;"'
+            f' onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'transparent\'"'
+            f' onclick="document.getElementById(\'target_ticket_number\').value=\'{t.ticket_number}\'; document.getElementById(\'merge-submit-btn\').disabled=false; document.getElementById(\'search-results-container\').outerHTML=\'<div id=\\\'search-results-container\\\'></div>\';">'
+            f'<div style="color: #0f172a; font-weight: 600; margin-bottom: 0.2rem;">{t.ticket_number}</div>'
+            f'<div style="color: #64748b; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{t.title}</div>'
+            f'</div>'
+        )
+    options.append('</div>')
+        
+    return HttpResponse("\n".join(options))
+
+def merge_ticket(request, ticket_id):
+    if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
+        raise PermissionDenied("You do not have permission to merge tickets.")
+
+    primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
+
+    if request.method == "POST":
+        target_ticket_number = request.POST.get("target_ticket_number")
+        if not target_ticket_number:
+            django_messages.error(request, "Target ticket number is required.")
+            return redirect("ticket_detail", ticket_id=ticket_id)
+
+        try:
+            secondary_ticket = Ticket.objects.get(ticket_number=target_ticket_number)
+        except Ticket.DoesNotExist:
+            django_messages.error(request, f"Ticket {target_ticket_number} not found.")
+            return redirect("ticket_detail", ticket_id=ticket_id)
+
+        try:
+            merge_tickets(primary_ticket.id, [secondary_ticket.id], request.user)
+            django_messages.success(request, f"Ticket {secondary_ticket.ticket_number} merged into this ticket successfully.")
+            
+            _broadcast_ticket_update(secondary_ticket, "ticket_status_changed", {
+                "changed_by": request.user.username,
+                "new_status": "closed",
+                "new_status_display": "Closed",
+            })
+            
+            return redirect("ticket_detail", ticket_id=primary_ticket.id)
+        except ValidationError as e:
+            for message in getattr(e, "messages", [str(e)]):
+                django_messages.error(request, message)
+        except Exception as e:
+            django_messages.error(request, f"Failed to merge ticket: {str(e)}")
 
     return redirect("ticket_detail", ticket_id=ticket_id)

@@ -16,6 +16,7 @@ class Ticket(models.Model):
         IN_PROGRESS = "in_progress", "In Progress"
         WAITING_FOR_BRANCH = "waiting_for_branch", "Waiting for Branch"
         CLOSED = "closed", "Closed"
+        MERGED = "merged", "Merged"
 
     class Priority(models.TextChoices):
         LOW = "low", "Low"
@@ -42,6 +43,13 @@ class Ticket(models.Model):
         null=True,
         blank=True,
         related_name="assigned_tickets",
+    )
+    merged_into = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="merged_tickets",
     )
     version = models.PositiveIntegerField(default=1)
     
@@ -71,6 +79,14 @@ class Ticket(models.Model):
     def clean(self):
         if self.category_id and self.department_id and self.category.department_id != self.department_id:
             raise ValidationError({"category": "Category must belong to selected department."})
+
+        if self.status == self.Status.MERGED and not self.merged_into_id:
+            raise ValidationError({"merged_into": "Merged ticket must have a target ticket."})
+
+        if self.pk:
+            previous = Ticket.objects.filter(pk=self.pk).only("status").first()
+            if previous and previous.status == self.Status.MERGED and self.status != self.Status.MERGED:
+                raise ValidationError("Cannot un-merge a merged ticket.")
 
     def save(self, *args, **kwargs):
         now = timezone.now()
@@ -144,6 +160,7 @@ class TicketMessage(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="ticket_messages")
     reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="replies")
     message = models.TextField(blank=True)
+    is_system_message = models.BooleanField(default=False)
     attachment = models.FileField(upload_to=ticket_attachment_path, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -155,12 +172,23 @@ class TicketMessage(models.Model):
         ]
 
     def clean(self):
-        if self.ticket.status == Ticket.Status.CLOSED:
-            raise ValidationError("Cannot send message on a closed ticket.")
+        if self.ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+            raise ValidationError(f"Cannot send message on a {self.ticket.status} ticket.")
         if not self.message and not self.attachment:
             raise ValidationError("Message or attachment is required.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class TicketMergeHistory(models.Model):
+    primary_ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="merge_histories_as_primary")
+    secondary_ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="merge_histories_as_secondary")
+    merged_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    merged_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-merged_at"]
+        verbose_name_plural = "Ticket merge histories"
 
