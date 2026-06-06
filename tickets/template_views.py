@@ -453,7 +453,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         if user.is_superuser:
             can_chat = True
         elif user.user_type == "branch":
-            can_chat = (ticket.created_by_id == user.id)
+            can_chat = (ticket.branch_id == user.branch_id)
         elif user.user_type == "support":
             can_chat = (ticket.assigned_to_id == user.id)
         context['can_chat'] = can_chat
@@ -483,8 +483,8 @@ def post_message(request, ticket_id):
 
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if not request.user.is_superuser:
-        if request.user.user_type == "branch" and ticket.created_by_id != request.user.id:
-            raise PermissionDenied("You can only send messages on tickets you created.")
+        if request.user.user_type == "branch" and ticket.branch_id != request.user.branch_id:
+            raise PermissionDenied("You can only send messages on tickets for your branch.")
         elif request.user.user_type == "support" and ticket.assigned_to_id != request.user.id:
             raise PermissionDenied("You can only send messages on tickets assigned to you.")
 
@@ -519,6 +519,7 @@ def post_message(request, ticket_id):
                     "sender": request.user.id,
                     "sender_username": request.user.username,
                     "message": msg.message,
+                    "is_system_message": msg.is_system_message,
                     "attachment_url": msg.attachment.url if msg.attachment else None,
                     "created_at": msg.created_at.isoformat(),
                     "updated_at": msg.updated_at.isoformat(),
@@ -756,7 +757,7 @@ def ticket_search_options(request):
     query = query.strip()
     exclude_id = request.GET.get("exclude")
     
-    if len(query) < 2:
+    if len(query) < 1:
         return HttpResponse('<div id="search-results-container"></div>')
         
     tickets = Ticket.objects.filter(
@@ -767,31 +768,62 @@ def ticket_search_options(request):
         if user.user_type == "branch" and user.branch_id:
             tickets = tickets.filter(branch_id=user.branch_id)
         elif user.user_type == "support" and user.department_id:
-            # Optionally restrict to their department if required by business logic
-            # For now, support users can typically search all tickets
-            pass
+            tickets = tickets.filter(department_id=user.department_id)
+        else:
+            tickets = tickets.none()
     
     if exclude_id and exclude_id.isdigit():
         tickets = tickets.exclude(id=exclude_id)
         
-    tickets = tickets[:15]
+    tickets = tickets.select_related("department", "branch", "created_by")[:10]
     
     if not tickets.exists():
-        return HttpResponse('<div id="search-results-container"></div>')
+        return HttpResponse('<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')
 
-    options = ['<div id="search-results-container" style="position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 1000; max-height: 250px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.15); margin-top: 4px;">']
+    options = ['<div id="search-results-container" class="merge-search-results">']
     for t in tickets:
+        status_label = t.get_status_display()
+        priority_label = t.get_priority_display().upper()
         options.append(
-            f'<div style="padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid #e2e8f0; transition: background 0.15s ease;"'
-            f' onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'transparent\'"'
-            f' onclick="document.getElementById(\'target_ticket_number\').value=\'{t.ticket_number}\'; document.getElementById(\'merge-submit-btn\').disabled=false; document.getElementById(\'search-results-container\').outerHTML=\'<div id=\\\'search-results-container\\\'></div>\';">'
-            f'<div style="color: #0f172a; font-weight: 600; margin-bottom: 0.2rem;">{t.ticket_number}</div>'
-            f'<div style="color: #64748b; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{t.title}</div>'
+            f'<div class="merge-search-item" '
+            f'hx-get="/tickets/merge-preview/{t.id}/" '
+            f'hx-target="#selected-ticket-preview" '
+            f'hx-swap="innerHTML" '
+            f'onclick="selectTicketForMerge(\'{t.ticket_number}\')">'
+            f'  <div class="merge-item-header">'
+            f'    <span class="merge-item-number">{t.ticket_number}</span>'
+            f'    <div class="merge-item-badges">'
+            f'      <span class="badge badge-{t.status}">{status_label}</span>'
+            f'      <span class="priority-badge priority-{t.priority}">{priority_label}</span>'
+            f'    </div>'
+            f'  </div>'
+            f'  <div class="merge-item-title">{t.title}</div>'
+            f'  <div class="merge-item-meta">'
+            f'    <span>Dept: {t.department.name}</span> | '
+            f'    <span>By: {t.created_by.username}</span>'
+            f'  </div>'
             f'</div>'
         )
     options.append('</div>')
         
     return HttpResponse("\n".join(options))
+
+@login_required
+def ticket_merge_preview(request, ticket_id):
+    user = request.user
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    
+    if not user.is_superuser:
+        if user.user_type == "branch" and ticket.branch_id != user.branch_id:
+            raise PermissionDenied("You do not have permission to view this ticket.")
+        elif user.user_type == "support" and ticket.department_id != user.department_id:
+            raise PermissionDenied("You do not have permission to view this ticket.")
+            
+    msg_count = ticket.messages.count()
+    return render(request, "tickets/merge_preview_partial.html", {
+        "ticket": ticket,
+        "msg_count": msg_count,
+    })
 
 def merge_ticket(request, ticket_id):
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
@@ -815,10 +847,18 @@ def merge_ticket(request, ticket_id):
             merge_tickets(primary_ticket.id, [secondary_ticket.id], request.user)
             django_messages.success(request, f"Ticket {secondary_ticket.ticket_number} merged into this ticket successfully.")
             
+            # Broadcast the secondary ticket status change as 'merged'
             _broadcast_ticket_update(secondary_ticket, "ticket_status_changed", {
                 "changed_by": request.user.username,
-                "new_status": "closed",
-                "new_status_display": "Closed",
+                "new_status": "merged",
+                "new_status_display": "Merged",
+            })
+            
+            # Broadcast update for primary ticket so active detail/list pages reload
+            _broadcast_ticket_update(primary_ticket, "ticket_status_changed", {
+                "changed_by": request.user.username,
+                "new_status": primary_ticket.status,
+                "new_status_display": primary_ticket.get_status_display(),
             })
             
             return redirect("ticket_detail", ticket_id=primary_ticket.id)

@@ -4,3 +4,4 @@ daphne==4.2.1
 python-dotenv==1.2.2
 Pillow==12.1.1
 PyMySQL==1.1.1
+djlint==1.36.4

@@ -1,12 +1,12 @@
-﻿# Python
+# Python
 .venv/
 __pycache__/
 *.py[cod]
 *.sqlite3
 
 # Django
-backend/media/
-backend/staticfiles/
+media/
+staticfiles/
 
 # Node
 frontend/node_modules/

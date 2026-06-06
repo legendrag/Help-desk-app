@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from tickets.models import Ticket, TicketMessage, TicketMergeHistory
+from tickets.models import Ticket, TicketMessage, TicketMergeHistory, TicketStatusHistory
 
 
 @transaction.atomic
@@ -28,6 +28,9 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
         primary_ticket = Ticket.objects.select_for_update().get(id=primary_ticket_id)
     except Ticket.DoesNotExist:
         raise ValidationError("Primary ticket not found.")
+
+    if primary_ticket.status == Ticket.Status.CLOSED:
+        raise ValidationError("Cannot merge into a closed ticket.")
 
     if primary_ticket.merged_into is not None:
         raise ValidationError("Cannot merge into a ticket that is already merged.")
@@ -59,7 +62,7 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
         TicketMessage.objects.filter(ticket=st).update(ticket=primary_ticket)
 
         # Update secondary ticket status and relation
-        st.status = Ticket.Status.CLOSED
+        st.status = Ticket.Status.MERGED
         st.closed_at = timezone.now()
         st.merged_into = primary_ticket
         st.save()
@@ -70,6 +73,13 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
             sender=user,
             message=f"Merged messages from ticket #{st.ticket_number}",
             is_system_message=True,
+        )
+
+        # Create status history record for secondary ticket
+        TicketStatusHistory.objects.create(
+            ticket=st,
+            status=Ticket.Status.MERGED,
+            changed_by=user,
         )
 
         # Create audit log record

@@ -17,11 +17,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
 
-        allowed = await self._user_has_permission(user.id, "ticket_messages_read", "can_read")
-        if not allowed:
-            print(f"[WS-DEBUG] Connection rejected: User {user.id} lacks ticket_messages_read")
-            await self.close(code=4403)
-            return
+        # Removed granular ticket_messages_read check because it causes typing indicator issues
 
         allowed_ticket = await self._user_can_access_ticket(user.id, self.ticket_id)
         if not allowed_ticket:
@@ -60,7 +56,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         user = self.scope.get("user")
-        allowed = await self._user_has_permission(user.id, "ticket_messages_create", "can_create")
+        allowed = await self._user_can_send_message(user.id)
         if not allowed:
             await self.send_json({"error": "Permission denied."})
             return
@@ -86,7 +82,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         })
 
     @database_sync_to_async
-    def _user_has_permission(self, user_id, entity, field):
+    def _user_can_send_message(self, user_id):
         from accounts.models import User
 
         try:
@@ -100,11 +96,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         if not user.role_id:
             return False
 
-        permission = user.role.permissions.filter(entity=entity).first()
-        if not permission:
-            return False
-
-        return bool(getattr(permission, field, False))
+        return bool(user.role.can_send_message)
 
     @database_sync_to_async
     def _user_can_access_ticket(self, user_id, ticket_id):
@@ -139,8 +131,6 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         elif user.user_type == "branch":
             if not user.branch_id or ticket.branch_id != user.branch_id:
                 return None
-            if ticket.created_by_id != user.id:
-                return None
         elif user.user_type == "support":
             if not user.department_id or ticket.department_id != user.department_id:
                 return None
@@ -149,7 +139,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         else:
             return None
 
-        if ticket.status == Ticket.Status.CLOSED:
+        if ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
             return None
 
         reply_to = None
@@ -162,6 +152,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             "sender": user.id,
             "sender_username": user.username,
             "message": message.message,
+            "is_system_message": message.is_system_message,
             "attachment_url": None,
             "created_at": message.created_at.isoformat(),
             "updated_at": message.updated_at.isoformat(),
@@ -181,10 +172,7 @@ class TicketListConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
 
-        allowed = await self._user_has_permission(user.id, "tickets_list", "can_read")
-        if not allowed:
-            await self.close(code=4403)
-            return
+        # Permission check removed to match TicketListView's access level.
 
         if user.is_superuser:
             self.group_name = "ticket_list"
@@ -206,7 +194,8 @@ class TicketListConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def ticket_event(self, event):
         await self.send_json({

@@ -36,3 +36,10 @@ def notifications_list(request):
 def mark_notifications_read(request):
     InAppNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
     return JsonResponse({"ok": True})
+
+
+@require_POST
+@login_required
+def mark_notification_read(request, notification_id):
+    InAppNotification.objects.filter(id=notification_id, recipient=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})

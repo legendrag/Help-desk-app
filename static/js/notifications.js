@@ -11,6 +11,21 @@ function initNotifications() {
         const data = JSON.parse(e.data);
         console.log("[Notifications WS] message:", data);
 
+        // Smart suppression check
+        const currentPath = window.location.pathname;
+        const isRelatedPage = data.link && currentPath.includes(data.link);
+        const isFocused = document.hasFocus();
+
+        if (isRelatedPage && isFocused) {
+            // Suppress UI notification and silently mark as read
+            fetch(`/notifications/mark-read/${data.id}/`, {
+                method: "POST",
+                headers: { "X-CSRFToken": getCsrfToken() },
+                credentials: "same-origin",
+            }).catch(err => console.error("Auto-mark read failed:", err));
+            return;
+        }
+
         if (Notification.permission === "granted") {
             new Notification("Help Desk", {
                 body: data.message || "New activity!",
@@ -89,8 +104,39 @@ function buildNotificationItem(item) {
     }
 
     wrapper.addEventListener("click", () => {
-        if (item.link) {
-            window.location.href = item.link;
+        if (!item.is_read) {
+            // Optimistically update UI
+            wrapper.classList.remove("unread");
+            wrapper.classList.add("read");
+            const dotEl = wrapper.querySelector(".notification-dot");
+            if (dotEl) dotEl.remove();
+            
+            // Decrease badge
+            const badge = document.getElementById("notification-count");
+            if (badge && badge.style.display !== "none") {
+                const current = parseInt(badge.textContent, 10) || 0;
+                updateBadge(Math.max(0, current - 1));
+            }
+
+            fetch(`/notifications/mark-read/${item.id}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                credentials: "same-origin",
+            }).then(() => {
+                if (item.link) {
+                    window.location.href = item.link;
+                }
+            }).catch(() => {
+                if (item.link) {
+                    window.location.href = item.link;
+                }
+            });
+        } else {
+            if (item.link) {
+                window.location.href = item.link;
+            }
         }
     });
 
@@ -178,7 +224,7 @@ function initNotificationUI() {
         const isOpen = dropdown.style.display === "block";
         dropdown.style.display = isOpen ? "none" : "block";
         if (!isOpen) {
-            fetchNotifications().then(markAllRead);
+            fetchNotifications();
         }
     });
 

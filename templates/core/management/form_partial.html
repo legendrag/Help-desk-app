@@ -17,6 +17,14 @@
     {% endif %}
 
     {% if model_name == "Role" %}
+    <div class="perm-card role-presets">
+        <h4>Quick Presets:</h4>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('support')">Support Agent</button>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('branch')">Branch User</button>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('full')">Full Access</button>
+        <button type="button" class="preset-btn danger-preset" onclick="applyRolePreset('clear')">Clear All</button>
+    </div>
+    
     <div class="form-stack">
         <div class="form-grid">
             <div class="form-group">
@@ -122,6 +130,73 @@
             <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
         </div>
     </div>
+    
+    <script>
+    function applyRolePreset(preset) {
+        const form = document.querySelector('.management-form');
+        if (!form) return;
+        
+        // Update active state of preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-preset'));
+        // We add active state unless it's 'clear' which is just an action
+        if (preset !== 'clear') {
+            const targetBtn = document.querySelector(`.preset-btn[onclick="applyRolePreset('${preset}')"]`);
+            if (targetBtn) targetBtn.classList.add('active-preset');
+        }
+        
+        // Helper to set all checkboxes (excluding CSRF, though it's hidden)
+        const setAll = (val) => {
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = val);
+        };
+
+        const nameInput = form.querySelector('input[name="name"]');
+        const descInput = form.querySelector('textarea[name="description"]');
+        
+        if (preset === 'clear') {
+            setAll(false);
+            if (nameInput) nameInput.value = '';
+            if (descInput) descInput.value = '';
+            return;
+        }
+        
+        if (preset === 'full') {
+            setAll(true);
+            if (nameInput) nameInput.value = 'Full Access Admin';
+            if (descInput) descInput.value = 'Has unrestricted access to all features and settings within the system.';
+            return;
+        }
+        
+        // Define specific presets
+        const presets = {
+            'support': {
+                fields: [
+                    'can_create_ticket', 'can_update_ticket', 'can_pick_ticket', 'can_update_status',
+                    'can_send_message', 'can_edit_message', 'can_access_dashboard'
+                ],
+                name: 'Support Agent',
+                desc: 'Standard support staff with permissions to handle tickets, communicate with users, and access the dashboard.'
+            },
+            'branch': {
+                fields: [
+                    'can_create_ticket', 'can_send_message'
+                ],
+                name: 'Branch User',
+                desc: 'Limited access role allowing users to create tickets and send messages for branch-related issues.'
+            }
+        };
+        
+        if (presets[preset]) {
+            setAll(false); // Clear all first
+            presets[preset].fields.forEach(fieldName => {
+                const el = form.querySelector(`input[name="${fieldName}"]`);
+                if (el) el.checked = true;
+            });
+            // Overwrite name and description
+            if (nameInput) nameInput.value = presets[preset].name;
+            if (descInput) descInput.value = presets[preset].desc;
+        }
+    }
+    </script>
     {% elif model_name == "Email Setting" %}
     <div class="form-stack">
         <div class="form-grid">

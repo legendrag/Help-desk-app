@@ -71,15 +71,27 @@ def run_test():
 
     print("Testing merge...")
     try:
+        from tickets.models import TicketStatusHistory
         merged_ticket = merge_tickets(t1.id, [t2.id, t3.id], user)
         print("Merge successful!")
         
         # Verify status and priority
         t2.refresh_from_db()
         t3.refresh_from_db()
-        print(f"T2 status: {t2.status}, Merged into: {t2.merged_into.id if t2.merged_into else None}")
-        print(f"T3 status: {t3.status}, Merged into: {t3.merged_into.id if t3.merged_into else None}")
+        print(f"T2 status: {t2.status} (Expected: merged)")
+        print(f"T2 Merged into: {t2.merged_into.id if t2.merged_into else None} (Expected: {t1.id})")
+        print(f"T3 status: {t3.status} (Expected: merged)")
+        print(f"T3 Merged into: {t3.merged_into.id if t3.merged_into else None} (Expected: {t1.id})")
         print(f"Primary priority: {merged_ticket.priority} (Expected: HIGH)")
+        
+        # Assert status is correct
+        assert t2.status == Ticket.Status.MERGED, f"Expected T2 status merged, got {t2.status}"
+        assert t3.status == Ticket.Status.MERGED, f"Expected T3 status merged, got {t3.status}"
+        
+        # Verify status history
+        t2_histories = TicketStatusHistory.objects.filter(ticket=t2, status=Ticket.Status.MERGED)
+        print(f"T2 status history for merged status: {t2_histories.count()} (Expected: 1)")
+        assert t2_histories.count() == 1, "Expected 1 status history record for T2 transition to merged"
         
         # Verify messages
         msgs = merged_ticket.messages.all()

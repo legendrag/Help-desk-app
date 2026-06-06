@@ -179,8 +179,8 @@ function initChat(ticketId) {
             statusSelect.value = payload.status;
         }
 
-        // Show/hide closed ticket UI
-        if (payload.status === 'closed') {
+        // Show/hide closed/merged ticket UI
+        if (payload.status === 'closed' || payload.status === 'merged') {
             // Hide chat form
             const chatForm = document.querySelector('.chat-form');
             if (chatForm) chatForm.style.display = 'none';
@@ -281,6 +281,21 @@ function initChat(ticketId) {
         if (!chatBox) return;
 
         if (document.getElementById(`message-${payload.id}`)) return;
+
+        if (payload.is_system_message) {
+            const row = document.createElement('div');
+            row.id = `message-${payload.id}`;
+            row.className = 'chat-system-message-row';
+            row.dataset.messageId = payload.id;
+            row.innerHTML = `
+                <div class="chat-system-message-content">
+                    <span>${escapeHtml(payload.message)}</span>
+                </div>
+            `;
+            chatBox.appendChild(row);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return;
+        }
 
         const dateObj = new Date(payload.created_at);
         const timeStr = isNaN(dateObj) ? '' : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
