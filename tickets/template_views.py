@@ -297,6 +297,13 @@ class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         user = self.request.user
         if user.is_superuser:
             return True
+            
+        ticket_id = self.kwargs.get(self.pk_url_kwarg)
+        if ticket_id:
+            ticket = Ticket.objects.filter(id=ticket_id).first()
+            if ticket and ticket.assigned_to_id == user.id:
+                return True
+        
         return user.role and user.role.can_update_ticket
 
     def get_queryset(self):
@@ -469,6 +476,13 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             can_chat = (ticket.assigned_to_id == user.id)
         context['can_chat'] = can_chat
 
+        supporters = User.objects.filter(
+            user_type=User.UserType.SUPPORT,
+            status=User.Status.ACTIVE
+        ).exclude(id=ticket.assigned_to_id)
+        
+        context['supporters'] = supporters
+
         return context
 
 from django.core.exceptions import PermissionDenied
@@ -489,15 +503,16 @@ def ticket_category_options(request):
 
 
 def post_message(request, ticket_id):
-    if not (request.user.is_superuser or (request.user.role and request.user.role.can_send_message)):
-        raise PermissionDenied("You do not have permission to send messages.")
-
     ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Permission: Superuser, Assignee, Branch (if theirs), or has role permission.
     if not request.user.is_superuser:
-        if request.user.user_type == "branch" and ticket.branch_id != request.user.branch_id:
-            raise PermissionDenied("You can only send messages on tickets for your branch.")
-        elif request.user.user_type == "support" and ticket.assigned_to_id != request.user.id:
-            raise PermissionDenied("You can only send messages on tickets assigned to you.")
+        if request.user.user_type == "branch":
+            if ticket.branch_id != request.user.branch_id:
+                raise PermissionDenied("You can only send messages on tickets for your branch.")
+        elif request.user.user_type == "support":
+            if ticket.assigned_to_id != request.user.id and not (request.user.role and request.user.role.can_send_message):
+                raise PermissionDenied("You do not have permission to send messages.")
 
     if request.method == "POST":
         message_text = request.POST.get("message")
@@ -643,11 +658,11 @@ def _broadcast_ticket_update(ticket, event_name, extra_payload=None):
 
 
 def update_ticket_status(request, ticket_id):
-    if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
-        raise PermissionDenied("You do not have permission to update ticket status.")
-
     if request.method == "POST":
         ticket = get_object_or_404(Ticket, pk=ticket_id)
+        
+        if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
+            raise PermissionDenied("You can only update the status of tickets assigned to you.")
 
         if ticket.status == Ticket.Status.CLOSED:
             if not (request.user.is_superuser or request.user.user_type == 'support' or (request.user.role and request.user.role.can_update_closed_ticket)):
@@ -721,6 +736,49 @@ def pick_ticket(request, ticket_id):
                         django_messages.error(request, message)
                 except Exception as e:
                     django_messages.error(request, f"Failed to pick ticket: {str(e)}")
+
+    if request.headers.get('HX-Request'):
+        from django.http import HttpResponse
+        resp = HttpResponse(status=204)
+        resp['HX-Trigger'] = 'reloadPage,refreshTickets'
+        return resp
+
+    return redirect("ticket_detail", ticket_id=ticket_id)
+
+def transfer_ticket(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not (request.user.is_superuser or ticket.assigned_to_id == request.user.id):
+        raise PermissionDenied("You do not have permission to transfer this ticket.")
+
+    if request.method == "POST":
+        new_assignee_id = request.POST.get("new_assignee")
+        if new_assignee_id:
+            try:
+                new_assignee = User.objects.get(id=new_assignee_id, user_type=User.UserType.SUPPORT, status=User.Status.ACTIVE)
+                
+                # Add system message for transfer
+                TicketMessage.objects.create(
+                    ticket=ticket,
+                    sender=request.user,
+                    message=f"Ticket transferred to {new_assignee.username}",
+                    is_system_message=True
+                )
+                
+                ticket.assigned_to = new_assignee
+                ticket.save()
+                django_messages.success(request, f"Ticket transferred to {new_assignee.username}.")
+                
+                from notifications.services import notify_ticket_transferred
+                notify_ticket_transferred(ticket, request.user, new_assignee)
+                
+                # Broadcast pick event via WebSocket using _broadcast_ticket_update
+                _broadcast_ticket_update(ticket, "ticket_picked", {
+                    "picked_by": new_assignee.username,
+                })
+            except User.DoesNotExist:
+                django_messages.error(request, "Selected user is not a valid supporter.")
+            except Exception as e:
+                django_messages.error(request, f"Failed to transfer ticket: {str(e)}")
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse

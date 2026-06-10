@@ -251,7 +251,7 @@
                 </div>
             </div>
 
-            {% if user.is_superuser or user.role.can_update_ticket %}
+            {% if user.is_superuser or ticket.assigned_to == user %}
             <div class="ticket-edit-btn-wrap">
                 <button type="button" hx-get="{% url 'ticket_update' ticket.id %}" hx-target="#modal-content"
                     onclick="openModal()" class="secondary">Edit Ticket</button>
@@ -291,7 +291,7 @@
                 {% endif %}
 
                 {# ── Action + Dropdown Group ── #}
-                {% if user.is_superuser or user.role.can_update_status %}
+                {% if user.is_superuser or ticket.assigned_to == user %}
                 <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post" class="form-inline">
                     {% csrf_token %}
                     <input type="hidden" name="status" id="action-bar-status" value="closed">
@@ -315,6 +315,10 @@
                             onclick="selectAction(this)">In Progress</button>
                         <div class="action-bar-menu-divider"></div>
                         <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge another ticket into this one</button>
+                        {% if user.is_superuser or ticket.assigned_to == user %}
+                        <div class="action-bar-menu-divider"></div>
+                        <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer to another agent</button>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -554,6 +558,11 @@
             return;
         }
 
+        if (execBtn.dataset.confirm === 'transfer') {
+            document.getElementById('custom-transfer-modal').style.display = 'flex';
+            return;
+        }
+
         // Otherwise submit directly
         form.submit();
     }
@@ -633,5 +642,40 @@
     </div>
 </div>
 
-<script src="{% static 'js/chat.js' %}?v=7" defer></script>
+<!-- Custom Transfer Ticket Modal -->
+<div id="custom-transfer-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('custom-transfer-modal').style.display='none'">
+    <div class="modal-content modal-transfer-ticket">
+        <div class="modal-header">
+            <h2 class="modal-title-text">Transfer Ticket</h2>
+            <button type="button" class="modal-close" onclick="document.getElementById('custom-transfer-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div>
+            <p class="modal-description-text-transfer">Select a support agent to transfer this ticket to.</p>
+            <form action="{% url 'transfer_ticket' ticket.id %}" method="post">
+                {% csrf_token %}
+                <div class="form-group full modal-form-group-transfer">
+                    <label for="new_assignee">New Assignee</label>
+                    <select name="new_assignee" id="new_assignee" class="form-control" required>
+                        <option value="">-- Select Agent --</option>
+                        {% for supporter in supporters %}
+                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-actions modal-form-actions-transfer" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button type="button" class="btn secondary" onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn primary">Transfer Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
+</script>
+<script src="{% static 'js/chat.js' %}?v=8" defer></script>
 {% endblock content %}

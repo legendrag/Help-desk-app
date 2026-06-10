@@ -15,6 +15,7 @@ from .template_views import (
     merge_ticket,
     ticket_search_options,
     ticket_merge_preview,
+    transfer_ticket,
 )
 
 urlpatterns = [
@@ -33,4 +34,5 @@ urlpatterns = [
     path("<int:ticket_id>/merge/", merge_ticket, name="merge_ticket"),
     path("search-options/", ticket_search_options, name="ticket_search_options"),
     path("merge-preview/<int:ticket_id>/", ticket_merge_preview, name="ticket_merge_preview"),
+    path("<int:ticket_id>/transfer/", transfer_ticket, name="transfer_ticket"),
 ]

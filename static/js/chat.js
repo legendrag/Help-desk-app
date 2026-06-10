@@ -221,6 +221,18 @@ function initChat(ticketId) {
 
         // Add timeline entry
         addTimelineEntry(payload.status, payload.status_display, payload.picked_by);
+
+        // Reload the page if the current user's permissions need to change
+        const newAssigneeId = String(payload.assigned_to_id || '');
+        const currentAssigneeId = window.ticketAssigneeId || '';
+        
+        if (newAssigneeId !== currentAssigneeId) {
+            if (newAssigneeId === window.userId || currentAssigneeId === window.userId) {
+                window.location.reload();
+                return;
+            }
+            window.ticketAssigneeId = newAssigneeId;
+        }
     }
 
     function addTimelineEntry(status, statusDisplay, changedBy) {

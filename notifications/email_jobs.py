@@ -219,3 +219,35 @@ def send_ticket_update_email(
             )
 
     return send_with_retries(subject, body, recipients)
+
+
+def send_ticket_transferred_email(ticket_id: int, actor_id: int, new_assignee_id: int) -> bool:
+    ticket = Ticket.objects.select_related("created_by", "department").filter(id=ticket_id).first()
+    if not ticket:
+        logger.warning("send_ticket_transferred_email: ticket %s not found", ticket_id)
+        return False
+
+    actor = User.objects.filter(id=actor_id).first()
+    new_assignee = User.objects.filter(id=new_assignee_id).first()
+    if not actor or not new_assignee:
+        logger.warning("send_ticket_transferred_email: actor or new_assignee not found")
+        return False
+
+    if not is_email_event_enabled("notify_ticket_update"):
+        return False
+
+    recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
+    if not recipients:
+        return False
+
+    status_label = _format_status_label(ticket.status) or ticket.status
+    subject = f"[HelpDesk] Ticket Transferred {ticket.ticket_number}"
+    body = (
+        "Ticket transfer update.\n\n"
+        f"Transferred By: {actor.username}\n"
+        f"New Assignee: {new_assignee.username}\n"
+        f"Status: {status_label}\n\n"
+        f"{_format_ticket_summary(ticket)}\n"
+        f"{_format_ticket_details(ticket)}"
+    )
+    return send_with_retries(subject, body, recipients)

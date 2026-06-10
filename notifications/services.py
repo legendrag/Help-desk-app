@@ -11,6 +11,7 @@ from .email_jobs import (
     send_new_ticket_email,
     send_ticket_picked_email,
     send_ticket_update_email,
+    send_ticket_transferred_email,
 )
 from .email_queue import enqueue_email
 
@@ -178,5 +179,19 @@ def notify_ticket_update(
         status_changed,
         new_status,
     )
+
+
+def notify_ticket_transferred(ticket: Ticket, actor: User, new_assignee: User):
+    branch_users = _get_branch_users(ticket)
+    dept_users = _get_department_users(ticket)
+    admin_users = list(_get_admin_users())
+    users = _unique_users(branch_users, dept_users, extra_users=admin_users + [new_assignee])
+
+    title = f"Ticket Transferred: #{ticket.ticket_number}"
+    message = f"{actor.username} transferred this ticket to {new_assignee.username}."
+    _notify_users(users, title, message, f"/tickets/{ticket.id}", exclude_user=actor)
+
+    # Email (async background queue)
+    _enqueue(send_ticket_transferred_email, ticket.id, actor.id, new_assignee.id)
 
 
