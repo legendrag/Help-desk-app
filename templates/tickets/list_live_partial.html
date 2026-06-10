@@ -12,7 +12,9 @@
                     <th>Department</th>
                     <th>Status</th>
                     <th>Priority</th>
+                    {% if not user.user_type == 'branch' %}
                     <th>Assigned</th>
+                    {% endif %}
                     <th>Date</th>
                     <th>Action</th>
                 </tr>
@@ -30,6 +32,7 @@
                         </span>
                     </td>
                     <td data-label="Priority"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+                    {% if not user.user_type == 'branch' %}
                     <td data-label="Assigned">
                         {% if ticket.assigned_to %}
                         <span>{{ ticket.assigned_to.username }}</span>
@@ -37,6 +40,7 @@
                         <span class="muted">Unassigned</span>
                         {% endif %}
                     </td>
+                    {% endif %}
                     <td data-label="Date">
                         <div class="date-stack">
                             <span>{{ ticket.created_at|date:"m/d/Y" }}</span>
@@ -45,13 +49,15 @@
                     </td>
                     <td data-label="Action" class="action-cell">
                         {% if user.is_superuser or user.role.can_pick_ticket %}
-                            {% if not ticket.assigned_to and ticket.status != "closed" %}
+                            {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
                             <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
                                 {% csrf_token %}
                                 <button type="submit" class="pick-btn">Pick</button>
                             </form>
                             {% elif ticket.assigned_to %}
                             <span class="pill">Picked</span>
+                            {% elif ticket.status == "merged" %}
+                            <span class="pill muted">Merged</span>
                             {% else %}
                             <span class="pill muted">Closed</span>
                             {% endif %}

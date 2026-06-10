@@ -262,7 +262,21 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   to { opacity: 1; transform: translateY(0); }
 }
 
-
+/* Django ErrorList Styling */
+ul.errorlist {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--danger, #ef4444);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+ul.errorlist li {
+  margin-top: 0.25rem;
+}
+.non-field-errors ul.errorlist {
+  color: inherit;
+}
 
 /* Restore subtle hover feedback for action-bar buttons (matches secondary button feel) */
 .action-bar-accept:hover {
@@ -302,12 +316,12 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   background-color: var(--active-bg, rgba(0,0,0,0.08));
 }
 
-/* Custom Dropdown Styles (Choices.js) */
-.choices[data-type*='select-one'] {
+/* Custom Dropdown Styles (Tom Select) */
+.ts-wrapper {
   margin-bottom: 0;
 }
 
-.choices__inner {
+.ts-control {
   padding: 0.5rem 1rem !important;
   min-height: 44px;
   border: 1px solid var(--border) !important;
@@ -315,66 +329,41 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   background: white !important;
   box-shadow: none !important;
   font-size: 16px;
+  display: flex !important;
+  align-items: center !important;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Fix Choices.js hidden input taking up space and causing layout jumps */
-.choices[data-type*='select-one'] .choices__input {
-  position: absolute !important;
-  opacity: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
-  z-index: -1 !important;
-}
-
-.choices[data-type*='select-one'] .choices__inner {
-  padding-bottom: 0.5rem !important;
-}
-
-.choices.is-open .choices__inner {
+.ts-wrapper.focus .ts-control,
+.ts-wrapper.dropdown-active .ts-control {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
   border-radius: 8px !important;
 }
 
-.choices:hover .choices__inner {
+.ts-wrapper:hover .ts-control {
   border-color: #94a3b8 !important;
   background-color: #f8fafc !important;
 }
 
-.choices__list--dropdown {
-  position: absolute !important;
-  top: 100%;
-  left: 0;
-  width: 100%;
+.ts-dropdown {
   border: 1px solid var(--border) !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
-  padding: 0.4rem !important; /* ensures uniform boundary */
+  padding: 0.4rem !important;
   margin-top: 4px !important;
-  z-index: 100 !important;
+  z-index: 100000 !important; /* Extremely high z-index to stay above modals */
   background: white !important;
   box-sizing: border-box !important;
 }
 
-.choices.is-flipped .choices__list--dropdown {
-  top: auto !important;
-  bottom: 100% !important;
-  margin-top: 0 !important;
-  margin-bottom: 4px !important;
-}
-
-.choices__list--dropdown .choices__list {
+.ts-dropdown .ts-dropdown-content {
   padding: 0 !important;
   margin: 0 !important;
-  overflow-y: auto !important; /* auto instead of fixed scroll prevents ghost scrollbar gaps */
+  overflow-y: auto !important;
 }
 
-.choices__list--dropdown .choices__item {
+.ts-dropdown .option {
   border-radius: 6px;
   padding: 0.6rem 0.8rem !important;
   margin: 0 !important;
@@ -386,14 +375,16 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   box-sizing: border-box !important;
 }
 
-.choices__list--dropdown .choices__item--selectable.is-highlighted {
+.ts-dropdown .option.active,
+.ts-dropdown .option:hover {
   background-color: #f1f5f9 !important;
   color: var(--primary) !important;
 }
 
 /* Custom Animated Arrow via SVG */
-.choices[data-type*='select-one']::after {
+.ts-wrapper::after {
   content: '' !important;
+  position: absolute !important;
   height: 20px !important;
   width: 20px !important;
   border: none !important;
@@ -406,12 +397,12 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   margin-top: -10px !important;
   transform: rotate(0deg) !important;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  pointer-events: none;
 }
 
-.choices.is-open[data-type*='select-one']::after {
+.ts-wrapper.dropdown-active::after {
   transform: rotate(-180deg) !important;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
-  margin-top: -10px !important;
 }
 
 /* --- Ticket Merge Revisions CSS --- */

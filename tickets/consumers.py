@@ -66,15 +66,6 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({"error": "Cannot send message on this ticket."})
             return
 
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                "type": "chat.event",
-                "event": "message_created",
-                "payload": payload,
-            },
-        )
-
     async def chat_event(self, event):
         await self.send_json({
             "event": event.get("event"),

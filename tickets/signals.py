@@ -15,7 +15,9 @@ def broadcast_new_message(sender, instance, created, **kwargs):
                 "sender": instance.sender_id,
                 "sender_username": getattr(instance.sender, "username", "Unknown"),
                 "message": instance.message,
+                "is_system_message": getattr(instance, "is_system_message", False),
                 "attachment_url": instance.attachment.url if instance.attachment else None,
+                "attachment_name": __import__("os").path.basename(instance.attachment.name) if instance.attachment else None,
                 "created_at": instance.created_at.isoformat() if instance.created_at else None,
                 "reply_to": {
                     "id": reply_to.id,

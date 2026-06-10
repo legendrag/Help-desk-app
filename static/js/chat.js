@@ -346,7 +346,7 @@ function initChat(ticketId) {
                             ` : `
                             <div style="margin-top: 0.5rem;">
                                 <a href="${payload.attachment_url}" target="_blank" download style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
-                                    📎 View Attachment
+                                    📎 ${payload.attachment_name || 'View Attachment'}
                                 </a>
                             </div>
                             `

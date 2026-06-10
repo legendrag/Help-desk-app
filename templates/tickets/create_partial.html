@@ -10,6 +10,11 @@
       enctype="multipart/form-data">
     {% csrf_token %}
     <div class="form-stack">
+        {% if form.non_field_errors %}
+        <div class="non-field-errors" style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
         <div class="form-group full">
             <label>{{ form.title.label }}</label>
             {{ form.title }}

@@ -39,3 +39,12 @@ def is_image(filename):
     import os
     _, ext = os.path.splitext(filename.lower())
     return ext in image_extensions
+
+@register.filter
+def basename(value):
+    import os
+    if not value:
+        return ""
+    if hasattr(value, 'name'):
+        value = value.name
+    return os.path.basename(value)

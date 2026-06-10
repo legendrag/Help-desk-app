@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from datetime import datetime
+import os
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -37,6 +38,11 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         if user.is_superuser:
             return True
         return user.role and user.role.can_access_dashboard
+
+    def get_template_names(self):
+        if self.request.user.user_type == "branch":
+            return ["tickets/branch_dashboard.html"]
+        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -508,37 +514,6 @@ def post_message(request, ticket_id):
                     reply_to=reply_to
                 )
 
-                # Broadcast the new message via WebSocket Channel Layer
-                from channels.layers import get_channel_layer
-                from asgiref.sync import async_to_sync
-
-                channel_layer = get_channel_layer()
-                payload = {
-                    "id": msg.id,
-                    "ticket": ticket.id,
-                    "sender": request.user.id,
-                    "sender_username": request.user.username,
-                    "message": msg.message,
-                    "is_system_message": msg.is_system_message,
-                    "attachment_url": msg.attachment.url if msg.attachment else None,
-                    "created_at": msg.created_at.isoformat(),
-                    "updated_at": msg.updated_at.isoformat(),
-                    "reply_to": {
-                        "id": reply_to.id,
-                        "message": reply_to.message,
-                        "sender_username": getattr(reply_to.sender, "username", "Unknown"),
-                        "created_at": reply_to.created_at.isoformat() if reply_to.created_at else None,
-                    } if reply_to else None,
-                }
-                async_to_sync(channel_layer.group_send)(
-                    f"ticket_{ticket.id}",
-                    {
-                        "type": "chat.event",
-                        "event": "message_created",
-                        "payload": payload,
-                    },
-                )
-
             except ValidationError as e:
                 for message in e.messages:
                     django_messages.error(request, message)
@@ -716,28 +691,31 @@ def pick_ticket(request, ticket_id):
     if request.method == "POST":
         ticket = get_object_or_404(Ticket, pk=ticket_id)
         if not ticket.assigned_to:
-            try:
-                ticket.assigned_to = request.user
-                ticket.status = Ticket.Status.IN_PROGRESS
-                ticket.save()
-                TicketStatusHistory.objects.create(
-                    ticket=ticket,
-                    status=Ticket.Status.IN_PROGRESS,
-                    changed_by=request.user,
-                )
-                django_messages.success(request, "Ticket assigned to you.")
-                notify_ticket_picked(ticket, request.user)
+            if ticket.status == Ticket.Status.MERGED:
+                django_messages.error(request, "Cannot pick a merged ticket.")
+            else:
+                try:
+                    ticket.assigned_to = request.user
+                    ticket.status = Ticket.Status.IN_PROGRESS
+                    ticket.save()
+                    TicketStatusHistory.objects.create(
+                        ticket=ticket,
+                        status=Ticket.Status.IN_PROGRESS,
+                        changed_by=request.user,
+                    )
+                    django_messages.success(request, "Ticket assigned to you.")
+                    notify_ticket_picked(ticket, request.user)
 
-                # Broadcast pick event via WebSocket
-                _broadcast_ticket_update(ticket, "ticket_picked", {
-                    "picked_by": request.user.username,
-                })
+                    # Broadcast pick event via WebSocket
+                    _broadcast_ticket_update(ticket, "ticket_picked", {
+                        "picked_by": request.user.username,
+                    })
 
-            except ValidationError as e:
-                for message in e.messages:
-                    django_messages.error(request, message)
-            except Exception as e:
-                django_messages.error(request, f"Failed to pick ticket: {str(e)}")
+                except ValidationError as e:
+                    for message in e.messages:
+                        django_messages.error(request, message)
+                except Exception as e:
+                    django_messages.error(request, f"Failed to pick ticket: {str(e)}")
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse

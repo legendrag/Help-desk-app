@@ -35,10 +35,16 @@ class CustomUserCreationForm(UserCreationForm):
         exclude = set(self._get_validation_exclusions())
         if not self.cleaned_data.get("email"):
             exclude.add("email")
-        self.instance.validate_unique(exclude=list(exclude))
+        try:
+            self.instance.validate_unique(exclude=list(exclude))
+        except forms.ValidationError as e:
+            self._update_errors(e)
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned is None:
+            cleaned = self.cleaned_data
+            
         user_type = cleaned.get("user_type")
         branch = cleaned.get("branch")
         department = cleaned.get("department")
@@ -112,10 +118,16 @@ class CustomUserChangeForm(UserChangeForm):
         exclude = set(self._get_validation_exclusions())
         if not self.cleaned_data.get("email"):
             exclude.add("email")
-        self.instance.validate_unique(exclude=list(exclude))
+        try:
+            self.instance.validate_unique(exclude=list(exclude))
+        except forms.ValidationError as e:
+            self._update_errors(e)
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned is None:
+            cleaned = self.cleaned_data
+            
         user_type = cleaned.get("user_type")
         branch = cleaned.get("branch")
         department = cleaned.get("department")

@@ -9,9 +9,9 @@
     <title>{% block title %}Help Desk{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.7">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.5">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'favicon.ico' %}">
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         window.userIsAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
@@ -292,27 +292,26 @@
             }
         });
 
-        // Initialize Choices.js robustly
+        // Initialize Tom Select robustly
         function initializeChoices(targetElement) {
-            const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.choices-initialized)') : []);
+            const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.tomselected)') : []);
             
             if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select') {
-                if (targetElement.classList.contains('choices-initialized') && targetElement.choicesInstance) {
-                    targetElement.choicesInstance.destroy();
-                    targetElement.classList.remove('choices-initialized');
+                if (targetElement.classList.contains('tomselected') && targetElement.tomselect) {
+                    targetElement.tomselect.destroy();
                 }
-                if (!targetElement.classList.contains('choices-initialized')) {
+                if (!targetElement.classList.contains('tomselected')) {
                     selects.push(targetElement);
                 }
             }
 
             selects.forEach(select => {
-                select.choicesInstance = new Choices(select, {
-                    searchEnabled: false,
-                    itemSelectText: '',
-                    shouldSort: false,
+                new TomSelect(select, {
+                    dropdownParent: 'body',
+                    controlInput: null,
+                    sortField: null,
+                    searchField: []
                 });
-                select.classList.add('choices-initialized');
             });
         }
         

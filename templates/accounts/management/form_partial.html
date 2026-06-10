@@ -1,4 +1,4 @@
-﻿<div class="modal-header">
+<div class="modal-header">
     <h2>{% if object %}Edit{% else %}Add{% endif %} {{ model_name|default:"Entry" }}</h2>
     <button type="button" class="modal-close" onclick="closeModal()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -10,6 +10,11 @@
       class="management-form">
     {% csrf_token %}
     <div class="form-stack">
+        {% if form.non_field_errors %}
+        <div class="non-field-errors" style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
         <div class="form-grid">
         {% for field in form %}
         {% if field.field.widget.input_type == "checkbox" %}

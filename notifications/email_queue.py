@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import queue
 import threading
 import time
@@ -44,7 +44,7 @@ def _worker_loop() -> None:
             try:
                 result = job.func(*job.args, **job.kwargs)
                 if result is False:
-                    raise RuntimeError("Email job returned False")
+                    logger.debug("Email job returned False (likely no recipients or disabled).")
             except Exception as exc:  # noqa: BLE001
                 job.attempts += 1
                 logger.exception(

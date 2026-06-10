@@ -742,18 +742,24 @@ tr:hover td {
   scroll-behavior: smooth;
 }
 
-/* Custom Scrollbar */
-.chat-box::-webkit-scrollbar {
+/* Global Custom Scrollbar */
+::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-.chat-box::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
+  margin-block: 10px;
 }
 
-.chat-box::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .chat-item {
@@ -1140,23 +1146,23 @@ tr:hover td {
   -webkit-backdrop-filter: blur(10px);
   z-index: 9999;
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .modal-content {
   background: #ffffff;
   width: 100%;
   max-width: min(820px, 92vw);
-  max-height: 90vh;
   border-radius: 20px;
   /* Layered Box Shadow for depth */
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(0, 0, 0, 0.05);
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
-  overflow-y: scroll !important;
+  overflow: visible !important;
   padding: 2rem;
   position: relative;
   margin: auto;
