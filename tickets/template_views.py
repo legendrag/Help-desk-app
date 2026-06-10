@@ -44,6 +44,21 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             return ["tickets/branch_dashboard.html"]
         return [self.template_name]
 
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Ticket.objects.select_related(
+            "branch", "department", "category", "assigned_to", "created_by"
+        ).all()
+
+        if not user.is_superuser:
+            if user.user_type == "branch" and user.branch_id:
+                queryset = queryset.filter(branch_id=user.branch_id)
+            elif user.user_type == "support" and user.department_id:
+                queryset = queryset.filter(department_id=user.department_id)
+            else:
+                queryset = queryset.none()
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -56,17 +71,7 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             except ValueError:
                 return None
 
-        base_queryset = Ticket.objects.select_related(
-            "branch", "department", "category", "assigned_to", "created_by"
-        ).all()
-
-        if not user.is_superuser:
-            if user.user_type == "branch" and user.branch_id:
-                base_queryset = base_queryset.filter(branch_id=user.branch_id)
-            elif user.user_type == "support" and user.department_id:
-                base_queryset = base_queryset.filter(department_id=user.department_id)
-            else:
-                base_queryset = base_queryset.none()
+        base_queryset = self.get_queryset()
 
         filters = {
             "start_date": self.request.GET.get("start_date", ""),
