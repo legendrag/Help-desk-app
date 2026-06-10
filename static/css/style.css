@@ -21,18 +21,32 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: 'Outfit', sans-serif;
   background-color: var(--bg);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-y: scroll;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
   background:
     radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.06), transparent 35%),
     radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.04), transparent 35%),
     var(--bg);
-  background-attachment: fixed;
-  color: var(--text-main);
-  min-height: 100vh;
-  overflow-y: scroll;
 }
 
 #root {
@@ -462,10 +476,13 @@ body {
 .panel {
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: var(--shadow);
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 h1,
