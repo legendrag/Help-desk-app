@@ -51,6 +51,20 @@ class Ticket(models.Model):
         blank=True,
         related_name="merged_tickets",
     )
+    pending_transfer_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pending_transfers_to",
+    )
+    pending_transfer_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pending_transfers_by",
+    )
     version = models.PositiveIntegerField(default=1)
     
     # Time Tracking

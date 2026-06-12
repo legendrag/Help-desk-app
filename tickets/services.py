@@ -65,6 +65,8 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
         st.status = Ticket.Status.MERGED
         st.closed_at = timezone.now()
         st.merged_into = primary_ticket
+        st.pending_transfer_to = None
+        st.pending_transfer_by = None
         st.save()
 
         # Insert system message in primary ticket

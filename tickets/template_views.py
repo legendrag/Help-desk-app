@@ -661,10 +661,10 @@ def update_ticket_status(request, ticket_id):
     if request.method == "POST":
         ticket = get_object_or_404(Ticket, pk=ticket_id)
         
-        if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
-            raise PermissionDenied("You can only update the status of tickets assigned to you.")
-
-        if ticket.status == Ticket.Status.CLOSED:
+        if ticket.status != Ticket.Status.CLOSED:
+            if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
+                raise PermissionDenied("You can only update the status of tickets assigned to you.")
+        else:
             if not (request.user.is_superuser or request.user.user_type == 'support' or (request.user.role and request.user.role.can_update_closed_ticket)):
                 raise PermissionDenied("You do not have permission to update a closed ticket.")
 
@@ -676,6 +676,11 @@ def update_ticket_status(request, ticket_id):
                         ticket.assigned_to = request.user
                         
                     ticket.status = new_status
+                    
+                    if new_status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+                        ticket.pending_transfer_to = None
+                        ticket.pending_transfer_by = None
+                        
                     ticket.save()
                     TicketStatusHistory.objects.create(
                         ticket=ticket,
@@ -756,29 +761,31 @@ def transfer_ticket(request, ticket_id):
             try:
                 new_assignee = User.objects.get(id=new_assignee_id, user_type=User.UserType.SUPPORT, status=User.Status.ACTIVE)
                 
-                # Add system message for transfer
-                TicketMessage.objects.create(
-                    ticket=ticket,
-                    sender=request.user,
-                    message=f"Ticket transferred to {new_assignee.username}",
-                    is_system_message=True
-                )
-                
-                ticket.assigned_to = new_assignee
-                ticket.save()
-                django_messages.success(request, f"Ticket transferred to {new_assignee.username}.")
-                
-                from notifications.services import notify_ticket_transferred
-                notify_ticket_transferred(ticket, request.user, new_assignee)
-                
-                # Broadcast pick event via WebSocket using _broadcast_ticket_update
-                _broadcast_ticket_update(ticket, "ticket_picked", {
-                    "picked_by": new_assignee.username,
-                })
+                if ticket.pending_transfer_to:
+                    django_messages.error(request, "A transfer is already pending.")
+                else:
+                    ticket.pending_transfer_to = new_assignee
+                    ticket.pending_transfer_by = request.user
+                    ticket.save()
+                    
+                    TicketMessage.objects.create(
+                        ticket=ticket,
+                        sender=request.user,
+                        message=f"Requested transfer to {new_assignee.username}",
+                        is_system_message=True
+                    )
+                    
+                    from notifications.services import notify_transfer_requested
+                    notify_transfer_requested(ticket, request.user, new_assignee)
+                    
+                    django_messages.success(request, f"Transfer request sent to {new_assignee.username}.")
+                    
+                    _broadcast_ticket_update(ticket, "ticket_transfer_update")
+                    
             except User.DoesNotExist:
                 django_messages.error(request, "Selected user is not a valid supporter.")
             except Exception as e:
-                django_messages.error(request, f"Failed to transfer ticket: {str(e)}")
+                django_messages.error(request, f"Failed to request transfer: {str(e)}")
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse
@@ -786,6 +793,106 @@ def transfer_ticket(request, ticket_id):
         resp['HX-Trigger'] = 'reloadPage,refreshTickets'
         return resp
 
+    return redirect("ticket_detail", ticket_id=ticket_id)
+
+@login_required
+def accept_transfer(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if request.user != ticket.pending_transfer_to:
+        raise PermissionDenied("You do not have permission to accept this transfer.")
+        
+    if request.method == "POST":
+        requester = ticket.pending_transfer_by
+        ticket.assigned_to = request.user
+        ticket.pending_transfer_to = None
+        ticket.pending_transfer_by = None
+        ticket.save()
+        
+        TicketMessage.objects.create(
+            ticket=ticket,
+            sender=request.user,
+            message="Accepted ticket transfer",
+            is_system_message=True
+        )
+        
+        from notifications.services import notify_transfer_accepted
+        if requester:
+            notify_transfer_accepted(ticket, request.user, requester)
+            
+        django_messages.success(request, "Ticket transfer accepted.")
+        
+        _broadcast_ticket_update(ticket, "ticket_picked", {
+            "picked_by": request.user.username,
+        })
+        _broadcast_ticket_update(ticket, "ticket_transfer_update")
+        
+    if request.headers.get('HX-Request'):
+        from django.http import HttpResponse
+        resp = HttpResponse(status=204)
+        resp['HX-Trigger'] = 'reloadPage,refreshTickets'
+        return resp
+    return redirect("ticket_detail", ticket_id=ticket_id)
+
+@login_required
+def deny_transfer(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if request.user != ticket.pending_transfer_to:
+        raise PermissionDenied("You do not have permission to deny this transfer.")
+        
+    if request.method == "POST":
+        requester = ticket.pending_transfer_by
+        ticket.pending_transfer_to = None
+        ticket.pending_transfer_by = None
+        ticket.save()
+        
+        TicketMessage.objects.create(
+            ticket=ticket,
+            sender=request.user,
+            message="Denied ticket transfer",
+            is_system_message=True
+        )
+        
+        from notifications.services import notify_transfer_denied
+        if requester:
+            notify_transfer_denied(ticket, request.user, requester)
+            
+        django_messages.success(request, "Ticket transfer denied.")
+        _broadcast_ticket_update(ticket, "ticket_transfer_update")
+        
+    if request.headers.get('HX-Request'):
+        from django.http import HttpResponse
+        resp = HttpResponse(status=204)
+        resp['HX-Trigger'] = 'reloadPage,refreshTickets'
+        return resp
+    return redirect("ticket_detail", ticket_id=ticket_id)
+
+@login_required
+def cancel_transfer(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not (request.user.is_superuser or request.user == ticket.pending_transfer_by):
+        raise PermissionDenied("You do not have permission to cancel this transfer.")
+        
+    if request.method == "POST":
+        target = ticket.pending_transfer_to
+        ticket.pending_transfer_to = None
+        ticket.pending_transfer_by = None
+        ticket.save()
+        
+        TicketMessage.objects.create(
+            ticket=ticket,
+            sender=request.user,
+            message=f"Canceled ticket transfer to {target.username if target else 'unknown'}",
+            is_system_message=True
+        )
+        
+        django_messages.success(request, "Ticket transfer canceled.")
+        _broadcast_ticket_update(ticket, "ticket_transfer_update")
+        
+    if request.headers.get('HX-Request'):
+        from django.http import HttpResponse
+        resp = HttpResponse(status=204)
+        resp['HX-Trigger'] = 'reloadPage,refreshTickets'
+        return resp
     return redirect("ticket_detail", ticket_id=ticket_id)
 
 from django.db.models import Q

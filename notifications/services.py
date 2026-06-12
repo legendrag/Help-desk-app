@@ -195,3 +195,20 @@ def notify_ticket_transferred(ticket: Ticket, actor: User, new_assignee: User):
     _enqueue(send_ticket_transferred_email, ticket.id, actor.id, new_assignee.id)
 
 
+def notify_transfer_requested(ticket: Ticket, actor: User, new_assignee: User):
+    users = _unique_users([new_assignee])
+    title = f"Transfer Requested: #{ticket.ticket_number}"
+    message = f"{actor.username} has requested to transfer this ticket to you."
+    _notify_users(users, title, message, f"/tickets/{ticket.id}", exclude_user=actor)
+
+def notify_transfer_accepted(ticket: Ticket, actor: User, requester: User):
+    users = _unique_users([requester])
+    title = f"Transfer Accepted: #{ticket.ticket_number}"
+    message = f"{actor.username} accepted the ticket transfer."
+    _notify_users(users, title, message, f"/tickets/{ticket.id}", exclude_user=actor)
+
+def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
+    users = _unique_users([requester])
+    title = f"Transfer Denied: #{ticket.ticket_number}"
+    message = f"{actor.username} denied the ticket transfer."
+    _notify_users(users, title, message, f"/tickets/{ticket.id}", exclude_user=actor)

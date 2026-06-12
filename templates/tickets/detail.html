@@ -23,6 +23,41 @@
         </div>
         {% endif %}
 
+        {% if ticket.pending_transfer_to %}
+        <div class="pending-transfer-banner" style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-left: 1rem; margin-right: 1rem; margin-top: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                    <path d="M17 3v18"></path><path d="M10 14l7 7 7-7"></path><path d="M7 21V3"></path><path d="M14 10L7 3 0 10"></path>
+                </svg>
+                {% if user == ticket.pending_transfer_to %}
+                <span><strong>{{ ticket.pending_transfer_by.username }}</strong> has requested to transfer this ticket to you.</span>
+                {% elif user == ticket.pending_transfer_by %}
+                <span>Waiting for <strong>{{ ticket.pending_transfer_to.username }}</strong> to accept the transfer.</span>
+                {% else %}
+                <span>Transfer to <strong>{{ ticket.pending_transfer_to.username }}</strong> is pending.</span>
+                {% endif %}
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                {% if user == ticket.pending_transfer_to %}
+                <form hx-post="{% url 'accept_transfer' ticket.id %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn primary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Accept</button>
+                </form>
+                <form hx-post="{% url 'deny_transfer' ticket.id %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn secondary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Deny</button>
+                </form>
+                {% endif %}
+                {% if user == ticket.pending_transfer_by or user.is_superuser %}
+                <form hx-post="{% url 'cancel_transfer' ticket.id %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn secondary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Cancel Request</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if ticket.messages.all %}
         <div class="chat-box" id="chat-box">
             {% for message in ticket.messages.all %}
@@ -316,8 +351,10 @@
                         <div class="action-bar-menu-divider"></div>
                         <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge another ticket into this one</button>
                         {% if user.is_superuser or ticket.assigned_to == user %}
+                        {% if not ticket.pending_transfer_to %}
                         <div class="action-bar-menu-divider"></div>
                         <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer to another agent</button>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -653,7 +690,7 @@
         </div>
         <div>
             <p class="modal-description-text-transfer">Select a support agent to transfer this ticket to.</p>
-            <form action="{% url 'transfer_ticket' ticket.id %}" method="post">
+            <form hx-post="{% url 'transfer_ticket' ticket.id %}">
                 {% csrf_token %}
                 <div class="form-group full modal-form-group-transfer">
                     <label for="new_assignee">New Assignee</label>
@@ -677,5 +714,5 @@
 <script>
     window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
 </script>
-<script src="{% static 'js/chat.js' %}?v=8" defer></script>
+<script src="{% static 'js/chat.js' %}?v=10" defer></script>
 {% endblock content %}

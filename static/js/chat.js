@@ -54,6 +54,8 @@ function initChat(ticketId) {
             updateMessage(data.payload);
         } else if (data.event === "typing") {
             showTypingIndicator(data.payload);
+        } else if (data.event === "ticket_transfer_update") {
+            window.location.reload();
         }
     };
 
@@ -166,6 +168,15 @@ function initChat(ticketId) {
     }
 
     function updateTicketStatus(payload) {
+        const newStatus = payload.status || payload.new_status;
+        const isCurrentlyClosed = document.querySelector('.action-bar-closed-badge') !== null;
+        
+        // If transitioning to or from a closed/merged state, reload to update the action bar UI
+        if ((newStatus === 'closed' || newStatus === 'merged') !== isCurrentlyClosed) {
+            window.location.reload();
+            return;
+        }
+
         // Update status badge
         const statusPill = document.querySelector('.ticket-status-pill');
         if (statusPill) {
