@@ -297,9 +297,6 @@
             const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.tomselected)') : []);
             
             if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select') {
-                if (targetElement.classList.contains('tomselected') && targetElement.tomselect) {
-                    targetElement.tomselect.destroy();
-                }
                 if (!targetElement.classList.contains('tomselected')) {
                     selects.push(targetElement);
                 }
@@ -316,6 +313,14 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             initializeChoices(document);
+        });
+
+        document.body.addEventListener('htmx:beforeSwap', (evt) => {
+            if (evt.detail.target.tagName && evt.detail.target.tagName.toLowerCase() === 'select') {
+                if (evt.detail.target.tomselect) {
+                    evt.detail.target.tomselect.destroy();
+                }
+            }
         });
 
         document.body.addEventListener('htmx:afterSwap', (evt) => {
