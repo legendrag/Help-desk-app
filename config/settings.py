@@ -132,3 +132,8 @@ ALLOWED_ATTACHMENT_EXTENSIONS = [".pdf", ".docx", ".xlsx", ".jpg", ".jpeg", ".pn
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
+# Session Configuration
+# 60 minutes = 3600 seconds
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 3600))
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True

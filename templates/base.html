@@ -393,6 +393,83 @@
         document.body.addEventListener('htmx:afterSwap', (evt) => {
             initializeChoices(evt.detail.elt);
         });
+
+        // --- Session Expiration Logic ---
+        if (window.userIsAuthenticated) {
+            const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+            const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before timeout
+            
+            let lastServerActivity = Date.now();
+            let lastLocalActivity = Date.now();
+            let warningModalOpen = false;
+
+            // Track local activity
+            const updateLocalActivity = () => { lastLocalActivity = Date.now(); };
+            document.addEventListener('mousemove', updateLocalActivity, {passive: true});
+            document.addEventListener('keydown', updateLocalActivity, {passive: true});
+            document.addEventListener('click', updateLocalActivity, {passive: true});
+
+            // Every time htmx makes a request, consider server activity updated
+            document.body.addEventListener('htmx:afterRequest', () => {
+                lastServerActivity = Date.now();
+                if (warningModalOpen) {
+                    document.getElementById('session-warning-modal').style.display = 'none';
+                    warningModalOpen = false;
+                }
+            });
+
+            window.extendSession = function() {
+                fetch('/accounts/auth-check/', {credentials: 'same-origin'})
+                    .then(r => r.json())
+                    .then((data) => {
+                        if (data.authenticated) {
+                            lastServerActivity = Date.now();
+                            lastLocalActivity = Date.now();
+                            document.getElementById('session-warning-modal').style.display = 'none';
+                            warningModalOpen = false;
+                        } else {
+                            window.location.replace('/accounts/login/?next=' + encodeURIComponent(window.location.pathname));
+                        }
+                    })
+                    .catch(() => {});
+            };
+
+            setInterval(() => {
+                const now = Date.now();
+                const timeSinceServerActivity = now - lastServerActivity;
+
+                if (timeSinceServerActivity >= SESSION_TIMEOUT_MS) {
+                    // Session expired, redirect
+                    window.location.replace('/accounts/login/?next=' + encodeURIComponent(window.location.pathname));
+                } else if (timeSinceServerActivity >= (SESSION_TIMEOUT_MS - WARNING_THRESHOLD_MS)) {
+                    // We are in the warning zone
+                    const timeSinceLocalActivity = now - lastLocalActivity;
+                    if (timeSinceLocalActivity < WARNING_THRESHOLD_MS) {
+                        // User was locally active recently, auto-extend silently
+                        window.extendSession();
+                    } else if (!warningModalOpen) {
+                        // User is inactive locally, show warning modal
+                        document.getElementById('session-warning-modal').style.display = 'flex';
+                        warningModalOpen = true;
+                    }
+                }
+            }, 30000); // Check every 30 seconds
+        }
     </script>
+
+    <!-- Session Warning Modal -->
+    <div id="session-warning-modal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <h2>Session Expiring Soon</h2>
+            <p>Your session will expire soon due to inactivity. Would you like to stay logged in?</p>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+                <button type="button" class="button" onclick="extendSession()">Stay Logged In</button>
+                <form action="{% url 'logout' %}" method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="button secondary" style="background:var(--bg-main); color:var(--text-main); border:1px solid var(--border-color);">Log Out</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
