@@ -1,4 +1,4 @@
-﻿from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 
@@ -58,6 +58,7 @@ class User(AbstractUser):
     )
     user_type = models.CharField(max_length=20, choices=UserType.choices, default=UserType.BRANCH)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    requires_password_change = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

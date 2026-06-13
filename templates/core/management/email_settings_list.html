@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 
 <div class="management-section">
     <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.5rem; background: #fff; border-radius: 16px; border: 1px solid var(--border);">
@@ -28,17 +28,17 @@
             <tbody>
                 {% for item in object_list %}
                 <tr style="transition: background 0.2s;">
-                    <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
-                    <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{{ item.from_email }}</td>
-                    <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+                    <td data-label="SMTP Host" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
+                    <td data-label="From Email" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{{ item.from_email }}</td>
+                    <td data-label="Encryption" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
                         <span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.get_encryption_display }}</span>
                     </td>
-                    <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+                    <td data-label="Active" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
                         <span class="badge" style="background: {% if item.is_active %}rgba(16,185,129,0.18){% else %}rgba(239,68,68,0.12){% endif %}; color: {% if item.is_active %}#047857{% else %}#b91c1c{% endif %};">
                             {% if item.is_active %}Active{% else %}Inactive{% endif %}
                         </span>
                     </td>
-                    <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
+                    <td data-label="Actions" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
                         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                             {% if can_edit %}
                             <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small" title="Edit" style="padding: 0.5rem; background: #f8fafc; border: 1px solid var(--border);">

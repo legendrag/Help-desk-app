@@ -3144,3 +3144,12 @@ html.modal-open {
 html.modal-open body {
   overflow: hidden !important;
 }
+
+.btn-login {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.action-bar-menu-item.active {
+    display: none !important;
+}

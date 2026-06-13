@@ -23,10 +23,10 @@
         <tbody>
             {% for item in object_list %}
             <tr>
-                <td>{{ item.name }}</td>
-                {% if has_code %}<td>{{ item.code }}</td>{% endif %}
-                {% if has_dept %}<td>{{ item.department.name }}</td>{% endif %}
-                <td style="display: flex; gap: 0.5rem;">
+                <td data-label="Name">{{ item.name }}</td>
+                {% if has_code %}<td data-label="Code">{{ item.code }}</td>{% endif %}
+                {% if has_dept %}<td data-label="Department">{{ item.department.name }}</td>{% endif %}
+                <td data-label="Actions" style="display: flex; gap: 0.5rem;">
                     <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" class="secondary small">
                         Edit
                     </button>

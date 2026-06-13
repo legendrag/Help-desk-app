@@ -36,16 +36,16 @@
             {% for item in object_list %}
             <tr style="transition: background 0.2s;">
                 {% if model_name == 'Users' %}
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.username }}</td>
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #eef2ff; color: #4338ca;">{{ item.get_user_type_display }}</span></td>
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{% if item.branch %}{{ item.branch.name }}{% elif item.department %}{{ item.department.name }}{% else %}-{% endif %}</td>
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.role.name|default:"-" }}</span></td>
+                <td data-label="Username" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.username }}</td>
+                <td data-label="User Type" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #eef2ff; color: #4338ca;">{{ item.get_user_type_display }}</span></td>
+                <td data-label="Branch / Dept" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{% if item.branch %}{{ item.branch.name }}{% elif item.department %}{{ item.department.name }}{% else %}-{% endif %}</td>
+                <td data-label="Role" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.role.name|default:"-" }}</span></td>
                 {% else %}
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.name }}</td>
+                <td data-label="Name" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.name }}</td>
                 {% endif %}
-                {% if has_code %}<td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);"><code>{{ item.code }}</code></td>{% endif %}
-                {% if has_dept %}<td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.department.name }}</span></td>{% endif %}
-                <td style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
+                {% if has_code %}<td data-label="Code" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);"><code>{{ item.code }}</code></td>{% endif %}
+                {% if has_dept %}<td data-label="Department" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.department.name }}</span></td>{% endif %}
+                <td data-label="Actions" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
                     <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                         {% if model_name == 'Users' and item.is_superuser %}
                         <span class="badge" style="background: #f1f5f9; color: #475569;">Admin</span>

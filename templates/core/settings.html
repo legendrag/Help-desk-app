@@ -14,37 +14,43 @@
             <button class="settings-tab active"
                     hx-get="{% url 'branch_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Branches
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'department_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Departments
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'category_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Categories
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'role_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Roles
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'user_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Users
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'email_setting_list' %}"
                     hx-target="#settings-content"
-                    onclick="switchTab(this)">
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Email Settings
             </button>
         </div>

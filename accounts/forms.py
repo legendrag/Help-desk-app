@@ -1,6 +1,39 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm
+from django.core.cache import cache
 from .models import User
+
+class CustomAuthenticationForm(AuthenticationForm):
+    def clean(self):
+        username = self.cleaned_data.get('username')
+        
+        if username:
+            cache_key = f'login_attempts_{username}'
+            attempts = cache.get(cache_key, 0)
+            
+            # Rate limiting configuration: 5 attempts / 5 minutes
+            MAX_ATTEMPTS = 5
+            TIMEOUT = 300  # 5 minutes in seconds
+            
+            if attempts >= MAX_ATTEMPTS:
+                raise forms.ValidationError(
+                    "Too many failed login attempts. Please try again in 5 minutes.",
+                    code='too_many_attempts',
+                )
+
+            try:
+                cleaned_data = super().clean()
+                # On successful login, clear the cache
+                cache.delete(cache_key)
+                return cleaned_data
+            except forms.ValidationError as e:
+                # Increment attempts only on a failed auth error (not other random validation errors)
+                if e.code == 'invalid_login':
+                    attempts += 1
+                    cache.set(cache_key, attempts, TIMEOUT)
+                raise e
+        else:
+            return super().clean()
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -68,7 +101,7 @@ class CustomUserCreationForm(UserCreationForm):
         fields = (
             'username', 'email', 'first_name', 'last_name',
             'phone', 'user_type', 'status', 'branch',
-            'department', 'role'
+            'department', 'role', 'requires_password_change'
         )
 
 
@@ -76,12 +109,12 @@ class CustomUserChangeForm(UserChangeForm):
     password1 = forms.CharField(
         label="New password",
         required=False,
-        widget=forms.PasswordInput,
+        widget=forms.PasswordInput(attrs={'minlength': 4}),
     )
     password2 = forms.CharField(
         label="Confirm password",
         required=False,
-        widget=forms.PasswordInput,
+        widget=forms.PasswordInput(attrs={'minlength': 4}),
     )
 
     def __init__(self, *args, **kwargs):
@@ -152,6 +185,12 @@ class CustomUserChangeForm(UserChangeForm):
         if p1 or p2:
             if p1 != p2:
                 raise forms.ValidationError("Passwords do not match.")
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError
+            try:
+                validate_password(p2, self.instance)
+            except ValidationError as e:
+                self.add_error("password1", e)
         return p2
 
     def save(self, commit=True):
@@ -168,5 +207,5 @@ class CustomUserChangeForm(UserChangeForm):
         fields = (
             'username', 'email', 'first_name', 'last_name',
             'phone', 'user_type', 'status', 'branch',
-            'department', 'role', 'password1', 'password2'
+            'department', 'role', 'requires_password_change', 'password1', 'password2'
         )

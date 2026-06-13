@@ -4,8 +4,11 @@ from django.shortcuts import render
 from django.contrib import messages
 
 # We can reuse the built-in Django LoginView
+from .forms import CustomAuthenticationForm
+
 class UserLoginView(LoginView):
     template_name = "accounts/login.html"
+    form_class = CustomAuthenticationForm
 
 class UserLogoutView(LogoutView):
     next_page = reverse_lazy("login")
@@ -16,6 +19,11 @@ class UserPasswordChangeView(PasswordChangeView):
     
     def form_valid(self, form):
         messages.success(self.request, "Password changed successfully.")
+        
+        # Clear the requires_password_change flag if it's set
+        if getattr(self.request.user, 'requires_password_change', False):
+            self.request.user.requires_password_change = False
+            self.request.user.save(update_fields=['requires_password_change'])
         
         if self.request.headers.get('HX-Request'):
             from django.http import HttpResponse

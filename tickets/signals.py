@@ -11,7 +11,7 @@ def broadcast_new_message(sender, instance, created, **kwargs):
             reply_to = instance.reply_to
             
             sender_username = getattr(instance.sender, "username", "Unknown")
-            if instance.sender_id == instance.ticket.created_by_id and instance.ticket.client_name:
+            if instance.sender.user_type == "branch" and instance.sender.branch_id == instance.ticket.branch_id and instance.ticket.client_name:
                 sender_username = f"{sender_username} - {instance.ticket.client_name}"
                 
             payload = {

@@ -77,6 +77,8 @@ function formatTime(isoString) {
 function buildNotificationItem(item) {
     const wrapper = document.createElement("div");
     wrapper.className = `notification-item ${item.is_read ? "read" : "unread"}`;
+    wrapper.setAttribute("tabindex", "0");
+    wrapper.setAttribute("role", "button");
 
     const content = document.createElement("div");
     content.className = "notification-content";
@@ -103,7 +105,7 @@ function buildNotificationItem(item) {
         wrapper.appendChild(dot);
     }
 
-    wrapper.addEventListener("click", () => {
+    const onClick = () => {
         if (!item.is_read) {
             // Optimistically update UI
             wrapper.classList.remove("unread");
@@ -137,6 +139,14 @@ function buildNotificationItem(item) {
             if (item.link) {
                 window.location.href = item.link;
             }
+        }
+    };
+
+    wrapper.addEventListener("click", onClick);
+    wrapper.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
         }
     });
 
@@ -183,8 +193,25 @@ function fetchNotifications() {
     })
         .then((response) => response.json())
         .then((data) => {
+            const active = document.activeElement;
+            const isMarkReadFocused = active && active.id === "notification-mark-read";
+            let activeIndex = -1;
+            if (active && active.classList.contains("notification-item")) {
+                activeIndex = Array.from(active.parentNode.children).indexOf(active);
+            }
+
             renderNotifications(data.notifications || []);
             updateBadge(data.unread_count || 0);
+
+            if (isMarkReadFocused) {
+                const markReadBtn = document.getElementById("notification-mark-read");
+                if (markReadBtn) markReadBtn.focus();
+            } else if (activeIndex >= 0) {
+                const list = document.getElementById("notification-list");
+                if (list && list.children[activeIndex]) {
+                    list.children[activeIndex].focus();
+                }
+            }
         })
         .catch((err) => console.error("[Notifications] Fetch error:", err));
 }
@@ -234,12 +261,28 @@ function initNotificationUI() {
         }
     });
 
+    // Close dropdown when tabbing outside of it
+    document.addEventListener("focusin", (event) => {
+        if (dropdown.style.display === "block" && !dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.style.display = "none";
+        }
+    });
+
     if (markReadBtn) {
         markReadBtn.addEventListener("click", (event) => {
             event.stopPropagation();
             markAllRead();
         });
     }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            if (dropdown.style.display === "block") {
+                dropdown.style.display = "none";
+                button.focus();
+            }
+        }
+    });
 
     fetchNotifications();
 }

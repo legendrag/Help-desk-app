@@ -72,7 +72,7 @@
                 <div class="chat-row">
                     <div class="chat-bubble">
                         <header>
-                            <strong>{{ message.sender.username }}{% if ticket.client_name and message.sender == ticket.created_by %} - {{ ticket.client_name }}{% endif %}</strong>
+                            <strong>{{ message.sender.username }}{% if ticket.client_name and message.sender.user_type == 'branch' and message.sender.branch_id == ticket.branch_id %} - {{ ticket.client_name }}{% endif %}</strong>
                         </header>
 
                         <div id="msg-display-{{ message.id }}">
@@ -89,7 +89,9 @@
                             <div class="chat-bubble-attachment-wrap">
                                 {% if message.attachment.name|is_image %}
                                 <img src="{{ message.attachment.url }}" alt="Attachment" width="300" height="200" class="chat-image-preview"
-                                    onclick="openLightbox(this.src)">
+                                    tabindex="0" role="button"
+                                    onclick="openLightbox(this.src)"
+                                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); openLightbox(this.src);}">
                                 {% else %}
                                 <a href="{{ message.attachment.url }}" target="_blank" download
                                     class="attachment-link attachment-link-dynamic">
@@ -356,16 +358,14 @@
                     <div class="action-bar-menu" id="action-bar-menu">
                         <button type="button" class="action-bar-menu-item active" data-action="closed" data-label="Close" data-confirm="close"
                             onclick="selectAction(this)">Close</button>
-                        <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch" data-label="Wait for user"
-                            onclick="selectAction(this)">Wait for user</button>
+                        <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch" data-label="Wait for User"
+                            onclick="selectAction(this)">Wait for User</button>
                         <button type="button" class="action-bar-menu-item" data-action="in_progress" data-label="In Progress"
                             onclick="selectAction(this)">In Progress</button>
-                        <div class="action-bar-menu-divider"></div>
-                        <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge another ticket into this one</button>
+                        <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge Ticket</button>
                         {% if user.is_superuser or ticket.assigned_to == user %}
                         {% if not ticket.pending_transfer_to %}
-                        <div class="action-bar-menu-divider"></div>
-                        <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer to another agent</button>
+                        <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer Ticket</button>
                         {% endif %}
                         {% endif %}
                     </div>
@@ -577,8 +577,8 @@
         execBtn.dataset.confirm = confirm;
         if (statusInput) statusInput.value = action;
 
-        // Toggle danger styling
-        execBtn.classList.toggle('danger-action', action === 'closed');
+        // Toggle danger styling (removed to prevent red close button)
+        // execBtn.classList.toggle('danger-action', action === 'closed');
 
         // Mark active item
         document.querySelectorAll('.action-bar-menu-item').forEach(i => i.classList.remove('active'));

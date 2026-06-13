@@ -7,7 +7,7 @@
     <meta name="description" content="Help Desk Ticket System - Modern, high-performance customer support platform.">
     <meta name="keywords" content="help desk, support, ticketing, customer service">
     <title>{% block title %}Help Desk{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.7">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.8">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.5">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'favicon.ico' %}">
@@ -59,7 +59,7 @@
                         <div id="notification-empty" class="notification-empty">No notifications yet.</div>
                     </div>
                 </div>
-                <button type="button" class="menu-btn-universal" onclick="document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open');">
+                <button type="button" class="menu-btn-universal" onclick="openSidebar()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
                 {% endif %}
@@ -111,6 +111,37 @@
     </div>
 
     <script>
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+            setTimeout(() => {
+                const closeBtn = document.querySelector('#sidebar .close-btn');
+                if (closeBtn) closeBtn.focus();
+            }, 50);
+        }
+
+        document.getElementById('sidebar').addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                const focusableElements = this.querySelectorAll('a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+                if (focusableElements.length === 0) return;
+                
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        e.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+        });
+
         function openModal() {
             const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
@@ -145,6 +176,7 @@
                 toggle = document.createElement('button');
                 toggle.type = 'button';
                 toggle.className = 'password-toggle';
+                toggle.setAttribute('tabindex', '-1');
                 toggle.setAttribute('aria-label', 'Toggle password visibility');
                 toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
                 wrapper.appendChild(toggle);
@@ -236,9 +268,44 @@
             openModal();
         }
         
-        // Close modal on escape key
+        // Close modal or sidebar on escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('overlay');
+                if (sidebar && sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                    if (overlay) overlay.classList.remove('open');
+                    const menuBtn = document.querySelector('.menu-btn-universal');
+                    if (menuBtn) menuBtn.focus();
+                }
+
+                // Handle custom modals from detail.html
+                const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'lightbox-modal'];
+                customModals.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.style.display !== 'none' && el.style.display !== '') {
+                        if (id === 'lightbox-modal') {
+                            if (typeof closeLightbox === 'function') closeLightbox();
+                        } else {
+                            el.style.display = 'none';
+                        }
+                    }
+                });
+                
+                // Handle action bar dropdown
+                const actionMenu = document.getElementById('action-bar-menu');
+                const actionToggle = document.getElementById('action-bar-toggle');
+                if (actionMenu && actionMenu.classList.contains('show')) {
+                    actionMenu.classList.remove('show');
+                    if (actionToggle) {
+                        actionToggle.setAttribute('aria-expanded', 'false');
+                        actionToggle.focus();
+                    }
+                }
+            }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
