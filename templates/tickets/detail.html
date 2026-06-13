@@ -72,7 +72,7 @@
                 <div class="chat-row">
                     <div class="chat-bubble">
                         <header>
-                            <strong>{{ message.sender.username }}</strong>
+                            <strong>{{ message.sender.username }}{% if ticket.client_name and message.sender == ticket.created_by %} - {{ ticket.client_name }}{% endif %}</strong>
                         </header>
 
                         <div id="msg-display-{{ message.id }}">
@@ -284,6 +284,18 @@
                     <label>Created At</label>
                     <span>{{ ticket.created_at|date:"Y-m-d H:i" }}</span>
                 </div>
+                {% if ticket.client_name %}
+                <div class="meta-item">
+                    <label>Name</label>
+                    <span>{{ ticket.client_name }}</span>
+                </div>
+                {% endif %}
+                {% if ticket.client_phone %}
+                <div class="meta-item">
+                    <label>Phone Number</label>
+                    <span>{{ ticket.client_phone }}</span>
+                </div>
+                {% endif %}
             </div>
 
             {% if user.is_superuser or ticket.assigned_to == user %}

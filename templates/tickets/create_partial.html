@@ -21,18 +21,14 @@
             {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
         </div>
 
-        {% if user.user_type == 'branch' %}
-            {{ form.branch }} <!-- Hidden input for branch users -->
-        {% endif %}
+
 
         <div class="form-grid">
-            {% if not user.user_type == 'branch' %}
             <div class="form-group">
                 <label>{{ form.branch.label }}</label>
                 {{ form.branch }}
                 {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
             </div>
-            {% endif %}
             
             <div class="form-group">
                 <label>{{ form.department.label }}</label>
@@ -50,6 +46,18 @@
                 <label>{{ form.priority.label }}</label>
                 {{ form.priority }}
                 {% if form.priority.errors %}<div class="field-error">{{ form.priority.errors }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label>{{ form.client_name.label }}</label>
+                {{ form.client_name }}
+                {% if form.client_name.errors %}<div class="field-error">{{ form.client_name.errors }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label>{{ form.client_phone.label }}</label>
+                {{ form.client_phone }}
+                {% if form.client_phone.errors %}<div class="field-error">{{ form.client_phone.errors }}</div>{% endif %}
             </div>
         </div>
 

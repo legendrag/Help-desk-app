@@ -32,6 +32,8 @@ class Ticket(models.Model):
     category = models.ForeignKey("core.Category", on_delete=models.PROTECT, related_name="tickets")
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    client_name = models.CharField(max_length=255, default="")
+    client_phone = models.CharField(max_length=50, default="")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

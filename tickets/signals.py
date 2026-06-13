@@ -9,11 +9,16 @@ def broadcast_new_message(sender, instance, created, **kwargs):
     if created:
         try:
             reply_to = instance.reply_to
+            
+            sender_username = getattr(instance.sender, "username", "Unknown")
+            if instance.sender_id == instance.ticket.created_by_id and instance.ticket.client_name:
+                sender_username = f"{sender_username} - {instance.ticket.client_name}"
+                
             payload = {
                 "id": instance.id,
                 "ticket": instance.ticket_id,
                 "sender": instance.sender_id,
-                "sender_username": getattr(instance.sender, "username", "Unknown"),
+                "sender_username": sender_username,
                 "message": instance.message,
                 "is_system_message": getattr(instance, "is_system_message", False),
                 "attachment_url": instance.attachment.url if instance.attachment else None,
