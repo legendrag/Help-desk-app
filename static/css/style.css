@@ -558,7 +558,7 @@ button.secondary:hover {
   box-shadow: none;
 }
 
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
@@ -576,7 +576,11 @@ select {
   cursor: pointer;
 }
 
-input:hover:not(:disabled),
+select.tomselected {
+  display: none !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):hover:not(:disabled),
 select:hover:not(:disabled),
 textarea:hover:not(:disabled) {
   border-color: #94a3b8;
@@ -624,7 +628,7 @@ textarea:hover:not(:disabled) {
   transform: translateY(-50%) !important;
 }
 
-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus,
 textarea:focus {
   outline: none;
@@ -1112,24 +1116,142 @@ tr:hover td {
   border-color: rgba(148, 163, 184, 0.45);
 }
 
-/* Login Page Upgrade */
-.login-page {
+/* Authentication Pages (Login, Change Password) */
+.auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: calc(100vh - 12rem);
   width: 100%;
-  padding: 2.5rem 1.5rem;
+  padding: 1rem;
 }
 
-.login-page-inner {
-  background: white;
-  padding: 3rem;
+.auth-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 3rem 2.5rem;
   border-radius: 24px;
   width: 100%;
-  max-width: 440px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: slideIn 0.5s ease-out;
+  max-width: 420px;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  animation: slideInAuth 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@keyframes slideInAuth {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.auth-header h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.auth-header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-form .form-group {
+  margin: 0;
+}
+
+.auth-form .form-group label {
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="password"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  color: #0f172a;
+}
+
+.auth-form input[type="text"]:focus,
+.auth-form input[type="password"]:focus {
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  outline: none;
+}
+
+.btn-auth {
+  width: 100%;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  margin-top: 0.5rem;
+}
+
+.btn-auth:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+}
+
+.btn-auth:active {
+  transform: translateY(0);
+}
+
+.auth-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.auth-actions .btn {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+  padding: 0.85rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.auth-actions .btn-auth-submit {
+  margin-top: 0;
+  flex: 1.5;
 }
 
 /* Modal System */
@@ -1855,15 +1977,40 @@ button.success:hover,
 }
 
 .field-error {
-  .help-text {
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
-  }
-
   color: var(--danger);
   font-size: 0.8rem;
   margin-top: 0.25rem;
+}
+
+.help-text {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin-top: 0.4rem;
+}
+
+.help-text ul {
+  padding-left: 1.2rem;
+  margin: 0.4rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-grid .form-group.checkbox-field {
+  padding-top: 0.5rem;
+}
+
+.checkbox-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  justify-content: flex-end;
+  padding-bottom: 0.5rem;
+}
+
+.checkbox-group-vertical .checkbox-field {
+  margin: 0;
 }
 
 .perm-grid {
@@ -2417,6 +2564,7 @@ button.success:hover,
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     flex: 1 1 45%;
+    text-align: left;
   }
 
   td>* {

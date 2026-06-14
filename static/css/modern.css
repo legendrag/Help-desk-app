@@ -885,3 +885,303 @@ ul.errorlist li {
   background: rgba(239, 68, 68, 0.1);
   border-color: var(--danger);
 }
+
+/* ===== Utility Classes (replacing inline styles) ===== */
+
+/* -- Topbar -- */
+.topbar-user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-right: 0.5rem;
+  color: var(--text-main);
+}
+
+/* -- Form Utilities -- */
+.field-help {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+.form-actions--spaced {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+.form-actions--end {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+.form-group--mt {
+  margin-top: 1rem;
+}
+.form-group--mt-lg {
+  margin-top: 1.5rem;
+}
+.non-field-errors {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #b91c1c;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.panel--narrow {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* -- Management Tables (list_partial_v2 & email_settings_list) -- */
+.mgmt-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+.mgmt-section-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.mgmt-section-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.mgmt-create-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb, 0,0,0), 0.2);
+}
+.mgmt-create-btn svg {
+  margin-right: 0.5rem;
+}
+.mgmt-table-wrap {
+  background: white;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+.mgmt-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.mgmt-thead {
+  background: #f8fafc;
+}
+.mgmt-th {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.mgmt-th--right {
+  padding: 1.25rem 1.5rem;
+  text-align: right;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.mgmt-tr {
+  transition: background 0.2s;
+}
+.mgmt-td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.mgmt-td--bold {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-weight: 500;
+}
+.mgmt-td--muted {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-muted);
+}
+.mgmt-td--right {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: right;
+}
+.mgmt-actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.mgmt-edit-btn {
+  padding: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
+.mgmt-delete-btn {
+  padding: 0.5rem;
+}
+.badge--subtle {
+  background: #f1f5f9;
+  color: #475569;
+}
+.badge--user-type {
+  background: #eef2ff;
+  color: #4338ca;
+}
+.badge--active {
+  background: rgba(16,185,129,0.18);
+  color: #047857;
+}
+.badge--inactive {
+  background: rgba(239,68,68,0.12);
+  color: #b91c1c;
+}
+.mgmt-empty-cell {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.mgmt-empty-icon {
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+.mgmt-empty-text {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* -- List Partial (modal version) -- */
+.list-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.list-modal-add-btn {
+  padding: 0.25rem 0.5rem;
+}
+.list-modal-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.list-modal-td-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.list-modal-empty-cell {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* -- Detail Page: Pending Transfer Banner -- */
+.pending-transfer-banner {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-top: 1rem;
+}
+.transfer-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.transfer-banner-icon {
+  color: var(--primary);
+}
+.transfer-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.transfer-form-inline {
+  margin: 0;
+}
+.btn--sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
+}
+.no-messages-text {
+  color: var(--text-muted);
+  padding: 2rem;
+  text-align: center;
+}
+
+/* -- Detail Page: Merged Tickets Section -- */
+.merged-tickets-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+.merged-tickets-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* -- Detail Page: Transfer Modal Actions -- */
+.modal-form-actions-transfer {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.modal-form-group-transfer {
+  margin-bottom: 1rem;
+}
+.modal-description-text-transfer {
+  color: var(--text-muted);
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+.modal-transfer-ticket {
+  max-width: 480px;
+  overflow: visible !important;
+}
+
+/* -- Session Warning Modal -- */
+.session-warning-overlay {
+  display: none;
+  z-index: 9999;
+}
+.session-warning-box {
+  max-width: 400px;
+  text-align: center;
+  padding: 2rem;
+}
+.session-warning-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+.session-logout-form {
+  margin: 0;
+}
+.session-logout-btn {
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}

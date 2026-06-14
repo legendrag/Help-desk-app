@@ -11,43 +11,51 @@
     {% csrf_token %}
     <div class="form-stack">
         {% if form.non_field_errors %}
-        <div class="non-field-errors" style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+        <div class="non-field-errors">
             {{ form.non_field_errors }}
         </div>
         {% endif %}
         <div class="form-grid">
         {% for field in form %}
-        {% if field.field.widget.input_type == "checkbox" %}
-        <div class="form-group checkbox-field" data-field="{{ field.name }}">
-            {{ field }}
-            <label class="checkbox-label">{{ field.label }}</label>
-            {% if field.errors %}
-            <div class="field-error">
-                {{ field.errors }}
+            {% if field.name not in "status,requires_password_change" %}
+            <div class="form-group" data-field="{{ field.name }}">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="field-error">
+                    {{ field.errors }}
+                </div>
+                {% endif %}
+                {% if field.help_text %}
+                <div class="help-text">
+                    {{ field.help_text|safe }}
+                </div>
+                {% endif %}
             </div>
             {% endif %}
-            {% if field.help_text %}
-            <div class="help-text">
-                {{ field.help_text|safe }}
+
+            {% if field.name == "role" %}
+            <div class="form-group checkbox-group-vertical">
+                <div class="checkbox-field" data-field="status">
+                    {{ form.status }}
+                    <label class="checkbox-label">{{ form.status.label }}</label>
+                    {% if form.status.errors %}
+                    <div class="field-error">
+                        {{ form.status.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="checkbox-field" data-field="requires_password_change">
+                    {{ form.requires_password_change }}
+                    <label class="checkbox-label">{{ form.requires_password_change.label }}</label>
+                    {% if form.requires_password_change.errors %}
+                    <div class="field-error">
+                        {{ form.requires_password_change.errors }}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
-        </div>
-        {% else %}
-        <div class="form-group" data-field="{{ field.name }}">
-            <label>{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}
-            <div class="field-error">
-                {{ field.errors }}
-            </div>
-            {% endif %}
-            {% if field.help_text %}
-            <div class="help-text">
-                {{ field.help_text|safe }}
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
         {% endfor %}
         </div>
 

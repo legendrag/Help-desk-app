@@ -37,14 +37,27 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 
 class CustomUserCreationForm(UserCreationForm):
+    status = forms.BooleanField(label="Is Active", required=False, initial=True)
+    field_order = (
+        'username', 'email', 'first_name', 'last_name',
+        'phone', 'user_type', 'branch', 'department', 'role',
+        'password1', 'password2', 'status', 'requires_password_change'
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if "username" in self.fields:
+            self.fields["username"].help_text = ""
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
         for field_name in ("branch", "department"):
             if field_name in self.fields:
                 self.fields[field_name].required = False
+
+    def clean_status(self):
+        val = self.cleaned_data.get("status")
+        return User.Status.ACTIVE if val else User.Status.INACTIVE
 
     def clean_username(self):
         username = self.cleaned_data.get("username")
@@ -100,12 +113,18 @@ class CustomUserCreationForm(UserCreationForm):
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name',
-            'phone', 'user_type', 'status', 'branch',
-            'department', 'role', 'requires_password_change'
+            'phone', 'user_type', 'branch',
+            'department', 'role', 'status', 'requires_password_change'
         )
 
 
 class CustomUserChangeForm(UserChangeForm):
+    status = forms.BooleanField(label="Is Active", required=False)
+    field_order = (
+        'username', 'email', 'first_name', 'last_name',
+        'phone', 'user_type', 'branch', 'department', 'role',
+        'password1', 'password2', 'status', 'requires_password_change'
+    )
     password1 = forms.CharField(
         label="New password",
         required=False,
@@ -119,6 +138,18 @@ class CustomUserChangeForm(UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if "username" in self.fields:
+            self.fields["username"].help_text = ""
+            
+        if "password1" in self.fields:
+            from django.contrib.auth.password_validation import password_validators_help_text_html
+            self.fields["password1"].help_text = password_validators_help_text_html()
+            
+        if "password2" in self.fields:
+            self.fields["password2"].help_text = "Enter the same password as before, for verification."
+            
+        if self.instance and self.instance.pk:
+            self.fields['status'].initial = (self.instance.status == User.Status.ACTIVE)
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
@@ -128,6 +159,10 @@ class CustomUserChangeForm(UserChangeForm):
 
         if "password" in self.fields:
             self.fields.pop("password")
+
+    def clean_status(self):
+        val = self.cleaned_data.get("status")
+        return User.Status.ACTIVE if val else User.Status.INACTIVE
 
     def clean_username(self):
         username = self.cleaned_data.get("username")
@@ -206,6 +241,6 @@ class CustomUserChangeForm(UserChangeForm):
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name',
-            'phone', 'user_type', 'status', 'branch',
-            'department', 'role', 'requires_password_change', 'password1', 'password2'
+            'phone', 'user_type', 'branch',
+            'department', 'role', 'password1', 'password2', 'status', 'requires_password_change'
         )

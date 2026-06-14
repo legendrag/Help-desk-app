@@ -1,4 +1,4 @@
-﻿<option value=""></option>
+<option value=""></option>
 {% for category in categories %}
-<option value="{{ category.id }}">{{ category.name }}</option>
+<option value="{{ category.id }}" data-priority="{{ category.default_priority }}">{{ category.name }}</option>
 {% endfor %}

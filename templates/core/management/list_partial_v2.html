@@ -1,64 +1,66 @@
 {% load static %}
 
 <div class="management-section">
-    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.5rem; background: #fff; border-radius: 16px; border: 1px solid var(--border);">
+    <div class="section-header mgmt-section-header">
         <div>
-            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700;">{{ model_name|default:"Entries" }}</h2>
-            <p style="margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem;">Total: {{ object_list|length }} entries</p>
+            <h2 class="mgmt-section-title">{{ model_name|default:"Entries" }}</h2>
+            <p class="mgmt-section-subtitle">Total: {{ object_list|length }} entries</p>
         </div>
         {% if can_add %}
-        <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary" style="padding: 0.75rem 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(var(--primary-rgb, 0,0,0), 0.2);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary mgmt-create-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Create New
         </button>
         {% endif %}
 </div>
 
-<div class="table-wrap" style="background: white; border-radius: 20px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
-    <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
-        <thead style="background: #f8fafc;">
+<div class="table-wrap mgmt-table-wrap">
+    <table class="mgmt-table">
+        <thead class="mgmt-thead">
             <tr>
                 {% if model_name == 'Users' %}
-                <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Username</th>
-                <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">User Type</th>
-                <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Branch / Department</th>
-                <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Role</th>
+                <th class="mgmt-th">Username</th>
+                <th class="mgmt-th">User Type</th>
+                <th class="mgmt-th">Branch / Department</th>
+                <th class="mgmt-th">Role</th>
                 {% else %}
-                <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Name</th>
+                <th class="mgmt-th">Name</th>
                 {% endif %}
-                
-                {% if has_code %}<th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Code</th>{% endif %}
-                {% if has_dept %}<th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Department</th>{% endif %}
-                <th style="padding: 1.25rem 1.5rem; text-align: right; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Actions</th>
+
+                {% if has_code %}<th class="mgmt-th">Code</th>{% endif %}
+                {% if has_dept %}<th class="mgmt-th">Department</th>{% endif %}
+                {% if model_name == 'Categories' %}<th class="mgmt-th">Default Priority</th>{% endif %}
+                <th class="mgmt-th--right">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for item in object_list %}
-            <tr style="transition: background 0.2s;">
+            <tr class="mgmt-tr">
                 {% if model_name == 'Users' %}
-                <td data-label="Username" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.username }}</td>
-                <td data-label="User Type" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #eef2ff; color: #4338ca;">{{ item.get_user_type_display }}</span></td>
-                <td data-label="Branch / Dept" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{% if item.branch %}{{ item.branch.name }}{% elif item.department %}{{ item.department.name }}{% else %}-{% endif %}</td>
-                <td data-label="Role" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.role.name|default:"-" }}</span></td>
+                <td data-label="Username" class="mgmt-td--bold">{{ item.username }}</td>
+                <td data-label="User Type" class="mgmt-td"><span class="badge badge--user-type">{{ item.get_user_type_display }}</span></td>
+                <td data-label="Branch / Dept" class="mgmt-td--muted">{% if item.branch %}{{ item.branch.name }}{% elif item.department %}{{ item.department.name }}{% else %}-{% endif %}</td>
+                <td data-label="Role" class="mgmt-td"><span class="badge badge--subtle">{{ item.role.name|default:"-" }}</span></td>
                 {% else %}
-                <td data-label="Name" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.name }}</td>
+                <td data-label="Name" class="mgmt-td--bold">{{ item.name }}</td>
                 {% endif %}
-                {% if has_code %}<td data-label="Code" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);"><code>{{ item.code }}</code></td>{% endif %}
-                {% if has_dept %}<td data-label="Department" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;"><span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.department.name }}</span></td>{% endif %}
-                <td data-label="Actions" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
-                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                {% if has_code %}<td data-label="Code" class="mgmt-td--muted"><code>{{ item.code }}</code></td>{% endif %}
+                {% if has_dept %}<td data-label="Department" class="mgmt-td"><span class="badge badge--subtle">{{ item.department.name }}</span></td>{% endif %}
+                {% if model_name == 'Categories' %}<td data-label="Default Priority" class="mgmt-td"><span class="badge badge--subtle">{{ item.get_default_priority_display }}</span></td>{% endif %}
+                <td data-label="Actions" class="mgmt-td--right">
+                    <div class="mgmt-actions-cell">
                         {% if model_name == 'Users' and item.is_superuser %}
-                        <span class="badge" style="background: #f1f5f9; color: #475569;">Admin</span>
+                        <span class="badge badge--subtle">Admin</span>
                         {% elif model_name == 'Roles' and item.name|lower == 'admin' %}
-                        <span class="badge" style="background: #f1f5f9; color: #475569;">Admin</span>
+                        <span class="badge badge--subtle">Admin</span>
                         {% else %}
                             {% if can_edit %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small" title="Edit" style="padding: 0.5rem; background: #f8fafc; border: 1px solid var(--border);">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small mgmt-edit-btn" title="Edit">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             {% endif %}
                             {% if can_delete %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal()" class="danger small" title="Delete" style="padding: 0.5rem;">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal()" class="danger small mgmt-delete-btn" title="Delete">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                             {% endif %}
@@ -68,9 +70,9 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="{% if model_name == 'Users' %}5{% else %}4{% endif %}" style="padding: 4rem 2rem; text-align: center; color: var(--text-muted);">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.3;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <p style="margin: 0; font-size: 1.1rem;">No {{ model_name|lower }} items found yet.</p>
+                <td colspan="{% if model_name == 'Users' %}5{% else %}4{% endif %}" class="mgmt-empty-cell">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mgmt-empty-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <p class="mgmt-empty-text">No {{ model_name|lower }} items found yet.</p>
                 </td>
             </tr>
             {% endfor %}

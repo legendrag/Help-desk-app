@@ -42,7 +42,7 @@
 
             <div class="topbar-controls">
                 {% if user.is_authenticated %}
-                <div class="topbar-user-name" style="font-weight: 600; font-size: 0.95rem; margin-right: 0.5rem; color: var(--text-main);">
+                <div class="topbar-user-name">
                     Hi, {{ user.first_name|default:user.username }}
                 </div>
                 <div class="notification-bell-container">
@@ -458,15 +458,15 @@
     </script>
 
     <!-- Session Warning Modal -->
-    <div id="session-warning-modal" class="modal-overlay" style="display: none; z-index: 9999;">
-        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2rem;">
+    <div id="session-warning-modal" class="modal-overlay session-warning-overlay">
+        <div class="modal-content session-warning-box">
             <h2>Session Expiring Soon</h2>
             <p>Your session will expire soon due to inactivity. Would you like to stay logged in?</p>
-            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+            <div class="session-warning-actions">
                 <button type="button" class="button" onclick="extendSession()">Stay Logged In</button>
-                <form action="{% url 'logout' %}" method="post" style="margin:0;">
+                <form action="{% url 'logout' %}" method="post" class="session-logout-form">
                     {% csrf_token %}
-                    <button type="submit" class="button secondary" style="background:var(--bg-main); color:var(--text-main); border:1px solid var(--border-color);">Log Out</button>
+                    <button type="submit" class="button secondary session-logout-btn">Log Out</button>
                 </form>
             </div>
         </div>

@@ -289,6 +289,70 @@
             <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
         </div>
     </div>
+    {% elif model_name == "User" %}
+    <div class="form-stack">
+        <div class="form-grid">
+            {% for field_name in "username,email,first_name,last_name,phone,user_type"|split:"," %}
+            {% with field=form|get_form_field:field_name %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                {% if field.help_text %}<div class="help-text">{{ field.help_text|safe }}</div>{% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+
+            <div class="form-group" data-field="branch">
+                <label>{{ form.branch.label }}</label>
+                {{ form.branch }}
+                {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" data-field="department" style="display:none;">
+                <label>{{ form.department.label }}</label>
+                {{ form.department }}
+                {% if form.department.errors %}<div class="field-error">{{ form.department.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label>{{ form.role.label }}</label>
+                {{ form.role }}
+                {% if form.role.errors %}<div class="field-error">{{ form.role.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group checkbox-group-vertical">
+                <div class="checkbox-field">
+                    {{ form.status }}
+                    <label class="checkbox-label">{{ form.status.label }}</label>
+                    {% if form.status.errors %}<div class="field-error">{{ form.status.errors }}</div>{% endif %}
+                </div>
+                <div class="checkbox-field">
+                    {{ form.requires_password_change }}
+                    <label class="checkbox-label">{{ form.requires_password_change.label }}</label>
+                    {% if form.requires_password_change.errors %}<div class="field-error">{{ form.requires_password_change.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            {% if form.password1 %}
+            <div class="form-group">
+                <label>{{ form.password1.label }}</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}<div class="field-error">{{ form.password1.errors }}</div>{% endif %}
+                {% if form.password1.help_text %}<div class="help-text">{{ form.password1.help_text|safe }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.password2.label }}</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}<div class="field-error">{{ form.password2.errors }}</div>{% endif %}
+                {% if form.password2.help_text %}<div class="help-text">{{ form.password2.help_text|safe }}</div>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
     {% else %}
     <div class="form-stack">
         <div class="form-grid">

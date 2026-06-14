@@ -33,8 +33,15 @@ class Department(models.Model):
 
 
 class Category(models.Model):
+    class Priority(models.TextChoices):
+        LOW = "low", "Low"
+        MEDIUM = "medium", "Medium"
+        HIGH = "high", "High"
+        URGENT = "urgent", "Urgent"
+
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="categories")
     name = models.CharField(max_length=150)
+    default_priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
 
     class Meta:
         ordering = ["department__name", "name"]

@@ -1,52 +1,52 @@
 {% load static %}
 
 <div class="management-section">
-    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.5rem; background: #fff; border-radius: 16px; border: 1px solid var(--border);">
+    <div class="section-header mgmt-section-header">
         <div>
-            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700;">{{ model_name|default:"Email Settings" }}</h2>
-            <p style="margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem;">Total: {{ object_list|length }} entries</p>
+            <h2 class="mgmt-section-title">{{ model_name|default:"Email Settings" }}</h2>
+            <p class="mgmt-section-subtitle">Total: {{ object_list|length }} entries</p>
         </div>
         {% if can_add %}
-        <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary" style="padding: 0.75rem 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(var(--primary-rgb, 0,0,0), 0.2);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary mgmt-create-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Create New
         </button>
         {% endif %}
     </div>
 
-    <div class="table-wrap" style="background: white; border-radius: 20px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <thead style="background: #f8fafc;">
+    <div class="table-wrap mgmt-table-wrap">
+        <table class="mgmt-table">
+            <thead class="mgmt-thead">
                 <tr>
-                    <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">SMTP Host</th>
-                    <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">From Email</th>
-                    <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Encryption</th>
-                    <th style="padding: 1.25rem 1.5rem; text-align: left; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Active</th>
-                    <th style="padding: 1.25rem 1.5rem; text-align: right; font-weight: 600; color: #475569; font-size: 0.85rem; border-bottom: 1px solid var(--border);">Actions</th>
+                    <th class="mgmt-th">SMTP Host</th>
+                    <th class="mgmt-th">From Email</th>
+                    <th class="mgmt-th">Encryption</th>
+                    <th class="mgmt-th">Active</th>
+                    <th class="mgmt-th--right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in object_list %}
-                <tr style="transition: background 0.2s;">
-                    <td data-label="SMTP Host" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 500;">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
-                    <td data-label="From Email" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; color: var(--text-muted);">{{ item.from_email }}</td>
-                    <td data-label="Encryption" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
-                        <span class="badge" style="background: #f1f5f9; color: #475569;">{{ item.get_encryption_display }}</span>
+                <tr class="mgmt-tr">
+                    <td data-label="SMTP Host" class="mgmt-td--bold">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
+                    <td data-label="From Email" class="mgmt-td--muted">{{ item.from_email }}</td>
+                    <td data-label="Encryption" class="mgmt-td">
+                        <span class="badge badge--subtle">{{ item.get_encryption_display }}</span>
                     </td>
-                    <td data-label="Active" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
-                        <span class="badge" style="background: {% if item.is_active %}rgba(16,185,129,0.18){% else %}rgba(239,68,68,0.12){% endif %}; color: {% if item.is_active %}#047857{% else %}#b91c1c{% endif %};">
+                    <td data-label="Active" class="mgmt-td">
+                        <span class="badge {% if item.is_active %}badge--active{% else %}badge--inactive{% endif %}">
                             {% if item.is_active %}Active{% else %}Inactive{% endif %}
                         </span>
                     </td>
-                    <td data-label="Actions" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; text-align: right;">
-                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <td data-label="Actions" class="mgmt-td--right">
+                        <div class="mgmt-actions-cell">
                             {% if can_edit %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small" title="Edit" style="padding: 0.5rem; background: #f8fafc; border: 1px solid var(--border);">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small mgmt-edit-btn" title="Edit">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             {% endif %}
                             {% if can_delete %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal()" class="danger small" title="Delete" style="padding: 0.5rem;">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal()" class="danger small mgmt-delete-btn" title="Delete">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                             {% endif %}
@@ -55,9 +55,9 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="padding: 4rem 2rem; text-align: center; color: var(--text-muted);">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.3;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        <p style="margin: 0; font-size: 1.1rem;">No email settings found yet.</p>
+                    <td colspan="5" class="mgmt-empty-cell">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mgmt-empty-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <p class="mgmt-empty-text">No email settings found yet.</p>
                     </td>
                 </tr>
                 {% endfor %}

@@ -11,7 +11,7 @@
     {% csrf_token %}
     <div class="form-stack">
         {% if form.non_field_errors %}
-        <div class="non-field-errors" style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+        <div class="non-field-errors">
             {{ form.non_field_errors }}
         </div>
         {% endif %}
@@ -20,8 +20,6 @@
             {{ form.title }}
             {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
         </div>
-
-
 
         <div class="form-grid">
             <div class="form-group">
@@ -61,13 +59,13 @@
             </div>
         </div>
 
-        <div class="form-group full" style="margin-top: 1rem;">
+        <div class="form-group full form-group--mt">
             <label>{{ form.description.label }}</label>
             {{ form.description }}
             {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
         </div>
 
-        <div class="form-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <div class="form-actions--end">
             <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
             <button type="submit" class="btn primary">Create Ticket</button>
         </div>

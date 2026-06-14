@@ -477,10 +477,12 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         context['can_chat'] = can_chat
 
         supporters = User.objects.filter(
-            user_type=User.UserType.SUPPORT,
             status=User.Status.ACTIVE
+        ).filter(
+            models.Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
+            models.Q(is_superuser=True)
         ).exclude(id=ticket.assigned_to_id)
-        
+
         context['supporters'] = supporters
 
         return context
@@ -759,9 +761,14 @@ def transfer_ticket(request, ticket_id):
         new_assignee_id = request.POST.get("new_assignee")
         if new_assignee_id:
             try:
-                new_assignee = User.objects.get(id=new_assignee_id, user_type=User.UserType.SUPPORT, status=User.Status.ACTIVE)
+                new_assignee = User.objects.get(id=new_assignee_id, status=User.Status.ACTIVE)
                 
-                if ticket.pending_transfer_to:
+                # Only allow transfer to same-department supporters or superusers
+                is_same_dept = (new_assignee.user_type == User.UserType.SUPPORT 
+                                and new_assignee.department_id == ticket.department_id)
+                if not (new_assignee.is_superuser or is_same_dept):
+                    django_messages.error(request, "You can only transfer to agents in the same department or admins.")
+                elif ticket.pending_transfer_to:
                     django_messages.error(request, "A transfer is already pending.")
                 else:
                     ticket.pending_transfer_to = new_assignee

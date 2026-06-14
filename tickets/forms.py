@@ -3,6 +3,19 @@ from django.urls import reverse_lazy
 from .models import Ticket
 from core.models import Branch, Department, Category
 
+class CategorySelect(forms.Select):
+    def __init__(self, categories_dict=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.categories_dict = categories_dict or {}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            val = getattr(value, 'value', value)
+            if val in self.categories_dict:
+                option['attrs']['data-priority'] = self.categories_dict[val]
+        return option
+
 class TicketCreateForm(forms.ModelForm):
     class Meta:
         model = Ticket
@@ -38,9 +51,16 @@ class TicketCreateForm(forms.ModelForm):
             or (self.instance.department_id if self.instance and self.instance.pk else None)
         )
         if department_id:
-            self.fields["category"].queryset = Category.objects.filter(department_id=department_id)
+            qs = Category.objects.filter(department_id=department_id)
+            self.fields["category"].queryset = qs
+            cat_dict = {cat.id: cat.default_priority for cat in qs}
+            self.fields["category"].widget = CategorySelect(categories_dict=cat_dict)
         else:
             self.fields["category"].queryset = Category.objects.none()
+
+        self.fields["category"].widget.attrs.update({
+            "onchange": "var p=this.options[this.selectedIndex].getAttribute('data-priority'); if(p) document.getElementById('id_priority').value = p;"
+        })
 
         self.fields["department"].widget.attrs.update({
             "hx-get": reverse_lazy("ticket_category_options"),

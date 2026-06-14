@@ -24,9 +24,9 @@
         {% endif %}
 
         {% if ticket.pending_transfer_to %}
-        <div class="pending-transfer-banner" style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-left: 1rem; margin-right: 1rem; margin-top: 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+        <div class="pending-transfer-banner">
+            <div class="transfer-banner-left">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transfer-banner-icon">
                     <path d="M17 3v18"></path><path d="M10 14l7 7 7-7"></path><path d="M7 21V3"></path><path d="M14 10L7 3 0 10"></path>
                 </svg>
                 {% if user == ticket.pending_transfer_to %}
@@ -37,21 +37,21 @@
                 <span>Transfer to <strong>{{ ticket.pending_transfer_to.username }}</strong> is pending.</span>
                 {% endif %}
             </div>
-            <div style="display: flex; gap: 0.5rem;">
+            <div class="transfer-banner-actions">
                 {% if user == ticket.pending_transfer_to %}
-                <form hx-post="{% url 'accept_transfer' ticket.id %}" style="margin:0;">
+                <form hx-post="{% url 'accept_transfer' ticket.id %}" class="transfer-form-inline">
                     {% csrf_token %}
-                    <button type="submit" class="btn primary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Accept</button>
+                    <button type="submit" class="btn primary btn--sm">Accept</button>
                 </form>
-                <form hx-post="{% url 'deny_transfer' ticket.id %}" style="margin:0;">
+                <form hx-post="{% url 'deny_transfer' ticket.id %}" class="transfer-form-inline">
                     {% csrf_token %}
-                    <button type="submit" class="btn secondary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Deny</button>
+                    <button type="submit" class="btn secondary btn--sm">Deny</button>
                 </form>
                 {% endif %}
                 {% if user == ticket.pending_transfer_by or user.is_superuser %}
-                <form hx-post="{% url 'cancel_transfer' ticket.id %}" style="margin:0;">
+                <form hx-post="{% url 'cancel_transfer' ticket.id %}" class="transfer-form-inline">
                     {% csrf_token %}
-                    <button type="submit" class="btn secondary" style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">Cancel Request</button>
+                    <button type="submit" class="btn secondary btn--sm">Cancel Request</button>
                 </form>
                 {% endif %}
             </div>
@@ -159,7 +159,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p style="color: var(--text-muted); padding: 2rem; text-align: center;">No messages yet.</p>
+        <p class="no-messages-text">No messages yet.</p>
         {% endif %}
 
         {% if ticket.status != 'closed' and ticket.status != 'merged' %}
@@ -307,8 +307,8 @@
             </div>
             {% endif %} 
             {% if ticket.merged_tickets.exists %}
-            <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-                <label style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 0.5rem;">Merged Tickets</label>
+            <div class="merged-tickets-section">
+                <label class="merged-tickets-label">Merged Tickets</label>
                 <div class="merged-tickets-sidebar-list">
                     {% for st in ticket.merged_tickets.all %}
                     <a href="{% url 'ticket_detail' st.id %}" class="merged-sidebar-item">
@@ -321,7 +321,6 @@
                 </div>
             </div>
             {% endif %}
-
 
             {% if ticket.status == 'merged' %}
             <div class="action-bar">
@@ -714,7 +713,7 @@
                     </select>
                 </div>
                 
-                <div class="form-actions modal-form-actions-transfer" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <div class="form-actions modal-form-actions-transfer">
                     <button type="button" class="btn secondary" onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
                     <button type="submit" class="btn primary">Transfer Ticket</button>
                 </div>

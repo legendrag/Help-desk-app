@@ -5,11 +5,46 @@ class BranchForm(forms.ModelForm):
     class Meta:
         model = Branch
         fields = ['name', 'code']
+        widgets = {
+            'name': forms.TextInput(attrs={'minlength': '2'}),
+            'code': forms.TextInput(attrs={'minlength': '1'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if not name or len(name.strip()) < 2:
+            raise forms.ValidationError("Branch name must be at least 2 characters long.")
+        return name.strip()
+
+    def clean_code(self):
+        import re
+        code = self.cleaned_data.get('code')
+        if not code or not code.strip():
+            raise forms.ValidationError("Branch code is required.")
+        code = code.strip().upper()
+        if not re.match(r'^[A-Z0-9_-]+$', code):
+            raise forms.ValidationError("Code may only contain letters, numbers, hyphens, and underscores.")
+        return code
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
         fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'minlength': '2'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if not name or len(name.strip()) < 2:
+            raise forms.ValidationError("Department name must be at least 2 characters long.")
+        name = name.strip()
+        qs = Department.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("A department with this name already exists.")
+        return name
 
 class CategoryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -20,12 +55,22 @@ class CategoryForm(forms.ModelForm):
 
     class Meta:
         model = Category
-        fields = ['department', 'name']
+        fields = ['department', 'name', 'default_priority']
+        widgets = {
+            'name': forms.TextInput(attrs={'minlength': '2'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if not name or len(name.strip()) < 2:
+            raise forms.ValidationError("Category name must be at least 2 characters long.")
+        return name.strip()
 
 class RoleForm(forms.ModelForm):
     class Meta:
 
         widgets = {
+            'name': forms.TextInput(attrs={'minlength': '2'}),
             'can_create_ticket': forms.CheckboxInput(),
             'can_update_ticket': forms.CheckboxInput(),
             'can_pick_ticket': forms.CheckboxInput(),
@@ -81,6 +126,12 @@ class RoleForm(forms.ModelForm):
             'can_manage_email'
         ]
 
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if not name or len(name.strip()) < 2:
+            raise forms.ValidationError("Role name must be at least 2 characters long.")
+        return name.strip()
+
 class EmailSettingForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
@@ -104,3 +155,4 @@ class EmailSettingForm(forms.ModelForm):
         widgets = {
             'smtp_password': forms.PasswordInput(render_value=True),
         }
+

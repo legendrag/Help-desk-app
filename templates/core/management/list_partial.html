@@ -1,7 +1,7 @@
 <div class="modal-header">
     <h2>Manage {{ model_name|default:"Entries" }}</h2>
-    <div style="display: flex; gap: 0.5rem;">
-        <button hx-get="{{ create_url }}" hx-target="#modal-content" class="secondary" style="padding: 0.25rem 0.5rem;">
+    <div class="list-modal-actions">
+        <button hx-get="{{ create_url }}" hx-target="#modal-content" class="secondary list-modal-add-btn">
             + Add New
         </button>
         <button type="button" class="modal-close" onclick="closeModal()">
@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<div class="list-container" style="max-height: 60vh; overflow-y: auto;">
+<div class="list-container list-modal-scroll">
     <table class="data-table">
         <thead>
             <tr>
@@ -26,7 +26,7 @@
                 <td data-label="Name">{{ item.name }}</td>
                 {% if has_code %}<td data-label="Code">{{ item.code }}</td>{% endif %}
                 {% if has_dept %}<td data-label="Department">{{ item.department.name }}</td>{% endif %}
-                <td data-label="Actions" style="display: flex; gap: 0.5rem;">
+                <td data-label="Actions" class="list-modal-td-actions">
                     <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" class="secondary small">
                         Edit
                     </button>
@@ -37,7 +37,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted);">No entries found.</td>
+                <td colspan="4" class="list-modal-empty-cell">No entries found.</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}New Ticket - Help Desk{% endblock %}
+{% block title %}New Ticket - Help Desk{% endblock title %}
 
 {% block content %}
 <div class="create-ticket-page">
@@ -8,7 +8,7 @@
         <h1>Create New Ticket</h1>
     </div>
 
-    <div class="panel" style="max-width: 800px; margin: 0 auto;">
+    <div class="panel panel--narrow">
         <form method="post" class="management-form">
             {% csrf_token %}
             
@@ -63,14 +63,14 @@
                     </div>
                 </div>
 
-                <div class="form-group full" style="margin-top: 1rem;">
+                <div class="form-group full form-group--mt">
                     <label for="{{ form.description.id_for_label }}">Description</label>
                     {{ form.description }}
                     {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
                 </div>
             </div>
 
-            <div class="form-actions" style="margin-top: 2.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <div class="form-actions--spaced">
                 <a href="{% url 'tickets_list' %}" class="btn secondary">Cancel</a>
                 <button type="submit" class="btn primary">Create Ticket</button>
             </div>
@@ -78,4 +78,4 @@
     </div>
 </div>
 
-{% endblock %}
+{% endblock content %}
