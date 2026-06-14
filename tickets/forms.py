@@ -21,6 +21,7 @@ class TicketCreateForm(forms.ModelForm):
         model = Ticket
         fields = ["title", "description", "branch", "department", "category", "priority", "client_name", "client_phone"]
         widgets = {
+            "priority": forms.HiddenInput(),
             "title": forms.TextInput(attrs={"minlength": "4", "required": "required"}),
             "description": forms.Textarea(attrs={"rows": 4, "minlength": "5", "required": "required"}),
             "client_name": forms.TextInput(attrs={"minlength": "2", "required": "required"}),
@@ -101,3 +102,10 @@ class TicketCreateForm(forms.ModelForm):
         if not description or len(description.strip()) < 5:
             raise forms.ValidationError("Description must be at least 5 characters long.")
         return description.strip()
+
+class TicketUpdateForm(TicketCreateForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Restore the visible select widget for priority during edit
+        self.fields["priority"].widget = forms.Select(choices=Ticket._meta.get_field("priority").choices)
+        self.fields["priority"].widget.attrs.update({"class": "form-control"})

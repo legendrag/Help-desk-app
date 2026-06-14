@@ -14,7 +14,7 @@ from django.db.models.functions import TruncDate, TruncMonth, TruncWeek, TruncYe
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from core.models import Branch, Category, Department
 from accounts.models import User
-from .forms import TicketCreateForm
+from .forms import TicketCreateForm, TicketUpdateForm
 from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
 # ... (existing code)
@@ -288,7 +288,7 @@ class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Ticket
-    form_class = TicketCreateForm
+    form_class = TicketUpdateForm
     template_name = "tickets/edit.html"
     success_url = reverse_lazy("tickets_list")
     pk_url_kwarg = "ticket_id"
@@ -479,8 +479,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         supporters = User.objects.filter(
             status=User.Status.ACTIVE
         ).filter(
-            models.Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
-            models.Q(is_superuser=True)
+            Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
+            Q(is_superuser=True)
         ).exclude(id=ticket.assigned_to_id)
 
         context['supporters'] = supporters

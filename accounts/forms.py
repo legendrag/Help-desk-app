@@ -4,6 +4,11 @@ from django.core.cache import cache
 from .models import User
 
 class CustomAuthenticationForm(AuthenticationForm):
+    error_messages = {
+        "invalid_login": "Incorrect username or password. Please try again.",
+        "inactive": "This account is inactive.",
+    }
+
     def clean(self):
         username = self.cleaned_data.get('username')
         
