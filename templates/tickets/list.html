@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Tickets - Help Desk{% endblock %}
+{% block title %}Tickets - Help Desk{% endblock title %}
 
 {% block content %}
 <div class="tickets-page">
@@ -26,7 +26,7 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="text" name="q" placeholder="Search ID, Title, or Description..." value="{{ filter_values.q }}">
+                    <input type="text" name="q" id="search-q" class="search-input" placeholder="Search ID, Title, or Description..." value="{{ filter_values.q }}">
                 </div>
                 <div class="filter-row">
                     {% if not user.user_type == 'branch' %}
@@ -329,4 +329,4 @@
     }
 }
 </style>
-{% endblock %}
+{% endblock content %}
