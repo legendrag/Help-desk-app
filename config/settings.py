@@ -85,7 +85,12 @@ if _db_engine == "mysql":
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "3306"),
-            "OPTIONS": {"charset": "utf8mb4"},
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 600)),
+            "CONN_HEALTH_CHECKS": True,
+            "OPTIONS": {
+                "charset": "utf8mb4",
+                "connect_timeout": 5,
+            },
         }
     }
 else:  # default: sqlite

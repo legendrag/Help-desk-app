@@ -99,21 +99,27 @@ class Ticket(models.Model):
         if self.status == self.Status.MERGED and not self.merged_into_id:
             raise ValidationError({"merged_into": "Merged ticket must have a target ticket."})
 
-        if self.pk:
+        # Use cached previous state from save() to avoid a redundant query.
+        previous = getattr(self, "_previous", None)
+        if previous is None and self.pk:
             previous = Ticket.objects.filter(pk=self.pk).only("status").first()
-            if previous and previous.status == self.Status.MERGED and self.status != self.Status.MERGED:
-                raise ValidationError("Cannot un-merge a merged ticket.")
+        if previous and previous.status == self.Status.MERGED and self.status != self.Status.MERGED:
+            raise ValidationError("Cannot un-merge a merged ticket.")
 
     def save(self, *args, **kwargs):
         now = timezone.now()
         previous_status = None
         previous_last_change = None
 
+        # Fetch previous state once and cache it for clean() to reuse.
+        self._previous = None
         if self.pk:
-            previous = Ticket.objects.filter(pk=self.pk).only("status", "last_status_change_at").first()
-            if previous:
-                previous_status = previous.status
-                previous_last_change = previous.last_status_change_at
+            self._previous = Ticket.objects.filter(pk=self.pk).only(
+                "status", "last_status_change_at"
+            ).first()
+            if self._previous:
+                previous_status = self._previous.status
+                previous_last_change = self._previous.last_status_change_at
 
         if not self.ticket_number:
             date_part = now.strftime("%Y%m%d")
@@ -169,6 +175,9 @@ class TicketStatusHistory(models.Model):
     class Meta:
         ordering = ["created_at"]
         verbose_name_plural = "Ticket status histories"
+        indexes = [
+            models.Index(fields=["ticket", "created_at"]),
+        ]
 
 
 class TicketMessage(models.Model):

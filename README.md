@@ -61,7 +61,74 @@ python manage.py runserver
 | `SECRET_KEY` | Django unique secret key | `change-me` |
 | `DB_ENGINE` | `sqlite` or `mysql` | `sqlite` |
 | `DB_NAME` | Database name | `helpdesk` |
+| `DB_HOST` | Database host | `localhost` |
+| `DB_PORT` | Database port | `3306` |
+| `DB_USER` | Database user | `root` |
+| `DB_PASSWORD` | Database password | *(empty)* |
+| `DB_CONN_MAX_AGE` | Persistent connection lifetime (seconds) | `600` |
 | `ALLOWED_HOSTS` | Server hostnames | `*` |
+| `BACKUP_DIR` | Backup storage directory | `./backups` |
+| `BACKUP_KEEP` | Number of backups to retain | `7` |
+
+## Production Database Setup (MySQL)
+
+SQLite is used by default for development. For production, switch to MySQL:
+
+### 1) Install MySQL 8.0+
+
+Ensure the database uses **utf8mb4** charset:
+```sql
+CREATE DATABASE helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### 2) Configure `.env`
+```env
+DB_ENGINE=mysql
+DB_NAME=helpdesk
+DB_USER=helpdesk_user
+DB_PASSWORD=your-secure-password
+DB_HOST=localhost
+DB_PORT=3306
+```
+
+### 3) Run Migrations
+```bash
+python manage.py migrate
+```
+
+> **Note:** The MySQL config includes `CONN_MAX_AGE=600` (10 min persistent connections) and `CONN_HEALTH_CHECKS=True` for optimal performance with Django Channels / Daphne.
+
+## Database Maintenance
+
+### Backup
+```bash
+# Create a backup (SQLite: file copy, MySQL: mysqldump)
+python manage.py backup_db
+
+# Keep 14 backups instead of the default 7
+python manage.py backup_db --keep 14
+
+# Store in a custom directory
+python manage.py backup_db --dir /path/to/backups
+```
+
+### Notification Cleanup
+```bash
+# Delete read notifications >30 days old, all notifications >90 days old
+python manage.py cleanup_notifications
+
+# Preview what would be deleted
+python manage.py cleanup_notifications --dry-run
+
+# Custom retention periods
+python manage.py cleanup_notifications --read-days 14 --all-days 60
+```
+
+### Recommended Scheduled Tasks
+| Task | Schedule | Command |
+|---|---|---|
+| Database backup | Daily at 2:00 AM | `python manage.py backup_db` |
+| Notification cleanup | Daily at 3:00 AM | `python manage.py cleanup_notifications` |
 
 ## Documentation
 - [Gmail Setup](docs/GMAIL_APP_PASSWORD.md)

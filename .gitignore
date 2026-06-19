@@ -7,6 +7,7 @@ __pycache__/
 # Django
 media/
 staticfiles/
+backups/
 
 # Node
 frontend/node_modules/
