@@ -284,7 +284,7 @@ function initChat(ticketId) {
             const container = document.querySelector('.chat-panel');
             if (container) {
                 // Remove the "No messages yet" placeholder if it exists
-                const placeholder = container.querySelector('p[style*="text-align: center"]');
+                const placeholder = container.querySelector('.no-messages-text');
                 if (placeholder) placeholder.remove();
 
                 chatBox = document.createElement('div');
