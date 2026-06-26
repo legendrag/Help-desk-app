@@ -143,12 +143,13 @@
   background: rgba(0, 0, 0, 0.55);
 }
 
-[data-theme="dark"] .close-btn {
-  color: #94a3b8;
+[data-theme="dark"] button.close-btn {
+  background: transparent;
+  color: #f8fafc;
 }
-[data-theme="dark"] .close-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f1f5f9;
+[data-theme="dark"] button.close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 /* ── Panels & Cards ── */
@@ -664,11 +665,12 @@
   color: #cbd5e1;
 }
 [data-theme="dark"] .reply-cancel {
-  background: #475569;
-  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
 }
 [data-theme="dark"] .reply-cancel:hover {
-  background: #64748b;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .chat-no-permission-alert {
@@ -692,10 +694,12 @@
   color: #e2e8f0;
 }
 [data-theme="dark"] .file-preview-remove {
-  color: #94a3b8;
+  background: none;
+  color: #f8fafc;
 }
 [data-theme="dark"] .file-preview-remove:hover {
   color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
 }
 
 /* Drop zone */
@@ -757,20 +761,22 @@
   border-bottom-color: rgba(148, 163, 184, 0.12);
 }
 
-[data-theme="dark"] .modal-close {
-  color: #94a3b8;
+[data-theme="dark"] button.modal-close {
+  background: transparent;
+  color: #f8fafc;
 }
-[data-theme="dark"] .modal-close:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
+[data-theme="dark"] button.modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .modal-header .close-btn {
-  color: #94a3b8;
+  background: transparent;
+  color: #f8fafc;
 }
 [data-theme="dark"] .modal-header .close-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .modal-body p {
@@ -1163,10 +1169,34 @@
 }
 
 [data-theme="dark"] .perm-card h4 {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 [data-theme="dark"] .perm-item {
+  color: #f1f5f9;
+}
+[data-theme="dark"] .perm-item span {
+  color: #f1f5f9;
+}
+[data-theme="dark"] .preset-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(148, 163, 184, 0.2);
   color: #e2e8f0;
+}
+[data-theme="dark"] .preset-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+}
+[data-theme="dark"] .preset-btn.danger-preset {
+  color: #f87171;
+}
+[data-theme="dark"] .preset-btn.danger-preset:hover {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+[data-theme="dark"] .preset-btn.active-preset {
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
 }
 
 /* ── Image Lightbox ── */
@@ -1219,15 +1249,13 @@
 
 /* ── Chat Send Button ── */
 [data-theme="dark"] .chat-send-btn {
-  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
-  box-shadow: 0 2px 10px rgba(129, 140, 248, 0.3);
+  background: #6366f1;
 }
 [data-theme="dark"] .chat-send-btn:hover {
-  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
-  box-shadow: 0 4px 16px rgba(129, 140, 248, 0.4);
+  background: #818cf8;
 }
 [data-theme="dark"] .chat-send-btn:active {
-  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.2);
+  background: #6366f1;
 }
 
 /* ── Image Preview ── */
