@@ -122,17 +122,26 @@
                             <div class="message-menu" id="message-menu-{{ message.id }}">
                                 {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_edit_message and message.sender == user %}
                                 <button type="button" class="message-menu-item"
-                                    onclick="toggleEdit({{ message.id }}); closeMessageMenu({{ message.id }});">Edit</button>
+                                    onclick="toggleEdit({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    Edit
+                                </button>
                                 {% endif %}
                                 {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_delete_message and message.sender == user %}
                                 <form hx-post="{% url 'delete_message' message.id %}" hx-swap="none"
                                     onsubmit="return confirm('Are you sure you want to delete this message?');">
                                     {% csrf_token %}
-                                    <button type="submit" class="message-menu-item danger">Delete</button>
+                                    <button type="submit" class="message-menu-item danger">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
                                 </form>
                                 {% endif %}
                                 <button type="button" class="message-menu-item"
-                                    onclick="toggleMessageDetails({{ message.id }}); closeMessageMenu({{ message.id }});">Details</button>
+                                    onclick="toggleMessageDetails({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    Details
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -142,15 +151,21 @@
                     <span>Time: {{ message.created_at|date:"Y-m-d H:i" }}</span>
                 </div>
 
-                {% if user.is_superuser or user.role.can_edit_message and message.sender == user %}
+                {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_edit_message and message.sender == user %}
                 <form id="msg-edit-{{ message.id }}" hx-post="{% url 'edit_message' message.id %}" hx-swap="none"
                     class="msg-edit-form">
                     {% csrf_token %}
                     <textarea name="message" rows="2"
                         class="chat-textarea-no-resize">{{ message.message }}</textarea>
                     <div class="msg-edit-actions">
-                        <button type="button" class="secondary btn-edit-inline" onclick="toggleEdit({{ message.id }})">Cancel</button>
-                        <button type="submit" class="btn-edit-inline">Save</button>
+                        <button type="button" class="btn-edit-cancel" onclick="toggleEdit({{ message.id }})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn-edit-save">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Save
+                        </button>
                     </div>
                 </form>
                 {% endif %}

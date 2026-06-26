@@ -682,11 +682,40 @@ ul.errorlist li {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
-.btn-edit-inline {
-  padding: 0.3rem 0.7rem;
+.btn-edit-cancel,
+.btn-edit-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
+  font-weight: 600;
   height: auto;
   line-height: 1;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.btn-edit-cancel svg,
+.btn-edit-save svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.btn-edit-cancel {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+.btn-edit-cancel:hover {
+  background: #e2e8f0;
+}
+.btn-edit-save {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-edit-save:hover {
+  background: var(--primary-hover);
 }
 .msg-edit-form {
   display: none;

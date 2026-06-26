@@ -337,12 +337,21 @@ function initChat(ticketId) {
         const canDelete = window.chatPermissions && window.chatPermissions.canDelete;
 
         const menuItems = [
-            canEdit ? `<button type="button" class="message-menu-item" onclick="toggleEdit(${payload.id}); closeMessageMenu(${payload.id});">Edit</button>` : '',
+            canEdit ? `<button type="button" class="message-menu-item" onclick="toggleEdit(${payload.id}); closeMessageMenu(${payload.id});">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Edit
+            </button>` : '',
             canDelete ? `<form action="${getDeleteUrl(payload.id)}" method="post" onsubmit="return confirm('Are you sure you want to delete this message?');">
                 <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
-                <button type="submit" class="message-menu-item danger">Delete</button>
+                <button type="submit" class="message-menu-item danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Delete
+                </button>
             </form>` : '',
-            `<button type="button" class="message-menu-item" onclick="toggleMessageDetails(${payload.id}); closeMessageMenu(${payload.id});">Details</button>`
+            `<button type="button" class="message-menu-item" onclick="toggleMessageDetails(${payload.id}); closeMessageMenu(${payload.id});">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Details
+            </button>`
         ].filter(Boolean).join('');
 
         article.innerHTML = `
@@ -396,12 +405,18 @@ function initChat(ticketId) {
                 <span>Time: ${fullDateStr}</span>
             </div>
             ${canEdit ? `
-            <form id="msg-edit-${payload.id}" action="${getEditUrl(payload.id)}" method="post" style="display: none; margin-top: 0.5rem; width: 100%;">
+            <form id="msg-edit-${payload.id}" action="${getEditUrl(payload.id)}" method="post" class="msg-edit-form" style="display: none;">
                 <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
-                <textarea name="message" rows="2" style="width: 100%; border-radius: 8px; padding: 0.6rem; border: 1px solid var(--border); resize: none; color: black;">${payload.message}</textarea>
-                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
-                    <button type="button" class="secondary" onclick="toggleEdit(${payload.id})" style="padding: 0.3rem 0.7rem; font-size: 0.8rem; height: auto; line-height: 1;">Cancel</button>
-                    <button type="submit" style="padding: 0.3rem 0.7rem; font-size: 0.8rem; height: auto; line-height: 1;">Save</button>
+                <textarea name="message" rows="2" class="chat-textarea-no-resize">${payload.message}</textarea>
+                <div class="msg-edit-actions">
+                    <button type="button" class="btn-edit-cancel" onclick="toggleEdit(${payload.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-edit-save">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Save
+                    </button>
                 </div>
             </form>` : ''}
         `;
