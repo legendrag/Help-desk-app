@@ -492,8 +492,10 @@ from django.core.exceptions import PermissionDenied
 @login_required
 def ticket_category_options(request):
     user = request.user
-    if not (user.is_superuser or (user.role and user.role.can_create_ticket)):
-        raise PermissionDenied("You do not have permission to create tickets.")
+    if not user.is_superuser:
+        if user.user_type == "support":
+            if not (user.role and (user.role.can_create_ticket or user.role.can_edit_ticket)):
+                raise PermissionDenied("You do not have permission to access categories.")
 
     department_id = request.GET.get("department")
     if department_id:

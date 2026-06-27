@@ -56,10 +56,12 @@ class TicketCreateForm(forms.ModelForm):
             self.fields["category"].queryset = qs
             cat_dict = {cat.id: cat.default_priority for cat in qs}
             self.fields["category"].widget = CategorySelect(categories_dict=cat_dict)
+            self.fields["category"].widget.choices = self.fields["category"].choices
         else:
             self.fields["category"].queryset = Category.objects.none()
 
         self.fields["category"].widget.attrs.update({
+            "class": "form-control",
             "onchange": "var p=this.options[this.selectedIndex].getAttribute('data-priority'); if(p) document.getElementById('id_priority').value = p;"
         })
 
