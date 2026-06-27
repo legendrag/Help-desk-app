@@ -1216,10 +1216,12 @@ ul.errorlist li {
 }
 
 /* Inline Style Replacements */
-.password-change-stack {
-  max-width: 450px;
-  margin: 0 auto;
-  padding-bottom: 1rem;
+.field-help ul {
+  padding-left: 1.25rem;
+  margin: 0.4rem 0 0 0;
+}
+.field-help li {
+  margin-bottom: 0.2rem;
 }
 
 .department-group-hidden {

@@ -18,20 +18,28 @@ class UserPasswordChangeView(PasswordChangeView):
     success_url = reverse_lazy("tickets_list")
     
     def form_valid(self, form):
-        messages.success(self.request, "Password changed successfully.")
+        # Save the form which updates the password
+        response = super().form_valid(form)
+        
+        messages.success(self.request, "Password changed successfully. Please log in again with your new password.")
         
         # Clear the requires_password_change flag if it's set
         if getattr(self.request.user, 'requires_password_change', False):
             self.request.user.requires_password_change = False
             self.request.user.save(update_fields=['requires_password_change'])
-        
-        if self.request.headers.get('HX-Request'):
-            from django.http import HttpResponse
-            response = HttpResponse(status=204)
-            response['HX-Trigger'] = 'closeModal'
-            return response
             
-        return super().form_valid(form)
+        # Log the user out for security
+        from django.contrib.auth import logout
+        logout(self.request)
+        
+        if self.request.META.get('HTTP_HX_REQUEST'):
+            from django.http import HttpResponse
+            from django.urls import reverse
+            htmx_response = HttpResponse(status=204)
+            htmx_response['HX-Redirect'] = reverse('login')
+            return htmx_response
+            
+        return response
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):

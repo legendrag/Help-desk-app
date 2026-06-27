@@ -330,6 +330,24 @@ class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         response = super().form_valid(form)
         django_messages.success(self.request, "Ticket updated successfully.")
 
+        if "priority" in form.changed_data:
+            old_priority = form.initial.get("priority")
+            new_priority = form.cleaned_data.get("priority")
+            TicketStatusHistory.objects.create(
+                ticket=self.object,
+                event_type=TicketStatusHistory.EventType.PRIORITY_CHANGED,
+                detail=f"{old_priority} → {new_priority}" if old_priority else f"set to {new_priority}",
+                changed_by=self.request.user,
+            )
+        if "assigned_to" in form.changed_data:
+            new_assignee = form.cleaned_data.get("assigned_to")
+            TicketStatusHistory.objects.create(
+                ticket=self.object,
+                event_type=TicketStatusHistory.EventType.ASSIGNED,
+                detail=new_assignee.username if new_assignee else "Unassigned",
+                changed_by=self.request.user,
+            )
+
         notify_ticket_update(self.object, self.request.user)
 
         if self.request.headers.get('HX-Request'):
@@ -676,6 +694,7 @@ def update_ticket_status(request, ticket_id):
         if new_status in Ticket.Status.values:
             try:
                 if ticket.status != new_status:
+                    old_status = ticket.status
                     if ticket.status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
                         ticket.assigned_to = request.user
                         
@@ -686,11 +705,21 @@ def update_ticket_status(request, ticket_id):
                         ticket.pending_transfer_by = None
                         
                     ticket.save()
-                    TicketStatusHistory.objects.create(
-                        ticket=ticket,
-                        status=new_status,
-                        changed_by=request.user,
-                    )
+                    
+                    if old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
+                        TicketStatusHistory.objects.create(
+                            ticket=ticket,
+                            status=new_status,
+                            event_type=TicketStatusHistory.EventType.REOPENED,
+                            changed_by=request.user,
+                        )
+                    else:
+                        TicketStatusHistory.objects.create(
+                            ticket=ticket,
+                            status=new_status,
+                            event_type=TicketStatusHistory.EventType.STATUS_CHANGE,
+                            changed_by=request.user,
+                        )
                 django_messages.success(request, f"Status updated to {ticket.get_status_display()}.")
                 notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
 
@@ -784,6 +813,13 @@ def transfer_ticket(request, ticket_id):
                         is_system_message=True
                     )
                     
+                    TicketStatusHistory.objects.create(
+                        ticket=ticket,
+                        event_type=TicketStatusHistory.EventType.TRANSFER_REQUESTED,
+                        detail=f"→ {new_assignee.username}",
+                        changed_by=request.user,
+                    )
+                    
                     from notifications.services import notify_transfer_requested
                     notify_transfer_requested(ticket, request.user, new_assignee)
                     
@@ -824,6 +860,13 @@ def accept_transfer(request, ticket_id):
             is_system_message=True
         )
         
+        TicketStatusHistory.objects.create(
+            ticket=ticket,
+            event_type=TicketStatusHistory.EventType.TRANSFER_ACCEPTED,
+            detail=f"from {requester.username}" if requester else "",
+            changed_by=request.user,
+        )
+        
         from notifications.services import notify_transfer_accepted
         if requester:
             notify_transfer_accepted(ticket, request.user, requester)
@@ -861,6 +904,13 @@ def deny_transfer(request, ticket_id):
             is_system_message=True
         )
         
+        TicketStatusHistory.objects.create(
+            ticket=ticket,
+            event_type=TicketStatusHistory.EventType.TRANSFER_DENIED,
+            detail=f"from {requester.username}" if requester else "",
+            changed_by=request.user,
+        )
+        
         from notifications.services import notify_transfer_denied
         if requester:
             notify_transfer_denied(ticket, request.user, requester)
@@ -892,6 +942,13 @@ def cancel_transfer(request, ticket_id):
             sender=request.user,
             message=f"Canceled ticket transfer to {target.username if target else 'unknown'}",
             is_system_message=True
+        )
+        
+        TicketStatusHistory.objects.create(
+            ticket=ticket,
+            event_type=TicketStatusHistory.EventType.TRANSFER_CANCELLED,
+            detail=f"to {target.username}" if target else "",
+            changed_by=request.user,
         )
         
         django_messages.success(request, "Ticket transfer canceled.")

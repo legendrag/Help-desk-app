@@ -96,4 +96,11 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
         primary_ticket.priority = highest_priority
         primary_ticket.save()
 
+    TicketStatusHistory.objects.create(
+        ticket=primary_ticket,
+        event_type=TicketStatusHistory.EventType.MERGED,
+        detail=f"absorbed #{st.ticket_number}",
+        changed_by=user,
+    )
+
     return primary_ticket

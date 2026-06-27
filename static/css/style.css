@@ -605,25 +605,25 @@ textarea:hover:not(:disabled) {
   right: 0.6rem;
   top: 50%;
   transform: translateY(-50%) !important;
-  background: #f1f5f9;
-  border: 1px solid var(--border);
-  color: #475569;
-  padding: 0.35rem;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.2rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 2;
   box-shadow: none !important;
-  transition: background-color 0.2s, color 0.2s;
+  transition: color 0.2s, background-color 0.2s;
 }
 
 .password-toggle:hover {
   color: var(--text-main);
-  background: #e2e8f0;
+  background: var(--surface-hover);
   box-shadow: none !important;
   transform: translateY(-50%) !important;
 }
@@ -2240,9 +2240,10 @@ button.success:hover,
 
 .timeline-item {
   display: grid;
-  grid-template-columns: 18px 1fr;
+  grid-template-columns: 12px 1fr;
   gap: 0.75rem;
   align-items: start;
+  width: 100%;
 }
 
 .timeline-dot {
@@ -2267,6 +2268,62 @@ button.success:hover,
 
 .timeline-dot.status-closed {
   background: #94a3b8;
+}
+
+.timeline-dot.event-transfer_requested,
+.timeline-dot.event-transfer_accepted,
+.timeline-dot.event-transfer_denied,
+.timeline-dot.event-transfer_cancelled {
+  background: #8b5cf6;
+}
+
+.timeline-dot.event-merged {
+  background: #6366f1;
+}
+
+.timeline-dot.event-priority_changed {
+  background: #ef4444;
+}
+
+.timeline-dot.event-assigned {
+  background: #0ea5e9;
+}
+
+.timeline-dot.event-reopened {
+  background: #14b8a6;
+}
+
+.event-badge-transfer_requested,
+.event-badge-transfer_accepted,
+.event-badge-transfer_denied,
+.event-badge-transfer_cancelled {
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c3aed;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.event-badge-merged {
+  background: rgba(99, 102, 241, 0.15);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.event-badge-priority_changed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.event-badge-assigned {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0284c7;
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.event-badge-reopened {
+  background: rgba(20, 184, 166, 0.15);
+  color: #0d9488;
+  border-color: rgba(20, 184, 166, 0.3);
 }
 
 .timeline-content {
@@ -2618,8 +2675,8 @@ button.success:hover,
 }
 
 .password-toggle svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .priority-text.priority-low {
@@ -2995,8 +3052,9 @@ body.ticket-detail-page {
 
 
 
-/* Dashboard Fixed Topbar */
-body.dashboard-page .topbar {
+/* Dashboard and Settings Fixed Topbar */
+body.dashboard-page .topbar,
+body.settings-page .topbar {
   position: fixed;
   top: 0;
   left: 0;
@@ -3004,18 +3062,21 @@ body.dashboard-page .topbar {
   z-index: 300;
 }
 
-body.dashboard-page .content {
+body.dashboard-page .content,
+body.settings-page .content {
   padding-top: calc(2rem + 72px);
 }
 
 @media (max-width: 1200px) {
-  body.dashboard-page .content {
+  body.dashboard-page .content,
+  body.settings-page .content {
     padding-top: calc(1.5rem + 72px);
   }
 }
 
 @media (max-width: 900px) {
-  body.dashboard-page .content {
+  body.dashboard-page .content,
+  body.settings-page .content {
     padding-top: calc(1.1rem + 72px);
   }
 }

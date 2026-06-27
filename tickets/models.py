@@ -167,8 +167,25 @@ class Ticket(models.Model):
 
 
 class TicketStatusHistory(models.Model):
+    class EventType(models.TextChoices):
+        STATUS_CHANGE = "status_change", "Status Change"
+        TRANSFER_REQUESTED = "transfer_requested", "Transfer Requested"
+        TRANSFER_ACCEPTED = "transfer_accepted", "Transfer Accepted"
+        TRANSFER_DENIED = "transfer_denied", "Transfer Denied"
+        TRANSFER_CANCELLED = "transfer_cancelled", "Transfer Cancelled"
+        MERGED = "merged", "Ticket Merged"
+        PRIORITY_CHANGED = "priority_changed", "Priority Changed"
+        ASSIGNED = "assigned", "Assigned"
+        REOPENED = "reopened", "Reopened"
+
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="status_history")
-    status = models.CharField(max_length=30, choices=Ticket.Status.choices)
+    status = models.CharField(max_length=30, choices=Ticket.Status.choices, blank=True, default="")
+    event_type = models.CharField(
+        max_length=30,
+        choices=EventType.choices,
+        default=EventType.STATUS_CHANGE,
+    )
+    detail = models.CharField(max_length=255, blank=True, default="")
     changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
 

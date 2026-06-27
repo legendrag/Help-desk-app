@@ -423,13 +423,18 @@
             <div class="timeline-list timeline-list-scrollable">
                 {% for item in ticket.status_history.all %}
                 <div class="timeline-item">
-                    <span class="timeline-dot status-{{ item.status }}"></span>
+                    <span class="timeline-dot event-{{ item.event_type }} {% if item.event_type == 'status_change' %}status-{{ item.status }}{% endif %}">
+                    </span>
                     <div class="timeline-content">
                         <div class="timeline-header">
+                            {% if item.event_type == 'status_change' %}
                             <span class="badge badge-{{ item.status }} timeline-badge-text">{{ item.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge event-badge event-badge-{{ item.event_type }} timeline-badge-text">{{ item.get_event_type_display }}</span>
+                            {% endif %}
                             <span class="timeline-time timeline-time-text">{{ item.created_at|date:"Y-m-d H:i" }}</span>
                         </div>
-                        <p class="timeline-by-text">By {{ item.changed_by.username }}</p>
+                        <p class="timeline-by-text">By {{ item.changed_by.username }} {% if item.detail %}<span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
                     </div>
                 </div>
                 {% empty %}
