@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse_lazy
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from core.models import Branch, Category, Department
@@ -223,6 +223,48 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         else:
             drill_up_view = "week"
 
+        # Performance Leaderboard
+        agent_performance = []
+        if user.is_superuser or (user.role and getattr(user.role, 'can_view_leaderboard', False)):
+            resolved_tickets = filtered_queryset.filter(status=Ticket.Status.CLOSED, assigned_to__isnull=False)
+            
+            performance_qs = resolved_tickets.values(
+                'assigned_to__username', 'assigned_to__first_name', 'assigned_to__last_name'
+            ).annotate(
+                tickets_resolved=Count('id'),
+                avg_response_time=Avg(
+                    ExpressionWrapper(F('picked_at') - F('created_at'), output_field=fields.DurationField())
+                ),
+                avg_resolution_time=Avg(
+                    ExpressionWrapper(F('closed_at') - F('created_at'), output_field=fields.DurationField())
+                )
+            ).order_by('-tickets_resolved')[:10]
+            
+            def format_duration(duration):
+                if not duration:
+                    return "--"
+                total_seconds = int(duration.total_seconds())
+                if total_seconds < 0:
+                    total_seconds = 0
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                if hours > 24:
+                    days, hours = divmod(hours, 24)
+                    return f"{days}d {hours}h {minutes}m"
+                return f"{hours}h {minutes}m"
+
+            for agent in performance_qs:
+                name = f"{agent['assigned_to__first_name']} {agent['assigned_to__last_name']}".strip() or agent['assigned_to__username']
+                agent_performance.append({
+                    "name": name,
+                    "tickets_resolved": agent['tickets_resolved'],
+                    "avg_response_time": format_duration(agent['avg_response_time']),
+                    "avg_resolution_time": format_duration(agent['avg_resolution_time']),
+                })
+
+        # Recent Activity Feed
+        recent_activity = base_queryset.order_by('-updated_at')[:5]
+
         context.update(
             {
                 "filter_values": filters,
@@ -241,10 +283,76 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 "date_view": filters["date_view"],
                 "drill_down_query": build_query(drill_down_view) if drill_down_view else "",
                 "drill_up_query": build_query(drill_up_view) if drill_up_view else "",
+                "agent_performance": agent_performance,
+                "recent_activity": recent_activity,
             }
         )
 
         return context
+
+import csv
+from django.utils import timezone
+
+class ExportDashboardCSVView(DashboardView):
+    """Reuses DashboardView logic but returns a CSV instead of HTML."""
+    def get(self, request, *args, **kwargs):
+        # We call get_queryset to apply the base filtering by user role
+        self.object_list = self.get_queryset()
+        
+        # Then we manually apply the date/department/branch filters like in get_context_data
+        def parse_date(value):
+            if not value: return None
+            try: return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError: return None
+            
+        filters = {
+            "start_date": self.request.GET.get("start_date", ""),
+            "end_date": self.request.GET.get("end_date", ""),
+            "department": self.request.GET.get("department", "all"),
+            "branch": self.request.GET.get("branch", "all"),
+            "assigned_to": self.request.GET.get("assigned_to", "all"),
+        }
+        
+        qs = self.object_list
+        start_date = parse_date(filters["start_date"])
+        end_date = parse_date(filters["end_date"])
+
+        if start_date:
+            qs = qs.filter(created_at__date__gte=start_date)
+        if end_date:
+            qs = qs.filter(created_at__date__lte=end_date)
+        if filters["department"] and filters["department"] != "all":
+            qs = qs.filter(department_id=filters["department"])
+        if filters["branch"] and filters["branch"] != "all":
+            qs = qs.filter(branch_id=filters["branch"])
+        if filters["assigned_to"] and filters["assigned_to"] != "all":
+            if filters["assigned_to"] == "unassigned":
+                qs = qs.filter(assigned_to__isnull=True)
+            else:
+                qs = qs.filter(assigned_to_id=filters["assigned_to"])
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="dashboard_export_{timezone.now().strftime("%Y%m%d%H%M")}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Ticket Number', 'Title', 'Branch', 'Department', 'Category', 'Status', 'Priority', 'Created By', 'Assigned To', 'Created At', 'Closed At'])
+        
+        for ticket in qs:
+            writer.writerow([
+                ticket.ticket_number,
+                ticket.title,
+                ticket.branch.name if ticket.branch else '',
+                ticket.department.name if ticket.department else '',
+                ticket.category.name if ticket.category else '',
+                ticket.get_status_display(),
+                ticket.get_priority_display(),
+                ticket.created_by.username if ticket.created_by else '',
+                ticket.assigned_to.username if ticket.assigned_to else 'Unassigned',
+                ticket.created_at.strftime("%Y-%m-%d %H:%M") if ticket.created_at else '',
+                ticket.closed_at.strftime("%Y-%m-%d %H:%M") if ticket.closed_at else ''
+            ])
+            
+        return response
 
 class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Ticket

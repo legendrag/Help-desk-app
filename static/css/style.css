@@ -31,7 +31,6 @@ body {
   background-color: var(--bg);
   color: var(--text-main);
   min-height: 100vh;
-  overflow-y: scroll;
   position: relative;
 }
 
@@ -55,8 +54,8 @@ body::before {
 
 /* Layout */
 .app-shell {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
@@ -68,9 +67,9 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: relative;
-  /* Scrolls away as requested */
-  z-index: 100;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
@@ -105,6 +104,7 @@ body::before {
   background: transparent;
   color: white;
   padding: 0.5rem;
+  border: 1px solid transparent;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -277,9 +277,10 @@ body::before {
 
 .notification-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: white;
   padding: 0.5rem;
+  border-radius: 8px;
   font-size: 1.5rem;
   cursor: pointer;
   position: relative;
@@ -288,6 +289,7 @@ body::before {
 
 .notification-btn:hover {
   transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .notification-badge {
@@ -464,6 +466,7 @@ body::before {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
   min-width: 0;
 }
 
@@ -2833,7 +2836,7 @@ html {
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .ticket-detail-page .content {

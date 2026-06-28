@@ -67,6 +67,7 @@ class Role(TimeStampedModel):
     can_edit_message = models.BooleanField(default=False, verbose_name="Edit Message")
     can_delete_message = models.BooleanField(default=False, verbose_name="Delete Message")
     can_access_dashboard = models.BooleanField(default=False, verbose_name="Access Dashboard")
+    can_view_leaderboard = models.BooleanField(default=False, verbose_name="View Agent Leaderboard")
     can_access_settings = models.BooleanField(default=False, verbose_name="Access Settings")
     
     # Granular Settings Permissions (Users)

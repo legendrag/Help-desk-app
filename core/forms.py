@@ -80,6 +80,7 @@ class RoleForm(forms.ModelForm):
             'can_edit_message': forms.CheckboxInput(),
             'can_delete_message': forms.CheckboxInput(),
             'can_access_dashboard': forms.CheckboxInput(),
+            'can_view_leaderboard': forms.CheckboxInput(),
             'can_access_settings': forms.CheckboxInput(),
             'can_create_user': forms.CheckboxInput(),
             'can_update_user': forms.CheckboxInput(),
@@ -106,7 +107,7 @@ class RoleForm(forms.ModelForm):
             # Ticket Permissions
             'can_create_ticket', 'can_update_ticket', 'can_pick_ticket', 'can_update_status', 
             'can_update_closed_ticket', 'can_send_message', 'can_edit_message', 
-            'can_delete_message', 'can_access_dashboard', 'can_access_settings',
+            'can_delete_message', 'can_access_dashboard', 'can_view_leaderboard', 'can_access_settings',
             'can_manage_news',
 
             # Settings Permissions (Users)
