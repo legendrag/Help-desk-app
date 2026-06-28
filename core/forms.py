@@ -97,6 +97,7 @@ class RoleForm(forms.ModelForm):
             'can_update_role': forms.CheckboxInput(),
             'can_delete_role': forms.CheckboxInput(),
             'can_manage_email': forms.CheckboxInput(),
+            'can_manage_news': forms.CheckboxInput(),
         }
         model = Role
         fields = [
@@ -106,6 +107,7 @@ class RoleForm(forms.ModelForm):
             'can_create_ticket', 'can_update_ticket', 'can_pick_ticket', 'can_update_status', 
             'can_update_closed_ticket', 'can_send_message', 'can_edit_message', 
             'can_delete_message', 'can_access_dashboard', 'can_access_settings',
+            'can_manage_news',
 
             # Settings Permissions (Users)
             'can_create_user', 'can_update_user', 'can_delete_user',

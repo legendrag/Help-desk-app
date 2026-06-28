@@ -27,7 +27,13 @@
             </thead>
             <tbody>
                 {% for item in object_list %}
-                <tr class="mgmt-tr">
+                <tr class="mgmt-tr {% if can_edit %}clickable-row{% endif %}"
+                    {% if can_edit %}
+                    hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" 
+                    hx-target="#modal-content" 
+                    hx-trigger="click" 
+                    onclick="openModal()"
+                    {% endif %}>
                     <td data-label="SMTP Host" class="mgmt-td--bold">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
                     <td data-label="From Email" class="mgmt-td--muted">{{ item.from_email }}</td>
                     <td data-label="Encryption" class="mgmt-td">
@@ -41,12 +47,12 @@
                     <td data-label="Actions" class="mgmt-td--right">
                         <div class="mgmt-actions-cell">
                             {% if can_edit %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal()" class="secondary small mgmt-edit-btn" title="Edit">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="secondary small mgmt-edit-btn" title="Edit">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             {% endif %}
                             {% if can_delete %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal()" class="danger small mgmt-delete-btn" title="Delete">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="danger small mgmt-delete-btn" title="Delete">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                             {% endif %}

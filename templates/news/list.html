@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}News & Announcements - Help Desk{% endblock title %}
+
+{% block content %}
+<div class="tickets-page">
+    <div class="panel tickets-panel">
+        <div class="tickets-toolbar">
+            <div class="tickets-title">
+                <h2>News & Announcements</h2>
+                <button type="button"
+                        hx-get="{% url 'news_create' %}"
+                        hx-target="#modal-content"
+                        hx-trigger="click"
+                        onclick="openModal()"
+                        class="tickets-new-btn">+ New Announcement</button>
+            </div>
+        </div>
+
+        <div class="table-wrap tickets-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Target</th>
+                        <th>Expires</th>
+                        <th>Created By</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="news-list-body">
+                    {% for announcement in announcements %}
+                    <tr class="clickable-row" data-href="#" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal()">
+                        <td><strong>{{ announcement.title }}</strong></td>
+                        <td>
+                            {% if announcement.is_active %}
+                            <span class="badge badge-open">Active</span>
+                            {% else %}
+                            <span class="badge badge-closed">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if announcement.target_branch %}
+                                Branch: {{ announcement.target_branch.name }}
+                            {% elif announcement.target_department %}
+                                Dept: {{ announcement.target_department.name }}
+                            {% else %}
+                                All
+                            {% endif %}
+                        </td>
+                        <td class="muted">{{ announcement.expires_at|date:"Y-m-d H:i"|default:"Never" }}</td>
+                        <td>{{ announcement.created_by.username }}</td>
+                        <td class="muted">{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="action-cell">
+                            <button type="button" class="btn secondary btn--sm" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal(); event.stopPropagation();">Edit</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center" style="padding: 2rem; text-align: center; color: var(--text-muted);">No announcements found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock content %}

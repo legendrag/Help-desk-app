@@ -543,9 +543,11 @@
     function toggleEdit(id) {
         const displayDiv = document.getElementById('msg-display-' + id);
         const editForm = document.getElementById('msg-edit-' + id);
+        const detailsPanel = document.getElementById('message-details-' + id);
         if (editForm.style.display === 'none' || editForm.style.display === '') {
             editForm.style.display = 'block';
             displayDiv.style.display = 'none';
+            if (detailsPanel) detailsPanel.classList.remove('open');
         } else {
             editForm.style.display = 'none';
             displayDiv.style.display = 'block';

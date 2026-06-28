@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 
@@ -11,6 +11,7 @@ urlpatterns = [
     path("core/", include("core.urls")),
     path("tickets/", include("tickets.urls")),
     path("notifications/", include("notifications.urls")),
+    path("news/", include("news.urls")),
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]
 

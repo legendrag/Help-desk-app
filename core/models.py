@@ -97,6 +97,9 @@ class Role(TimeStampedModel):
     # Granular Settings Permissions (Email)
     can_manage_email = models.BooleanField(default=False, verbose_name="Manage Email Settings")
     
+    # News Permissions
+    can_manage_news = models.BooleanField(default=False, verbose_name="Manage News")
+    
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

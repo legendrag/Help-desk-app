@@ -106,6 +106,9 @@
             </div>
             <nav class="sidebar-nav">
                 <a href="{% url 'tickets_list' %}">Tickets</a>
+                {% if user.is_superuser or user.role.can_manage_news %}
+                <a href="{% url 'news_list' %}">News</a>
+                {% endif %}
                 {% if user.is_superuser or user.role.can_access_dashboard %}
                 <a href="{% url 'dashboard' %}">Dashboard</a>
                 {% endif %}

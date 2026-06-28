@@ -448,6 +448,26 @@ class TicketListView(LoginRequiredMixin, ListView):
         params.pop("page", None)
         context["filters_query"] = params.urlencode()
 
+        from news.models import Announcement
+        from django.utils import timezone
+        
+        now = timezone.now()
+        announcements = Announcement.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
+        
+        if not user.is_superuser:
+            if user.user_type == "branch":
+                announcements = announcements.filter(
+                    Q(target_branch__isnull=True) | Q(target_branch=user.branch)
+                ).filter(target_department__isnull=True)
+            elif user.user_type == "support":
+                announcements = announcements.filter(
+                    Q(target_department__isnull=True) | Q(target_department=user.department)
+                ).filter(target_branch__isnull=True)
+                
+        context["active_announcements"] = announcements.order_by('-created_at')
+
         return context
 
 class TicketDetailView(LoginRequiredMixin, DetailView):

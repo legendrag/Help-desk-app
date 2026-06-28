@@ -108,10 +108,7 @@
 }
 
 [data-theme="dark"] .sidebar-header .brand {
-  background: linear-gradient(to right, #e2e8f0, #94a3b8);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #e2e8f0;
 }
 
 [data-theme="dark"] .sidebar-nav a {
