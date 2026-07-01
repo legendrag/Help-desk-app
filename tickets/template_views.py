@@ -135,12 +135,16 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         ]
 
         category_items = list(
-            filtered_queryset.values("category__name")
+            filtered_queryset.values("category__name", "category__department__name")
             .annotate(count=Count("id"))
             .order_by("-count", "category__name")
         )
         category_items = [
-            {"label": item["category__name"], "count": item["count"]} for item in category_items
+            {
+                "label": item["category__name"], 
+                "department": item["category__department__name"],
+                "count": item["count"]
+            } for item in category_items
         ]
 
         branch_items = list(
@@ -253,14 +257,48 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                     return f"{days}d {hours}h {minutes}m"
                 return f"{hours}h {minutes}m"
 
+            TARGET_VOLUME = 30 # Loosened volume baseline
+            MAX_HOURS = 40 # Loosened worst acceptable avg resolution time
+
             for agent in performance_qs:
                 name = f"{agent['assigned_to__first_name']} {agent['assigned_to__last_name']}".strip() or agent['assigned_to__username']
+                
+                resolved = agent['tickets_resolved']
+                res_time = agent['avg_resolution_time']
+                
+                vol_score = min(100, (resolved / TARGET_VOLUME) * 100) if TARGET_VOLUME else 0
+                
+                if res_time:
+                    res_hours = res_time.total_seconds() / 3600
+                    speed_score = max(0, 100 - ((res_hours / MAX_HOURS) * 100))
+                else:
+                    speed_score = 100
+                    
+                final_score = round((speed_score * 0.8) + (vol_score * 0.2))
+                
+                if final_score >= 85:
+                    grade, color = 'A', 'success'
+                elif final_score >= 70:
+                    grade, color = 'B', 'primary'
+                elif final_score >= 55:
+                    grade, color = 'C', 'warning'
+                elif final_score >= 40:
+                    grade, color = 'D', 'warning'
+                else:
+                    grade, color = 'F', 'danger'
+
                 agent_performance.append({
                     "name": name,
-                    "tickets_resolved": agent['tickets_resolved'],
+                    "tickets_resolved": resolved,
                     "avg_response_time": format_duration(agent['avg_response_time']),
-                    "avg_resolution_time": format_duration(agent['avg_resolution_time']),
+                    "avg_resolution_time": format_duration(res_time),
+                    "score": final_score,
+                    "grade": grade,
+                    "grade_color": color
                 })
+            
+            # Sort by highest score first
+            agent_performance.sort(key=lambda x: x['score'], reverse=True)
 
         # Recent Activity Feed
         recent_activity = base_queryset.order_by('-updated_at')[:5]
@@ -290,16 +328,15 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
         return context
 
-import csv
+import openpyxl
 from django.utils import timezone
+from openpyxl.styles import Font, Alignment
 
-class ExportDashboardCSVView(DashboardView):
-    """Reuses DashboardView logic but returns a CSV instead of HTML."""
+class ExportDashboardExcelView(DashboardView):
+    """Reuses DashboardView logic to build an Excel workbook with multiple sheets."""
     def get(self, request, *args, **kwargs):
-        # We call get_queryset to apply the base filtering by user role
         self.object_list = self.get_queryset()
         
-        # Then we manually apply the date/department/branch filters like in get_context_data
         def parse_date(value):
             if not value: return None
             try: return datetime.strptime(value, "%Y-%m-%d").date()
@@ -311,6 +348,7 @@ class ExportDashboardCSVView(DashboardView):
             "department": self.request.GET.get("department", "all"),
             "branch": self.request.GET.get("branch", "all"),
             "assigned_to": self.request.GET.get("assigned_to", "all"),
+            "date_view": self.request.GET.get("date_view", "month")
         }
         
         qs = self.object_list
@@ -331,27 +369,84 @@ class ExportDashboardCSVView(DashboardView):
             else:
                 qs = qs.filter(assigned_to_id=filters["assigned_to"])
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="dashboard_export_{timezone.now().strftime("%Y%m%d%H%M")}.csv"'
+        context = self.get_context_data(object_list=self.object_list)
         
-        writer = csv.writer(response)
-        writer.writerow(['Ticket Number', 'Title', 'Branch', 'Department', 'Category', 'Status', 'Priority', 'Created By', 'Assigned To', 'Created At', 'Closed At'])
+        wb = openpyxl.Workbook()
         
-        for ticket in qs:
-            writer.writerow([
-                ticket.ticket_number,
-                ticket.title,
-                ticket.branch.name if ticket.branch else '',
-                ticket.department.name if ticket.department else '',
-                ticket.category.name if ticket.category else '',
-                ticket.get_status_display(),
-                ticket.get_priority_display(),
-                ticket.created_by.username if ticket.created_by else '',
-                ticket.assigned_to.username if ticket.assigned_to else 'Unassigned',
-                ticket.created_at.strftime("%Y-%m-%d %H:%M") if ticket.created_at else '',
-                ticket.closed_at.strftime("%Y-%m-%d %H:%M") if ticket.closed_at else ''
-            ])
-            
+        # Helper for headers
+        def make_header(ws, row, headers):
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=row, column=col_num)
+                cell.value = header
+                cell.font = Font(bold=True)
+                cell.alignment = Alignment(horizontal="center")
+
+        # Sheet 1: Tickets
+        ws_tickets = wb.active
+        ws_tickets.title = "Tickets"
+        make_header(ws_tickets, 1, ['Ticket Number', 'Title', 'Branch', 'Department', 'Category', 'Status', 'Priority', 'Created By', 'Assigned To', 'Created At', 'Closed At'])
+        
+        for row, ticket in enumerate(qs, 2):
+            ws_tickets.cell(row=row, column=1, value=ticket.ticket_number)
+            ws_tickets.cell(row=row, column=2, value=ticket.title)
+            ws_tickets.cell(row=row, column=3, value=ticket.branch.name if ticket.branch else '')
+            ws_tickets.cell(row=row, column=4, value=ticket.department.name if ticket.department else '')
+            ws_tickets.cell(row=row, column=5, value=ticket.category.name if ticket.category else '')
+            ws_tickets.cell(row=row, column=6, value=ticket.get_status_display())
+            ws_tickets.cell(row=row, column=7, value=ticket.get_priority_display())
+            ws_tickets.cell(row=row, column=8, value=ticket.created_by.username if ticket.created_by else '')
+            ws_tickets.cell(row=row, column=9, value=ticket.assigned_to.username if ticket.assigned_to else 'Unassigned')
+            ws_tickets.cell(row=row, column=10, value=ticket.created_at.strftime("%Y-%m-%d %H:%M") if ticket.created_at else '')
+            ws_tickets.cell(row=row, column=11, value=ticket.closed_at.strftime("%Y-%m-%d %H:%M") if ticket.closed_at else '')
+
+        # Sheet 2: Agent Performance
+        ws_perf = wb.create_sheet(title="Agent Performance")
+        make_header(ws_perf, 1, ['Agent', 'Resolved', 'Avg Response Time', 'Avg Resolution Time', 'Score', 'Grade'])
+        for row, agent in enumerate(context.get('agent_performance', []), 2):
+            ws_perf.cell(row=row, column=1, value=agent['name'])
+            ws_perf.cell(row=row, column=2, value=agent['tickets_resolved'])
+            ws_perf.cell(row=row, column=3, value=agent['avg_response_time'])
+            ws_perf.cell(row=row, column=4, value=agent['avg_resolution_time'])
+            ws_perf.cell(row=row, column=5, value=agent['score'])
+            ws_perf.cell(row=row, column=6, value=agent['grade'])
+
+        # Sheet 3: Status Summary
+        ws_status = wb.create_sheet(title="Status Summary")
+        make_header(ws_status, 1, ['Status', 'Count', 'Percentage'])
+        for row, stat in enumerate(context.get('status_summary', []), 2):
+            ws_status.cell(row=row, column=1, value=stat['label'])
+            ws_status.cell(row=row, column=2, value=stat['count'])
+            ws_status.cell(row=row, column=3, value=f"{stat.get('percent', 0)}%")
+
+        # Sheet 4: Departments
+        ws_dept = wb.create_sheet(title="Departments")
+        make_header(ws_dept, 1, ['Department', 'Count', 'Percentage'])
+        for row, dpt in enumerate(context.get('tickets_by_department', []), 2):
+            ws_dept.cell(row=row, column=1, value=dpt['label'])
+            ws_dept.cell(row=row, column=2, value=dpt['count'])
+            ws_dept.cell(row=row, column=3, value=f"{dpt.get('percent', 0)}%")
+
+        # Sheet 5: Categories
+        ws_cat = wb.create_sheet(title="Categories")
+        make_header(ws_cat, 1, ['Category', 'Department', 'Count', 'Percentage'])
+        for row, cat in enumerate(context.get('tickets_by_category', []), 2):
+            ws_cat.cell(row=row, column=1, value=cat['label'])
+            ws_cat.cell(row=row, column=2, value=cat.get('department', ''))
+            ws_cat.cell(row=row, column=3, value=cat['count'])
+            ws_cat.cell(row=row, column=4, value=f"{cat.get('percent', 0)}%")
+
+        # Sheet 6: Branches
+        ws_branch = wb.create_sheet(title="Branches")
+        make_header(ws_branch, 1, ['Branch', 'Count', 'Percentage'])
+        for row, brn in enumerate(context.get('tickets_by_branch', []), 2):
+            ws_branch.cell(row=row, column=1, value=brn['label'])
+            ws_branch.cell(row=row, column=2, value=brn['count'])
+            ws_branch.cell(row=row, column=3, value=f"{brn.get('percent', 0)}%")
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="dashboard_export_{timezone.now().strftime("%Y%m%d%H%M")}.xlsx"'
+        wb.save(response)
+        
         return response
 
 class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):

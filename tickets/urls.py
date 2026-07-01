@@ -5,7 +5,7 @@ from .template_views import (
     TicketCreateView,
     TicketUpdateView,
     DashboardView,
-    ExportDashboardCSVView,
+    ExportDashboardExcelView,
     SettingsView,
     post_message,
     update_ticket_status,
@@ -25,7 +25,7 @@ from .template_views import (
 urlpatterns = [
     path("", TicketListView.as_view(), name="tickets_list"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
-    path("dashboard/export/", ExportDashboardCSVView.as_view(), name="dashboard_export"),
+    path("dashboard/export/", ExportDashboardExcelView.as_view(), name="dashboard_export"),
     path("settings/", SettingsView.as_view(), name="settings"),
     path("create/", TicketCreateView.as_view(), name="ticket_create"),
     path("<int:ticket_id>/edit/", TicketUpdateView.as_view(), name="ticket_update"),

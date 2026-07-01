@@ -4,7 +4,7 @@
     <div class="panel announcement-card" id="announcement-{{ announcement.id }}" data-announcement-id="{{ announcement.id }}">
         <div class="announcement-header">
             <div class="announcement-title-group">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="announcement-icon" style="color: var(--primary);"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="announcement-icon" style="color: var(--primary);"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
                 <h3 class="announcement-title" style="margin: 0; font-size: 1.1rem; color: var(--text-main);">{{ announcement.title }}</h3>
             </div>
             <button type="button" class="announcement-dismiss" onclick="dismissAnnouncement('{{ announcement.id }}')" aria-label="Dismiss" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s;">
