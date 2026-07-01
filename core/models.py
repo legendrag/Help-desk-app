@@ -101,6 +101,10 @@ class Role(TimeStampedModel):
     # News Permissions
     can_manage_news = models.BooleanField(default=False, verbose_name="Manage News")
     
+    # Knowledge Base Permissions
+    can_access_kb = models.BooleanField(default=False, verbose_name="Access Knowledge Base")
+    can_manage_kb = models.BooleanField(default=False, verbose_name="Manage Knowledge Base")
+    
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

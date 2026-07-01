@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Base | Help Desk{% endblock %}
+
+{% block content %}
+<div class="tickets-page">
+    <div class="panel tickets-panel" style="margin-bottom: 2rem;">
+        <div class="tickets-toolbar">
+            <div class="tickets-title">
+                <h2>Knowledge Base</h2>
+                {% if user.is_superuser or user.role.can_manage_kb %}
+                <a href="{% url 'kb_create' %}" class="button tickets-new-btn">+ New Article</a>
+                {% endif %}
+            </div>
+
+            <form class="tickets-filters" method="get" autocomplete="off" action="{% url 'kb_list' %}">
+                <div class="search-field">
+                    <span class="search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="text" name="q" id="search-q" class="search-input" placeholder="Search title or content..." value="{{ search_query }}">
+                </div>
+                <div class="filter-row">
+                    {% if can_manage_kb %}
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="published" {% if current_status == 'published' %}selected{% endif %}>Published</option>
+                        <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Drafts ({{ draft_count|default:"0" }})</option>
+                    </select>
+                    {% endif %}
+                    <select name="category" onchange="this.form.submit()">
+                        <option value="all">All Categories</option>
+                        {% for c in categories %}
+                        <option value="{{ c.id }}" {% if current_category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <a href="{% url 'kb_list' %}" class="btn secondary" style="padding: 0.4rem 0.8rem;">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="kb-grid">
+        {% for article in articles %}
+        <div class="panel kb-article-card" {% if not article.is_published %}style="opacity: 0.8; border-style: dashed;"{% endif %}>
+            <div class="article-category">
+                {{ article.category.name|default:"Uncategorized" }}
+                {% if not article.is_published %}
+                <span class="pill" style="margin-left: 0.5rem; background: var(--bg-hover); border: 1px solid var(--border);">Draft</span>
+                {% endif %}
+            </div>
+            <h3>
+                <a href="{% url 'kb_detail' article.id %}">{{ article.title }}</a>
+            </h3>
+            <p class="article-snippet">
+                {{ article.content|striptags|truncatewords:20 }}
+            </p>
+            <div class="article-meta">
+                <span>By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+                <span>{{ article.created_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+        {% empty %}
+        <div class="panel kb-empty-state">
+            <p>No articles found.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock content %}

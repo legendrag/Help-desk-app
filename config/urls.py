@@ -12,6 +12,7 @@ urlpatterns = [
     path("tickets/", include("tickets.urls")),
     path("notifications/", include("notifications.urls")),
     path("news/", include("news.urls")),
+    path("kb/", include("kb.urls")),
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]
 

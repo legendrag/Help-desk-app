@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} | Knowledge Base{% endblock %}
+
+{% block content %}
+<div class="tickets-page">
+    <div class="tickets-toolbar" style="margin-bottom: 1.5rem; align-items: center;">
+        <div class="tickets-title" style="display: flex; align-items: center; gap: 1rem;">
+            <a href="{% url 'kb_list' %}" class="btn secondary ticket-back-btn">← Back</a>
+            <h2 style="margin: 0; font-size: 1.5rem;">
+                {{ article.title }}
+                {% if not article.is_published %}
+                <span class="pill" style="margin-left: 0.5rem; background: var(--bg-hover); border: 1px solid var(--border); vertical-align: middle; font-size: 0.8rem;">Draft</span>
+                {% endif %}
+            </h2>
+        </div>
+        
+        {% if user.is_superuser or user.role.can_manage_kb %}
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{% url 'kb_update' article.id %}" class="btn secondary">Edit</a>
+            <form action="{% url 'kb_delete' article.id %}" method="post" onsubmit="return confirm('Delete this article?');">
+                {% csrf_token %}
+                <button type="submit" class="btn danger">Delete</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+<div class="panel kb-detail-panel">
+    <div class="kb-detail-meta">
+        <span><strong>Category:</strong> {{ article.category.name|default:"Uncategorized" }}</span>
+        <span>•</span>
+        <span><strong>Author:</strong> {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+        <span>•</span>
+        <span><strong>Posted:</strong> {{ article.created_at|date:"F j, Y, g:i a" }}</span>
+        {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
+        <span>•</span>
+        <span><strong>Updated:</strong> {{ article.updated_at|date:"F j, Y, g:i a" }}</span>
+        {% endif %}
+    </div>
+
+    <div class="kb-content">
+        {{ article.content|safe }}
+    </div>
+
+    {% if article.attachments.exists %}
+    <div class="kb-attachments-section">
+        <h3 class="kb-attachments-title">Attachments</h3>
+        <div class="kb-attachments-grid">
+            {% for attachment in article.attachments.all %}
+            <div class="kb-attachment-card">
+                {% if attachment.file.url|lower|slice:"-4:" == ".jpg" or attachment.file.url|lower|slice:"-4:" == ".png" or attachment.file.url|lower|slice:"-5:" == ".jpeg" or attachment.file.url|lower|slice:"-4:" == ".gif" %}
+                <a href="{{ attachment.file.url }}" target="_blank">
+                    <img src="{{ attachment.file.url }}" alt="Attachment" class="kb-attachment-img">
+                </a>
+                {% else %}
+                <div class="kb-attachment-file-info">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    <div class="kb-attachment-filename">
+                        {{ attachment.file.name|slice:"15:"|default:attachment.file.name }}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="kb-attachment-download">
+                    <a href="{{ attachment.file.url }}" target="_blank" class="button secondary kb-attachment-btn">Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endblock content %}

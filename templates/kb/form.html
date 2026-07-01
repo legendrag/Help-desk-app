@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit Article{% else %}Create Article{% endif %} | Knowledge Base{% endblock %}
+
+{% block content %}
+<div class="tickets-page">
+    <div class="tickets-toolbar" style="margin-bottom: 1.5rem; align-items: center;">
+        <div class="tickets-title" style="display: flex; align-items: center; gap: 1rem;">
+            <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn secondary ticket-back-btn">← Back</a>
+            <h2 style="margin: 0; font-size: 1.5rem;">{% if object %}Edit Article{% else %}Create Article{% endif %}</h2>
+        </div>
+    </div>
+
+    <div class="panel">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="form-stack">
+                <div class="form-group full">
+                    <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.category.id_for_label }}">Category</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-group">
+                        <!-- Empty placeholder to keep category field half-width -->
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label for="{{ form.content.id_for_label }}">Content</label>
+                    <div id="editor-loading-placeholder" style="border: 1px dashed var(--border); padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-hover); border-radius: 4px; margin-bottom: 0.5rem;">
+                        Loading editor...
+                    </div>
+                    <div style="display: none;" id="editor-container">
+                        {{ form.content }}
+                    </div>
+                    {% if form.content.errors %}<div class="field-error">{{ form.content.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group full" style="margin-top: 1rem; padding: 1.5rem; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg-hover);">
+                    <label style="display: block; margin-bottom: 0.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 0.3rem;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        Attachments
+                    </label>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 1rem;">
+                        Upload pictures or documents. You can select multiple files.
+                    </p>
+                    {{ form.attachments }}
+                    
+                    {% if object and object.attachments.exists %}
+                    <div style="margin-top: 1rem; font-size: 0.9rem;">
+                        <strong>Current Attachments:</strong>
+                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                            {% for att in object.attachments.all %}
+                            <li>{{ att.file.name|slice:"15:"|default:att.file.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full" style="display: flex; gap: 1rem; margin-top: 1rem; align-items: center;">
+                    <button type="submit" name="action" value="publish" class="btn primary">Save Article</button>
+                    <button type="submit" name="action" value="draft" class="btn secondary">Save as Draft</button>
+                    <div style="flex-grow: 1;"></div>
+                    <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn-link" style="color: var(--text-muted);">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let isTinyMCELoaded = false;
+
+        const initEditor = () => {
+            if (tinymce.activeEditor) {
+                tinymce.remove();
+            }
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            tinymce.init({
+                selector: '.tinymce-editor',
+                menubar: false,
+                statusbar: false,
+                plugins: 'lists link image',
+                toolbar: 'bold italic underline | bullist numlist | link image | removeformat',
+                height: 400,
+                skin: isDark ? 'oxide-dark' : 'oxide',
+                content_css: isDark ? 'dark' : 'default',
+                setup: function(editor) {
+                    editor.on('init', function() {
+                        document.getElementById('editor-loading-placeholder').style.display = 'none';
+                        document.getElementById('editor-container').style.display = 'block';
+                    });
+                }
+            });
+            
+            // Ensure TinyMCE content is synced before form submission
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    if (typeof tinymce !== 'undefined') {
+                        tinymce.triggerSave();
+                    }
+                });
+            }
+        };
+
+        const loadTinyMCE = () => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js";
+            script.referrerPolicy = "origin";
+            script.onload = () => {
+                isTinyMCELoaded = true;
+                initEditor();
+                
+                // Watch for theme changes
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.attributeName === "data-theme") {
+                            initEditor();
+                        }
+                    });
+                });
+                observer.observe(document.documentElement, { attributes: true });
+            };
+            document.head.appendChild(script);
+        };
+        
+        setTimeout(loadTinyMCE, 100);
+    });
+</script>
+{% endblock content %}
