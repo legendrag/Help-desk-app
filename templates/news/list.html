@@ -33,15 +33,15 @@
                 <tbody id="news-list-body">
                     {% for announcement in announcements %}
                     <tr class="clickable-row" data-href="#" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal()">
-                        <td><strong>{{ announcement.title }}</strong></td>
-                        <td>
+                        <td data-label="Title"><strong>{{ announcement.title }}</strong></td>
+                        <td data-label="Status">
                             {% if announcement.is_active %}
                             <span class="badge badge-open">Active</span>
                             {% else %}
                             <span class="badge badge-closed">Inactive</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="Target">
                             {% if announcement.target_branch %}
                                 Branch: {{ announcement.target_branch.name }}
                             {% elif announcement.target_department %}
@@ -50,10 +50,10 @@
                                 All
                             {% endif %}
                         </td>
-                        <td class="muted">{{ announcement.expires_at|date:"Y-m-d H:i"|default:"Never" }}</td>
-                        <td>{{ announcement.created_by.username }}</td>
-                        <td class="muted">{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
-                        <td class="action-cell">
+                        <td class="muted" data-label="Expires">{{ announcement.expires_at|date:"Y-m-d H:i"|default:"Never" }}</td>
+                        <td data-label="Created By">{{ announcement.created_by.username }}</td>
+                        <td class="muted" data-label="Date">{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="action-cell" data-label="Actions">
                             <button type="button" class="btn secondary btn--sm" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal(); event.stopPropagation();">Edit</button>
                         </td>
                     </tr>

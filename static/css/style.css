@@ -789,10 +789,10 @@ tr:hover td {
 }
 
 .chat-bubble {
-  max-width: 100%;
+  max-width: 60%;
   width: fit-content;
-  padding: 1rem 1rem;
-  border-radius: 16px;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
   position: relative;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   background: white;
@@ -811,7 +811,7 @@ tr:hover td {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   font-size: 0.75rem;
   opacity: 0.8;
 }
@@ -824,6 +824,8 @@ tr:hover td {
   margin: 0;
   line-height: 1.5;
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .message-reply-quote {
@@ -2859,7 +2861,7 @@ body {
 }
 
 .ticket-detail-page .chat-bubble {
-  max-width: min(100%, calc(100% - 1rem));
+  max-width: 60%;
 }
 
 .ticket-detail-page .chat-actions-outside {
@@ -3534,8 +3536,10 @@ html.modal-open body {
     font-size: 0.85rem;
 }
 
-.action-cell {
-    width: 110px;
+@media (min-width: 901px) {
+    .action-cell {
+        width: 110px;
+    }
 }
 
 .pick-btn {
