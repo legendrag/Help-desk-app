@@ -498,17 +498,22 @@ ul.errorlist li {
 }
 
 .priority-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 0.15rem 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.8rem;
   border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  border: 1px solid transparent;
 }
 
-.priority-badge.priority-low { background: #f1f5f9; color: #475569; }
-.priority-badge.priority-medium { background: #e0f2fe; color: #0369a1; }
-.priority-badge.priority-high { background: #ffedd5; color: #c2410c; }
-.priority-badge.priority-urgent { background: #fee2e2; color: #b91c1c; }
+.priority-badge.priority-low { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.priority-badge.priority-medium { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+.priority-badge.priority-high { background: #ffedd5; color: #c2410c; border-color: #fdba74; }
+.priority-badge.priority-urgent { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
 
 .merge-item-title {
   color: var(--text-main);
@@ -517,6 +522,18 @@ ul.errorlist li {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.merge-preview-title--lg {
+  margin: 0.25rem 0;
+  font-size: 1.05rem;
+}
+
+.modal-close--sm {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin-left: 0.25rem;
 }
 
 .merge-item-meta {
@@ -1709,4 +1726,140 @@ td.mgmt-empty-cell {
   .bento-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Knowledge Base Inline Styles Fixes */
+.kb-detail-toolbar {
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+.kb-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.kb-title-text {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.kb-main-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 2.25rem;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+.kb-draft-pill {
+  margin-left: 0.5rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 0.8rem;
+}
+.kb-actions-wrapper {
+  display: flex;
+  gap: 0.5rem;
+}
+.kb-editor-loading-placeholder {
+  border: 1px dashed var(--border);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.kb-editor-container {
+  display: none;
+}
+.kb-attachments-wrapper {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--bg-hover);
+}
+.kb-attachments-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.kb-attachments-icon {
+  vertical-align: middle;
+  margin-right: 0.3rem;
+}
+.kb-attachments-help {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+.kb-current-attachments {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+.kb-current-attachments-list {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+}
+.kb-form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+.kb-flex-spacer {
+  flex-grow: 1;
+}
+.kb-cancel-link {
+  color: var(--text-muted);
+}
+.kb-list-panel {
+  margin-bottom: 2rem;
+}
+.kb-filters-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+}
+.kb-filters-bottom-row .filter-row {
+  flex-grow: 1;
+  margin-bottom: 0;
+}
+.kb-article-card-draft {
+  opacity: 0.8;
+  border-style: dashed;
+}
+a.kb-article-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s ease;
+}
+a.kb-article-card:hover {
+  background-color: #f8fafc;
+}
+.kb-grid-wrapper {
+  padding: 1.5rem;
+}
+
+.kb-search-trigger-box {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kb-search-trigger-box:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }

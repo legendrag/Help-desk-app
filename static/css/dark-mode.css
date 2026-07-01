@@ -379,7 +379,9 @@
 /* Clickable rows */
 [data-theme="dark"] .clickable-row:hover {
   background-color: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+}
+[data-theme="dark"] a.kb-article-card:hover {
+  background-color: #273349;
 }
 
 /* Responsive table cards (mobile) */
@@ -474,18 +476,22 @@
 [data-theme="dark"] .priority-badge.priority-low {
   background: #334155;
   color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
 }
 [data-theme="dark"] .priority-badge.priority-medium {
   background: rgba(96, 165, 250, 0.15);
   color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.25);
 }
 [data-theme="dark"] .priority-badge.priority-high {
   background: rgba(251, 191, 36, 0.15);
   color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
 }
 [data-theme="dark"] .priority-badge.priority-urgent {
   background: rgba(248, 113, 113, 0.15);
   color: #f87171;
+  border-color: rgba(248, 113, 113, 0.25);
 }
 
 /* Priority text */
@@ -1428,4 +1434,216 @@
 [data-theme="dark"] .typing-dots span,
 [data-theme="dark"] .notification-badge {
   transition: none;
+}
+
+[data-theme="dark"] .kb-search-trigger-box {
+  color: #f87171;
+}
+
+/* ── Misc Utility Classes ── */
+[data-theme="dark"] .field-error {
+  color: #f87171;
+}
+
+[data-theme="dark"] .status-live {
+  color: var(--success);
+}
+
+[data-theme="dark"] .status-update-group label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .ticket-title-text {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .sidebar-panel-header {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .no-messages-text {
+  color: #64748b;
+}
+
+/* ── Chat Attachment Link Colors ── */
+[data-theme="dark"] .ticket-detail-page .chat-item:not(.me) .attachment-link-dynamic {
+  color: var(--primary);
+}
+
+/* ── Btn Link ── */
+[data-theme="dark"] .btn-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .btn-link:active {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Chat Send Button ── */
+[data-theme="dark"] .chat-send-btn {
+  background: #6366f1;
+}
+[data-theme="dark"] .chat-send-btn:hover {
+  background: #818cf8;
+}
+[data-theme="dark"] .chat-send-btn:active {
+  background: #6366f1;
+}
+
+/* ── Image Preview ── */
+[data-theme="dark"] .chat-image-preview {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+/* ── Chat Actions Hover Restore ── */
+[data-theme="dark"] .action-bar-accept:hover {
+  background: rgba(129, 140, 248, 0.2) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .action-bar-execute:hover {
+  background: #334155 !important;
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.2) !important;
+}
+[data-theme="dark"] .action-bar-toggle:hover {
+  background: #475569 !important;
+}
+[data-theme="dark"] .action-bar-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+[data-theme="dark"] .action-bar-reopen:hover {
+  background: rgba(52, 211, 153, 0.08) !important;
+}
+
+/* ── Merged Tickets Section ── */
+[data-theme="dark"] .merged-tickets-section {
+  border-top-color: rgba(148, 163, 184, 0.1);
+}
+
+/* ── Theme Toggle Switch (Pill) ── */
+.theme-switch,
+.theme-switch:hover,
+.theme-switch:active,
+.theme-switch:focus,
+[data-theme="dark"] .theme-switch,
+[data-theme="dark"] .theme-switch:hover {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  box-shadow: none !important;
+  transform: none !important;
+  gap: 0 !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  min-width: auto;
+  color: inherit;
+}
+.theme-switch:focus-visible .theme-switch-track {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+}
+
+/* Track */
+.theme-switch-track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #d1d5db;
+  border: none;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+/* Knob */
+.theme-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.35s ease, box-shadow 0.35s ease !important;
+  will-change: transform;
+}
+
+/* Icons inside knob */
+.theme-switch-knob .icon-sun,
+.theme-switch-knob .icon-moon {
+  position: absolute;
+  transition: opacity 0.2s ease, transform 0.25s ease !important;
+  line-height: 0;
+}
+
+/* Light mode: sun visible, knob on left */
+.theme-switch-knob .icon-sun {
+  color: #475569;
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.theme-switch-knob .icon-moon {
+  color: #e2e8f0;
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.5);
+}
+
+/* ── Dark Mode: knob slides right, moon appears ── */
+[data-theme="dark"] .theme-switch-track {
+  background: #4b5563;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .theme-switch-knob {
+  transform: translateX(20px);
+  background: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .theme-switch-knob .icon-sun {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.5);
+}
+[data-theme="dark"] .theme-switch-knob .icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+/* ── Smooth Transition on Theme Change ── */
+[data-theme="dark"] *,
+[data-theme="dark"] *::before,
+[data-theme="dark"] *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease, box-shadow 0.25s ease;
+}
+
+/* Exclude chat elements from global transition */
+[data-theme="dark"] .chat-box *,
+[data-theme="dark"] .chat-bubble *,
+[data-theme="dark"] .typing-dots span,
+[data-theme="dark"] .notification-badge {
+  transition: none;
+}
+
+[data-theme="dark"] .kb-search-trigger-box {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .kb-search-trigger-box:hover {
+  border-color: #64748b;
+  background-color: #273349;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
 }

@@ -5,6 +5,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.db.models import Q
 from .models import Article, Category, ArticleAttachment
 from .forms import ArticleForm
+from tickets.models import Ticket
 
 class KBPermissionMixin(UserPassesTestMixin):
     def test_func(self):
@@ -107,3 +108,73 @@ class ArticleDeleteView(LoginRequiredMixin, KBPermissionMixin, DeleteView):
         if request.headers.get("HX-Request"):
             return HttpResponse(status=200)
         return super().delete(request, *args, **kwargs)
+
+def kb_ticket_search(request):
+    user = request.user
+    query = request.GET.get("q", "").strip()
+    
+    if len(query) < 1:
+        return HttpResponse('<div id="kb-search-results-container"></div>')
+        
+    tickets = Ticket.objects.filter(
+        Q(ticket_number__icontains=query) | Q(title__icontains=query)
+    )
+    
+    if not user.is_superuser:
+        if user.user_type == "branch" and user.branch_id:
+            tickets = tickets.filter(branch_id=user.branch_id)
+        elif user.user_type == "support" and user.department_id:
+            tickets = tickets.filter(department_id=user.department_id)
+        else:
+            tickets = tickets.none()
+            
+    tickets = tickets.select_related("department", "branch", "created_by")[:10]
+    
+    if not tickets.exists():
+        return HttpResponse('<div id="kb-search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')
+
+    options = ['<div id="kb-search-results-container" class="merge-search-results">']
+    for t in tickets:
+        status_label = t.get_status_display()
+        priority_label = t.get_priority_display().upper()
+        # Instead of going to merge-preview, we just render the ticket preview directly and set the hidden input.
+        # We can use JS to set the hidden input and update a preview div.
+        preview_html = (
+            f'<div class="merge-preview-card margin-bottom-small">'
+            f'  <div class="merge-preview-header">'
+            f'    <span class="merge-preview-num">#{t.ticket_number}</span>'
+            f'    <div class="merge-preview-badges">'
+            f'      <span class="badge badge-{t.status}">{status_label}</span>'
+            f'      <span class="priority-badge priority-{t.priority}">{priority_label}</span>'
+            f'      <button type="button" class="modal-close modal-close--sm" onclick="clearKbTicket()" title="Remove Related Ticket">'
+            f'        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+            f'      </button>'
+            f'    </div>'
+            f'  </div>'
+            f'  <h4 class="merge-preview-title merge-preview-title--lg">{t.title}</h4>'
+            f'  <div class="merge-preview-meta-grid">'
+            f'    <div class="merge-meta-item"><span class="label">Dept</span><span class="val">{t.department.name}</span></div>'
+            f'    <div class="merge-meta-item"><span class="label">By</span><span class="val">{t.created_by.username}</span></div>'
+            f'  </div>'
+            f'</div>'
+        )
+        
+        # Base64 encode the html for the onclick handler to avoid all quote escaping issues
+        import base64
+        encoded_preview = base64.b64encode(preview_html.encode('utf-8')).decode('utf-8')
+        
+        options.append(
+            f'<div class="merge-search-item" '
+            f'onclick="selectKbTicket(\'{t.id}\', \'{encoded_preview}\')">'
+            f'  <div class="merge-item-header">'
+            f'    <span class="merge-item-number">{t.ticket_number}</span>'
+            f'    <div class="merge-item-badges">'
+            f'      <span class="badge badge-{t.status}">{status_label}</span>'
+            f'    </div>'
+            f'  </div>'
+            f'  <div class="merge-item-title">{t.title}</div>'
+            f'</div>'
+        )
+    options.append('</div>')
+    
+    return HttpResponse("\n".join(options))

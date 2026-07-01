@@ -1,13 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}{% if object %}Edit Article{% else %}Create Article{% endif %} | Knowledge Base{% endblock %}
+{% block title %}{% if object %}Edit Article{% else %}Create Article{% endif %} | Knowledge Base{% endblock title %}
 
 {% block content %}
 <div class="tickets-page">
-    <div class="tickets-toolbar" style="margin-bottom: 1.5rem; align-items: center;">
-        <div class="tickets-title" style="display: flex; align-items: center; gap: 1rem;">
-            <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn secondary ticket-back-btn">← Back</a>
-            <h2 style="margin: 0; font-size: 1.5rem;">{% if object %}Edit Article{% else %}Create Article{% endif %}</h2>
+    <div class="panel tickets-toolbar kb-detail-toolbar">
+        <div class="tickets-title kb-title-wrapper">
+            <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="ticket-back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back
+            </a>
+            <h2 class="kb-title-text">{% if object %}Edit Article{% else %}Create Article{% endif %}</h2>
         </div>
     </div>
 
@@ -28,35 +35,64 @@
                         {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
                     </div>
                     <div class="form-group">
-                        <!-- Empty placeholder to keep category field half-width -->
+                        <label>Related Ticket (Optional)</label>
+                        {{ form.related_ticket }}
+                        <div id="kb-search-trigger" style="display: {% if object and object.related_ticket %}none{% else %}block{% endif %};">
+                            <div class="kb-search-trigger-box" onclick="document.getElementById('kb-ticket-modal').style.display='flex'">
+                                <span>Click to search and select a ticket...</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                        </div>
+                        <div id="kb-selected-ticket-preview" style="display: {% if object and object.related_ticket %}block{% else %}none{% endif %};">
+                            {% if object and object.related_ticket %}
+                            <div class="merge-preview-card margin-bottom-small">
+                              <div class="merge-preview-header">
+                                <span class="merge-preview-num">#{{ object.related_ticket.ticket_number }}</span>
+                                <div class="merge-preview-badges">
+                                  <span class="badge badge-{{ object.related_ticket.status }}">{{ object.related_ticket.get_status_display }}</span>
+                                  <span class="priority-badge priority-{{ object.related_ticket.priority }}">{{ object.related_ticket.get_priority_display|upper }}</span>
+                                  <button type="button" class="modal-close modal-close--sm" onclick="clearKbTicket()" title="Remove Related Ticket">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                  </button>
+                                </div>
+                              </div>
+                              <h4 class="merge-preview-title merge-preview-title--lg">{{ object.related_ticket.title }}</h4>
+                              <div class="merge-preview-meta-grid">
+                                <div class="merge-meta-item"><span class="label">Dept</span><span class="val">{{ object.related_ticket.department.name }}</span></div>
+                                <div class="merge-meta-item"><span class="label">By</span><span class="val">{{ object.related_ticket.created_by.username }}</span></div>
+                              </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if form.related_ticket.errors %}<div class="field-error">{{ form.related_ticket.errors }}</div>{% endif %}
                     </div>
                 </div>
 
                 <div class="form-group full">
                     <label for="{{ form.content.id_for_label }}">Content</label>
-                    <div id="editor-loading-placeholder" style="border: 1px dashed var(--border); padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-hover); border-radius: 4px; margin-bottom: 0.5rem;">
+                    <div id="editor-loading-placeholder" class="kb-editor-loading-placeholder">
                         Loading editor...
                     </div>
-                    <div style="display: none;" id="editor-container">
+                    <div class="kb-editor-container" id="editor-container">
                         {{ form.content }}
                     </div>
                     {% if form.content.errors %}<div class="field-error">{{ form.content.errors }}</div>{% endif %}
                 </div>
 
-                <div class="form-group full" style="margin-top: 1rem; padding: 1.5rem; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg-hover);">
-                    <label style="display: block; margin-bottom: 0.5rem;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 0.3rem;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                <div class="form-group full kb-attachments-wrapper">
+                    <label class="kb-attachments-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="kb-attachments-icon"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                         Attachments
                     </label>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 1rem;">
+                    <p class="kb-attachments-help">
                         Upload pictures or documents. You can select multiple files.
                     </p>
                     {{ form.attachments }}
                     
                     {% if object and object.attachments.exists %}
-                    <div style="margin-top: 1rem; font-size: 0.9rem;">
+                    <div class="kb-current-attachments">
                         <strong>Current Attachments:</strong>
-                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                        <ul class="kb-current-attachments-list">
                             {% for att in object.attachments.all %}
                             <li>{{ att.file.name|slice:"15:"|default:att.file.name }}</li>
                             {% endfor %}
@@ -65,14 +101,41 @@
                     {% endif %}
                 </div>
 
-                <div class="form-group full" style="display: flex; gap: 1rem; margin-top: 1rem; align-items: center;">
-                    <button type="submit" name="action" value="publish" class="btn primary">Save Article</button>
+                <div class="form-group full kb-form-actions">
+                    <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn secondary">Cancel</a>
+                    <div class="kb-flex-spacer"></div>
                     <button type="submit" name="action" value="draft" class="btn secondary">Save as Draft</button>
-                    <div style="flex-grow: 1;"></div>
-                    <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn-link" style="color: var(--text-muted);">Cancel</a>
+                    <button type="submit" name="action" value="publish" class="btn primary">Save Article</button>
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- KB Related Ticket Search Modal -->
+<div id="kb-ticket-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('kb-ticket-modal').style.display='none'">
+    <div class="modal-content modal-merge-ticket">
+        <div class="modal-header">
+            <h2 class="modal-title-text">Search Ticket</h2>
+            <button type="button" class="modal-close" onclick="document.getElementById('kb-ticket-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div>
+            <p class="modal-description-text-merge">Search and select the ticket you want to relate to this article.</p>
+            <div class="form-group full modal-form-group-merge">
+                <label for="kb_ticket_search_input">Search Ticket</label>
+                <div class="position-relative">
+                    <input type="text" name="q" id="kb_ticket_search_input" class="form-control" 
+                        placeholder="Type ticket number or title..." autocomplete="off"
+                        hx-get="{% url 'kb_ticket_search' %}" 
+                        hx-trigger="input changed delay:150ms, search" 
+                        hx-target="#kb-search-results-container" 
+                        hx-swap="outerHTML">
+                    <div id="kb-search-results-container"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -90,7 +153,7 @@
                 menubar: false,
                 statusbar: false,
                 plugins: 'lists link image',
-                toolbar: 'bold italic underline | bullist numlist | link image | removeformat',
+                toolbar: 'bold italic underline | bullist numlist | link | removeformat',
                 height: 400,
                 skin: isDark ? 'oxide-dark' : 'oxide',
                 content_css: isDark ? 'dark' : 'default',
@@ -136,5 +199,39 @@
         
         setTimeout(loadTinyMCE, 100);
     });
+
+    function selectKbTicket(ticketId, encodedPreviewHtml) {
+        // Set the hidden input value
+        document.getElementById('id_related_ticket').value = ticketId;
+        
+        // Decode base64 to handle quotes correctly
+        let decodedHtml = '';
+        try {
+            decodedHtml = decodeURIComponent(escape(window.atob(encodedPreviewHtml)));
+        } catch (e) {
+            decodedHtml = window.atob(encodedPreviewHtml);
+        }
+        
+        // Show the preview and clear the search input/results
+        document.getElementById('kb-selected-ticket-preview').innerHTML = decodedHtml;
+        document.getElementById('kb_ticket_search_input').value = '';
+        document.getElementById('kb-search-results-container').innerHTML = '';
+        
+        // Hide the modal
+        document.getElementById('kb-ticket-modal').style.display = 'none';
+        
+        // Toggle UI
+        document.getElementById('kb-search-trigger').style.display = 'none';
+        document.getElementById('kb-selected-ticket-preview').style.display = 'block';
+    }
+
+    function clearKbTicket() {
+        document.getElementById('id_related_ticket').value = '';
+        document.getElementById('kb-selected-ticket-preview').innerHTML = '';
+        
+        // Toggle UI
+        document.getElementById('kb-search-trigger').style.display = 'block';
+        document.getElementById('kb-selected-ticket-preview').style.display = 'none';
+    }
 </script>
 {% endblock content %}

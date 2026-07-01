@@ -30,10 +30,11 @@ class ArticleForm(forms.ModelForm):
 
     class Meta:
         model = Article
-        fields = ["title", "category", "content"]
+        fields = ["title", "category", "related_ticket", "content"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control", "required": True}),
             "category": forms.Select(attrs={"class": "form-control"}),
+            "related_ticket": forms.HiddenInput(attrs={"id": "id_related_ticket"}),
             "content": forms.Textarea(attrs={
                 "class": "form-control tinymce-editor", 
                 "rows": 10

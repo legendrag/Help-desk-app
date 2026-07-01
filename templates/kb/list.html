@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Knowledge Base | Help Desk{% endblock %}
+{% block title %}
+Knowledge Base | Help Desk
+{% endblock title %}
 
 {% block content %}
 <div class="tickets-page">
-    <div class="panel tickets-panel" style="margin-bottom: 2rem;">
+    <div class="panel tickets-panel kb-list-panel">
         <div class="tickets-toolbar">
             <div class="tickets-title">
                 <h2>Knowledge Base</h2>
@@ -23,36 +25,42 @@
                     </span>
                     <input type="text" name="q" id="search-q" class="search-input" placeholder="Search title or content..." value="{{ search_query }}">
                 </div>
-                <div class="filter-row">
-                    {% if can_manage_kb %}
-                    <select name="status" onchange="this.form.submit()">
-                        <option value="published" {% if current_status == 'published' %}selected{% endif %}>Published</option>
-                        <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Drafts ({{ draft_count|default:"0" }})</option>
-                    </select>
-                    {% endif %}
-                    <select name="category" onchange="this.form.submit()">
-                        <option value="all">All Categories</option>
-                        {% for c in categories %}
-                        <option value="{{ c.id }}" {% if current_category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <a href="{% url 'kb_list' %}" class="btn secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px; height: fit-content; align-self: center; justify-self: start;">Clear</a>
+                <div class="kb-filters-bottom-row">
+                    <div class="filter-row">
+                        {% if can_manage_kb %}
+                        <select name="status" onchange="this.form.submit()">
+                            <option value="published" {% if current_status == 'published' %}selected{% endif %}>Published</option>
+                            <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Drafts ({{ draft_count|default:"0" }})</option>
+                        </select>
+                        {% endif %}
+                        <select name="category" onchange="this.form.submit()">
+                            <option value="all">All Categories</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}" {% if current_category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="kb-clear-wrapper">
+                        <a href="{% url 'kb_list' %}" class="btn secondary small">Clear</a>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="kb-grid">
+    <div class="panel kb-grid-panel">
+        <div class="kb-grid-wrapper">
+            <div class="kb-grid">
         {% for article in articles %}
-        <div class="panel kb-article-card" {% if not article.is_published %}style="opacity: 0.8; border-style: dashed;"{% endif %}>
+        <a href="{% url 'kb_detail' article.id %}" class="panel kb-article-card {% if not article.is_published %}kb-article-card-draft{% endif %}">
             <div class="article-category">
                 {{ article.category.name|default:"Uncategorized" }}
                 {% if not article.is_published %}
-                <span class="pill" style="margin-left: 0.5rem; background: var(--bg-hover); border: 1px solid var(--border);">Draft</span>
+                <span class="pill kb-draft-pill">Draft</span>
                 {% endif %}
             </div>
             <h3>
-                <a href="{% url 'kb_detail' article.id %}">{{ article.title }}</a>
+                {{ article.title }}
             </h3>
             <p class="article-snippet">
                 {{ article.content|striptags|truncatewords:20 }}
@@ -61,12 +69,14 @@
                 <span>By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
                 <span>{{ article.created_at|date:"M d, Y" }}</span>
             </div>
-        </div>
+        </a>
         {% empty %}
         <div class="panel kb-empty-state">
             <p>No articles found.</p>
         </div>
         {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock content %}

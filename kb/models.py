@@ -22,6 +22,15 @@ class Article(TimeStampedModel):
     content = models.TextField(help_text="HTML content from TinyMCE")
     is_published = models.BooleanField(default=True)
     
+    related_ticket = models.ForeignKey(
+        "tickets.Ticket",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="kb_articles",
+        help_text="Ticket that inspired or is resolved by this article"
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

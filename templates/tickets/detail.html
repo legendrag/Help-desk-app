@@ -333,6 +333,24 @@
                 </div>
             </div>
             {% endif %}
+            
+            {% if ticket.kb_articles.exists %}
+            <div class="merged-tickets-section" style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+                <label class="merged-tickets-label">Related Knowledge Base Articles</label>
+                <div class="merged-tickets-sidebar-list">
+                    {% for article in ticket.kb_articles.all %}
+                    <a href="{% url 'kb_detail' article.id %}" class="merged-sidebar-item" style="border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; display: block; margin-bottom: 0.5rem; text-decoration: none; color: inherit;">
+                        <span style="display: flex; flex-direction: column;">
+                            <strong style="color: var(--primary);">{{ article.title }}</strong>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}
+                            </span>
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             {% if ticket.status == 'merged' %}
             <div class="action-bar">
