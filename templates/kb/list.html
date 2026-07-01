@@ -36,7 +36,7 @@
                         <option value="{{ c.id }}" {% if current_category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
                         {% endfor %}
                     </select>
-                    <a href="{% url 'kb_list' %}" class="btn secondary" style="padding: 0.4rem 0.8rem;">Clear</a>
+                    <a href="{% url 'kb_list' %}" class="btn secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px; height: fit-content; align-self: center; justify-self: start;">Clear</a>
                 </div>
             </form>
         </div>

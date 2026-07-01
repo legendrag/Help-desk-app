@@ -3447,11 +3447,14 @@ html.modal-open body {
     border: none;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.2s;
+    text-decoration: none;
 }
 
 .tickets-new-btn:hover {
-    background: var(--primary-dark);
+    background: var(--primary-hover);
+    color: white;
+    text-decoration: none;
 }
 
 .tickets-filters {
