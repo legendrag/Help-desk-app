@@ -49,6 +49,9 @@ if (-not $NoBrowser) {
     } | Out-Null
 }
 
+# Increase ASGI threadpool to allow concurrent static file serving without blocking
+[System.Environment]::SetEnvironmentVariable("ASGI_THREADS", "200", "Process")
+
 # Start Daphne bound to all interfaces
 # -b 0.0.0.0 allows access from other devices in the same network
 & $pythonPath -m daphne -b 0.0.0.0 -p 8000 config.asgi:application
