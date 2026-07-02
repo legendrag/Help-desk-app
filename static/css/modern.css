@@ -717,7 +717,11 @@ ul.errorlist li {
 
 /* Detail Page lint fixes */
 .chat-bubble-text {
-  margin: 0.5rem 0;
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .chat-bubble-attachment-wrap {
   margin-top: 0.5rem;
@@ -2322,4 +2326,193 @@ a.kb-article-card:hover {
   margin-top: 2rem;
   margin-bottom: 1rem;
   color: var(--text-main);
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE ENHANCEMENTS (Global Strategy)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* 1. Touch-Target Optimization */
+  button, .btn, .btn-link, input, select, textarea, .ts-control, .sidebar-action-btn {
+    min-height: 48px !important;
+  }
+  
+  /* Prevent small action buttons from becoming giant circles */
+  .pick-btn, .btn-edit-save, .btn-edit-cancel {
+    min-height: auto !important;
+    padding: 0.4rem 1.2rem !important;
+    border-radius: 8px !important;
+  }
+
+  /* Prevent chat action buttons from becoming huge squares */
+  .message-reply-btn, .message-menu-btn {
+    min-height: 28px !important;
+    min-width: 28px !important;
+  }
+  
+  /* Form Inputs Full Width */
+  input, select, textarea, .ts-wrapper {
+    width: 100% !important;
+  }
+
+  /* 2. Responsive Layouts & Overflows */
+  .app-shell {
+    overflow-x: hidden; /* Prevent horizontal scrolling without breaking sticky */
+  }
+
+  /* Force multi-column layouts to stack vertically */
+  .dashboard-grid, .ticket-header-stats, .filter-bar, .action-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+
+  /* Sidebar Drawer adjustments */
+  .sidebar {
+    width: 280px;
+    max-width: 80vw;
+  }
+
+  /* 3. Typography Adjustments */
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+  
+  /* Ensure body text stays >= 16px to prevent iOS zoom */
+  body, p, input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* 4. Modals and Dialogs Full Width */
+  .modal-content, .session-warning-box {
+    width: 95% !important;
+    max-width: 100% !important;
+    margin: 10px auto !important;
+    border-radius: 12px !important;
+    padding: 1.5rem 1rem !important;
+  }
+
+  /* Remove double-boxing for the main wrapper */
+  .tickets-panel, .mgmt-table-wrap {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Restore the panel look for the toolbar/filters so they don't float */
+  .tickets-toolbar {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem !important;
+    margin-bottom: 1.2rem !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 5. Mobile Data Tables (Table-to-Card Pattern) */
+  table {
+    display: block !important;
+    width: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  thead {
+    display: none !important; /* Hide headers */
+  }
+  
+  tbody, tr, td {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  tr {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 0.8rem !important;
+    padding: 1rem 1.2rem !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  td {
+    text-align: right !important;
+    padding: 0.6rem 0 !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.5) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1rem;
+  }
+  
+  td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Visual pseudo-labels for stacked cards */
+  td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* -----------------------------------------------------
+     KB Mobile Enhancements
+     ----------------------------------------------------- */
+  .kb-hero-actions {
+    position: static !important;
+    margin-top: 1.5rem !important;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .kb-hero-actions .btn {
+    width: 100%;
+  }
+
+  /* Convert KB Sidebar into horizontal pill filters */
+  .kb-sidebar-column {
+    position: static !important;
+    margin-bottom: 1.5rem !important;
+  }
+  
+  .kb-category-nav {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .kb-category-link {
+    margin-bottom: 0 !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.85rem !important;
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px !important;
+    text-align: center;
+    flex-grow: 1; /* Makes them stretch nicely */
+  }
+
+  .kb-category-link.active {
+    background: var(--primary) !important;
+    color: #fff !important;
+    border-color: var(--primary) !important;
+  }
+
+  .kb-sidebar-title {
+    margin-bottom: 0.5rem !important;
+    text-align: center;
+  }
+  
+  .kb-sidebar-title-mt {
+    margin-top: 1rem !important;
+  }
 }

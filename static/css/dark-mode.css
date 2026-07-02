@@ -622,23 +622,35 @@
 }
 
 [data-theme="dark"] .message-menu {
-  background: #1e293b;
-  border-color: rgba(148, 163, 184, 0.12);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
+[data-theme="dark"] button.message-menu-item,
 [data-theme="dark"] .message-menu-item {
+  background: transparent;
   color: #e2e8f0;
 }
+
+[data-theme="dark"] button.message-menu-item:hover,
 [data-theme="dark"] .message-menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
 }
+
+[data-theme="dark"] button.message-menu-item.danger,
 [data-theme="dark"] .message-menu-item.danger {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
+  color: #f43f5e;
+  background: transparent;
 }
+
+[data-theme="dark"] button.message-menu-item.danger:hover,
 [data-theme="dark"] .message-menu-item.danger:hover {
-  background: rgba(248, 113, 113, 0.18);
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
 }
 
 [data-theme="dark"] .message-action-btn {

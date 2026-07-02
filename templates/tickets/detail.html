@@ -84,7 +84,7 @@
                                 <div class="reply-quote-text">{{ message.reply_to.message }}</div>
                             </div>
                             {% endif %}
-                            <p class="chat-bubble-text">{{ message.message|safe }}</p>
+                            <div class="chat-bubble-text">{{ message.message|safe }}</div>
                             {% if message.attachment %}
                             <div class="chat-bubble-attachment-wrap">
                                 {% if message.attachment.name|is_image %}

@@ -372,7 +372,7 @@ function initChat(ticketId) {
                                 <div class="reply-quote-text">${escapeHtml(reply.message || '')}</div>
                             </div>
                         ` : ''}
-                        <p style="margin: 0.5rem 0;">${payload.message}</p>
+                        <div class="chat-bubble-text">${payload.message}</div>
                         ${payload.attachment_url ? (
                             payload.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)($|\?)/i) ? `
                             <div style="margin-top: 0.5rem;">
@@ -494,6 +494,17 @@ function setFileOnInput(file) {
 }
 
 // Drag-and-drop on the chat form
+// Mobile Chat Actions Toggle (Event Delegation)
+document.addEventListener('click', function(e) {
+    const bubble = e.target.closest('.chat-bubble');
+    if (bubble) {
+        const chatItem = bubble.closest('.chat-item');
+        if (chatItem) {
+            chatItem.classList.toggle('active-mobile-actions');
+        }
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const chatForm = document.querySelector('.chat-form');
     const overlay = document.getElementById('drop-zone-overlay');
