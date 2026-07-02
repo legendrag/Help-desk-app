@@ -5,78 +5,101 @@ Knowledge Base | Help Desk
 {% endblock title %}
 
 {% block content %}
-<div class="tickets-page">
-    <div class="panel tickets-panel kb-list-panel">
-        <div class="tickets-toolbar">
-            <div class="tickets-title">
-                <h2>Knowledge Base</h2>
-                {% if user.is_superuser or user.role.can_manage_kb %}
-                <a href="{% url 'kb_create' %}" class="button tickets-new-btn">+ New Article</a>
+<div class="kb-page">
+    <!-- Hero Search Section -->
+    <div class="panel kb-hero-section">
+        <div class="kb-hero-content">
+            <h1 class="kb-hero-title">Find answers fast</h1>
+            <p class="kb-hero-subtitle">Search our knowledge base or browse categories below</p>
+            <form class="kb-hero-search" method="get" autocomplete="off" action="{% url 'kb_list' %}" onsubmit="var btn=this.querySelector('.kb-search-btn'); btn.innerHTML='<span class=\'kb-spinner\'></span> Searching...'; btn.style.pointerEvents='none'; btn.style.opacity='0.8';">
+                {% if current_category != 'all' and current_category %}
+                <input type="hidden" name="category" value="{{ current_category }}">
                 {% endif %}
-            </div>
-
-            <form class="tickets-filters" method="get" autocomplete="off" action="{% url 'kb_list' %}">
-                <div class="search-field">
+                {% if current_status %}
+                <input type="hidden" name="status" value="{{ current_status }}">
+                {% endif %}
+                <div class="kb-search-input-wrapper">
                     <span class="search-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="text" name="q" id="search-q" class="search-input" placeholder="Search title or content..." value="{{ search_query }}">
-                </div>
-                <div class="kb-filters-bottom-row">
-                    <div class="filter-row">
-                        {% if can_manage_kb %}
-                        <select name="status" onchange="this.form.submit()">
-                            <option value="published" {% if current_status == 'published' %}selected{% endif %}>Published</option>
-                            <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Drafts ({{ draft_count|default:"0" }})</option>
-                        </select>
-                        {% endif %}
-                        <select name="category" onchange="this.form.submit()">
-                            <option value="all">All Categories</option>
-                            {% for c in categories %}
-                            <option value="{{ c.id }}" {% if current_category == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="kb-clear-wrapper">
-                        <a href="{% url 'kb_list' %}" class="btn secondary small">Clear</a>
-                    </div>
+                    <input type="text" name="q" id="search-q" class="kb-search-input" placeholder="Search title or content..." value="{{ search_query }}">
+                    <button type="submit" class="btn primary kb-search-btn">Search</button>
                 </div>
             </form>
         </div>
+        {% if user.is_superuser or user.role.can_manage_kb %}
+        <div class="kb-hero-actions">
+            <a href="{% url 'kb_create' %}" class="btn primary">+ New Article</a>
+        </div>
+        {% endif %}
     </div>
 
-    <div class="panel kb-grid-panel">
-        <div class="kb-grid-wrapper">
+    <!-- Main Layout Grid: Sidebar + Articles -->
+    <div class="kb-layout-grid">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="kb-sidebar">
+            <h3 class="kb-sidebar-title">Categories</h3>
+            <nav class="kb-category-nav">
+                <a href="?category=all{% if search_query %}&q={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}" 
+                   class="kb-category-link {% if current_category == 'all' or not current_category %}active{% endif %}">
+                   All Categories
+                </a>
+                {% for c in categories %}
+                <a href="?category={{ c.id }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}" 
+                   class="kb-category-link {% if current_category == c.id|stringformat:'s' %}active{% endif %}">
+                   {{ c.name }}
+                </a>
+                {% endfor %}
+            </nav>
+
+            {% if can_manage_kb %}
+            <h3 class="kb-sidebar-title kb-sidebar-title-mt">Status</h3>
+            <nav class="kb-category-nav">
+                <a href="?status=published{% if search_query %}&q={{ search_query }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}" 
+                   class="kb-category-link {% if current_status == 'published' or not current_status %}active{% endif %}">
+                   Published
+                </a>
+                <a href="?status=draft{% if search_query %}&q={{ search_query }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}" 
+                   class="kb-category-link {% if current_status == 'draft' %}active{% endif %}">
+                   Drafts ({{ draft_count|default:"0" }})
+                </a>
+            </nav>
+            {% endif %}
+        </aside>
+
+        <!-- Articles Grid -->
+        <main class="kb-main-content">
             <div class="kb-grid">
-        {% for article in articles %}
-        <a href="{% url 'kb_detail' article.id %}" class="panel kb-article-card {% if not article.is_published %}kb-article-card-draft{% endif %}">
-            <div class="article-category">
-                {{ article.category.name|default:"Uncategorized" }}
-                {% if not article.is_published %}
-                <span class="pill kb-draft-pill">Draft</span>
-                {% endif %}
+                {% for article in articles %}
+                <a href="{% url 'kb_detail' article.id %}" class="panel kb-article-card {% if not article.is_published %}kb-article-card-draft{% endif %}">
+                    <div class="article-category">
+                        <span class="pill kb-category-pill">{{ article.category.name|default:"Uncategorized" }}</span>
+                        {% if not article.is_published %}
+                        <span class="pill kb-draft-pill">Draft</span>
+                        {% endif %}
+                    </div>
+                    <h3>{{ article.title }}</h3>
+                    <p class="article-snippet">
+                        {{ article.content|striptags|truncatewords:20|safe }}
+                    </p>
+                    <div class="article-meta">
+                        <span>By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+                        <span>{{ article.created_at|date:"M d, Y" }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="panel kb-empty-state">
+                    <div class="empty-state-icon">📄</div>
+                    <p>No articles found for the selected filters.</p>
+                    <a href="{% url 'kb_list' %}" class="btn secondary">Clear Filters</a>
+                </div>
+                {% endfor %}
             </div>
-            <h3>
-                {{ article.title }}
-            </h3>
-            <p class="article-snippet">
-                {{ article.content|striptags|truncatewords:20 }}
-            </p>
-            <div class="article-meta">
-                <span>By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
-                <span>{{ article.created_at|date:"M d, Y" }}</span>
-            </div>
-        </a>
-        {% empty %}
-        <div class="panel kb-empty-state">
-            <p>No articles found.</p>
-        </div>
-        {% endfor %}
-            </div>
-        </div>
+        </main>
     </div>
 </div>
 {% endblock content %}

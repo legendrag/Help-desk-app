@@ -3,7 +3,7 @@
 {% block title %}{{ article.title }} | Knowledge Base{% endblock title %}
 
 {% block content %}
-<div class="tickets-page">
+<div class="kb-page">
     <div class="panel tickets-toolbar kb-detail-toolbar">
         <div class="tickets-title kb-title-wrapper">
             <a href="{% url 'kb_list' %}" class="ticket-back-btn">
@@ -30,57 +30,68 @@
         {% endif %}
     </div>
 
-<div class="panel kb-detail-panel">
-    <h1 class="kb-main-title">
-        {{ article.title }}
-    </h1>
-    <div class="kb-detail-meta">
-        <span><strong>Category:</strong> {{ article.category.name|default:"Uncategorized" }}</span>
-        <span>•</span>
-        <span><strong>Author:</strong> {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
-        <span>•</span>
-        <span><strong>Posted:</strong> {{ article.created_at|date:"F j, Y, g:i a" }}</span>
-        {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
-        <span>•</span>
-        <span><strong>Updated:</strong> {{ article.updated_at|date:"F j, Y, g:i a" }}</span>
-        {% endif %}
-        {% if article.related_ticket %}
-        <span>•</span>
-        <span><strong>Related Ticket:</strong> <a href="{% url 'ticket_detail' article.related_ticket.id %}">#{{ article.related_ticket.ticket_number }}</a></span>
-        {% endif %}
-    </div>
+    <!-- 2-Column Detail Layout -->
+    <div class="kb-detail-grid">
+        <!-- Main Article Content -->
+        <main class="panel kb-main-column">
+            <h1 class="kb-main-title">{{ article.title }}</h1>
+            <div class="kb-content">
+                {{ article.content|safe }}
+            </div>
+        </main>
 
-    <div class="kb-content">
-        {{ article.content|safe }}
-    </div>
-
-    {% if article.attachments.exists %}
-    <div class="kb-attachments-section">
-        <h3 class="kb-attachments-title">Attachments</h3>
-        <div class="kb-attachments-grid">
-            {% for attachment in article.attachments.all %}
-            <div class="kb-attachment-card">
-                {% if attachment.file.url|lower|slice:"-4:" == ".jpg" or attachment.file.url|lower|slice:"-4:" == ".png" or attachment.file.url|lower|slice:"-5:" == ".jpeg" or attachment.file.url|lower|slice:"-4:" == ".gif" %}
-                <a href="{{ attachment.file.url }}" target="_blank">
-                    <img src="{{ attachment.file.url }}" alt="Attachment" class="kb-attachment-img" width="800" height="600">
-                </a>
-                {% else %}
-                <div class="kb-attachment-file-info">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                    <div class="kb-attachment-filename">
-                        {{ attachment.file.name|slice:"15:"|default:attachment.file.name }}
+        <!-- Right Sticky Sidebar -->
+        <aside class="kb-sidebar-column">
+            <div class="panel kb-meta-panel">
+                <h3 class="kb-sidebar-title">Article Details</h3>
+                <div class="kb-meta-list">
+                    <div class="kb-meta-item">
+                        <span class="kb-meta-label">Category</span>
+                        <span class="pill kb-category-pill">{{ article.category.name|default:"Uncategorized" }}</span>
                     </div>
-                </div>
-                {% endif %}
-                <div class="kb-attachment-download">
-                    <a href="{{ attachment.file.url }}" target="_blank" class="button secondary kb-attachment-btn">Download</a>
+                    <div class="kb-meta-item">
+                        <span class="kb-meta-label">Author</span>
+                        <span class="kb-meta-value">{{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+                    </div>
+                    <div class="kb-meta-item">
+                        <span class="kb-meta-label">Posted</span>
+                        <span class="kb-meta-value">{{ article.created_at|date:"M j, Y" }}</span>
+                    </div>
+                    {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
+                    <div class="kb-meta-item">
+                        <span class="kb-meta-label">Updated</span>
+                        <span class="kb-meta-value">{{ article.updated_at|date:"M j, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if article.related_ticket %}
+                    <div class="kb-meta-item">
+                        <span class="kb-meta-label">Related Ticket</span>
+                        <span class="kb-meta-value"><a href="{% url 'ticket_detail' article.related_ticket.id %}">#{{ article.related_ticket.ticket_number }}</a></span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-            {% endfor %}
-        </div>
+
+            {% if article.attachments.exists %}
+            <div class="panel kb-meta-panel">
+                <h3 class="kb-sidebar-title">Attachments</h3>
+                <div class="kb-attachments-list">
+                    {% for attachment in article.attachments.all %}
+                    {% if attachment.file.url|lower|slice:"-4:" == ".jpg" or attachment.file.url|lower|slice:"-4:" == ".png" or attachment.file.url|lower|slice:"-5:" == ".jpeg" or attachment.file.url|lower|slice:"-4:" == ".gif" %}
+                    <a href="{{ attachment.file.url }}" target="_blank" class="kb-attachment-img-link">
+                        <img src="{{ attachment.file.url }}" alt="Attachment" class="kb-attachment-img" width="800" height="600">
+                    </a>
+                    {% else %}
+                    <a href="{{ attachment.file.url }}" target="_blank" download class="attachment-link attachment-link-dynamic kb-attachment-file-link">
+                        📎 {{ attachment.file.name|slice:"15:"|default:attachment.file.name }}
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </aside>
     </div>
-    {% endif %}
-</div>
 </div>
 
 <!-- Custom Delete Article Modal -->
