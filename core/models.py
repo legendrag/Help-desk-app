@@ -105,6 +105,9 @@ class Role(TimeStampedModel):
     can_access_kb = models.BooleanField(default=False, verbose_name="Access Knowledge Base")
     can_manage_kb = models.BooleanField(default=False, verbose_name="Manage Knowledge Base")
     
+    # System Maintenance Permissions
+    can_manage_maintenance = models.BooleanField(default=False, verbose_name="Manage System Maintenance")
+    
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

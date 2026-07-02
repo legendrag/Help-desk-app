@@ -7,6 +7,10 @@ from .management_views import (
     EmailSettingCreateView, EmailSettingUpdateView, EmailSettingDeleteView,
     BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView
 )
+from .maintenance_views import (
+    MaintenanceView, BackupDatabaseView, BackupMediaView,
+    CleanupTicketsView, CleanupMediaView
+)
 
 urlpatterns = [
     path('branches/add/', BranchCreateView.as_view(), name='branch_create'),
@@ -39,4 +43,11 @@ urlpatterns = [
     path('categories/', CategoryListView.as_view(), name='category_list'),
     path('roles/', RoleListView.as_view(), name='role_list'),
     path('email-settings/', EmailSettingListView.as_view(), name='email_setting_list'),
+
+    # Maintenance
+    path('maintenance/', MaintenanceView.as_view(), name='maintenance'),
+    path('maintenance/backup/db/', BackupDatabaseView.as_view(), name='backup_db'),
+    path('maintenance/backup/media/', BackupMediaView.as_view(), name='backup_media'),
+    path('maintenance/cleanup/tickets/', CleanupTicketsView.as_view(), name='cleanup_tickets'),
+    path('maintenance/cleanup/media/', CleanupMediaView.as_view(), name='cleanup_media'),
 ]
