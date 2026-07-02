@@ -291,9 +291,12 @@ function initChat(ticketId) {
                 chatBox.id = 'chat-box';
                 chatBox.className = 'chat-box';
                 
-                // Insert before the chat-form
+                // Insert before the typing indicator, or chat-form as fallback
+                const indicator = container.querySelector('#typing-indicator');
                 const form = container.querySelector('.chat-form');
-                if (form) {
+                if (indicator) {
+                    container.insertBefore(chatBox, indicator);
+                } else if (form) {
                     container.insertBefore(chatBox, form);
                 } else {
                     container.appendChild(chatBox);

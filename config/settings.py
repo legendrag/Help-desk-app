@@ -5,6 +5,7 @@ import sys
 
 try:
     import pymysql
+    pymysql.version_info = (2, 2, 1, "final", 0)
     pymysql.install_as_MySQLdb()
 except ImportError:
     pass
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
