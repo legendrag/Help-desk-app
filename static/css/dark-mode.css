@@ -1659,3 +1659,7 @@
   background: rgba(255, 255, 255, 0.1);
   color: #f1f5f9;
 }
+
+[data-theme="dark"] .mgmt-cleanup-card {
+  background: rgba(255, 255, 255, 0.03);
+}

@@ -9,7 +9,7 @@ from .management_views import (
 )
 from .maintenance_views import (
     MaintenanceView, BackupDatabaseView, BackupMediaView,
-    CleanupTicketsView, CleanupMediaView
+    CleanupTicketsView
 )
 
 urlpatterns = [
@@ -49,5 +49,4 @@ urlpatterns = [
     path('maintenance/backup/db/', BackupDatabaseView.as_view(), name='backup_db'),
     path('maintenance/backup/media/', BackupMediaView.as_view(), name='backup_media'),
     path('maintenance/cleanup/tickets/', CleanupTicketsView.as_view(), name='cleanup_tickets'),
-    path('maintenance/cleanup/media/', CleanupMediaView.as_view(), name='cleanup_media'),
 ]

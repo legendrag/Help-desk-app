@@ -1,73 +1,66 @@
-<div class="mgmt-header">
-    <div class="mgmt-title">
-        <h2 class="mgmt-section-title">System Maintenance</h2>
-        <p class="mgmt-subtitle">Backup database and media files, and clean up old records.</p>
-    </div>
-</div>
-
-<div class="mgmt-grid">
-    <!-- Backup Section -->
-    <div class="panel" style="padding: 1.5rem;">
-        <h3 style="margin-bottom: 1rem; color: var(--text-main); font-weight: 600;">System Backup</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
-            Download a full backup of the database or your media files. Database backups are exported in JSON format using Django's dumpdata, which makes them compatible with SQLite, MySQL, and PostgreSQL.
-        </p>
-        
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <form action="{% url 'backup_db' %}" method="post" style="margin: 0;">
-                {% csrf_token %}
-                <button type="submit" class="btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Download Database JSON
-                </button>
-            </form>
-            
-            <form action="{% url 'backup_media' %}" method="post" style="margin: 0;">
-                {% csrf_token %}
-                <button type="submit" class="btn secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Download Media Zip
-                </button>
-            </form>
+<div class="management-section">
+    <div class="section-header mgmt-section-header">
+        <div>
+            <h2 class="mgmt-section-title">System Maintenance</h2>
+            <p class="mgmt-section-subtitle">Backup database and media files, and clean up old records.</p>
         </div>
     </div>
 
-    <!-- Cleanup Section -->
-    <div class="panel" style="padding: 1.5rem;">
-        <h3 style="margin-bottom: 1rem; color: var(--text-main); font-weight: 600;">System Cleanup</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
-            Permanently delete old closed tickets to free up database space, or scan the media folder to remove orphaned files that are no longer attached to any records.
-        </p>
-
-        <div id="cleanup-response" style="margin-bottom: 1rem;"></div>
-
-        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="mgmt-grid">
+        <!-- Backup Section -->
+        <div class="panel mgmt-panel">
+            <h3 class="mgmt-panel-title">System Backup</h3>
+            <p class="mgmt-panel-desc">
+                Download a full backup of the database or your media files. Database backups are exported in JSON format using Django's dumpdata, which makes them compatible with SQLite, MySQL, and PostgreSQL.
+            </p>
             
-            <div style="background: rgba(15, 23, 42, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem;">Cleanup Old Tickets</h4>
-                <form hx-post="{% url 'cleanup_tickets' %}" hx-target="#cleanup-response" onsubmit="return confirm('WARNING: This will permanently delete old closed tickets and all their messages/attachments. This cannot be undone. Are you sure?');">
+            <div class="mgmt-button-group">
+                <form action="{% url 'backup_db' %}" method="post" class="mgmt-inline-form">
                     {% csrf_token %}
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <select name="days" class="form-input" style="width: auto; padding: 0.5rem;">
-                            <option value="30">Older than 30 days</option>
-                            <option value="60">Older than 60 days</option>
-                            <option value="90">Older than 90 days</option>
-                            <option value="365">Older than 1 year</option>
-                        </select>
-                        <button type="submit" class="btn danger" style="padding: 0.5rem 1rem;">Delete</button>
-                    </div>
+                    <button type="submit" class="btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Download Database JSON
+                    </button>
+                </form>
+                
+                <form action="{% url 'backup_media' %}" method="post" class="mgmt-inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn secondary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Download Media Zip
+                    </button>
                 </form>
             </div>
+        </div>
 
-            <div style="background: rgba(15, 23, 42, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                <h4 style="margin-bottom: 0.5rem; font-size: 0.95rem;">Clear Orphaned Media</h4>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">Scans the media directory and safely deletes any files not actively referenced in the database.</p>
-                <form hx-post="{% url 'cleanup_media' %}" hx-target="#cleanup-response" onsubmit="return confirm('This will scan and delete unused media files. Proceed?');">
-                    {% csrf_token %}
-                    <button type="submit" class="btn secondary" style="padding: 0.5rem 1rem;">Scan & Clean</button>
-                </form>
+        <!-- Cleanup Section -->
+        <div class="panel mgmt-panel">
+            <h3 class="mgmt-panel-title">System Cleanup</h3>
+            <p class="mgmt-panel-desc">
+                Permanently delete old closed tickets to free up database space.
+            </p>
+
+            <div id="cleanup-response" class="mgmt-response"></div>
+
+            <div class="mgmt-cleanup-cards">
+                
+                <div class="mgmt-cleanup-card">
+                    <h4 class="mgmt-cleanup-card-title">Cleanup Old Tickets</h4>
+                    <form hx-post="{% url 'cleanup_tickets' %}" hx-target="#cleanup-response" onsubmit="return confirm('WARNING: This will permanently delete old closed tickets and all their messages/attachments. This cannot be undone. Are you sure?');">
+                        {% csrf_token %}
+                        <div class="mgmt-cleanup-form-row">
+                            <select name="days" id="cleanup_days" class="form-control" style="width: 200px;">
+                                <option value="30">Older than 30 days</option>
+                                <option value="60">Older than 60 days</option>
+                                <option value="90">Older than 90 days</option>
+                                <option value="365">Older than 1 year</option>
+                            </select>
+                            <button type="submit" class="btn danger mgmt-btn-sm">Delete</button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
-
         </div>
     </div>
 </div>

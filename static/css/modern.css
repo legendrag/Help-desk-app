@@ -2516,3 +2516,95 @@ a.kb-article-card:hover {
     margin-top: 1rem !important;
   }
 }
+
+/* ---------------------------------------------------
+   Maintenance UI Styles
+--------------------------------------------------- */
+.mgmt-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .mgmt-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.mgmt-panel {
+  padding: 1.5rem;
+}
+
+.mgmt-panel-title {
+  margin-bottom: 1rem;
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.mgmt-panel-desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.mgmt-button-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mgmt-inline-form {
+  margin: 0;
+}
+
+.mgmt-btn-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 0.5rem;
+}
+
+.mgmt-btn-sm {
+  padding: 0.5rem 1rem !important;
+}
+
+.mgmt-cleanup-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mgmt-cleanup-card {
+  background: rgba(15, 23, 42, 0.03);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.mgmt-cleanup-card-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.mgmt-cleanup-card-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-cleanup-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+
+
+.mgmt-response {
+  margin-bottom: 1rem;
+}
