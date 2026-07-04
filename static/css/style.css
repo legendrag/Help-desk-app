@@ -2711,15 +2711,25 @@ button.success:hover,
     box-shadow: var(--shadow);
     background: white;
   }
+  
+  tr:hover td,
+  tr:active td {
+    background: transparent !important;
+  }
+  
+  tr:active {
+    background: #f8fafc !important;
+  }
 
   td {
     padding: 0.75rem 1rem;
     border: none;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 0.75rem;
+    text-align: left;
   }
 
   td:last-child {
@@ -2733,13 +2743,14 @@ button.success:hover,
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.05em;
-    flex: 1 1 45%;
+    flex: 0 0 35%;
+    min-width: 100px;
     text-align: left;
   }
 
   td>* {
-    flex: 1 1 55%;
-    text-align: right;
+    flex: 1 1 auto;
+    text-align: left;
   }
 }
 

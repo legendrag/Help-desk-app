@@ -1100,13 +1100,36 @@ ul.errorlist li {
   gap: 0.5rem;
   justify-content: flex-end;
 }
-.mgmt-edit-btn {
+.mgmt-edit-btn, .mgmt-delete-btn {
   padding: 0.5rem;
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mgmt-edit-btn {
   background: #f8fafc;
   border: 1px solid var(--border);
 }
+.mgmt-edit-btn:hover {
+  background: #e2e8f0;
+}
+
 .mgmt-delete-btn {
-  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid transparent;
+}
+.mgmt-delete-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+.mgmt-delete-btn svg {
+  stroke: currentColor;
 }
 .badge--subtle {
   background: #f1f5f9;
@@ -1309,6 +1332,12 @@ td.mgmt-empty-cell {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .inline-input {
@@ -2344,6 +2373,10 @@ a.kb-article-card:hover {
     padding: 0.4rem 1.2rem !important;
     border-radius: 8px !important;
   }
+  
+  .mgmt-edit-btn, .mgmt-delete-btn {
+    min-height: 36px !important;
+  }
 
   /* Prevent chat action buttons from becoming huge squares */
   .message-reply-btn, .message-menu-btn {
@@ -2366,6 +2399,53 @@ a.kb-article-card:hover {
     display: flex !important;
     flex-direction: column !important;
     gap: 1rem !important;
+  }
+  
+  .dashboard-filters-inline, .filters-inline-left, .filters-inline-form {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+  }
+  
+  .dashboard-filters-inline {
+    gap: 1.5rem !important;
+  }
+  
+  .filters-inline-form {
+    gap: 1rem !important;
+  }
+
+  .date-filter-group {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+  }
+  
+  .date-filter-group input {
+    width: 10px !important; /* Forces flex to distribute evenly */
+    flex: 1 1 auto !important;
+  }
+
+  .date-filter-group .muted {
+    text-align: center;
+    width: auto !important;
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+  
+  .filters-inline-right {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.8rem;
+  }
+  
+  .filters-inline-right .btn {
+    width: 100%;
+    text-align: center;
   }
 
   /* Sidebar Drawer adjustments */
@@ -2439,13 +2519,13 @@ a.kb-article-card:hover {
   }
 
   td {
-    text-align: right !important;
+    text-align: left !important;
     padding: 0.6rem 0 !important;
     border: none !important;
     border-bottom: 1px solid rgba(226, 232, 240, 0.5) !important;
     display: flex !important;
     flex-direction: row !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     align-items: center !important;
     gap: 1rem;
   }
@@ -2462,11 +2542,89 @@ a.kb-article-card:hover {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    flex: 0 0 35% !important;
+    min-width: 100px !important;
+  }
+
+  /* Make sure the main info panel sits above the performance card */
+  .info-main-panel {
+    position: relative !important;
+    z-index: 400 !important;
+  }
+
+  .action-bar {
+    position: relative !important;
+    z-index: 300 !important;
+  }
+  .action-bar-group {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0 !important;
+    position: relative !important;
+    z-index: 300 !important;
+  }
+  .action-bar-execute {
+    border-radius: 12px 0 0 12px !important;
+    flex: 1 1 auto !important;
+    border-right: none !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .action-bar-toggle {
+    border-radius: 0 12px 12px 0 !important;
+    flex: 0 0 60px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .action-bar-menu {
+    width: 100% !important;
+    left: 0 !important;
+    top: calc(100% + 10px) !important;
+    bottom: auto !important;
+    z-index: 200 !important;
+  }
+  .action-bar-accept,
+  .action-bar-reopen {
+    width: 100% !important;
+    border-radius: 12px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
   }
 
   /* -----------------------------------------------------
      KB Mobile Enhancements
      ----------------------------------------------------- */
+  .kb-search-input-wrapper {
+    flex-direction: row !important;
+  }
+
+  .kb-search-btn {
+    position: absolute !important;
+    right: 0.5rem !important;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px !important;
+  }
+  
+  .kb-search-btn-text {
+    display: none !important;
+  }
+  
+  .kb-search-btn-icon {
+    display: block !important;
+  }
+
   .kb-hero-actions {
     position: static !important;
     margin-top: 1.5rem !important;
@@ -2487,18 +2645,19 @@ a.kb-article-card:hover {
   .kb-category-nav {
     flex-direction: row !important;
     flex-wrap: wrap !important;
+    justify-content: center !important;
     gap: 0.5rem !important;
   }
 
   .kb-category-link {
     margin-bottom: 0 !important;
-    padding: 0.4rem 0.8rem !important;
-    font-size: 0.85rem !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.9rem !important;
     background: var(--panel-bg);
     border: 1px solid var(--border);
     border-radius: 20px !important;
     text-align: center;
-    flex-grow: 1; /* Makes them stretch nicely */
+    flex-grow: 0; /* Remove stretch so pills look like normal chips */
   }
 
   .kb-category-link.active {
@@ -2613,6 +2772,14 @@ a.kb-article-card:hover {
   align-items: center;
 }
 
+.mgmt-cleanup-form-row-wrap {
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.mgmt-select-wide {
+  width: 200px;
+}
 
 
 .mgmt-response {

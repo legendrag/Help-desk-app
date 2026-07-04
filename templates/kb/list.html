@@ -13,7 +13,7 @@ Knowledge Base | Help Desk
         <div class="kb-hero-content">
             <h1 class="kb-hero-title">Find answers fast</h1>
             <p class="kb-hero-subtitle">Search our knowledge base or browse categories below</p>
-            <form class="kb-hero-search" method="get" autocomplete="off" action="{% url 'kb_list' %}" onsubmit="var btn=this.querySelector('.kb-search-btn'); btn.innerHTML='<span class=\'kb-spinner\'></span> Searching...'; btn.style.pointerEvents='none'; btn.style.opacity='0.8';">
+            <form class="kb-hero-search" method="get" autocomplete="off" action="{% url 'kb_list' %}" onsubmit="var btn=this.querySelector('.kb-search-btn'); var textSpan=btn.querySelector('.kb-search-btn-text'); if(textSpan){textSpan.innerHTML='Searching...';} btn.style.pointerEvents='none'; btn.style.opacity='0.8';">
                 {% if current_category != 'all' and current_category %}
                 <input type="hidden" name="category" value="{{ current_category }}">
                 {% endif %}
@@ -28,7 +28,13 @@ Knowledge Base | Help Desk
                         </svg>
                     </span>
                     <input type="text" name="q" id="search-q" class="kb-search-input" placeholder="Search title or content..." value="{{ search_query }}">
-                    <button type="submit" class="btn primary kb-search-btn">Search</button>
+                    <button type="submit" class="btn primary kb-search-btn">
+                        <svg class="kb-search-btn-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span class="kb-search-btn-text">Search</span>
+                    </button>
                 </div>
             </form>
         </div>

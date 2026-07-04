@@ -371,6 +371,9 @@
   border-color: rgba(148, 163, 184, 0.15);
   color: #e2e8f0;
 }
+[data-theme="dark"] .mgmt-edit-btn:hover {
+  background: #475569;
+}
 
 [data-theme="dark"] .mgmt-empty-cell {
   color: #64748b;
@@ -389,6 +392,13 @@
   [data-theme="dark"] tr {
     background: #1e293b;
     border-color: rgba(148, 163, 184, 0.12);
+  }
+  [data-theme="dark"] tr:hover td,
+  [data-theme="dark"] tr:active td {
+    background: transparent !important;
+  }
+  [data-theme="dark"] tr:active {
+    background: rgba(255, 255, 255, 0.04) !important;
   }
   [data-theme="dark"] td {
     border-bottom-color: rgba(148, 163, 184, 0.08);

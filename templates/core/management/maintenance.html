@@ -50,7 +50,7 @@
                     <form hx-post="{% url 'cleanup_tickets_preview' %}" hx-target="#cleanup-response">
                         {% csrf_token %}
                         <div class="mgmt-cleanup-form-row">
-                            <select name="days" id="cleanup_days" class="form-control" style="width: 200px;">
+                            <select name="days" id="cleanup_days" class="form-control mgmt-select-wide">
                                 <option value="30">Older than 30 days</option>
                                 <option value="60">Older than 60 days</option>
                                 <option value="90">Older than 90 days</option>
@@ -66,7 +66,7 @@
                     <p class="mgmt-cleanup-card-desc">Delete read notifications older than a threshold, and all notifications past an absolute age.</p>
                     <form hx-post="{% url 'cleanup_notifications_preview' %}" hx-target="#cleanup-response">
                         {% csrf_token %}
-                        <div class="mgmt-cleanup-form-row" style="flex-wrap: wrap; gap: 1rem;">
+                        <div class="mgmt-cleanup-form-row mgmt-cleanup-form-row-wrap">
                             <label class="mgmt-cleanup-inline-label">
                                 Read older than
                                 <select name="read_days" class="form-control mgmt-select-sm">

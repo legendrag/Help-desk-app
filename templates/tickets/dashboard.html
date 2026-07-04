@@ -10,9 +10,11 @@
         <div class="filters-inline-left">
             <span class="filters-label">Filters</span>
             <form method="get" class="filters-inline-form" id="dashboard-form" autocomplete="off">
-                <input type="date" name="start_date" value="{{ filter_values.start_date }}" onchange="this.form.submit()" class="inline-input">
-                <span class="muted">to</span>
-                <input type="date" name="end_date" value="{{ filter_values.end_date }}" onchange="this.form.submit()" class="inline-input">
+                <div class="date-filter-group">
+                    <input type="date" name="start_date" value="{{ filter_values.start_date }}" onchange="this.form.submit()" class="inline-input">
+                    <span class="muted">to</span>
+                    <input type="date" name="end_date" value="{{ filter_values.end_date }}" onchange="this.form.submit()" class="inline-input">
+                </div>
                 
                 <select name="department" onchange="this.form.submit()" class="inline-select">
                     <option value="all">All Departments</option>
@@ -178,11 +180,11 @@
                         <tbody>
                             {% for agent in agent_performance %}
                             <tr>
-                                <td><strong>{{ agent.name }}</strong></td>
-                                <td>{{ agent.tickets_resolved }}</td>
-                                <td><span class="muted">{{ agent.avg_response_time }}</span></td>
-                                <td><span class="muted">{{ agent.avg_resolution_time }}</span></td>
-                                <td>
+                                <td data-label="Agent"><strong>{{ agent.name }}</strong></td>
+                                <td data-label="Resolved">{{ agent.tickets_resolved }}</td>
+                                <td data-label="Response Time"><span class="muted">{{ agent.avg_response_time }}</span></td>
+                                <td data-label="Resolution Time"><span class="muted">{{ agent.avg_resolution_time }}</span></td>
+                                <td data-label="Grade">
                                     <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
                                         <span class="badge badge-{{ agent.grade_color }}" style="width: 28px; text-align: center;">{{ agent.grade }}</span>
                                     </div>
@@ -318,7 +320,7 @@
             <!-- Tickets by Department -->
             <div class="panel dashboard-card col-span-1">
                 <div class="card-header">
-                    <h3>Departments</h3>
+                    <h3>Tickets by Department</h3>
                 </div>
                 <div class="metric-list compact-list">
                     {% for item in tickets_by_department %}
