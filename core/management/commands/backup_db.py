@@ -12,6 +12,7 @@ Usage:
 
 import os
 import shutil
+import sqlite3
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -41,7 +42,15 @@ class Command(BaseCommand):
         backup_dir = options["dir"] or os.path.join(settings.BASE_DIR, "backups")
         keep = options["keep"]
 
-        backup_path = Path(backup_dir)
+        # Validate backup directory path
+        backup_path = Path(backup_dir).resolve()
+        base_dir = Path(settings.BASE_DIR).resolve()
+        if not str(backup_path).startswith(str(base_dir)):
+            raise CommandError(
+                f"Backup directory must be within the project root ({base_dir}). "
+                f"Got: {backup_path}"
+            )
+
         backup_path.mkdir(parents=True, exist_ok=True)
 
         db_settings = settings.DATABASES["default"]
@@ -73,7 +82,34 @@ class Command(BaseCommand):
         self.stdout.write(f"  Source: {db_file}")
         self.stdout.write(f"  Size:   {size_mb:.2f} MB")
 
+        # Verify the backup is a valid SQLite database
+        self._verify_sqlite_integrity(backup_file)
+
         return backup_file
+
+    def _verify_sqlite_integrity(self, backup_file):
+        """Run PRAGMA integrity_check on the backup to ensure it's valid."""
+        self.stdout.write("  Verifying backup integrity...")
+        try:
+            conn = sqlite3.connect(str(backup_file))
+            cursor = conn.execute("PRAGMA integrity_check;")
+            result = cursor.fetchone()
+            conn.close()
+
+            if result and result[0] == "ok":
+                self.stdout.write(self.style.SUCCESS("  Integrity check: PASSED"))
+            else:
+                detail = result[0] if result else "unknown error"
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Integrity check: FAILED ({detail}). "
+                        f"The database may have been written to during backup."
+                    )
+                )
+        except Exception as e:
+            self.stdout.write(
+                self.style.WARNING(f"  Integrity check: ERROR ({e})")
+            )
 
     def _backup_mysql(self, db_settings, backup_path, timestamp):
         """Back up MySQL using mysqldump."""

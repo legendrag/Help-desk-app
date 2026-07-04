@@ -346,7 +346,7 @@ ul.errorlist li {
 }
 
 .ts-control {
-  padding: 0.5rem 1rem !important;
+  padding: 0.5rem 2.2rem 0.5rem 1rem !important;
   min-height: 44px;
   border: 1px solid var(--border) !important;
   border-radius: 8px !important;
@@ -2555,10 +2555,20 @@ a.kb-article-card:hover {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.mgmt-button-group .btn {
+  width: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .mgmt-inline-form {
   margin: 0;
+  display: flex;
 }
 
 .mgmt-btn-icon {
@@ -2607,4 +2617,23 @@ a.kb-article-card:hover {
 
 .mgmt-response {
   margin-bottom: 1rem;
+}
+
+.mgmt-cleanup-inline-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mgmt-cleanup-inline-label .ts-wrapper {
+  width: 90px !important;
+  min-width: 90px !important;
+  flex: 0 0 auto !important;
+}
+
+.mgmt-cleanup-inline-label .ts-wrapper .ts-control {
+  padding-left: 0.5rem !important;
 }

@@ -57,7 +57,7 @@
             </button>
             {% if request.user.is_superuser or request.user.role.can_manage_maintenance %}
             <button class="settings-tab"
-                    hx-get="{% url 'maintenance' %}"
+                    hx-get="{% url 'maintenance' %}?nocache=1"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">

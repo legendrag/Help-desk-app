@@ -8,8 +8,9 @@ from .management_views import (
     BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView
 )
 from .maintenance_views import (
-    MaintenanceView, BackupDatabaseView, BackupMediaView,
-    CleanupTicketsView
+    MaintenanceView, ExportTicketsView, BackupMediaView,
+    CleanupTicketsView, CleanupTicketsPreviewView,
+    CleanupNotificationsView, CleanupNotificationsPreviewView
 )
 
 urlpatterns = [
@@ -46,7 +47,10 @@ urlpatterns = [
 
     # Maintenance
     path('maintenance/', MaintenanceView.as_view(), name='maintenance'),
-    path('maintenance/backup/db/', BackupDatabaseView.as_view(), name='backup_db'),
+    path('maintenance/export/tickets/', ExportTicketsView.as_view(), name='export_tickets'),
     path('maintenance/backup/media/', BackupMediaView.as_view(), name='backup_media'),
     path('maintenance/cleanup/tickets/', CleanupTicketsView.as_view(), name='cleanup_tickets'),
+    path('maintenance/cleanup/tickets/preview/', CleanupTicketsPreviewView.as_view(), name='cleanup_tickets_preview'),
+    path('maintenance/cleanup/notifications/', CleanupNotificationsView.as_view(), name='cleanup_notifications'),
+    path('maintenance/cleanup/notifications/preview/', CleanupNotificationsPreviewView.as_view(), name='cleanup_notifications_preview'),
 ]

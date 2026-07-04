@@ -49,20 +49,8 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no records will be deleted.\n"))
 
-        # 1) Delete read notifications older than --read-days
-        read_cutoff = now - timedelta(days=read_days)
-        read_qs = InAppNotification.objects.filter(is_read=True, created_at__lt=read_cutoff)
-        read_count = read_qs.count()
-
-        if not dry_run and read_count:
-            read_qs.delete()
-
-        self.stdout.write(
-            f"  Read notifications older than {read_days} days: "
-            f"{'would delete' if dry_run else 'deleted'} {read_count} record(s)."
-        )
-
-        # 2) Delete ALL notifications older than --all-days
+        # 1) Delete ALL notifications older than --all-days first
+        #    (this avoids double-counting with the read query below)
         all_cutoff = now - timedelta(days=all_days)
         all_qs = InAppNotification.objects.filter(created_at__lt=all_cutoff)
         all_count = all_qs.count()
@@ -75,8 +63,21 @@ class Command(BaseCommand):
             f"{'would delete' if dry_run else 'deleted'} {all_count} record(s)."
         )
 
+        # 2) Delete read notifications older than --read-days (from remaining set)
+        read_cutoff = now - timedelta(days=read_days)
+        read_qs = InAppNotification.objects.filter(is_read=True, created_at__lt=read_cutoff)
+        read_count = read_qs.count()
+
+        if not dry_run and read_count:
+            read_qs.delete()
+
+        self.stdout.write(
+            f"  Read notifications older than {read_days} days: "
+            f"{'would delete' if dry_run else 'deleted'} {read_count} record(s)."
+        )
+
         # Summary
-        total = read_count + all_count
+        total = all_count + read_count
         remaining = InAppNotification.objects.count()
         if dry_run:
             self.stdout.write(self.style.WARNING(f"\nDry run complete. {total} record(s) would be removed."))

@@ -7,25 +7,25 @@
     </div>
 
     <div class="mgmt-grid">
-        <!-- Backup Section -->
+        <!-- Export & Backup Section -->
         <div class="panel mgmt-panel">
-            <h3 class="mgmt-panel-title">System Backup</h3>
+            <h3 class="mgmt-panel-title">Export & Backup</h3>
             <p class="mgmt-panel-desc">
-                Download a full backup of the database or your media files. Database backups are exported in JSON format using Django's dumpdata, which makes them compatible with SQLite, MySQL, and PostgreSQL.
+                Export tickets and chat messages as a readable text file, or download a zip of all uploaded media files.
             </p>
             
             <div class="mgmt-button-group">
-                <form action="{% url 'backup_db' %}" method="post" class="mgmt-inline-form">
+                <form action="{% url 'export_tickets' %}" method="post" class="mgmt-inline-form">
                     {% csrf_token %}
                     <button type="submit" class="btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        Download Database JSON
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        Export Tickets & Messages
                     </button>
                 </form>
                 
                 <form action="{% url 'backup_media' %}" method="post" class="mgmt-inline-form">
                     {% csrf_token %}
-                    <button type="submit" class="btn secondary">
+                    <button type="submit" class="btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         Download Media Zip
                     </button>
@@ -37,7 +37,7 @@
         <div class="panel mgmt-panel">
             <h3 class="mgmt-panel-title">System Cleanup</h3>
             <p class="mgmt-panel-desc">
-                Permanently delete old closed tickets to free up database space.
+                Permanently delete old records to free up database space. A preview count is shown before any deletion.
             </p>
 
             <div id="cleanup-response" class="mgmt-response"></div>
@@ -46,7 +46,8 @@
                 
                 <div class="mgmt-cleanup-card">
                     <h4 class="mgmt-cleanup-card-title">Cleanup Old Tickets</h4>
-                    <form hx-post="{% url 'cleanup_tickets' %}" hx-target="#cleanup-response" onsubmit="return confirm('WARNING: This will permanently delete old closed tickets and all their messages/attachments. This cannot be undone. Are you sure?');">
+                    <p class="mgmt-cleanup-card-desc">Delete closed tickets and their messages/attachments older than the selected period.</p>
+                    <form hx-post="{% url 'cleanup_tickets_preview' %}" hx-target="#cleanup-response">
                         {% csrf_token %}
                         <div class="mgmt-cleanup-form-row">
                             <select name="days" id="cleanup_days" class="form-control" style="width: 200px;">
@@ -55,7 +56,36 @@
                                 <option value="90">Older than 90 days</option>
                                 <option value="365">Older than 1 year</option>
                             </select>
-                            <button type="submit" class="btn danger mgmt-btn-sm">Delete</button>
+                            <button type="submit" class="btn primary mgmt-btn-sm">Preview</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="mgmt-cleanup-card">
+                    <h4 class="mgmt-cleanup-card-title">Cleanup Notifications</h4>
+                    <p class="mgmt-cleanup-card-desc">Delete read notifications older than a threshold, and all notifications past an absolute age.</p>
+                    <form hx-post="{% url 'cleanup_notifications_preview' %}" hx-target="#cleanup-response">
+                        {% csrf_token %}
+                        <div class="mgmt-cleanup-form-row" style="flex-wrap: wrap; gap: 1rem;">
+                            <label class="mgmt-cleanup-inline-label">
+                                Read older than
+                                <select name="read_days" class="form-control mgmt-select-sm">
+                                    <option value="14">14</option>
+                                    <option value="30" selected>30</option>
+                                    <option value="60">60</option>
+                                </select>
+                                days
+                            </label>
+                            <label class="mgmt-cleanup-inline-label">
+                                All older than
+                                <select name="all_days" class="form-control mgmt-select-sm">
+                                    <option value="60">60</option>
+                                    <option value="90" selected>90</option>
+                                    <option value="180">180</option>
+                                </select>
+                                days
+                            </label>
+                            <button type="submit" class="btn primary mgmt-btn-sm">Preview</button>
                         </div>
                     </form>
                 </div>
