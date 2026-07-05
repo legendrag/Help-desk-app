@@ -84,6 +84,9 @@
             </div>
         </header>
 
+        <!-- Global Progress Bar -->
+        <div id="global-progress-bar" class="global-progress-bar"></div>
+
         <main class="content">
             {% block content %}{% endblock content %}
         </main>
@@ -181,6 +184,13 @@
             const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
             document.documentElement.classList.add('modal-open');
+            
+            // Add a spinner to the modal content so it doesn't look like an empty white box while loading
+            const content = document.getElementById('modal-content');
+            if (content && !content.innerHTML.trim()) {
+                content.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; padding: 3rem;"><div class="spinner-large"></div></div>';
+            }
+            
             document.getElementById('modal-container').style.display = 'flex';
         }
         function closeModal() {
@@ -506,5 +516,13 @@
             </div>
         </div>
     </div>
+    
+    <!-- Global Spinner Overlay for Navigation -->
+    <div id="global-spinner-overlay" class="global-spinner-overlay">
+        <div class="spinner-large"></div>
+    </div>
+
+    <!-- Global Loading Interceptor -->
+    <script src="{% static 'js/loading.js' %}?v=1"></script>
 </body>
 </html>

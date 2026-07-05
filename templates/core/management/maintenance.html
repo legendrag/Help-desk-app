@@ -15,7 +15,7 @@
             </p>
             
             <div class="mgmt-button-group">
-                <form action="{% url 'export_tickets' %}" method="post" class="mgmt-inline-form">
+                <form action="{% url 'export_tickets' %}" method="post" class="mgmt-inline-form" onsubmit="handleExport(event, this, 'export-tickets-error')" data-no-loading="true">
                     {% csrf_token %}
                     <button type="submit" class="btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
@@ -23,7 +23,7 @@
                     </button>
                 </form>
                 
-                <form action="{% url 'backup_media' %}" method="post" class="mgmt-inline-form">
+                <form action="{% url 'backup_media' %}" method="post" class="mgmt-inline-form" onsubmit="handleExport(event, this, 'backup-media-error')" data-no-loading="true">
                     {% csrf_token %}
                     <button type="submit" class="btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mgmt-btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -31,6 +31,9 @@
                     </button>
                 </form>
             </div>
+            
+            <div id="export-tickets-error" style="color: var(--danger); margin-top: 0.5rem; font-size: 0.85rem; font-weight: 500;"></div>
+            <div id="backup-media-error" style="color: var(--danger); margin-top: 0.5rem; font-size: 0.85rem; font-weight: 500;"></div>
         </div>
 
         <!-- Cleanup Section -->
@@ -94,3 +97,58 @@
         </div>
     </div>
 </div>
+
+
+<script>
+async function handleExport(event, form, errorId) {
+    event.preventDefault();
+    const errorDiv = document.getElementById(errorId);
+    if(errorDiv) errorDiv.textContent = "";
+    
+    // UI state
+    const btn = form.querySelector('button');
+    if(btn) btn.classList.add('btn-loading');
+    if (typeof startProgress === 'function') startProgress();
+    
+    try {
+        const formData = new FormData(form);
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (response.status === 429) {
+            const text = await response.text();
+            if(errorDiv) errorDiv.textContent = text;
+        } else if (response.ok) {
+            let filename = "download";
+            const disposition = response.headers.get('Content-Disposition');
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+                if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } else {
+            const text = await response.text();
+            if(errorDiv) errorDiv.textContent = "Error: " + text.slice(0, 50);
+        }
+    } catch (e) {
+        if(errorDiv) errorDiv.textContent = "Network error occurred.";
+    } finally {
+        if(btn) btn.classList.remove('btn-loading');
+        if (typeof finishProgress === 'function') finishProgress();
+    }
+}
+</script>

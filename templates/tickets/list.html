@@ -90,7 +90,10 @@
         }
         var href = row.getAttribute("data-href");
         if (href) {
-            window.location.href = href;
+            // Defer slightly to let loading.js render the global spinner and progress bar
+            setTimeout(() => {
+                window.location.href = href;
+            }, 50);
         }
     });
 

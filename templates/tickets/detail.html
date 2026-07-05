@@ -181,7 +181,6 @@
         </div>
         {% if user.is_superuser or can_chat and user.role and user.role.can_send_message %}
         <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none"
-            hx-on::after-request="if(event.detail.successful) { this.reset(); clearReply(); clearFilePreview(); }"
             method="post" enctype="multipart/form-data" class="chat-form">
             <div class="drop-zone-overlay" id="drop-zone-overlay">
                 <div class="drop-zone-content">
@@ -811,6 +810,7 @@
 
 <script>
     window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
+    window.currentUsername = "{{ user.username|escapejs }}{% if user.user_type == 'branch' and user.branch_id == ticket.branch_id and ticket.client_name %} - {{ ticket.client_name|escapejs }}{% endif %}";
 </script>
-<script src="{% static 'js/chat.js' %}?v=10" defer></script>
+<script src="{% static 'js/chat.js' %}?v=11" defer></script>
 {% endblock content %}

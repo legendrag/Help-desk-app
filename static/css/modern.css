@@ -89,6 +89,37 @@ button, .btn {
   box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
 }
 
+/* Centered Full-Screen Spinner Overlay for Navigation */
+.global-spinner-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(248, 250, 252, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.global-spinner-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+.spinner-large {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(79, 70, 229, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+}
+@keyframes spinner {
+  to { transform: rotate(360deg); }
+}
+
 /* Dashboard Enhancements */
 .stat-card {
   border-radius: 16px;
@@ -1100,7 +1131,7 @@ ul.errorlist li {
   gap: 0.5rem;
   justify-content: flex-end;
 }
-.mgmt-edit-btn, .mgmt-delete-btn {
+button.mgmt-edit-btn, button.mgmt-delete-btn {
   padding: 0.5rem;
   border-radius: 50% !important;
   width: 36px !important;
@@ -1109,26 +1140,29 @@ ul.errorlist li {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  box-shadow: none !important;
+  transform: none !important;
 }
-
-.mgmt-edit-btn {
-  background: #f8fafc;
-  border: 1px solid var(--border);
+button.mgmt-edit-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid transparent;
 }
-.mgmt-edit-btn:hover {
+button.mgmt-edit-btn:hover {
   background: #e2e8f0;
+  color: #1e293b;
 }
 
-.mgmt-delete-btn {
+button.mgmt-delete-btn {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border: 1px solid transparent;
 }
-.mgmt-delete-btn:hover {
+button.mgmt-delete-btn:hover {
   background: #ef4444;
   color: white;
 }
-.mgmt-delete-btn svg {
+button.mgmt-delete-btn svg {
   stroke: currentColor;
 }
 .badge--subtle {
@@ -2362,9 +2396,22 @@ a.kb-article-card:hover {
    ========================================================================== */
 
 @media (max-width: 768px) {
-  /* 1. Touch-Target Optimization */
-  button, .btn, .btn-link, input, select, textarea, .ts-control, .sidebar-action-btn {
+  /* ── Touch Targets & Spacing ── */
+  button, .btn, .btn-link, input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-control, .sidebar-action-btn {
     min-height: 48px !important;
+  }
+  .form-group label:not(.checkbox-label) {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .btn.secondary {
+    border-color: var(--border);
+  }
+
+  /* Form Inputs Full Width */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-wrapper {
+    width: 100% !important;
   }
   
   /* Prevent small action buttons from becoming giant circles */
@@ -2374,7 +2421,7 @@ a.kb-article-card:hover {
     border-radius: 8px !important;
   }
   
-  .mgmt-edit-btn, .mgmt-delete-btn {
+  button.mgmt-edit-btn, button.mgmt-delete-btn {
     min-height: 36px !important;
   }
 
@@ -2384,11 +2431,6 @@ a.kb-article-card:hover {
     min-width: 28px !important;
   }
   
-  /* Form Inputs Full Width */
-  input, select, textarea, .ts-wrapper {
-    width: 100% !important;
-  }
-
   /* 2. Responsive Layouts & Overflows */
   .app-shell {
     overflow-x: hidden; /* Prevent horizontal scrolling without breaking sticky */

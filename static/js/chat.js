@@ -27,6 +27,12 @@ function getCsrfToken() {
     return input ? input.value : "";
 }
 
+// ── Optimistic UI: Pending Message Tracker ──
+// Tracks messages that have been optimistically rendered but not yet confirmed by WebSocket.
+// Key: pendingKey (timestamp-based), Value: { element, messageText, timeoutId }
+const pendingMessages = {};
+const PENDING_CONFIRM_TIMEOUT_MS = 8000; // Promote to "Sent" if WS doesn't confirm in 8s
+
 function initChat(ticketId) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
@@ -308,6 +314,20 @@ function initChat(ticketId) {
 
         if (document.getElementById(`message-${payload.id}`)) return;
 
+        // ── Optimistic UI: Replace pending message if this is a confirmation ──
+        // Check if this incoming WS message matches any pending optimistic message.
+        // Match by sender + similar text (the server message should match what we sent).
+        const isMe = String(payload.sender) === window.userId;
+        if (isMe) {
+            const matchedKey = _findMatchingPendingMessage(payload.message);
+            if (matchedKey) {
+                const pending = pendingMessages[matchedKey];
+                if (pending.timeoutId) clearTimeout(pending.timeoutId);
+                if (pending.element) pending.element.remove();
+                delete pendingMessages[matchedKey];
+            }
+        }
+
         if (payload.is_system_message) {
             const row = document.createElement('div');
             row.id = `message-${payload.id}`;
@@ -327,7 +347,6 @@ function initChat(ticketId) {
         const timeStr = isNaN(dateObj) ? '' : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         const fullDateStr = isNaN(dateObj) ? '' : dateObj.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
 
-        const isMe = String(payload.sender) === window.userId;
         const article = document.createElement('article');
         article.id = `message-${payload.id}`;
         article.className = `chat-item ${isMe ? 'me' : ''}`;
@@ -438,6 +457,262 @@ function initChat(ticketId) {
     };
 }
 
+// ══════════════════════════════════════════════════════════════════
+// Optimistic UI: Pending Message Functions
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Find a pending message whose text matches the incoming confirmed message.
+ * Uses normalized comparison (trim + collapse whitespace).
+ */
+function _findMatchingPendingMessage(confirmedText) {
+    const normalize = (s) => (s || '').trim().replace(/\s+/g, ' ');
+    const target = normalize(confirmedText);
+    for (const key of Object.keys(pendingMessages)) {
+        if (normalize(pendingMessages[key].messageText) === target) {
+            return key;
+        }
+    }
+    return null;
+}
+
+/**
+ * Render an optimistic (pending) message bubble in the chat.
+ * Called immediately when the user clicks Send, before the HTTP request completes.
+ * Returns the pendingKey for tracking.
+ */
+function appendOptimisticMessage(messageText, replyData) {
+    let chatBox = document.getElementById('chat-box');
+
+    // Create chat-box if it doesn't exist (empty chat state)
+    if (!chatBox) {
+        const container = document.querySelector('.chat-panel');
+        if (container) {
+            const placeholder = container.querySelector('.no-messages-text');
+            if (placeholder) placeholder.remove();
+
+            chatBox = document.createElement('div');
+            chatBox.id = 'chat-box';
+            chatBox.className = 'chat-box';
+
+            const indicator = container.querySelector('#typing-indicator');
+            const form = container.querySelector('.chat-form');
+            if (indicator) {
+                container.insertBefore(chatBox, indicator);
+            } else if (form) {
+                container.insertBefore(chatBox, form);
+            } else {
+                container.appendChild(chatBox);
+            }
+        }
+    }
+
+    if (!chatBox) return null;
+
+    const pendingKey = 'pending-' + Date.now();
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const username = window.currentUsername || 'You';
+
+    const article = document.createElement('article');
+    article.id = pendingKey;
+    article.className = 'chat-item me pending';
+    article.dataset.pendingKey = pendingKey;
+
+    const replyHtml = replyData ? `
+        <div class="message-reply-quote">
+            <div class="reply-quote-meta">
+                <span class="reply-quote-sender">${escapeHtml(replyData.sender)}</span>
+            </div>
+            <div class="reply-quote-text">${escapeHtml(replyData.text)}</div>
+        </div>
+    ` : '';
+
+    article.innerHTML = `
+        <div class="chat-row">
+            <div class="chat-bubble">
+                <header><strong>${escapeHtml(username)}</strong></header>
+                <div>
+                    ${replyHtml}
+                    <div class="chat-bubble-text">${escapeHtml(messageText)}</div>
+                </div>
+            </div>
+            <div class="chat-actions-outside">
+                <div class="chat-time">${timeStr}</div>
+            </div>
+        </div>
+        <div class="message-status-indicator" id="status-${pendingKey}">Sending...</div>
+    `;
+
+    chatBox.appendChild(article);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // Set a timeout: if WS doesn't confirm in time, promote to "Sent"
+    const timeoutId = setTimeout(() => {
+        _promotePendingToSent(pendingKey);
+    }, PENDING_CONFIRM_TIMEOUT_MS);
+
+    pendingMessages[pendingKey] = {
+        element: article,
+        messageText: messageText,
+        timeoutId: timeoutId,
+    };
+
+    return pendingKey;
+}
+
+/**
+ * Promote a pending message to "Sent" state.
+ * Called when the timeout expires (WS didn't confirm) but the HTTP POST succeeded.
+ */
+function _promotePendingToSent(pendingKey) {
+    const pending = pendingMessages[pendingKey];
+    if (!pending || !pending.element) return;
+
+    pending.element.classList.remove('pending');
+    const statusEl = pending.element.querySelector('.message-status-indicator');
+    if (statusEl) {
+        statusEl.textContent = '';
+        // Briefly flash "Sent" then fade out
+        statusEl.textContent = 'Sent';
+        setTimeout(() => {
+            statusEl.style.transition = 'opacity 0.5s';
+            statusEl.style.opacity = '0';
+            setTimeout(() => statusEl.remove(), 500);
+        }, 2000);
+    }
+
+    // Show the actions (time, reply, menu)
+    const actions = pending.element.querySelector('.chat-actions-outside');
+    if (actions) actions.style.visibility = '';
+
+    // Clean up tracker but keep element in DOM
+    if (pending.timeoutId) clearTimeout(pending.timeoutId);
+    delete pendingMessages[pendingKey];
+}
+
+/**
+ * Mark a pending message as failed with a retry button.
+ * Called when the HTMX POST returns an error.
+ */
+function markPendingAsFailed(pendingKey, retryFn) {
+    const pending = pendingMessages[pendingKey];
+    if (!pending || !pending.element) return;
+
+    if (pending.timeoutId) clearTimeout(pending.timeoutId);
+
+    pending.element.classList.remove('pending');
+    pending.element.classList.add('send-failed');
+
+    const statusEl = pending.element.querySelector('.message-status-indicator');
+    if (statusEl) {
+        statusEl.className = 'message-status-indicator status-failed';
+        statusEl.innerHTML = `
+            <span>Failed to send</span>
+            <button type="button" class="retry-btn" aria-label="Retry sending">Retry</button>
+        `;
+        const retryBtn = statusEl.querySelector('.retry-btn');
+        if (retryBtn && retryFn) {
+            retryBtn.addEventListener('click', function() {
+                // Remove the failed message and re-send
+                pending.element.remove();
+                delete pendingMessages[pendingKey];
+                retryFn();
+            });
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Chat Form: HTMX Interception for Optimistic UI
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Intercept the chat form submission to:
+ * 1. Render an optimistic message immediately
+ * 2. Show a loading spinner on the send button
+ * 3. Handle success/failure states
+ */
+function initChatFormInterception() {
+    const chatForm = document.querySelector('.chat-form');
+    if (!chatForm) return;
+
+    // Before the HTMX request fires, render the optimistic message
+    chatForm.addEventListener('htmx:beforeRequest', function(evt) {
+        const textarea = chatForm.querySelector('textarea[name="message"]');
+        const messageText = textarea ? textarea.value.trim() : '';
+        if (!messageText) return; // Don't optimistically render empty messages
+
+        // Capture reply data if present
+        const replyIdInput = document.getElementById('reply-to-id');
+        const replySenderEl = document.getElementById('reply-to-sender');
+        const replyTextEl = document.getElementById('reply-to-text');
+        const replyId = replyIdInput ? replyIdInput.value : '';
+        const replyData = replyId ? {
+            sender: replySenderEl ? replySenderEl.textContent : '',
+            text: replyTextEl ? replyTextEl.textContent : '',
+        } : null;
+
+        const pendingKey = appendOptimisticMessage(messageText, replyData);
+
+        // Map this request to its specific optimistic message
+        evt.detail.requestConfig.chatCtx = {
+            pendingKey: pendingKey,
+            failedText: messageText,
+            failedReply: replyData
+        };
+
+        // Clear the form immediately so they can type the next message
+        chatForm.reset();
+        if (typeof window.clearReply === 'function') window.clearReply();
+        if (typeof window.clearFilePreview === 'function') window.clearFilePreview();
+
+        // Show loading state on send button
+        const sendBtn = chatForm.querySelector('.chat-send-btn');
+        if (sendBtn) sendBtn.classList.add('sending');
+    });
+
+    // After the HTMX request completes
+    chatForm.addEventListener('htmx:afterRequest', function(evt) {
+        const sendBtn = chatForm.querySelector('.chat-send-btn');
+        if (sendBtn) sendBtn.classList.remove('sending');
+
+        const ctx = evt.detail.requestConfig ? evt.detail.requestConfig.chatCtx : null;
+        if (!ctx) return;
+
+        if (!evt.detail.successful) {
+            // POST failed — mark this specific optimistic message as failed
+            if (ctx.pendingKey) {
+                markPendingAsFailed(ctx.pendingKey, function retryFn() {
+                    // Re-populate the form and re-submit
+                    const textarea = chatForm.querySelector('textarea[name="message"]');
+                    if (textarea) textarea.value = ctx.failedText;
+
+                    // Restore reply context if it existed
+                    if (ctx.failedReply) {
+                        const replyIdInput = document.getElementById('reply-to-id');
+                        const preview = document.getElementById('reply-preview');
+                        const senderEl = document.getElementById('reply-to-sender');
+                        const textEl = document.getElementById('reply-to-text');
+                        
+                        // Fake a reply structure if needed, or rely on existing global functions
+                        if (preview) preview.style.display = 'flex';
+                        if (senderEl) senderEl.textContent = ctx.failedReply.sender;
+                        if (textEl) textEl.textContent = ctx.failedReply.text;
+                    }
+
+                    // Re-submit the form
+                    if (typeof chatForm.requestSubmit === 'function') {
+                        chatForm.requestSubmit();
+                    } else {
+                        chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                });
+            }
+        }
+    });
+}
+
 function openLightbox(src) {
     const modal = document.getElementById('lightbox-modal');
     const img = document.getElementById('lightbox-image');
@@ -454,6 +729,9 @@ function closeLightbox() {
 if (window.currentTicketId) {
     initChat(window.currentTicketId);
 }
+
+// Initialize optimistic UI form interception
+document.addEventListener('DOMContentLoaded', initChatFormInterception);
 
 // --- Drag-and-drop, paste, and file preview ---
 function formatFileSize(bytes) {

@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.http import HttpResponse, FileResponse
 from django.urls import reverse
+from django.shortcuts import redirect
+from django.contrib import messages
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
@@ -108,10 +110,10 @@ class ExportTicketsView(MaintenancePermissionMixin, View):
                     lines.append(f"Closed:      {ticket.closed_at.strftime('%Y-%m-%d %H:%M')}")
                 lines.append(f"\nDescription:\n  {ticket.description}")
 
-                messages = ticket.messages.select_related("sender").order_by("created_at")
-                if messages.exists():
-                    lines.append(f"\n  --- Messages ({messages.count()}) ---")
-                    for msg in messages:
+                ticket_msgs = ticket.messages.select_related("sender").order_by("created_at")
+                if ticket_msgs.exists():
+                    lines.append(f"\n  --- Messages ({ticket_msgs.count()}) ---")
+                    for msg in ticket_msgs:
                         sender = msg.sender.username
                         time = msg.created_at.strftime("%Y-%m-%d %H:%M")
                         tag = " [SYSTEM]" if msg.is_system_message else ""
@@ -140,6 +142,7 @@ class ExportTicketsView(MaintenancePermissionMixin, View):
                 request.META.get("REMOTE_ADDR", "unknown"),
             )
 
+            response.set_cookie('fileDownload', 'true', path='/')
             return response
         except Exception as e:
             logger.error("Tickets export failed for user '%s': %s", request.user.username, e)
@@ -186,12 +189,13 @@ class BackupMediaView(MaintenancePermissionMixin, View):
                 request.META.get("REMOTE_ADDR", "unknown"),
             )
 
+            response.set_cookie('fileDownload', 'true', path='/')
             return response
         except Exception as e:
-            # Only clean up on error; on success the streaming response needs the file
-            shutil.rmtree(temp_dir, ignore_errors=True)
             logger.error("Media backup failed for user '%s': %s", request.user.username, e)
-            return HttpResponse(f"Error creating media backup: {str(e)}", status=500)
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            return HttpResponse(f"Error creating backup: {str(e)}", status=500)
 
 
 # ---------------------------------------------------------------------------

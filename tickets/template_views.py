@@ -447,6 +447,7 @@ class ExportDashboardExcelView(DashboardView):
         response['Content-Disposition'] = f'attachment; filename="dashboard_export_{timezone.now().strftime("%Y%m%d%H%M")}.xlsx"'
         wb.save(response)
         
+        response.set_cookie('fileDownload', 'true', path='/')
         return response
 
 class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
