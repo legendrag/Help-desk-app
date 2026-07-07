@@ -1,0 +1,13 @@
+{% if page_obj.has_next %}
+<div id="load-more-container"{% if oob %} hx-swap-oob="true"{% endif %} style="padding: 1.5rem 0; margin-top: 1rem;">
+    <button class="load-more-btn" 
+            hx-get="{% url 'tickets_list' %}?page={{ page_obj.next_page_number }}&append=true{% if filters_query %}&{{ filters_query }}{% endif %}" 
+            hx-target="#tickets-tbody" 
+            hx-swap="beforeend" 
+            onclick="document.body.classList.add('pause-polling');">
+        Load Older Tickets
+    </button>
+</div>
+{% else %}
+<div id="load-more-container"{% if oob %} hx-swap-oob="true"{% endif %}></div>
+{% endif %}

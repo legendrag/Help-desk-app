@@ -6,7 +6,7 @@
 </div>
 
 <form hx-post="{% url 'ticket_create' %}" 
-      hx-target="#modal-content" hx-on::after-request="if(event.detail.xhr.status===204){closeModal()}" 
+      hx-target="#modal-content"
       enctype="multipart/form-data">
     {% csrf_token %}
     <div class="form-stack">

@@ -1,6 +1,6 @@
 <div id="tickets-live"
      hx-get="{% url 'tickets_list' %}{% if filters_query %}?{{ filters_query }}{% endif %}"
-     hx-trigger="every 20s, refreshTickets from:body"
+     hx-trigger="every 20s [!document.body.classList.contains('pause-polling')], refreshTickets from:body"
      hx-swap="outerHTML">
     <div class="table-wrap tickets-table">
         <table>
@@ -19,7 +19,7 @@
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tickets-tbody">
                 {% for ticket in tickets %}
                 <tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}">
                     <td data-label="Ticket ID"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
@@ -74,22 +74,7 @@
             </tbody>
         </table>
     </div>
-
-    {% if is_paginated %}
-    <div class="pagination">
-        {% if page_obj.has_previous %}
-            <a href="?page=1{% if filters_query %}&{{ filters_query }}{% endif %}">&laquo; first</a>
-            <a href="?page={{ page_obj.previous_page_number }}{% if filters_query %}&{{ filters_query }}{% endif %}">previous</a>
-        {% endif %}
-
-        <span class="current">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-        </span>
-
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if filters_query %}&{{ filters_query }}{% endif %}">next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}{% if filters_query %}&{{ filters_query }}{% endif %}">last &raquo;</a>
-        {% endif %}
-    </div>
-    {% endif %}
 </div>
+{% if request.htmx %}
+{% include "tickets/load_more_button.html" with oob=True %}
+{% endif %}

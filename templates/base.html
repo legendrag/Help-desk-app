@@ -274,6 +274,9 @@
             const container = document.getElementById('modal-container');
             if (container) {
                 const markDirty = function(e) {
+                    // Only mark dirty for real user interactions, ignore programmatic events (like TomSelect init)
+                    if (!e.isTrusted) return;
+
                     if (e.target && e.target.tagName) {
                         const tagName = e.target.tagName.toLowerCase();
                         if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
@@ -441,9 +444,9 @@
             initPasswordToggles(document);
         });
 
-        // Basic sidebar toggle logic for mobile/drawer
+        // Listen for HX-Trigger: closeModal from server
         document.body.addEventListener('closeModal', function() {
-            closeModal();
+            closeModal(true); // Force close since the server instructed it
         });
 
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {

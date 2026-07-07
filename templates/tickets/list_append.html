@@ -1,0 +1,53 @@
+{% for ticket in tickets %}
+<tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}">
+    <td data-label="Ticket ID"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
+    <td data-label="Title"><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
+    <td data-label="Branch"><span>{{ ticket.branch.name }}</span></td>
+    <td data-label="Department"><span>{{ ticket.department.name }}</span></td>
+    <td data-label="Status">
+        <span class="badge badge-{{ ticket.status }}">
+            {{ ticket.get_status_display }}
+        </span>
+    </td>
+    <td data-label="Priority"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+    {% if not user.user_type == 'branch' %}
+    <td data-label="Assigned">
+        {% if ticket.assigned_to %}
+        <span>{{ ticket.assigned_to.username }}</span>
+        {% else %}
+        <span class="muted">Unassigned</span>
+        {% endif %}
+    </td>
+    {% endif %}
+    <td data-label="Date">
+        <div class="date-stack">
+            <span>{{ ticket.created_at|date:"m/d/Y" }}</span>
+            <small>{{ ticket.created_at|date:"h:i A" }}</small>
+        </div>
+    </td>
+    <td data-label="Action" class="action-cell">
+        {% if user.is_superuser or user.role.can_pick_ticket %}
+            {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
+            <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
+                {% csrf_token %}
+                <button type="submit" class="pick-btn">Pick</button>
+            </form>
+            {% elif ticket.assigned_to %}
+            <span class="pill">Picked</span>
+            {% elif ticket.status == "merged" %}
+            <span class="pill muted">Merged</span>
+            {% else %}
+            <span class="pill muted">Closed</span>
+            {% endif %}
+        {% else %}
+        <span class="pill muted">--</span>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+<tr style="display: none;" aria-hidden="true">
+    <td colspan="10">
+        {% include "tickets/load_more_button.html" with oob=True %}
+    </td>
+</tr>

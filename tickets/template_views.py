@@ -572,10 +572,12 @@ class TicketListView(LoginRequiredMixin, ListView):
     model = Ticket
     template_name = "tickets/list.html"
     context_object_name = "tickets"
-    paginate_by = 25
+    paginate_by = 10
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
+            if self.request.GET.get('append') == 'true':
+                return ["tickets/list_append.html"]
             return ["tickets/list_live_partial.html"]
         return [self.template_name]
 

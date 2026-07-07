@@ -4497,3 +4497,52 @@ html.modal-open body {
     display: none !important;
   }
 }
+
+/* Load More Tickets Row Overrides */
+tr#load-more-row,
+#load-more-row {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+#load-more-row td {
+    border: none !important;
+    padding: 2rem 0 !important;
+    justify-content: center !important;
+    background: transparent !important;
+}
+
+#load-more-row td::before {
+    display: none !important;
+}
+
+.load-more-btn {
+    width: 100%;
+    max-width: 350px;
+    margin: 0 auto;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    border: 2px dashed var(--border) !important;
+    padding: 0.85rem 1.5rem !important;
+    border-radius: 999px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.load-more-btn:hover {
+    background: rgba(126, 135, 237, 0.1) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+.dark-mode .load-more-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
