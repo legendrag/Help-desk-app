@@ -8,7 +8,7 @@ from .models import InAppNotification
 @require_GET
 @login_required
 def notifications_list(request):
-    limit = int(request.GET.get("limit", 10))
+    limit = int(request.GET.get("limit", 20))
     qs = (
         InAppNotification.objects.filter(recipient=request.user)
         .order_by("-created_at")
@@ -19,6 +19,7 @@ def notifications_list(request):
             "title": n.title,
             "message": n.message,
             "link": n.link,
+            "notification_type": n.notification_type,
             "is_read": n.is_read,
             "created_at": n.created_at.isoformat() if n.created_at else None,
         }
@@ -43,3 +44,21 @@ def mark_notifications_read(request):
 def mark_notification_read(request, notification_id):
     InAppNotification.objects.filter(id=notification_id, recipient=request.user, is_read=False).update(is_read=True)
     return JsonResponse({"ok": True})
+
+
+@require_POST
+@login_required
+def delete_notification(request, notification_id):
+    """Delete a single notification."""
+    InAppNotification.objects.filter(id=notification_id, recipient=request.user).delete()
+    unread_count = InAppNotification.objects.filter(recipient=request.user, is_read=False).count()
+    return JsonResponse({"ok": True, "unread_count": unread_count})
+
+
+@require_POST
+@login_required
+def clear_read_notifications(request):
+    """Delete all read notifications for the current user."""
+    InAppNotification.objects.filter(recipient=request.user, is_read=True).delete()
+    unread_count = InAppNotification.objects.filter(recipient=request.user, is_read=False).count()
+    return JsonResponse({"ok": True, "unread_count": unread_count})

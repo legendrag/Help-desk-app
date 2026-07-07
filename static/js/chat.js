@@ -355,8 +355,9 @@ function initChat(ticketId) {
 
         const reply = payload.reply_to || null;
 
-        const canEdit = window.chatPermissions && window.chatPermissions.canEdit;
-        const canDelete = window.chatPermissions && window.chatPermissions.canDelete;
+        const isSuper = window.userIsSuperuser || false;
+        const canEdit = window.chatPermissions && window.chatPermissions.canEdit && (isMe || isSuper);
+        const canDelete = window.chatPermissions && window.chatPermissions.canDelete && (isMe || isSuper);
 
         const menuItems = [
             canEdit ? `<button type="button" class="message-menu-item" onclick="toggleEdit(${payload.id}); closeMessageMenu(${payload.id});">

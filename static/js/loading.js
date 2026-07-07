@@ -188,6 +188,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const target = evt.target.closest('a[href], .clickable-row');
         if (!target) return;
         
+        // If it's a clickable row, ensure the click didn't land on an interactive element 
+        // that prevents row navigation (like the Action cell or buttons)
+        if (target.classList.contains('clickable-row')) {
+            const interactive = evt.target.closest("button, input, select, textarea, form, .action-cell");
+            if (interactive) return;
+        }
+        
         // Exclude HTMX triggers (handled above)
         if (target.hasAttribute('hx-get') || target.hasAttribute('hx-post') || target.hasAttribute('hx-put') || target.hasAttribute('hx-delete')) {
             return;

@@ -26,6 +26,7 @@
     <script>
         window.userIsAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
         window.userId = "{{ user.id }}";
+        window.userIsSuperuser = {{ user.is_superuser|yesno:"true,false" }};
 
         // Defeat browser bfcache: when the page is restored from
         // back/forward cache, verify the session is still alive.
@@ -64,17 +65,27 @@
                     Hi, {{ user.first_name|default:user.username }}
                 </div>
                 <div class="notification-bell-container">
-                    <button type="button" class="notification-btn" id="notification-btn">
+                    <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications" data-no-loading>
                         <span id="notification-count" class="notification-badge">0</span>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                     </button>
                     <div id="notification-dropdown" class="notification-dropdown">
                         <div class="notification-header">
                             <h4>Notifications</h4>
-                            <button type="button" class="btn-link" id="notification-mark-read">Mark all read</button>
+                            <div class="notification-header-actions">
+                                <button type="button" class="notif-action-btn" id="notification-mark-read" title="Mark all as read" data-no-loading>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </button>
+                                <button type="button" class="notif-action-btn" id="notification-clear-read" title="Clear read notifications" data-no-loading>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                            </div>
                         </div>
                         <div id="notification-list" class="notification-list"></div>
-                        <div id="notification-empty" class="notification-empty">No notifications yet.</div>
+                        <div id="notification-empty" class="notification-empty">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            <span>No notifications yet</span>
+                        </div>
                     </div>
                 </div>
                 <button type="button" class="menu-btn-universal" onclick="openSidebar()">
@@ -95,6 +106,23 @@
         <div id="modal-container" class="modal-overlay" onclick="if(event.target == this) closeModal()">
             <div class="modal-content" id="modal-content">
                 <!-- HTMX will load content here -->
+            </div>
+        </div>
+
+        <!-- Unsaved Changes Discard Confirmation Modal -->
+        <div id="discard-confirm-modal" class="modal-overlay" style="display: none; z-index: 100001; align-items: center;" onclick="if(event.target == this) cancelDiscard()">
+            <div class="modal-content" style="max-width: 440px; padding: 1.5rem;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: none; padding: 0;">
+                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Unsaved Changes</h3>
+                    <button type="button" class="modal-close" onclick="cancelDiscard()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center;" data-no-loading>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <p style="margin: 0 0 1.5rem 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">You have unsaved changes. Are you sure you want to discard them?</p>
+                <div class="form-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0; padding-top: 0; border-top: none;">
+                    <button type="button" class="btn secondary" onclick="cancelDiscard()" style="padding: 0.5rem 1.2rem; min-height: auto; min-width: auto;" data-no-loading>Cancel</button>
+                    <button type="button" class="btn danger" onclick="confirmDiscard()" style="padding: 0.5rem 1.2rem; min-height: auto; min-width: auto; background-color: var(--danger); border-color: var(--danger); color: #fff;" data-no-loading>Yes, Discard</button>
+                </div>
             </div>
         </div>
 
@@ -185,23 +213,78 @@
             document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
             document.documentElement.classList.add('modal-open');
             
-            // Add a spinner to the modal content so it doesn't look like an empty white box while loading
+            // Add a spinner to the modal content so it doesn't look like an empty box while loading
             const content = document.getElementById('modal-content');
-            if (content && !content.innerHTML.trim()) {
-                content.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; padding: 3rem;"><div class="spinner-large"></div></div>';
+            if (content) {
+                const textWithoutComments = content.innerHTML.replace(/<!--[\s\S]*?-->/g, '').trim();
+                if (!textWithoutComments) {
+                    content.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; padding: 3rem;"><div class="spinner-large"></div></div>';
+                }
             }
             
-            document.getElementById('modal-container').style.display = 'flex';
+            const container = document.getElementById('modal-container');
+            if (container) {
+                container.style.display = 'flex';
+                container.dataset.dirty = 'false';
+            }
         }
-        function closeModal() {
+        let discardCallback = null;
+
+        function closeModal(force = false) {
+            const container = document.getElementById('modal-container');
+            if (!force && container && container.dataset.dirty === 'true') {
+                discardCallback = function() {
+                    performCloseModal();
+                };
+                document.getElementById('discard-confirm-modal').style.display = 'flex';
+                return;
+            }
+            performCloseModal();
+        }
+
+        function performCloseModal() {
             document.documentElement.classList.remove('modal-open');
             document.documentElement.style.removeProperty('--scrollbar-width');
-            document.getElementById('modal-container').style.display = 'none';
+            const container = document.getElementById('modal-container');
+            if (container) {
+                container.style.display = 'none';
+                container.dataset.dirty = 'false';
+            }
             setTimeout(() => {
                 const content = document.getElementById('modal-content');
                 if (content) content.innerHTML = '';
             }, 100);
         }
+
+        function confirmDiscard() {
+            document.getElementById('discard-confirm-modal').style.display = 'none';
+            if (discardCallback) {
+                discardCallback();
+                discardCallback = null;
+            }
+        }
+
+        function cancelDiscard() {
+            document.getElementById('discard-confirm-modal').style.display = 'none';
+            discardCallback = null;
+        }
+
+        // Listen for input/change inside the modal container to track dirty state
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('modal-container');
+            if (container) {
+                const markDirty = function(e) {
+                    if (e.target && e.target.tagName) {
+                        const tagName = e.target.tagName.toLowerCase();
+                        if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+                            container.dataset.dirty = 'true';
+                        }
+                    }
+                };
+                container.addEventListener('input', markDirty);
+                container.addEventListener('change', markDirty);
+            }
+        });
 
 
         function attachPasswordToggle(input) {
@@ -391,7 +474,7 @@
             const isNoContent = xhr.status === 204;
             
             if (isNoContent || trigger.includes('closeModal')) {
-                closeModal();
+                closeModal(true);
             }
             if (trigger.includes('refreshSettings')) {
                 document.body.dispatchEvent(new CustomEvent('refreshSettings'));
@@ -428,15 +511,26 @@
         });
 
         document.body.addEventListener('htmx:beforeSwap', (evt) => {
-            if (evt.detail.target.tagName && evt.detail.target.tagName.toLowerCase() === 'select') {
-                if (evt.detail.target.tomselect) {
-                    evt.detail.target.tomselect.destroy();
+            const target = evt.detail.target;
+            if (target && target.tagName) {
+                const select = target.tagName.toLowerCase() === 'select' ? target : (typeof target.closest === 'function' ? target.closest('select') : null);
+                if (select && select.tomselect) {
+                    select.tomselect.destroy();
                 }
             }
         });
 
         document.body.addEventListener('htmx:load', (evt) => {
-            initializeChoices(evt.detail.elt);
+            const elt = evt.detail.elt;
+            initializeChoices(elt);
+            
+            // If options inside a select were swapped, re-initialize the parent select
+            if (elt && typeof elt.closest === 'function') {
+                const parentSelect = elt.closest('select');
+                if (parentSelect) {
+                    initializeChoices(parentSelect);
+                }
+            }
         });
 
         // --- Session Expiration Logic ---

@@ -129,8 +129,15 @@
   background: rgba(255, 255, 255, 0.06);
   color: #f1f5f9;
 }
+[data-theme="dark"] .sidebar-action-btn.danger {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+  justify-content: center;
+}
 [data-theme="dark"] .sidebar-action-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.3);
   color: var(--danger);
 }
 
@@ -513,7 +520,7 @@
 /* ── Notifications ── */
 [data-theme="dark"] .notification-dropdown {
   background: #1e293b;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(148, 163, 184, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.08);
   color: var(--text-main);
 }
 
@@ -524,21 +531,33 @@
 [data-theme="dark"] .notification-header h4 {
   color: #f1f5f9;
 }
-[data-theme="dark"] .notification-header .btn-link {
-  color: var(--primary);
+
+[data-theme="dark"] .notif-action-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+}
+[data-theme="dark"] .notif-action-btn:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: #818cf8;
 }
 
 [data-theme="dark"] .notification-item {
-  border-bottom-color: rgba(148, 163, 184, 0.08);
+  border-bottom-color: rgba(148, 163, 184, 0.06);
 }
 [data-theme="dark"] .notification-item:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 [data-theme="dark"] .notification-item.unread {
   background: rgba(129, 140, 248, 0.08);
+  border-left-color: #818cf8;
 }
 [data-theme="dark"] .notification-item.unread:hover {
   background: rgba(129, 140, 248, 0.12);
+}
+
+[data-theme="dark"] .notification-item.read {
+  opacity: 0.8;
 }
 
 [data-theme="dark"] .notification-content strong {
@@ -549,6 +568,55 @@
 }
 [data-theme="dark"] .notification-time {
   color: #64748b;
+}
+
+[data-theme="dark"] .notification-empty {
+  color: #64748b;
+}
+
+/* Dark mode type icons — slightly boosted opacity and much brighter/more vivid colors */
+[data-theme="dark"] .notif-icon-new_ticket {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+[data-theme="dark"] .notif-icon-ticket_picked {
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+}
+[data-theme="dark"] .notif-icon-status_change {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+[data-theme="dark"] .notif-icon-message {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+[data-theme="dark"] .notif-icon-transfer {
+  background: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+}
+[data-theme="dark"] .notif-icon-general {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+/* Dark delete button */
+[data-theme="dark"] .notif-delete-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+}
+[data-theme="dark"] .notif-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+/* Dark scrollbar */
+[data-theme="dark"] .notification-list::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+[data-theme="dark"] .notification-list::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* ── Chat ── */
@@ -1074,47 +1142,42 @@
 }
 
 /* ── Action Bar ── */
-[data-theme="dark"] .action-bar-accept {
-  border-color: #a5b4fc;
-  color: #e0e7ff;
-  background: rgba(129, 140, 248, 0.12);
-}
-[data-theme="dark"] .action-bar-accept:hover {
-  background: rgba(129, 140, 248, 0.2);
-  color: #fff;
-}
-
 [data-theme="dark"] .action-bar-group {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme="dark"] .action-bar-execute {
-  background: #1e293b;
-  border-color: rgba(148, 163, 184, 0.15);
+[data-theme="dark"] .action-bar-execute,
+[data-theme="dark"] .action-bar-accept,
+[data-theme="dark"] .action-bar-reopen {
+  background: rgba(51, 65, 85, 0.8);
   color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.15);
 }
-[data-theme="dark"] .action-bar-execute:hover {
-  background: #334155;
-}
-[data-theme="dark"] .action-bar-execute:active {
+
+[data-theme="dark"] .action-bar-execute:hover,
+[data-theme="dark"] .action-bar-accept:hover,
+[data-theme="dark"] .action-bar-reopen:hover {
   background: #475569;
+  color: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.25);
 }
-[data-theme="dark"] .action-bar-execute.danger-action {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.25);
-}
-[data-theme="dark"] .action-bar-execute.danger-action:hover {
-  background: rgba(248, 113, 113, 0.08);
+
+[data-theme="dark"] .action-bar-execute:active {
+  background: #334155;
 }
 
 [data-theme="dark"] .action-bar-toggle {
-  background: #334155;
+  background: rgba(51, 65, 85, 0.8);
+  color: #e2e8f0;
   border-color: rgba(148, 163, 184, 0.15);
-  color: #94a3b8;
+  border-left-color: rgba(148, 163, 184, 0.25);
 }
+
 [data-theme="dark"] .action-bar-toggle:hover {
   background: #475569;
-  color: #e2e8f0;
+  color: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 [data-theme="dark"] .action-bar-menu {
@@ -1144,14 +1207,7 @@
   background: rgba(148, 163, 184, 0.1);
 }
 
-[data-theme="dark"] .action-bar-reopen {
-  border-color: #34d399;
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.08);
-}
-[data-theme="dark"] .action-bar-reopen:hover {
-  background: rgba(52, 211, 153, 0.18);
-}
+/* Custom reopen button styles removed, handled by style.css */
 
 [data-theme="dark"] .action-bar-closed-badge {
   background: #334155;
@@ -1358,9 +1414,6 @@
 [data-theme="dark"] .action-bar-toggle:hover {
   background: #475569 !important;
 }
-[data-theme="dark"] .action-bar-menu-item:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-}
 [data-theme="dark"] .action-bar-reopen:hover {
   background: rgba(52, 211, 153, 0.08) !important;
 }
@@ -1475,11 +1528,13 @@
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease, box-shadow 0.25s ease;
 }
 
-/* Exclude chat elements from global transition */
+/* Exclude chat elements and notification dropdown from global transition */
 [data-theme="dark"] .chat-box *,
 [data-theme="dark"] .chat-bubble *,
 [data-theme="dark"] .typing-dots span,
-[data-theme="dark"] .notification-badge {
+[data-theme="dark"] .notification-badge,
+[data-theme="dark"] .notification-dropdown,
+[data-theme="dark"] .notification-dropdown * {
   transition: none;
 }
 
@@ -1542,22 +1597,8 @@
 }
 
 /* ── Chat Actions Hover Restore ── */
-[data-theme="dark"] .action-bar-accept:hover {
-  background: rgba(129, 140, 248, 0.2) !important;
-  color: #fff !important;
-}
-[data-theme="dark"] .action-bar-execute:hover {
-  background: #334155 !important;
-  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.2) !important;
-}
-[data-theme="dark"] .action-bar-toggle:hover {
-  background: #475569 !important;
-}
 [data-theme="dark"] .action-bar-menu-item:hover {
   background: rgba(255, 255, 255, 0.06) !important;
-}
-[data-theme="dark"] .action-bar-reopen:hover {
-  background: rgba(52, 211, 153, 0.08) !important;
 }
 
 /* ── Merged Tickets Section ── */
@@ -1670,11 +1711,13 @@
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease, box-shadow 0.25s ease;
 }
 
-/* Exclude chat elements from global transition */
+/* Exclude chat elements and notification dropdown from global transition */
 [data-theme="dark"] .chat-box *,
 [data-theme="dark"] .chat-bubble *,
 [data-theme="dark"] .typing-dots span,
-[data-theme="dark"] .notification-badge {
+[data-theme="dark"] .notification-badge,
+[data-theme="dark"] .notification-dropdown,
+[data-theme="dark"] .notification-dropdown * {
   transition: none;
 }
 
@@ -1713,4 +1756,8 @@
 [data-theme="dark"] .settings-tab.btn-loading::after {
   border-color: rgba(255, 255, 255, 0.1);
   border-top-color: #e2e8f0;
+}
+
+[data-theme="dark"] .global-spinner-overlay {
+  background: rgba(15, 23, 42, 0.6);
 }

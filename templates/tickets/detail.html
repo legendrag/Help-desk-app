@@ -561,6 +561,8 @@
         const displayDiv = document.getElementById('msg-display-' + id);
         const editForm = document.getElementById('msg-edit-' + id);
         const detailsPanel = document.getElementById('message-details-' + id);
+        if (!editForm || !displayDiv) return;
+        
         if (editForm.style.display === 'none' || editForm.style.display === '') {
             editForm.style.display = 'block';
             displayDiv.style.display = 'none';
