@@ -334,27 +334,7 @@ ul.errorlist li {
   color: inherit;
 }
 
-/* Restore subtle hover feedback for action-bar buttons (matches secondary button feel) */
-.action-bar-accept:hover {
-  background: rgba(99, 102, 241, 0.08) !important;
-}
 
-.action-bar-execute:hover {
-  background: #fff !important;
-  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
-}
-
-.action-bar-toggle:hover {
-  background: #e2e8f0 !important;
-}
-
-.action-bar-menu-item:hover {
-  background: #f1f5f9 !important;
-}
-
-.action-bar-reopen:hover {
-  background: rgba(16, 185, 129, 0.08) !important;
-}
 
 /* Restore distinct interaction feedback for static text links */
 .btn-link {
