@@ -1252,12 +1252,14 @@ tr:hover td {
 }
 
 [data-theme="dark"] .chat-attach-icon-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
 }
 [data-theme="dark"] .chat-attach-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
 }
 
 .reply-preview {

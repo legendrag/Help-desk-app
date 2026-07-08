@@ -1151,22 +1151,22 @@
 [data-theme="dark"] .action-bar-accept,
 [data-theme="dark"] .action-bar-toggle,
 [data-theme="dark"] .action-bar-reopen {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .action-bar-execute:hover,
 [data-theme="dark"] .action-bar-accept:hover,
 [data-theme="dark"] .action-bar-toggle:hover,
 [data-theme="dark"] .action-bar-reopen:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #334155;
+  color: #f8fafc;
+  border-color: #475569;
 }
 
 [data-theme="dark"] .action-bar-execute:active {
-  background: rgba(255, 255, 255, 0.02);
+  background: #1e293b;
 }
 [data-theme="dark"] .action-bar-menu {
   background: #1e293b;
