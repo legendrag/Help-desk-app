@@ -3601,13 +3601,11 @@ body.ticket-detail-page .content {
 
 /* ── Chat Footer Actions (Integrated) ── */
 .chat-footer-actions-integrated {
-  border-top: 1px solid var(--border);
   padding: 1rem 1.25rem;
-  background: var(--panel-bg);
-  border-radius: 0 0 12px 12px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  background: transparent;
 }
 
 .chat-footer-actions-integrated .action-bar {
