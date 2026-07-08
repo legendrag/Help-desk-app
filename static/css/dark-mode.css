@@ -1183,7 +1183,7 @@
 [data-theme="dark"] .action-bar-menu {
   background: #1e293b;
   border-color: rgba(148, 163, 184, 0.12);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .action-bar-menu-item {

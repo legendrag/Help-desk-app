@@ -3606,7 +3606,7 @@ body.ticket-detail-page .content {
   gap: 0.75rem;
   flex-wrap: wrap;
   width: 100%;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .action-bar-accept {
@@ -3725,23 +3725,24 @@ body.ticket-detail-page .content {
 /* Dropdown menu */
 .action-bar-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
+  top: auto;
   right: 0;
   min-width: 200px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.14);
   padding: 0.4rem;
   display: none;
   z-index: 100;
-  animation: actionMenuSlideDown 0.15s ease;
+  animation: actionMenuSlideUp 0.15s ease;
 }
 
-@keyframes actionMenuSlideDown {
+@keyframes actionMenuSlideUp {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
