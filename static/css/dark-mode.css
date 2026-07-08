@@ -10,6 +10,7 @@
   --secondary: #94a3b8;
   --bg: #0f172a;
   --panel-bg: rgba(30, 41, 59, 0.85);
+  --offcanvas-bg: var(--panel-bg);
   --glass: rgba(30, 41, 59, 0.6);
   --text-main: #f1f5f9;
   --text-muted: #94a3b8;
@@ -1179,7 +1180,6 @@
   color: #f1f5f9;
   border-color: rgba(148, 163, 184, 0.2);
 }
-
 [data-theme="dark"] .action-bar-menu {
   background: #1e293b;
   border-color: rgba(148, 163, 184, 0.12);

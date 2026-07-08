@@ -5,6 +5,7 @@
   --primary: #4f46e5;
   --primary-hover: #4338ca;
   --panel-bg: rgba(255, 255, 255, 0.75);
+  --offcanvas-bg: rgba(255, 255, 255, 0.98);
   --glass: rgba(255, 255, 255, 0.4);
   --text-main: #0f172a;
   --text-muted: #475569;
@@ -2437,7 +2438,7 @@ a.kb-article-card:hover {
   }
 
   /* Force multi-column layouts to stack vertically */
-  .dashboard-grid, .ticket-header-stats, .filter-bar, .action-bar {
+  .dashboard-grid, .ticket-header-stats, .filter-bar {
     display: flex !important;
     flex-direction: column !important;
     gap: 1rem !important;
@@ -2594,51 +2595,7 @@ a.kb-article-card:hover {
     z-index: 400 !important;
   }
 
-  .action-bar {
-    position: relative !important;
-    z-index: 300 !important;
-  }
-  .action-bar-group {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    gap: 0 !important;
-    position: relative !important;
-    z-index: 300 !important;
-  }
-  .action-bar-execute {
-    border-radius: 12px 0 0 12px !important;
-    flex: 1 1 auto !important;
-    border-right: none !important;
-    min-height: 48px !important;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-  }
-  .action-bar-toggle {
-    border-radius: 0 12px 12px 0 !important;
-    flex: 0 0 60px !important;
-    min-height: 48px !important;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-  }
-  .action-bar-menu {
-    width: 100% !important;
-    left: 0 !important;
-    top: calc(100% + 10px) !important;
-    bottom: auto !important;
-    z-index: 200 !important;
-  }
-  .action-bar-accept,
-  .action-bar-reopen {
-    width: 100% !important;
-    border-radius: 12px !important;
-    min-height: 48px !important;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-  }
+/* Removed action bar mobile overrides since it was moved to the chat header */
 
   /* -----------------------------------------------------
      KB Mobile Enhancements
