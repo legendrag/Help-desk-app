@@ -189,7 +189,7 @@
         </div>
         {% if user.is_superuser or can_chat and user.role and user.role.can_send_message %}
         <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none"
-            method="post" enctype="multipart/form-data" class="chat-form">
+            method="post" enctype="multipart/form-data" class="chat-form" id="chat-message-form">
             <div class="drop-zone-overlay" id="drop-zone-overlay">
                 <div class="drop-zone-content">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -224,21 +224,83 @@
                 <button type="button" class="file-preview-remove" onclick="clearFilePreview()" aria-label="Remove file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
             <div class="chat-actions">
-                <div class="chat-attach-container">
-                    <input type="file" name="attachment" id="file-upload" class="file-preview-hidden"
-                        onchange="showFilePreview(this)">
-                    <label for="file-upload" id="file-label"
-                        class="chat-file-upload-label">
-                        Attach File
-                    </label>
+                <!-- Action Bar (Left) -->
+                <div class="chat-actions-left">
+                    {% if ticket.status == 'merged' %}
+                    <div class="action-bar">
+                        <span class="action-bar-closed-badge merged-badge-styling">Ticket is Merged</span>
+                    </div>
+                    {% elif ticket.status != 'closed' %}
+                    <div class="action-bar" id="action-bar">
+                        {# ── Accept Button (only if unassigned) ── #}
+                        {% if not ticket.assigned_to %}
+                        {% if user.is_superuser or user.role.can_pick_ticket %}
+                        <button type="submit" class="action-bar-accept" form="pick-ticket-form">Accept</button>
+                        {% endif %}
+                        {% endif %}
+
+                        {# ── Action + Dropdown Group ── #}
+                        {% if user.is_superuser or ticket.assigned_to == user %}
+                        <div class="action-bar-group">
+                            <button type="button" class="action-bar-execute" id="action-bar-execute"
+                                data-action="closed"
+                                data-confirm="close"
+                                onclick="executeActionBar()">Close</button>
+                            <button type="button" class="action-bar-toggle" id="action-bar-toggle" onclick="toggleActionMenu()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <div class="action-bar-menu" id="action-bar-menu">
+                                <button type="button" class="action-bar-menu-item active" data-action="closed" data-label="Close" data-confirm="close"
+                                    onclick="selectAction(this)">Close</button>
+                                {% if ticket.status != 'waiting_for_branch' %}
+                                <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch" data-label="Wait for User"
+                                    onclick="selectAction(this)">Wait for User</button>
+                                {% endif %}
+                                {% if ticket.status != 'in_progress' %}
+                                <button type="button" class="action-bar-menu-item" data-action="in_progress" data-label="In Progress"
+                                    onclick="selectAction(this)">In Progress</button>
+                                {% endif %}
+                                <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge Ticket</button>
+                                {% if user.is_superuser or ticket.assigned_to == user %}
+                                {% if not ticket.pending_transfer_to %}
+                                <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer Ticket</button>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    {# ── Closed state ── #}
+                    <div class="action-bar">
+                        <span class="action-bar-closed-badge">Ticket is Closed</span>
+                        {% if user.is_superuser or user.user_type == 'support' %}
+                        <button type="submit" class="action-bar-reopen" form="reopen-ticket-form">Reopen</button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
-                <button type="submit" class="chat-send-btn" aria-label="Send Message">
-                    <span>Send</span>
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M22 2L11 13" stroke="currentColor"></path>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor"></path>
-                    </svg>
-                </button>
+
+                <!-- Attach and Send (Right) -->
+                <div class="chat-actions-right">
+                    <div class="chat-attach-container">
+                        <input type="file" name="attachment" id="file-upload" class="file-preview-hidden" onchange="showFilePreview(this)" form="chat-message-form">
+                        <label for="file-upload" id="file-label" class="chat-attach-icon-btn" title="Attach File">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                        </label>
+                    </div>
+                    <button type="submit" class="chat-send-btn" aria-label="Send Message" form="chat-message-form">
+                        <span>Send</span>
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13" stroke="currentColor"></path>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </form>
         {% else %}
@@ -248,72 +310,26 @@
         {% endif %}
         {% endif %}
 
-        <div class="chat-footer-actions-integrated">
-            {% if ticket.status == 'merged' %}
-            <div class="action-bar">
-                <span class="action-bar-closed-badge merged-badge-styling">Ticket is Merged</span>
-            </div>
-            {% elif ticket.status != 'closed' %}
-            <div class="action-bar" id="action-bar">
-                {# ── Accept Button (only if unassigned) ── #}
-                {% if not ticket.assigned_to %}
-                {% if user.is_superuser or user.role.can_pick_ticket %}
-                <form action="{% url 'pick_ticket' ticket.id %}" method="post" class="form-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="action-bar-accept">Accept</button>
-                </form>
-                {% endif %}
-                {% endif %}
-
-                {# ── Action + Dropdown Group ── #}
-                {% if user.is_superuser or ticket.assigned_to == user %}
-                <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post" class="form-inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="status" id="action-bar-status" value="closed">
-                </form>
-                <div class="action-bar-group">
-                    <button type="button" class="action-bar-execute" id="action-bar-execute"
-                        data-action="closed"
-                        data-confirm="close"
-                        onclick="executeActionBar()">Close</button>
-                    <button type="button" class="action-bar-toggle" id="action-bar-toggle" onclick="toggleActionMenu()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
-                    <div class="action-bar-menu" id="action-bar-menu">
-                        <button type="button" class="action-bar-menu-item active" data-action="closed" data-label="Close" data-confirm="close"
-                            onclick="selectAction(this)">Close</button>
-                        {% if ticket.status != 'waiting_for_branch' %}
-                        <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch" data-label="Wait for User"
-                            onclick="selectAction(this)">Wait for User</button>
-                        {% endif %}
-                        {% if ticket.status != 'in_progress' %}
-                        <button type="button" class="action-bar-menu-item" data-action="in_progress" data-label="In Progress"
-                            onclick="selectAction(this)">In Progress</button>
-                        {% endif %}
-                        <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge Ticket</button>
-                        {% if user.is_superuser or ticket.assigned_to == user %}
-                        {% if not ticket.pending_transfer_to %}
-                        <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer Ticket</button>
-                        {% endif %}
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
-            {# ── Closed state ── #}
-            <div class="action-bar">
-                <span class="action-bar-closed-badge">Ticket is Closed</span>
-                {% if user.is_superuser or user.user_type == 'support' %}
-                <form action="{% url 'update_status' ticket.id %}" method="post" class="form-inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="status" value="in_progress">
-                    <button type="submit" class="action-bar-reopen">Reopen</button>
-                </form>
-                {% endif %}
-            </div>
+        <!-- Hidden Forms for Action Bar -->
+        <div class="hidden-action-forms d-none">
+            {% if not ticket.assigned_to %}
+            {% if user.is_superuser or user.role.can_pick_ticket %}
+            <form id="pick-ticket-form" action="{% url 'pick_ticket' ticket.id %}" method="post">{% csrf_token %}</form>
+            {% endif %}
+            {% endif %}
+            
+            {% if user.is_superuser or ticket.assigned_to == user %}
+            <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="status" id="action-bar-status" value="closed">
+            </form>
+            {% endif %}
+            
+            {% if user.is_superuser or user.user_type == 'support' %}
+            <form id="reopen-ticket-form" action="{% url 'update_status' ticket.id %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="in_progress">
+            </form>
             {% endif %}
         </div>
     </main>
