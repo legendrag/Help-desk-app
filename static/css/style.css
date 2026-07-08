@@ -3599,18 +3599,21 @@ body.ticket-detail-page .content {
   }
 }
 
-/* ── Chat Header Actions ── */
-.chat-header-details {
+/* ── Chat Footer Actions (Integrated) ── */
+.chat-footer-actions-integrated {
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+  background: var(--panel-bg);
+  border-radius: 0 0 12px 12px;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: flex-end;
 }
 
-.header-action-bar-wrapper .action-bar {
+.chat-footer-actions-integrated .action-bar {
   margin: 0;
   padding: 0;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  width: auto;
 }
 
 /* ── Split-Button Action Bar ── */
@@ -3634,7 +3637,7 @@ body.ticket-detail-page .content {
   background: rgba(241, 245, 249, 0.8);
   backdrop-filter: blur(8px);
   color: var(--text-main);
-  border-radius: 50px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
@@ -3652,7 +3655,7 @@ body.ticket-detail-page .content {
   display: inline-flex;
   align-items: stretch;
   position: relative;
-  border-radius: 50px;
+  border-radius: 10px;
   overflow: visible;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   min-width: 220px; /* Match typical menu width */
@@ -3671,7 +3674,7 @@ body.ticket-detail-page .content {
   background: rgba(241, 245, 249, 0.8);
   backdrop-filter: blur(8px);
   color: var(--text-main);
-  border-radius: 50px 0 0 50px;
+  border-radius: 10px 0 0 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
@@ -3715,7 +3718,7 @@ body.ticket-detail-page .content {
   background: rgba(241, 245, 249, 0.8);
   backdrop-filter: blur(8px);
   color: var(--text-main);
-  border-radius: 0 50px 50px 0;
+  border-radius: 0 10px 10px 0;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -3741,24 +3744,24 @@ body.ticket-detail-page .content {
 /* Dropdown menu */
 .action-bar-menu {
   position: absolute;
-  top: calc(100% + 6px);
-  bottom: auto;
+  bottom: calc(100% + 6px);
+  top: auto;
   right: 0;
   width: 100%;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.14);
   padding: 0.4rem;
   display: none;
   z-index: 100;
-  animation: actionMenuSlideDown 0.15s ease;
+  animation: actionMenuSlideUp 0.15s ease;
 }
 
-@keyframes actionMenuSlideDown {
+@keyframes actionMenuSlideUp {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -3839,7 +3842,7 @@ body.ticket-detail-page .content {
   background: rgba(241, 245, 249, 0.8);
   backdrop-filter: blur(8px);
   color: var(--text-main);
-  border-radius: 50px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
