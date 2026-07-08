@@ -34,6 +34,15 @@
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 Categories
             </button>
+            {% if request.user.is_superuser or request.user.role.can_manage_kb %}
+            <button class="settings-tab"
+                    hx-get="{% url 'kb_category_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                KB Categories
+            </button>
+            {% endif %}
             <button class="settings-tab"
                     hx-get="{% url 'role_list' %}"
                     hx-target="#settings-content"

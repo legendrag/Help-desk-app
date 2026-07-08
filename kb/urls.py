@@ -5,7 +5,11 @@ from .views import (
     ArticleCreateView, 
     ArticleUpdateView, 
     ArticleDeleteView,
-    kb_ticket_search
+    kb_ticket_search,
+    KBCategoryListView,
+    KBCategoryCreateView,
+    KBCategoryUpdateView,
+    KBCategoryDeleteView
 )
 
 urlpatterns = [
@@ -15,4 +19,10 @@ urlpatterns = [
     path("<int:pk>/edit/", ArticleUpdateView.as_view(), name="kb_update"),
     path("<int:pk>/delete/", ArticleDeleteView.as_view(), name="kb_delete"),
     path("ticket-search/", kb_ticket_search, name="kb_ticket_search"),
+    
+    # KB Category Management
+    path("categories/", KBCategoryListView.as_view(), name="kb_category_list"),
+    path("categories/add/", KBCategoryCreateView.as_view(), name="kb_category_create"),
+    path("categories/<int:pk>/edit/", KBCategoryUpdateView.as_view(), name="kb_category_update"),
+    path("categories/<int:pk>/delete/", KBCategoryDeleteView.as_view(), name="kb_category_delete"),
 ]

@@ -4,8 +4,9 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect, HttpResponse
 from django.db.models import Q
 from .models import Article, Category, ArticleAttachment
-from .forms import ArticleForm
+from .forms import ArticleForm, KBCategoryForm
 from tickets.models import Ticket
+from core.management_views import BaseManagementView, BaseDeleteView
 
 class KBPermissionMixin(UserPassesTestMixin):
     def test_func(self):
@@ -108,6 +109,60 @@ class ArticleDeleteView(LoginRequiredMixin, KBPermissionMixin, DeleteView):
         if request.headers.get("HX-Request"):
             return HttpResponse(status=200)
         return super().delete(request, *args, **kwargs)
+
+# ==========================================
+# KB Category Management Views
+# ==========================================
+
+class KBCategoryPermissionMixin(UserPassesTestMixin):
+    def test_func(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        return user.role and getattr(user.role, 'can_manage_kb', False)
+
+class KBCategoryListView(KBCategoryPermissionMixin, ListView):
+    model = Category
+    template_name = "core/management/list_partial_v2.html"
+    partial_template_name = "core/management/list_partial_v2.html"
+    context_object_name = "object_list"
+
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request'):
+            return [self.partial_template_name]
+        return [self.template_name]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'model_name': 'KB Categories',
+            'create_url': reverse_lazy('kb_category_create'),
+            'edit_url_prefix': '/kb/categories/',
+            'can_add': True,
+            'can_edit': True,
+            'can_delete': True
+        })
+        return context
+
+class KBCategoryCreateView(KBCategoryPermissionMixin, BaseManagementView, CreateView):
+    model = Category
+    form_class = KBCategoryForm
+    template_name = "core/management/form.html"
+    partial_template_name = "core/management/form_partial.html"
+    success_url = reverse_lazy('settings')
+
+class KBCategoryUpdateView(KBCategoryPermissionMixin, BaseManagementView, UpdateView):
+    model = Category
+    form_class = KBCategoryForm
+    template_name = "core/management/form.html"
+    partial_template_name = "core/management/form_partial.html"
+    success_url = reverse_lazy('settings')
+
+class KBCategoryDeleteView(KBCategoryPermissionMixin, BaseDeleteView, DeleteView):
+    model = Category
+    success_url = reverse_lazy('settings')
 
 def kb_ticket_search(request):
     user = request.user

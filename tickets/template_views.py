@@ -690,10 +690,13 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
         if user.is_superuser:
             return queryset
+            
+        kb_override = Q(kb_articles__is_published=True)
+
         if user.user_type == "branch":
-            return queryset.filter(branch_id=user.branch_id)
+            return queryset.filter(Q(branch_id=user.branch_id) | kb_override).distinct()
         if user.user_type == "support":
-            return queryset.filter(department_id=user.department_id)
+            return queryset.filter(Q(department_id=user.department_id) | kb_override).distinct()
 
         return queryset.none()
 
@@ -1309,3 +1312,4 @@ def merge_ticket(request, ticket_id):
             django_messages.error(request, f"Failed to merge ticket: {str(e)}")
 
     return redirect("ticket_detail", ticket_id=ticket_id)
+# Trigger Daphne Reload

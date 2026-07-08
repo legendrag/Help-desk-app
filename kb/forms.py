@@ -1,5 +1,5 @@
 from django import forms
-from .models import Article, ArticleAttachment
+from .models import Article, ArticleAttachment, Category
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -45,3 +45,12 @@ class ArticleForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if hasattr(self.fields['category'], 'empty_label'):
             self.fields['category'].empty_label = "No Category"
+
+class KBCategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ['name', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

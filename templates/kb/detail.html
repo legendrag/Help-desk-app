@@ -109,7 +109,7 @@
             <p class="modal-description-text-close">Are you sure you want to delete this article? This action cannot be undone.</p>
             <form action="{% url 'kb_delete' article.id %}" method="post">
                 {% csrf_token %}
-                <div class="form-actions--spaced" style="margin-top: 1.5rem;">
+                <div class="form-actions--spaced kb-delete-actions">
                     <button type="button" class="btn secondary" onclick="document.getElementById('kb-delete-modal').style.display='none'">Cancel</button>
                     <button type="submit" class="btn danger">Yes, Delete</button>
                 </div>

@@ -26,27 +26,32 @@
         </div>
     </td>
     <td data-label="Action" class="action-cell">
-        {% if user.is_superuser or user.role.can_pick_ticket %}
-            {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
-            <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
-                {% csrf_token %}
-                <button type="submit" class="pick-btn">Pick</button>
-            </form>
-            {% elif ticket.assigned_to %}
-            <span class="pill">Picked</span>
-            {% elif ticket.status == "merged" %}
-            <span class="pill muted">Merged</span>
+        <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end;">
+            {% if user.is_superuser or user.role.can_pick_ticket %}
+                {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
+                <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
+                    {% csrf_token %}
+                    <button type="submit" class="pick-btn">Pick</button>
+                </form>
+                {% elif ticket.assigned_to %}
+                <span class="pill">Picked</span>
+                {% elif ticket.status == "merged" %}
+                <span class="pill muted">Merged</span>
+                {% else %}
+                <span class="pill muted">Closed</span>
+                {% endif %}
             {% else %}
-            <span class="pill muted">Closed</span>
+            <span class="pill muted">--</span>
             {% endif %}
-        {% else %}
-        <span class="pill muted">--</span>
-        {% endif %}
+            <a href="{% url 'ticket_detail' ticket.id %}?show_details=true" class="btn secondary btn--sm" aria-label="Details" title="Details" style="padding: 0.25rem 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </a>
+        </div>
     </td>
 </tr>
 {% endfor %}
 
-<tr style="display: none;" aria-hidden="true">
+<tr class="d-none" aria-hidden="true">
     <td colspan="10">
         {% include "tickets/load_more_button.html" with oob=True %}
     </td>
