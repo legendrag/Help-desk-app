@@ -3641,12 +3641,14 @@ body.ticket-detail-page .content {
   border-radius: 10px;
   overflow: visible;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  min-width: 220px; /* Match typical menu width */
 }
 
 .action-bar-execute {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1; /* Stretch to fill available width */
   padding: 0.7rem 1.5rem;
   font-size: 0.95rem;
   font-weight: 700;
@@ -3728,7 +3730,7 @@ body.ticket-detail-page .content {
   bottom: calc(100% + 6px);
   top: auto;
   right: 0;
-  min-width: 200px;
+  width: 100%;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
