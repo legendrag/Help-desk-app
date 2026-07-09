@@ -1,0 +1,49 @@
+import math
+import re
+
+from django import template
+from django.utils.html import escape, strip_tags
+from django.utils.safestring import mark_safe
+
+register = template.Library()
+
+CATEGORY_ICONS = {
+    "Getting Started": "book",
+    "Troubleshooting": "wrench",
+    "Policies & Procedures": "shield",
+}
+
+
+@register.filter
+def read_time(content):
+    text = strip_tags(str(content or ""))
+    words = len(text.split())
+    if not words:
+        return "1 min read"
+    minutes = max(1, math.ceil(words / 200))
+    return f"{minutes} min read"
+
+
+@register.filter
+def highlight(text, search):
+    if not text:
+        return ""
+    safe_text = escape(strip_tags(str(text)))
+    if not search:
+        return mark_safe(safe_text)
+
+    terms = [t for t in search.split() if t.strip()]
+    for term in terms:
+        pattern = re.compile(re.escape(term), re.IGNORECASE)
+        safe_text = pattern.sub(
+            lambda m: f'<mark class="kb-highlight">{m.group(0)}</mark>',
+            safe_text,
+        )
+    return mark_safe(safe_text)
+
+
+@register.inclusion_tag("kb/partials/category_icon.html")
+def kb_category_icon(category_name):
+    return {
+        "icon": CATEGORY_ICONS.get(category_name or "", "document"),
+    }

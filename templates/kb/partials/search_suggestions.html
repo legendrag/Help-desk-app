@@ -1,0 +1,15 @@
+{% if suggestions %}
+<div class="kb-suggestions-dropdown" role="listbox" aria-label="Search suggestions">
+    {% for article in suggestions %}
+    <a href="{% url 'kb_detail' article.id %}" class="kb-suggestion-item" role="option">
+        <span class="kb-suggestion-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </span>
+        <span class="kb-suggestion-text">{{ article.title }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}

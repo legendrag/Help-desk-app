@@ -409,7 +409,7 @@ function initNotifications() {
 
         // Browser push notification
         if (Notification.permission === "granted") {
-            new Notification("Help Desk", {
+            new Notification("DeskPlus", {
                 body: data.message || "New activity!",
                 icon: "/static/favicon.ico"
             });

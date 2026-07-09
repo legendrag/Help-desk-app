@@ -1,7 +1,7 @@
-# Walkthrough: Monolithic Help Desk Refactoring
+# Walkthrough: DeskPlus Refactoring
 
 ## Overview
-The Help Desk system has been successfully refactored from a separate React frontend and Django REST API into a **monolithic Django application**. This simplifies deployment, improves development speed, and leverages Django's built-in features more effectively.
+The DeskPlus system has been successfully refactored from a separate React frontend and Django REST API into a **monolithic Django application**. This simplifies deployment, improves development speed, and leverages Django's built-in features more effectively.
 
 ## Key Accomplishments
 
@@ -16,7 +16,7 @@ The Help Desk system has been successfully refactored from a separate React fron
 
 ### 3. Updated Documentation & Scripts
 - **Modernized README:** Reflects the new single-command startup and simplified architecture.
-- **PowerShell Helpers:** `test-local.ps1` and `run-helpdesk.ps1` are now optimized for the root-level monolith.
+- **PowerShell Helpers:** `test-local.ps1` and `run-deskplus.ps1` are now optimized for the root-level monolith.
 - **Installer Integration:** Updated Inno Setup scripts (`build.ps1`, `setup.iss`, `install.ps1`) to package and deploy the unified codebase.
 
 ## How to Run Now

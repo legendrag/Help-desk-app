@@ -1,12 +1,88 @@
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from datetime import timedelta
+
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Q, Count, Case, When, Value, IntegerField
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.http import HttpResponseRedirect, HttpResponse
-from django.db.models import Q
-from .models import Article, Category, ArticleAttachment
-from .forms import ArticleForm, KBCategoryForm
-from tickets.models import Ticket
+from django.utils import timezone
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+
 from core.management_views import BaseManagementView, BaseDeleteView
+from tickets.models import Ticket
+
+from .forms import ArticleForm, KBCategoryForm
+from .models import Article, ArticleAttachment, Category
+
+
+def _user_can_manage_kb(user):
+    return user.is_superuser or (
+        user.role and getattr(user.role, "can_manage_kb", False)
+    )
+
+
+def _published_filter_for_status(status_filter, can_manage):
+    if status_filter == "draft" and can_manage:
+        return Q(articles__is_published=False)
+    return Q(articles__is_published=True)
+
+
+def _base_articles_qs(user, status_filter="published"):
+    can_manage = _user_can_manage_kb(user)
+    qs = Article.objects.select_related("category", "created_by")
+    if status_filter == "draft" and can_manage:
+        return qs.filter(is_published=False)
+    return qs.filter(is_published=True)
+
+
+def _apply_updated_filter(qs, updated):
+    if updated in ("7", "30", "90"):
+        since = timezone.now() - timedelta(days=int(updated))
+        return qs.filter(updated_at__gte=since)
+    return qs
+
+
+def _apply_sort(qs, sort, search_query):
+    q = (search_query or "").strip()
+    if sort == "oldest":
+        return qs.order_by("updated_at")
+    if sort == "newest":
+        return qs.order_by("-updated_at")
+    if q and (sort == "relevance" or not sort):
+        return qs.annotate(
+            relevance=Case(
+                When(title__icontains=q, then=Value(3)),
+                When(content__icontains=q, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        ).order_by("-relevance", "-updated_at")
+    return qs.order_by("-updated_at")
+
+
+def _get_suggested_articles(user, status_filter, search_query, category_ids, exclude_ids):
+    qs = _base_articles_qs(user, status_filter)
+    if search_query:
+        match = qs.filter(
+            Q(title__icontains=search_query) | Q(content__icontains=search_query)
+        ).first()
+        if match and match.category_id:
+            qs = qs.filter(category_id=match.category_id)
+        elif category_ids:
+            qs = qs.filter(category_id__in=category_ids)
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
+    suggested = list(qs.order_by("-updated_at")[:5])
+    if len(suggested) < 3:
+        fallback = _base_articles_qs(user, status_filter).order_by("-updated_at")[:5]
+        seen = {a.pk for a in suggested}
+        for article in fallback:
+            if article.pk not in seen:
+                suggested.append(article)
+                seen.add(article.pk)
+            if len(suggested) >= 5:
+                break
+    return suggested[:5]
 
 class KBPermissionMixin(UserPassesTestMixin):
     def test_func(self):
@@ -21,42 +97,90 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     model = Article
     template_name = "kb/list.html"
     context_object_name = "articles"
+    paginate_by = 8
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        
-        # Determine if we should show drafts
-        status_filter = self.request.GET.get('status', 'published')
-        can_manage = self.request.user.is_superuser or (self.request.user.role and getattr(self.request.user.role, 'can_manage_kb', False))
-        
-        if status_filter == 'draft' and can_manage:
-            qs = qs.filter(is_published=False)
-        else:
-            qs = qs.filter(is_published=True)
-            
-        # Search
-        q = self.request.GET.get('q')
-        if q:
-            qs = qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
-        
-        # Category filter
-        cat = self.request.GET.get('category')
-        if cat and cat != 'all':
-            qs = qs.filter(category_id=cat)
-            
-        return qs
+        status_filter = self.request.GET.get("status", "published")
+        can_manage = _user_can_manage_kb(self.request.user)
+        qs = _base_articles_qs(self.request.user, status_filter)
+
+        search_query = (self.request.GET.get("q") or "").strip()
+        if search_query:
+            qs = qs.filter(
+                Q(title__icontains=search_query) | Q(content__icontains=search_query)
+            )
+
+        category_ids = [
+            c for c in self.request.GET.getlist("category") if str(c).isdigit()
+        ]
+        if category_ids:
+            qs = qs.filter(category_id__in=category_ids)
+
+        updated = self.request.GET.get("updated", "any")
+        qs = _apply_updated_filter(qs, updated)
+
+        sort = self.request.GET.get("sort", "")
+        return _apply_sort(qs, sort, search_query)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['categories'] = Category.objects.all()
-        ctx['search_query'] = self.request.GET.get('q', '')
-        ctx['current_category'] = self.request.GET.get('category', '')
-        ctx['current_status'] = self.request.GET.get('status', 'published')
-        ctx['can_manage_kb'] = self.request.user.is_superuser or (self.request.user.role and getattr(self.request.user.role, 'can_manage_kb', False))
-        
-        if ctx['can_manage_kb']:
-            ctx['draft_count'] = Article.objects.filter(is_published=False).count()
-            
+        request = self.request
+        can_manage = _user_can_manage_kb(request.user)
+        status_filter = request.GET.get("status", "published")
+        search_query = (request.GET.get("q") or "").strip()
+        category_ids = [
+            c for c in request.GET.getlist("category") if str(c).isdigit()
+        ]
+        updated_filter = request.GET.get("updated", "any")
+        sort = request.GET.get("sort", "relevance" if search_query else "newest")
+
+        published_filter = _published_filter_for_status(status_filter, can_manage)
+        ctx["categories"] = Category.objects.annotate(
+            article_count=Count("articles", filter=published_filter)
+        )
+        ctx["search_query"] = search_query
+        ctx["current_categories"] = category_ids
+        ctx["current_status"] = status_filter
+        ctx["current_updated"] = updated_filter
+        ctx["current_sort"] = sort
+        ctx["can_manage_kb"] = can_manage
+        ctx["can_create_ticket"] = request.user.is_superuser or (
+            request.user.role and getattr(request.user.role, "can_create_ticket", False)
+        )
+        ctx["all_articles_count"] = _base_articles_qs(
+            request.user, status_filter
+        ).count()
+
+        paginator = ctx.get("paginator")
+        ctx["article_count"] = paginator.count if paginator else len(ctx["articles"])
+
+        ctx["has_active_filters"] = bool(
+            search_query
+            or category_ids
+            or updated_filter not in ("", "any")
+            or (can_manage and status_filter == "draft")
+        )
+
+        if can_manage:
+            ctx["draft_count"] = Article.objects.filter(is_published=False).count()
+
+        article_ids = [a.pk for a in ctx["articles"]]
+        ctx["suggested_articles"] = _get_suggested_articles(
+            request.user,
+            status_filter,
+            search_query,
+            category_ids,
+            article_ids,
+        )
+
+        params = request.GET.copy()
+        params.pop("page", None)
+        ctx["filter_query"] = params.urlencode()
+        params_no_q = request.GET.copy()
+        params_no_q.pop("page", None)
+        params_no_q.pop("q", None)
+        ctx["filter_query_no_q"] = params_no_q.urlencode()
+
         return ctx
 
 class ArticleDetailView(LoginRequiredMixin, KBPermissionMixin, DetailView):
@@ -163,6 +287,26 @@ class KBCategoryUpdateView(KBCategoryPermissionMixin, BaseManagementView, Update
 class KBCategoryDeleteView(KBCategoryPermissionMixin, BaseDeleteView, DeleteView):
     model = Category
     success_url = reverse_lazy('settings')
+
+def kb_search_suggest(request):
+    if not request.user.is_authenticated:
+        return HttpResponse(status=403)
+
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 2:
+        return HttpResponse("")
+
+    suggestions = (
+        Article.objects.filter(is_published=True, title__icontains=query)
+        .select_related("category")
+        .order_by("-updated_at")[:5]
+    )
+    return render(
+        request,
+        "kb/partials/search_suggestions.html",
+        {"suggestions": suggestions},
+    )
+
 
 def kb_ticket_search(request):
     user = request.user

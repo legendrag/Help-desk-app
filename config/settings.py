@@ -84,7 +84,7 @@ if _db_engine == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
-            "NAME": os.getenv("DB_NAME", "helpdesk"),
+            "NAME": os.getenv("DB_NAME", "deskplus"),
             "USER": os.getenv("DB_USER", "root"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
@@ -140,7 +140,7 @@ CHANNEL_LAYERS = {
 
 # Default bootstrap super-admin credentials.
 DEFAULT_SUPERADMIN_USERNAME = os.getenv("DEFAULT_SUPERADMIN_USERNAME", "admin")
-DEFAULT_SUPERADMIN_EMAIL = os.getenv("DEFAULT_SUPERADMIN_EMAIL", "admin@helpdesk.local")
+DEFAULT_SUPERADMIN_EMAIL = os.getenv("DEFAULT_SUPERADMIN_EMAIL", "admin@deskplus.local")
 DEFAULT_SUPERADMIN_PASSWORD = os.getenv("DEFAULT_SUPERADMIN_PASSWORD", "admin")
 
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024

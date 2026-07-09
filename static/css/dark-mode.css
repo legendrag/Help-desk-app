@@ -1,5 +1,5 @@
 /* ============================================================
-   dark-mode.css — Full Dark Mode for Help Desk Application
+   dark-mode.css — Full Dark Mode for DeskPlus Application
    Scoped under [data-theme="dark"] on <html>.
    ============================================================ */
 
@@ -61,11 +61,23 @@
   color: var(--text-main);
 }
 
-[data-theme="dark"] .topbar .brand {
-  background: linear-gradient(135deg, #818cf8, #a78bfa);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+[data-theme="dark"] .brand-logo--light,
+[data-theme="dark"] .auth-brand-lockup--light {
+  display: none;
+}
+
+[data-theme="dark"] .brand-logo--dark,
+[data-theme="dark"] .auth-brand-lockup--dark {
+  display: block;
+}
+
+[data-theme="dark"] .topbar .brand-desk {
+  color: #a78bfa;
+}
+
+[data-theme="dark"] .topbar .brand-plus,
+[data-theme="dark"] .brand-plus-mark {
+  color: #34d399;
 }
 
 [data-theme="dark"] .topbar-user-name {
@@ -1739,3 +1751,104 @@
 [data-theme="dark"] .global-spinner-overlay {
   background: rgba(15, 23, 42, 0.6);
 }
+
+/* Knowledge Base list page */
+[data-theme="dark"] .kb-hero-section::before {
+  background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(129, 140, 248, 0.15), transparent 70%);
+}
+
+[data-theme="dark"] .kb-hero-icon {
+  background: rgba(129, 140, 248, 0.15);
+  border-color: rgba(129, 140, 248, 0.25);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] a.kb-article-card:hover {
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
+  border-color: rgba(129, 140, 248, 0.35);
+}
+
+[data-theme="dark"] .kb-empty-state {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .kb-empty-icon {
+  background: rgba(129, 140, 248, 0.12);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .kb-filter-chip {
+  background: rgba(129, 140, 248, 0.12);
+  border-color: rgba(129, 140, 248, 0.25);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .kb-filter-chip:hover {
+  background: rgba(129, 140, 248, 0.2);
+}
+
+[data-theme="dark"] .kb-category-count-draft {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .kb-category-link.active .kb-category-count-draft {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fde68a;
+}
+
+/* Knowledge Base search results v3 */
+[data-theme="dark"] .kb-search-field-input {
+  background: var(--panel-bg);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .kb-suggestions-dropdown {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .kb-suggestion-item:hover {
+  background: rgba(129, 140, 248, 0.12);
+}
+
+[data-theme="dark"] .kb-result-item {
+  background: var(--panel-bg);
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+[data-theme="dark"] .kb-result-item:hover {
+  border-color: rgba(129, 140, 248, 0.35);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .kb-result-icon {
+  background: rgba(129, 140, 248, 0.12);
+  border-color: rgba(129, 140, 248, 0.2);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .kb-highlight {
+  background: rgba(129, 140, 248, 0.2);
+  color: #c7d2fe;
+}
+
+[data-theme="dark"] .kb-help-card-icon {
+  background: rgba(129, 140, 248, 0.12);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .kb-sort-form select.kb-sort-select,
+[data-theme="dark"] select.kb-sort-select.no-tomselect {
+  background-color: var(--panel-bg);
+  border-color: rgba(148, 163, 184, 0.2);
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .kb-sort-form .ts-wrapper.kb-sort-select .ts-control {
+  background: var(--panel-bg) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+

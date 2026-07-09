@@ -13,14 +13,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <meta name="description" content="Help Desk Ticket System - Modern, high-performance customer support platform.">
-    <meta name="keywords" content="help desk, support, ticketing, customer service">
-    <title>{% block title %}Help Desk{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.20">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.18">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.13">
+    <meta name="description" content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
+    <meta name="keywords" content="deskplus, DeskPlus, support, ticketing, customer service">
+    <title>{% block title %}DeskPlus{% endblock title %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.21">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.27">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.19">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
-    <link rel="icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" href="{% static 'images/deskplus-brand-light.png' %}" type="image/png">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
@@ -49,7 +49,13 @@
 <body class="{% block body_class %}{% endblock body_class %}">
     <div class="app-shell">
         <header class="topbar">
-            <a href="{% url 'tickets_list' %}" class="brand">Help Desk</a>
+            <a href="{% url 'tickets_list' %}" class="brand" aria-label="DeskPlus Home">
+                <img src="{% static 'images/deskplus-brand-light.svg' %}?v=5" alt="" class="brand-logo brand-logo--light" width="46" height="28">
+                <img src="{% static 'images/deskplus-brand-dark.svg' %}?v=5" alt="" class="brand-logo brand-logo--dark" width="46" height="28">
+                <span class="brand-text">
+                    <span class="brand-desk">Desk</span><span class="brand-plus">Plus</span><sup class="brand-plus-mark">+</sup>
+                </span>
+            </a>
 
             <div class="topbar-controls">
                 <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode" role="switch">
@@ -492,7 +498,7 @@
 
         // Initialize Tom Select robustly
         function initializeChoices(targetElement) {
-            const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.tomselected)') : []);
+            const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.tomselected):not(.no-tomselect)') : []);
             
             if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select') {
                 if (!targetElement.classList.contains('tomselected')) {

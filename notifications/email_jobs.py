@@ -105,7 +105,7 @@ def send_new_ticket_email(ticket_id: int) -> bool:
     if not recipients:
         return False
 
-    subject = f"[HelpDesk] New Ticket {ticket.ticket_number}"
+    subject = f"[DeskPlus] New Ticket {ticket.ticket_number}"
     body = (
         "A new ticket has been created.\n\n"
         f"{_format_ticket_summary(ticket)}\n"
@@ -133,7 +133,7 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
         return False
 
     status_label = _format_status_label(ticket.status) or ticket.status
-    subject = f"[HelpDesk] Ticket Picked {ticket.ticket_number}"
+    subject = f"[DeskPlus] Ticket Picked {ticket.ticket_number}"
     body = (
         "Ticket pickup update.\n\n"
         f"Picked By: {actor.username}\n"
@@ -190,7 +190,7 @@ def send_ticket_update_email(
     else:
         status_label = _format_status_label(ticket.status) or ticket.status
 
-    subject = f"[HelpDesk] Update on Ticket {ticket.ticket_number}"
+    subject = f"[DeskPlus] Update on Ticket {ticket.ticket_number}"
     if message_id:
         body_header = "New message on ticket.\n\n"
         actor_line = f"Message By: {actor.username}\n"
@@ -241,7 +241,7 @@ def send_ticket_transferred_email(ticket_id: int, actor_id: int, new_assignee_id
         return False
 
     status_label = _format_status_label(ticket.status) or ticket.status
-    subject = f"[HelpDesk] Ticket Transferred {ticket.ticket_number}"
+    subject = f"[DeskPlus] Ticket Transferred {ticket.ticket_number}"
     body = (
         "Ticket transfer update.\n\n"
         f"Transferred By: {actor.username}\n"

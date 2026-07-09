@@ -1,113 +1,322 @@
 {% extends "base.html" %}
+{% load kb_extras static %}
 
-{% block title %}
-Knowledge Base | Help Desk
-{% endblock title %}
+{% block title %}Knowledge Base | DeskPlus{% endblock title %}
 
-{% block body_class %}kb-page{% endblock body_class %}
+{% block body_class %}kb-page kb-search-page{% endblock body_class %}
+
+{% block extra_head %}
+<script src="{% static 'js/kb-search.js' %}?v=1.0" defer></script>
+{% endblock extra_head %}
 
 {% block content %}
 <div class="kb-page">
-    <!-- Hero Search Section -->
-    <div class="panel kb-hero-section">
-        <div class="kb-hero-content">
-            <h1 class="kb-hero-title">Find answers fast</h1>
-            <p class="kb-hero-subtitle">Search our knowledge base or browse categories below</p>
-            <form class="kb-hero-search" method="get" autocomplete="off" action="{% url 'kb_list' %}" onsubmit="var btn=this.querySelector('.kb-search-btn'); var textSpan=btn.querySelector('.kb-search-btn-text'); if(textSpan){textSpan.innerHTML='Searching...';} btn.style.pointerEvents='none'; btn.style.opacity='0.8';">
-                {% if current_category != 'all' and current_category %}
-                <input type="hidden" name="category" value="{{ current_category }}">
+    <div class="kb-search-layout">
+        <aside class="kb-filters-panel panel" aria-label="Filter results">
+            <h2 class="kb-filters-heading">Filter Results</h2>
+
+            <form method="get" class="kb-filters-form" id="kb-filters-form">
+                {% if search_query %}
+                <input type="hidden" name="q" value="{{ search_query }}">
                 {% endif %}
-                {% if current_status %}
+                {% if current_status and current_status != 'published' %}
                 <input type="hidden" name="status" value="{{ current_status }}">
                 {% endif %}
-                <div class="kb-search-input-wrapper">
-                    <span class="search-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {% if current_sort %}
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+                {% endif %}
+
+                <fieldset class="kb-filter-group">
+                    <legend class="kb-filter-label">Categories</legend>
+                    <ul class="kb-filter-list">
+                        {% for c in categories %}
+                        <li class="kb-filter-item">
+                            <label class="kb-checkbox-label">
+                                <input type="checkbox" name="category" value="{{ c.id }}"
+                                    {% if c.id|stringformat:'s' in current_categories %}checked{% endif %}
+                                    onchange="document.getElementById('kb-filters-form').submit()">
+                                <span class="kb-checkbox-text">{{ c.name }}</span>
+                                <span class="kb-filter-count">({{ c.article_count }})</span>
+                            </label>
+                        </li>
+                        {% empty %}
+                        <li class="kb-filter-empty">No categories yet</li>
+                        {% endfor %}
+                    </ul>
+                </fieldset>
+
+                <fieldset class="kb-filter-group">
+                    <legend class="kb-filter-label">Last Updated</legend>
+                    <ul class="kb-filter-list">
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="updated" value="any"
+                                    {% if current_updated == 'any' or not current_updated %}checked{% endif %}
+                                    onchange="document.getElementById('kb-filters-form').submit()">
+                                <span>Anytime</span>
+                            </label>
+                        </li>
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="updated" value="7"
+                                    {% if current_updated == '7' %}checked{% endif %}
+                                    onchange="document.getElementById('kb-filters-form').submit()">
+                                <span>Last 7 days</span>
+                            </label>
+                        </li>
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="updated" value="30"
+                                    {% if current_updated == '30' %}checked{% endif %}
+                                    onchange="document.getElementById('kb-filters-form').submit()">
+                                <span>Last 30 days</span>
+                            </label>
+                        </li>
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="updated" value="90"
+                                    {% if current_updated == '90' %}checked{% endif %}
+                                    onchange="document.getElementById('kb-filters-form').submit()">
+                                <span>Last 90 days</span>
+                            </label>
+                        </li>
+                    </ul>
+                </fieldset>
+
+                {% if can_manage_kb %}
+                <fieldset class="kb-filter-group kb-filter-group-divider">
+                    <legend class="kb-filter-label">Status</legend>
+                    <ul class="kb-filter-list">
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="status" value="published"
+                                    form="kb-status-form"
+                                    {% if current_status == 'published' or not current_status %}checked{% endif %}
+                                    onchange="document.getElementById('kb-status-form').submit()">
+                                <span>Published</span>
+                            </label>
+                        </li>
+                        <li class="kb-filter-item">
+                            <label class="kb-radio-label">
+                                <input type="radio" name="status" value="draft"
+                                    form="kb-status-form"
+                                    {% if current_status == 'draft' %}checked{% endif %}
+                                    onchange="document.getElementById('kb-status-form').submit()">
+                                <span>Drafts ({{ draft_count|default:"0" }})</span>
+                            </label>
+                        </li>
+                    </ul>
+                </fieldset>
+                {% endif %}
+
+                <a href="{% url 'kb_list' %}" class="btn secondary kb-clear-filters-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Clear Filters
+                </a>
+            </form>
+
+            {% if can_manage_kb %}
+            <form method="get" id="kb-status-form" class="kb-status-form-hidden">
+                {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                {% for cat_id in current_categories %}
+                <input type="hidden" name="category" value="{{ cat_id }}">
+                {% endfor %}
+                {% if current_updated and current_updated != 'any' %}
+                <input type="hidden" name="updated" value="{{ current_updated }}">
+                {% endif %}
+                {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
+            </form>
+            {% endif %}
+        </aside>
+
+        <main class="kb-results-panel">
+            <header class="kb-results-header">
+                <div class="kb-results-header-row">
+                    <div class="kb-results-header-text">
+                        <h1 class="kb-page-title">Knowledge Base</h1>
+                        <p class="kb-page-subtitle">Search articles or browse by category</p>
+                    </div>
+                    {% if can_manage_kb %}
+                    <a href="{% url 'kb_create' %}" class="btn primary kb-new-article-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        New Article
+                    </a>
+                    {% endif %}
+                </div>
+            </header>
+
+            <form method="get" class="kb-search-form" action="{% url 'kb_list' %}" autocomplete="off">
+                {% for cat_id in current_categories %}
+                <input type="hidden" name="category" value="{{ cat_id }}">
+                {% endfor %}
+                {% if current_updated and current_updated != 'any' %}
+                <input type="hidden" name="updated" value="{{ current_updated }}">
+                {% endif %}
+                {% if current_status and current_status != 'published' %}
+                <input type="hidden" name="status" value="{{ current_status }}">
+                {% endif %}
+                {% if current_sort %}
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+                {% endif %}
+
+                <div class="kb-search-field" id="kb-search-field">
+                    <span class="kb-search-field-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="text" name="q" id="search-q" class="kb-search-input" placeholder="Search title or content..." value="{{ search_query }}">
-                    <button type="submit" class="btn primary kb-search-btn">
-                        <svg class="kb-search-btn-icon d-none" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    <input type="search" name="q" id="search-q" class="kb-search-field-input"
+                           placeholder="Search for answers…" value="{{ search_query }}"
+                           aria-label="Search knowledge base" autocomplete="off"
+                           hx-get="{% url 'kb_search_suggest' %}"
+                           hx-trigger="keyup changed delay:300ms, search"
+                           hx-target="#kb-search-suggestions"
+                           hx-include="#search-q">
+                    {% if search_query %}
+                    <a href="{% url 'kb_list' %}{% if filter_query_no_q %}?{{ filter_query_no_q }}{% endif %}"
+                       class="kb-search-field-clear" title="Clear search" aria-label="Clear search">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
-                        <span class="kb-search-btn-text">Search</span>
-                    </button>
+                    </a>
+                    {% endif %}
+                    <div id="kb-search-suggestions" class="kb-search-suggestions-host"></div>
                 </div>
             </form>
-        </div>
-        {% if user.is_superuser or user.role.can_manage_kb %}
-        <div class="kb-hero-actions">
-            <a href="{% url 'kb_create' %}" class="btn primary">+ New Article</a>
-        </div>
-        {% endif %}
-    </div>
 
-    <!-- Main Layout Grid: Sidebar + Articles -->
-    <div class="kb-layout-grid">
-        
-        <!-- Sidebar Navigation -->
-        <aside class="kb-sidebar">
-            <h3 class="kb-sidebar-title">Categories</h3>
-            <nav class="kb-category-nav">
-                <a href="?category=all{% if search_query %}&q={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}" 
-                   class="kb-category-link {% if current_category == 'all' or not current_category %}active{% endif %}">
-                   All Categories
-                </a>
-                {% for c in categories %}
-                <a href="?category={{ c.id }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}" 
-                   class="kb-category-link {% if current_category == c.id|stringformat:'s' %}active{% endif %}">
-                   {{ c.name }}
-                </a>
-                {% endfor %}
-            </nav>
+            <div class="kb-results-toolbar">
+                <p class="kb-results-summary">
+                    {% if search_query %}
+                    <strong>{{ article_count }}</strong> result{{ article_count|pluralize }} for &ldquo;{{ search_query|truncatechars:40 }}&rdquo;
+                    {% else %}
+                    <strong>{{ article_count }}</strong> article{{ article_count|pluralize }}
+                    {% endif %}
+                </p>
 
-            {% if can_manage_kb %}
-            <h3 class="kb-sidebar-title kb-sidebar-title-mt">Status</h3>
-            <nav class="kb-category-nav">
-                <a href="?status=published{% if search_query %}&q={{ search_query }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}" 
-                   class="kb-category-link {% if current_status == 'published' or not current_status %}active{% endif %}">
-                   Published
-                </a>
-                <a href="?status=draft{% if search_query %}&q={{ search_query }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}" 
-                   class="kb-category-link {% if current_status == 'draft' %}active{% endif %}">
-                   Drafts ({{ draft_count|default:"0" }})
-                </a>
-            </nav>
-            {% endif %}
-        </aside>
-
-        <!-- Articles Grid -->
-        <main class="kb-main-content">
-            <div class="kb-grid">
-                {% for article in articles %}
-                <a href="{% url 'kb_detail' article.id %}" class="panel kb-article-card {% if not article.is_published %}kb-article-card-draft{% endif %}">
-                    <div class="article-category">
-                        <span class="pill kb-category-pill">{{ article.category.name|default:"Uncategorized" }}</span>
-                        {% if not article.is_published %}
-                        <span class="pill kb-draft-pill">Draft</span>
+                <div class="kb-results-toolbar-actions">
+                    <form method="get" class="kb-sort-form">
+                        {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                        {% for cat_id in current_categories %}
+                        <input type="hidden" name="category" value="{{ cat_id }}">
+                        {% endfor %}
+                        {% if current_updated and current_updated != 'any' %}
+                        <input type="hidden" name="updated" value="{{ current_updated }}">
                         {% endif %}
-                    </div>
-                    <h3>{{ article.title }}</h3>
-                    <p class="article-snippet">
-                        {{ article.content|striptags|truncatewords:20|safe }}
-                    </p>
-                    <div class="article-meta">
-                        <span>By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
-                        <span>{{ article.created_at|date:"M d, Y" }}</span>
+                        {% if current_status and current_status != 'published' %}
+                        <input type="hidden" name="status" value="{{ current_status }}">
+                        {% endif %}
+                        <label class="kb-sort-label" for="kb-sort">Sort by:</label>
+                        <select name="sort" id="kb-sort" class="kb-sort-select no-tomselect" onchange="this.form.submit()">
+                            {% if search_query %}
+                            <option value="relevance" {% if current_sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                            {% endif %}
+                            <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Newest</option>
+                            <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>Oldest</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <div class="kb-results-list">
+                {% for article in articles %}
+                <a href="{% url 'kb_detail' article.id %}" class="kb-result-item panel {% if not article.is_published %}kb-result-item-draft{% endif %}">
+                    {% kb_category_icon article.category.name %}
+                    <div class="kb-result-body">
+                        <h3 class="kb-result-title">{{ article.title }}</h3>
+                        <p class="kb-result-breadcrumb">
+                            {{ article.category.name|default:"Uncategorized" }}
+                            <span aria-hidden="true">&rsaquo;</span>
+                            {{ article.title|truncatechars:50 }}
+                        </p>
+                        <p class="kb-result-snippet">
+                            {{ article.content|striptags|truncatewords:35|highlight:search_query }}
+                        </p>
+                        <div class="kb-result-meta">
+                            <span>Updated {{ article.updated_at|date:"M j, Y" }}</span>
+                            <span class="kb-result-meta-sep" aria-hidden="true">&middot;</span>
+                            <span>{{ article.content|read_time }}</span>
+                            {% if not article.is_published %}
+                            <span class="pill kb-draft-pill">Draft</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </a>
                 {% empty %}
                 <div class="panel kb-empty-state">
-                    <div class="empty-state-icon">📄</div>
-                    <p>No articles found for the selected filters.</p>
+                    <div class="kb-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <h3 class="kb-empty-title">No matching articles</h3>
+                    <p class="kb-empty-text">Try adjusting your search or filters to find what you need.</p>
                     <a href="{% url 'kb_list' %}" class="btn secondary">Clear Filters</a>
                 </div>
                 {% endfor %}
             </div>
+
+            {% if page_obj.has_next %}
+            <div class="kb-load-more-wrap">
+                <a href="?page={{ page_obj.next_page_number }}{% if filter_query %}&{{ filter_query }}{% endif %}"
+                   class="btn secondary kb-load-more-btn">Load more results</a>
+            </div>
+            {% endif %}
         </main>
+
+        <aside class="kb-help-panel" aria-label="Help and suggestions">
+            {% if search_query and article_count == 0 %}
+            <div class="kb-help-card panel">
+                <div class="kb-help-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <h3 class="kb-help-card-title">No exact matches?</h3>
+                <p class="kb-help-card-text">Try different keywords or remove some filters to broaden your search.</p>
+            </div>
+            {% endif %}
+
+            {% if suggested_articles %}
+            <div class="kb-help-card panel">
+                <h3 class="kb-help-card-title">Suggested Articles</h3>
+                <ul class="kb-suggested-list">
+                    {% for article in suggested_articles %}
+                    <li>
+                        <a href="{% url 'kb_detail' article.id %}" class="kb-suggested-link">
+                            {% kb_category_icon article.category.name %}
+                            <span>{{ article.title|truncatechars:42 }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="kb-help-card panel kb-help-card-support">
+                <h3 class="kb-help-card-title">Still need help?</h3>
+                <p class="kb-help-card-text">Our support team is ready to assist you with any questions.</p>
+                {% if can_create_ticket %}
+                <a href="{% url 'ticket_create' %}" class="btn primary kb-contact-support-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Contact Support
+                </a>
+                {% else %}
+                <p class="kb-help-card-muted">Please contact your administrator or IT support team.</p>
+                {% endif %}
+            </div>
+        </aside>
     </div>
 </div>
 {% endblock content %}
