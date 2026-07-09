@@ -1,5 +1,5 @@
 <# 
-    test-local.ps1 — Run Help Desk locally with SQLite for development/testing.
+    test-local.ps1 — Run DeskPlus locally with SQLite for development/testing.
     Usage: .\test-local.ps1 [-InstallDeps] [-Fresh] [-NoBrowser]
 #>
 param(
@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "[HELPDESK] $Message" -ForegroundColor Cyan
+    Write-Host "[DESKPLUS] $Message" -ForegroundColor Cyan
 }
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -61,8 +61,7 @@ Write-Step "Running database migrations (SQLite)"
 
 if ($isDbFresh) {
     Write-Step "Seeding demo data"
-    # Note: If you have a custom seeding command, call it here
-    # & $pythonPath manage.py seed_demo_data
+    & $pythonPath manage.py seed_demo_data
 }
 
 # ── Start Server ──────────────────────────────────────────────────

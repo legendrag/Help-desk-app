@@ -36,5 +36,5 @@
 - [x] Verify WebSocket Chat
 - [x] Verify Project Structure (Root-level)
 - [x] Verify Documentation (README, Reference, Deployment Guide)
-- [x] Verify Helper Scripts (test-local, run-helpdesk, installer)
+- [x] Verify Helper Scripts (test-local, run-deskplus, installer)
 - [x] Verify MySQL configuration (Settings)

@@ -1,6 +1,6 @@
-# Help Desk Application - Features & Standards
+# DeskPlus Application - Features & Standards
 
-This document serves as a persistent reference for the features and UI/UX design standards of the Help Desk Application. It is written to reflect the actual codebase and should be updated as the project evolves.
+This document serves as a persistent reference for the features and UI/UX design standards of the DeskPlus Application. It is written to reflect the actual codebase and should be updated as the project evolves.
 
 ---
 
@@ -207,7 +207,7 @@ The application uses HTMX extensively to deliver a single-page-app feel without 
 ### 11. Installer & Deployment
 
 - **PowerShell Installer** (`installer/build.ps1`): A packaged installer script to set up the application on Windows environments.
-- **Run Script** (`run-helpdesk.ps1`): A convenience script to launch the Django development server.
+- **Run Script** (`run-deskplus.ps1`): A convenience script to launch the Django development server.
 - **Environment Configuration**: Sensitive values (database, email credentials, secret key) are managed via a `.env` file (excluded from git via `.gitignore`).
 
 ---

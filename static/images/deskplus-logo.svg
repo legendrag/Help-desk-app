@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 228 52" role="img" aria-label="DeskPlus">
+  <defs>
+    <linearGradient id="dp-ticket" x1="24" y1="10" x2="24" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B6CF8"/>
+      <stop offset="1" stop-color="#6D4FE8"/>
+    </linearGradient>
+    <linearGradient id="dp-fold" x1="38" y1="28" x2="48" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5E45D8"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(2 8)">
+    <path fill="url(#dp-ticket)" d="M4 6h40c2.21 0 4 1.79 4 4v3.8c-2.21 0-4 1.79-4 4s1.79 4 4 4v3.2c0 2.21-1.79 4-4 4H4c-2.21 0-4-1.79-4-4v-3.8c2.21 0 4-1.79 4-4s-1.79-4-4-4V10c0-2.21 1.79-4 4-4z"/>
+    <path fill="url(#dp-fold)" d="M34 22h10v4c0 2.21-1.79 4-4 4h-6v-4c0-2.21 1.79-4 4-4z"/>
+    <rect x="20" y="13" width="8" height="14" rx="1.5" fill="#fff"/>
+    <rect x="16" y="17" width="16" height="6" rx="1.5" fill="#fff"/>
+  </g>
+  <text x="58" y="35" font-family="Outfit, system-ui, -apple-system, sans-serif" font-size="27" font-weight="700" letter-spacing="-0.4">
+    <tspan fill="#7C5CF8">Desk</tspan><tspan fill="#22C55E">Plus</tspan>
+  </text>
+  <text x="175" y="21" font-family="Outfit, system-ui, -apple-system, sans-serif" font-size="14" font-weight="700" fill="#22C55E">+</text>
+</svg>

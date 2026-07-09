@@ -1,4 +1,4 @@
-# مرجع النظام — Help Desk Reference (Monolithic)
+# مرجع النظام — DeskPlus Reference (Monolithic)
 
 هذا المستند مرجع سريع ومُوحَّد لفهم النظام بعد عملية الـ Refactoring إلى Django Monolith.
 
@@ -37,7 +37,7 @@
 
 ## 6) مراجع الملفات الهامة
 - `test-local.ps1`: لتشغيل البيئة المحلية بضغطة واحدة.
-- `run-helpdesk.ps1`: لـ تشغيل النظام في وضع الإنتاج.
+- `run-deskplus.ps1`: لـ تشغيل النظام في وضع الإنتاج.
 - `installer/build.ps1`: لبناء ملف الـ Setup للعميل.
 
 ---

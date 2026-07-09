@@ -1,11 +1,16 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Login - Help Desk{% endblock title %}
+{% block title %}Login - DeskPlus{% endblock title %}
 
 {% block content %}
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-header">
+            <div class="auth-brand">
+                <img src="{% static 'images/deskplus-logo.png' %}" alt="DeskPlus" class="auth-brand-lockup auth-brand-lockup--light" width="220" height="52">
+                <img src="{% static 'images/deskplus-logo-dark.png' %}" alt="DeskPlus" class="auth-brand-lockup auth-brand-lockup--dark" width="220" height="52">
+            </div>
             <h2>Welcome Back</h2>
             <p>Login to your account</p>
         </div>

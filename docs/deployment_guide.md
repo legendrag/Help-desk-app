@@ -1,6 +1,6 @@
 <div dir="rtl">
 
-# دليل النشر والتشغيل لنظام Help Desk (Monolithic Guide)
+# دليل النشر والتشغيل لنظام DeskPlus (Monolithic Guide)
 
 هذا الدليل يشرح كيفية تشغيل النظام في بيئات مختلفة بعد تحويله إلى هيكلية Django الموحدة.
 
@@ -24,7 +24,7 @@
 1. افتح نافذة الأوامر الخاصة بـ MySQL (أو Query Tab).
 2. نفذ الأمر التالي لإنشاء قاعدة البيانات بالترميز الصحيح:
    ```sql
-   CREATE DATABASE helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE DATABASE deskplus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 3. **تنبيه:** تأكد من أن المستخدم (Root أو غيره) لديه كافة الصلاحيات على هذه القاعدة.
 
@@ -32,7 +32,7 @@
 بعد التثبيت، افتح ملف `.env` وقم بتحديث البيانات التالية:
 ```env
 DB_ENGINE=mysql
-DB_NAME=helpdesk
+DB_NAME=deskplus
 DB_USER=root
 DB_PASSWORD=كلمة_مرور_قاعدة_البيانات
 DB_HOST=localhost
@@ -69,7 +69,7 @@ DB_PORT=3306
    .\installer\build.ps1
    ```
 3. سيقوم السكريبت بجمع الملفات (collectstatic) وإنشاء ملف التثبيت.
-4. ستجد الملف الناتج في: `installer\Output\HelpDeskSetup.exe`.
+4. ستجد الملف الناتج في: `installer\Output\DeskPlusSetup.exe`.
 
 ---
 
@@ -77,9 +77,9 @@ DB_PORT=3306
 
 بما أن النظام أصبح Monolith، فإن النشر بسيط جداً:
 
-1. **التثبيت:** انقل ملف `HelpDeskSetup.exe` وكبسه مرتين للتثبيت.
+1. **التثبيت:** انقل ملف `DeskPlusSetup.exe` وكبسه مرتين للتثبيت.
 2. **إعدادات البيئة:** افتح ملف `.env` في مجلد التثبيت واضبط البيانات (DB_PASSWORD, SECRET_KEY, SMTP).
-3. **التشغيل:** استخدم أيقونة الاختصار "Help Desk" على سطح المكتب.
+3. **التشغيل:** استخدم أيقونة الاختصار "DeskPlus" على سطح المكتب.
 4. **التشغيل اليدوي (للمحترفين):**
    يمكنك استخدام `Daphne` لتشغيل النظام لدعم الـ WebSockets:
    ```powershell

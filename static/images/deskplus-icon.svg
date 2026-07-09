@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DeskPlus">
+  <defs>
+    <linearGradient id="dp-ticket" x1="32" y1="18" x2="32" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B6CF8"/>
+      <stop offset="1" stop-color="#6D4FE8"/>
+    </linearGradient>
+    <linearGradient id="dp-fold" x1="46" y1="36" x2="56" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5E45D8"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#dp-ticket)" d="M12 20h40c2.21 0 4 1.79 4 4v3.8c-2.21 0-4 1.79-4 4s1.79 4 4 4V36c0 2.21-1.79 4-4 4H12c-2.21 0-4-1.79-4-4v-3.8c2.21 0 4-1.79 4-4s-1.79-4-4-4V24c0-2.21 1.79-4 4-4z"/>
+  <path fill="url(#dp-fold)" d="M42 36h10v4c0 2.21-1.79 4-4 4h-6v-4c0-2.21 1.79-4 4-4z"/>
+  <rect x="28" y="27" width="8" height="14" rx="1.5" fill="#fff"/>
+  <rect x="24" y="31" width="16" height="6" rx="1.5" fill="#fff"/>
+</svg>

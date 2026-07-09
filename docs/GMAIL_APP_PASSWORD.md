@@ -1,4 +1,4 @@
-﻿# Gmail App Password Setup (Admin)
+# Gmail App Password Setup (Admin)
 
 Use this for `Email Settings` in admin panel.
 
@@ -7,7 +7,7 @@ Use this for `Email Settings` in admin panel.
 2. Enable **2-Step Verification** on the Google account.
 3. Open Google Account settings -> **Security** -> **App passwords**.
 4. Create a new app password (16 chars).
-5. In Help Desk Admin -> Email Settings, fill:
+5. In DeskPlus Admin -> Email Settings, fill:
    - SMTP Host: `smtp.gmail.com`
    - SMTP Port: `587`
    - Encryption: `tls`

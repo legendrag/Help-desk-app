@@ -1,4 +1,4 @@
-# Help Desk App — Backup, Restore & Database Management Guide
+# DeskPlus — Backup, Restore & Database Management Guide
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## Overview
 
-The Help Desk app provides two types of backups:
+DeskPlus app provides two types of backups:
 
 | Type | What It Includes | Format | Restorable? |
 |------|-----------------|--------|-------------|
@@ -124,13 +124,13 @@ crontab -e
 Add these lines:
 ```bash
 # Database backup — every day at 2:00 AM
-0 2 * * * cd /path/to/Help-desk-app && /path/to/venv/bin/python manage.py backup_db
+0 2 * * * cd /path/to/DeskPlus-app && /path/to/venv/bin/python manage.py backup_db
 
 # Notification cleanup — every day at 3:00 AM
-0 3 * * * cd /path/to/Help-desk-app && /path/to/venv/bin/python manage.py cleanup_notifications
+0 3 * * * cd /path/to/DeskPlus-app && /path/to/venv/bin/python manage.py cleanup_notifications
 
 # Orphan media cleanup — every Sunday at 4:00 AM
-0 4 * * 0 cd /path/to/Help-desk-app && /path/to/venv/bin/python manage.py cleanup_media --delete
+0 4 * * 0 cd /path/to/DeskPlus-app && /path/to/venv/bin/python manage.py cleanup_media --delete
 ```
 
 ### Windows (Task Scheduler)
@@ -141,7 +141,7 @@ Add these lines:
 4. Set the action:
    - Program: `C:\path\to\venv\Scripts\python.exe`
    - Arguments: `manage.py backup_db`
-   - Start in: `C:\path\to\Help-desk-app`
+   - Start in: `C:\path\to\DeskPlus-app`
 
 ---
 
@@ -155,7 +155,7 @@ Add these lines:
 # 1. Stop the application
 
 # 2. Import the backup
-mysql -u root -p helpdesk < backups/backup_2026-07-04_020000.sql
+mysql -u root -p deskplus < backups/backup_2026-07-04_020000.sql
 
 # 3. Start the application
 ```
@@ -167,19 +167,19 @@ mysql -u root -p helpdesk < backups/backup_2026-07-04_020000.sql
 mysql -u root -p
 
 # 2. Create the database
-CREATE DATABASE helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE deskplus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 3. Create the app user (if needed)
-CREATE USER 'helpdesk_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON helpdesk.* TO 'helpdesk_user'@'localhost';
+CREATE USER 'deskplus_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON deskplus.* TO 'deskplus_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 
 # 4. Import the backup
-mysql -u root -p helpdesk < backup_2026-07-04_020000.sql
+mysql -u root -p deskplus < backup_2026-07-04_020000.sql
 
 # 5. Verify it worked
-mysql -u root -p -e "USE helpdesk; SHOW TABLES;"
+mysql -u root -p -e "USE deskplus; SHOW TABLES;"
 ```
 
 #### Scenario: Restore a specific table only
@@ -189,7 +189,7 @@ mysql -u root -p -e "USE helpdesk; SHOW TABLES;"
 sed -n '/^-- Table structure for table `tickets_ticket`/,/^-- Table structure for table/p' backup.sql > tickets_only.sql
 
 # Import just that table
-mysql -u root -p helpdesk < tickets_only.sql
+mysql -u root -p deskplus < tickets_only.sql
 ```
 
 
@@ -246,8 +246,8 @@ sudo apt update
 sudo apt install python3 python3-pip python3-venv mysql-server git
 
 # Clone the project
-git clone <your-repo-url> Help-desk-app
-cd Help-desk-app
+git clone <your-repo-url> DeskPlus-app
+cd DeskPlus-app
 
 # Create virtual environment
 python3 -m venv .venv
@@ -272,8 +272,8 @@ Key settings to configure in `.env`:
 SECRET_KEY=your-very-long-random-secret-key
 DEBUG=0
 DB_ENGINE=mysql
-DB_NAME=helpdesk
-DB_USER=helpdesk_user
+DB_NAME=deskplus
+DB_USER=deskplus_user
 DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=3306
@@ -284,10 +284,10 @@ ALLOWED_HOSTS=your-domain.com
 
 ```bash
 # Create the MySQL database
-mysql -u root -p -e "CREATE DATABASE helpdesk CHARACTER SET utf8mb4;"
+mysql -u root -p -e "CREATE DATABASE deskplus CHARACTER SET utf8mb4;"
 
 # Option A: Restore from backup (if you have one)
-mysql -u root -p helpdesk < backup_2026-07-04_020000.sql
+mysql -u root -p deskplus < backup_2026-07-04_020000.sql
 
 # Option B: Fresh install (if no backup available)
 python manage.py migrate
@@ -317,7 +317,7 @@ daphne -b 0.0.0.0 -p 8000 config.asgi:application
 
 ```bash
 crontab -e
-# Add: 0 2 * * * cd /path/to/Help-desk-app && .venv/bin/python manage.py backup_db
+# Add: 0 2 * * * cd /path/to/DeskPlus-app && .venv/bin/python manage.py backup_db
 ```
 
 ---
