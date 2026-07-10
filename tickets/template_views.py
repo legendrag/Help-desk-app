@@ -456,6 +456,11 @@ class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     template_name = "tickets/create.html"
     success_url = reverse_lazy("tickets_list")
 
+    def get_success_url(self):
+        if self.request.user.user_type == "branch":
+            from django.urls import reverse
+            return reverse("ticket_detail", kwargs={"ticket_id": self.object.id}) + "#chat-box"
+        return super().get_success_url()
     def test_func(self):
         user = self.request.user
         if user.is_superuser:
@@ -477,9 +482,12 @@ class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         
         if self.request.headers.get('HX-Request'):
             from django.http import HttpResponse
+            from django.urls import reverse
             resp = HttpResponse(status=204)
-            # Add refreshTickets trigger for frontend if we implement list refresh later
-            resp['HX-Trigger'] = 'closeModal,refreshTickets'
+            if self.request.user.user_type == "branch":
+                resp['HX-Redirect'] = reverse("ticket_detail", kwargs={"ticket_id": self.object.id}) + "#chat-box"
+            else:
+                resp['HX-Trigger'] = 'closeModal,refreshTickets'
             return resp
             
         return response
