@@ -5,9 +5,27 @@ from core.models import TimeStampedModel
 def kb_attachment_path(instance, filename):
     return f"kb/{instance.article_id}/{filename}"
 
+ICON_CHOICES = [
+    ("document", "Document (Default)"),
+    ("book", "Book"),
+    ("wrench", "Wrench"),
+    ("shield", "Shield"),
+    ("star", "Star"),
+    ("info", "Info"),
+    ("users", "Users"),
+    ("help", "Help"),
+    ("globe", "Globe"),
+]
+
 class Category(models.Model):
     name = models.CharField(max_length=150, unique=True)
     description = models.TextField(blank=True)
+    icon = models.CharField(
+        max_length=50,
+        choices=ICON_CHOICES,
+        default="document",
+        help_text="Icon to display for this category"
+    )
 
     class Meta:
         verbose_name_plural = "categories"

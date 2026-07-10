@@ -67,7 +67,7 @@ body {
 }
 
 .topbar .brand-desk {
-  color: #6b5aed;
+  color: #818cf8;
 }
 
 .topbar .brand-plus {
@@ -2226,6 +2226,8 @@ a.kb-article-card:hover {
 .kb-search-btn {
   position: absolute;
   right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   padding: 0.5rem 1.5rem;
   border-radius: 8px;
   display: flex;
@@ -2638,14 +2640,24 @@ a.kb-article-card:hover {
 
   .kb-search-btn {
     position: absolute !important;
-    right: 0.5rem !important;
-    width: 40px !important;
-    height: 40px !important;
+    right: 0.4rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 34px !important;
+    height: 34px !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
     border-radius: 8px !important;
+  }
+  
+  .kb-search-field-clear {
+    right: 3rem !important;
+  }
+  
+  .kb-search-field-input {
+    padding-right: 3.5rem !important;
   }
   
   .kb-search-btn-text {
@@ -3378,7 +3390,7 @@ a.kb-article-card:hover {
 
 .kb-search-field-input {
   width: 100%;
-  padding: 0.85rem 2.75rem 0.85rem 2.75rem !important;
+  padding: 0.85rem 8rem 0.85rem 2.75rem !important;
   font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -3396,7 +3408,7 @@ a.kb-article-card:hover {
 
 .kb-search-field-clear {
   position: absolute;
-  right: 0.85rem;
+  right: 7.5rem;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -3774,13 +3786,26 @@ select.kb-sort-select.no-tomselect:focus {
   height: 14px;
 }
 
+.kb-help-card-support {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  gap: 1rem;
+  padding: 1.25rem 1.15rem;
+}
+
+.kb-help-card-support .kb-help-card-title {
+  margin-bottom: 0.25rem;
+}
+
 .kb-help-card-support .kb-contact-support-btn {
   width: 100%;
-  margin-top: 0.85rem;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+  padding: 0.75rem 1.5rem;
 }
 
 .kb-search-page .kb-empty-state {
@@ -3791,23 +3816,48 @@ select.kb-sort-select.no-tomselect:focus {
 @media (max-width: 1100px) {
   .kb-search-layout {
     grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .kb-filters-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .kb-results-panel {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .kb-help-panel {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    grid-row: 2;
     position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
+    margin-top: 1rem;
   }
 
   .kb-help-card {
-    flex: 1 1 240px;
+    flex: 1 1 auto;
+  }
+
+  .kb-help-card-support {
+    flex-direction: row;
+    text-align: left;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+  }
+
+  .kb-help-card-support .kb-contact-support-btn {
+    width: auto;
   }
 }
 
 @media (max-width: 768px) {
   .kb-search-layout {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .kb-filters-panel,
@@ -3815,37 +3865,28 @@ select.kb-sort-select.no-tomselect:focus {
     position: static;
   }
 
-  .kb-filters-panel {
-    order: 2;
-  }
-
-  .kb-results-panel {
-    order: 1;
-  }
-
+  .kb-results-panel,
   .kb-help-panel {
-    order: 3;
-    flex-direction: column;
+    display: contents;
   }
+
+  .kb-results-header { order: 1; text-align: center; }
+  .kb-search-form { order: 2; width: 100%; }
+  .kb-results-toolbar { order: 3; }
+  .kb-filters-panel { order: 4; }
+  .kb-help-card { order: 5; }
+  .kb-results-list { order: 6; width: 100%; }
+  .kb-empty-state { order: 7; }
+  .kb-load-more-wrap { order: 8; }
+  .kb-help-card-support { order: 9; flex-direction: column; text-align: center; padding: 1.5rem 1.25rem; gap: 0.75rem; }
+  .kb-help-card-support .kb-contact-support-btn { width: 100%; }
 
   .kb-results-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .kb-results-toolbar-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .kb-sort-form {
-    width: 100%;
-  }
-
-  .kb-sort-form select.kb-sort-select,
-  select.kb-sort-select.no-tomselect {
-    flex: 1;
-    max-width: none;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    justify-content: center;
+    gap: 1.5rem;
   }
 
   .kb-new-article-btn {
@@ -3855,7 +3896,8 @@ select.kb-sort-select.no-tomselect:focus {
 
   .kb-results-header-row {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    gap: 1rem;
   }
 
   .kb-result-item:hover {

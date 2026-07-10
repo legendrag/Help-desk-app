@@ -53,7 +53,7 @@
                 <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--light" height="28">
                 <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--dark" height="28">
                 <span class="brand-text">
-                    <span class="brand-desk" style="font-weight: 800; color: #4f46e5;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
+                    <span class="brand-desk" style="font-weight: 800; color: #818cf8;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
                 </span>
             </a>
 
@@ -506,12 +506,43 @@
                 }
             }
 
+            const iconSvgMap = {
+                "document": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
+                "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>',
+                "wrench": '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>',
+                "shield": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
+                "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
+                "info": '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
+                "users": '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+                "help": '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+                "globe": '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>'
+            };
+
             selects.forEach(select => {
-                new TomSelect(select, {
+                let options = {
                     controlInput: null,
                     sortField: null,
                     searchField: []
-                });
+                };
+
+                if (select.classList.contains('icon-select')) {
+                    const renderIcon = function(data, escape) {
+                        const svgInner = iconSvgMap[data.value] || iconSvgMap['document'];
+                        if (!data.value) return '<div>' + escape(data.text) + '</div>'; // Handle empty placeholder if any
+                        return '<div>' + 
+                               '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">' + 
+                               svgInner + 
+                               '</svg>' + 
+                               '<span style="vertical-align: middle;">' + escape(data.text) + '</span>' + 
+                               '</div>';
+                    };
+                    options.render = {
+                        option: renderIcon,
+                        item: renderIcon
+                    };
+                }
+
+                new TomSelect(select, options);
             });
         }
         

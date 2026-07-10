@@ -4,7 +4,7 @@
     <rect x="45" y="21" width="10" height="28" rx="2" fill="white" />
     <rect x="36" y="30" width="28" height="10" rx="2" fill="white" />
     <text x="115" y="52" font-family="Outfit, 'Inter', system-ui, sans-serif" letter-spacing="-0.5">
-        <tspan font-size="44" font-weight="800" fill="#4f46e5">Desk</tspan>
+        <tspan font-size="44" font-weight="800" fill="#818cf8">Desk</tspan>
         <tspan font-size="44" font-weight="500" fill="#22c55e">Plus</tspan>
         <tspan font-size="26" font-weight="800" fill="#22c55e" dy="-20">+</tspan>
     </text>

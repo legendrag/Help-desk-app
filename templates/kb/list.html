@@ -172,7 +172,7 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="search" name="q" id="search-q" class="kb-search-field-input"
+                    <input type="text" name="q" id="search-q" class="kb-search-field-input"
                            placeholder="Search for answers…" value="{{ search_query }}"
                            aria-label="Search knowledge base" autocomplete="off"
                            hx-get="{% url 'kb_search_suggest' %}"
@@ -188,6 +188,15 @@
                         </svg>
                     </a>
                     {% endif %}
+                    <button type="submit" class="btn primary kb-search-btn">
+                        <span class="kb-search-btn-text">Search</span>
+                        <span class="kb-search-btn-icon" style="display: none;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                <circle cx="11" cy="11" r="8"></circle>
+                            </svg>
+                        </span>
+                    </button>
                     <div id="kb-search-suggestions" class="kb-search-suggestions-host"></div>
                 </div>
             </form>
@@ -228,7 +237,7 @@
             <div class="kb-results-list">
                 {% for article in articles %}
                 <a href="{% url 'kb_detail' article.id %}" class="kb-result-item panel {% if not article.is_published %}kb-result-item-draft{% endif %}">
-                    {% kb_category_icon article.category.name %}
+                    {% kb_category_icon article.category %}
                     <div class="kb-result-body">
                         <h3 class="kb-result-title">{{ article.title }}</h3>
                         <p class="kb-result-breadcrumb">
@@ -286,25 +295,13 @@
             </div>
             {% endif %}
 
-            {% if suggested_articles %}
-            <div class="kb-help-card panel">
-                <h3 class="kb-help-card-title">Suggested Articles</h3>
-                <ul class="kb-suggested-list">
-                    {% for article in suggested_articles %}
-                    <li>
-                        <a href="{% url 'kb_detail' article.id %}" class="kb-suggested-link">
-                            {% kb_category_icon article.category.name %}
-                            <span>{{ article.title|truncatechars:42 }}</span>
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
+
 
             <div class="kb-help-card panel kb-help-card-support">
-                <h3 class="kb-help-card-title">Still need help?</h3>
-                <p class="kb-help-card-text">Our support team is ready to assist you with any questions.</p>
+                <div class="kb-help-card-content">
+                    <h3 class="kb-help-card-title">Still need help?</h3>
+                    <p class="kb-help-card-text">Our support team is ready to assist you with any questions.</p>
+                </div>
                 {% if can_create_ticket %}
                 <a href="{% url 'ticket_create' %}" class="btn primary kb-contact-support-btn">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">

@@ -43,7 +43,20 @@ def highlight(text, search):
 
 
 @register.inclusion_tag("kb/partials/category_icon.html")
-def kb_category_icon(category_name):
+def kb_category_icon(category):
+    if not category:
+        return {"icon": "document"}
+
+    if hasattr(category, "icon") and category.icon and category.icon != "document":
+        icon_name = category.icon
+    elif hasattr(category, "name") and category.name in CATEGORY_ICONS:
+        icon_name = CATEGORY_ICONS[category.name]
+    elif hasattr(category, "icon"):
+        icon_name = category.icon
+    else:
+        # Fallback if passed a string or unknown object
+        icon_name = CATEGORY_ICONS.get(category, "document") if isinstance(category, str) else "document"
+
     return {
-        "icon": CATEGORY_ICONS.get(category_name or "", "document"),
+        "icon": icon_name,
     }

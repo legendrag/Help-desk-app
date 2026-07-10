@@ -364,6 +364,16 @@ body::before {
   pointer-events: auto;
 }
 
+@media (max-width: 768px) {
+  .notification-dropdown {
+    position: fixed;
+    top: 70px;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+  }
+}
+
 /* ── Header ── */
 .notification-header {
   padding: 0.85rem 1rem;
@@ -559,8 +569,9 @@ body::before {
   height: 7px;
   border-radius: 50%;
   background: var(--primary);
-  margin-top: 0.35rem;
+  align-self: center;
   flex-shrink: 0;
+  margin-left: 0.25rem;
 }
 
 /* ── Delete Button (desktop X) ── */
@@ -3942,22 +3953,31 @@ html.modal-open body {
 }
 
 .tickets-new-btn {
-    padding: 0.45rem 0.95rem;
+    padding: 0.65rem 1.25rem;
     border-radius: 999px;
-    font-size: 0.85rem;
-    background: var(--primary);
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, var(--primary) 0%, #818cf8 100%);
     color: white;
     border: none;
     cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .tickets-new-btn:hover {
-    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
     color: white;
     text-decoration: none;
+}
+
+.tickets-new-btn:active {
+    transform: translateY(0);
 }
 
 .tickets-filters {
@@ -4158,7 +4178,37 @@ html.modal-open body {
 }
 .announcement-card {
     padding: 1.25rem 1.5rem;
-    border-left: 4px solid var(--primary);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.01) 100%);
+    box-shadow: 0 8px 24px -8px rgba(99, 102, 241, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.announcement-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--primary);
+}
+
+.announcement-icon {
+    color: var(--primary);
+    animation: announcementPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes announcementPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.8;
+    }
 }
 .announcement-header {
     display: flex;

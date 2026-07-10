@@ -49,8 +49,8 @@ class ArticleForm(forms.ModelForm):
 class KBCategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'description']
+        fields = ['name', 'icon']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'icon': forms.Select(attrs={'class': 'form-control icon-select'}),
         }
