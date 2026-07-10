@@ -7,9 +7,11 @@
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-header">
-            <div class="auth-brand">
-                <img src="{% static 'images/deskplus-logo.png' %}" alt="DeskPlus" class="auth-brand-lockup auth-brand-lockup--light" width="220" height="52">
-                <img src="{% static 'images/deskplus-logo-dark.png' %}" alt="DeskPlus" class="auth-brand-lockup auth-brand-lockup--dark" width="220" height="52">
+            <div class="auth-brand" style="display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 2.2rem; margin-bottom: 1rem;">
+                <img src="{% static 'images/deskplus-icon.svg' %}" alt="DeskPlus" class="auth-brand-icon" style="height: 48px; width: auto;">
+                <span class="brand-text" style="line-height: 1; letter-spacing: -0.5px;">
+                    <span class="brand-desk" style="font-weight: 800; color: #4f46e5;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e; font-size: 0.65em;">+</sup>
+                </span>
             </div>
             <h2>Welcome Back</h2>
             <p>Login to your account</p>

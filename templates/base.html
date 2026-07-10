@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.27">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.19">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
-    <link rel="icon" href="{% static 'images/deskplus-brand-light.png' %}" type="image/png">
+    <link rel="icon" href="{% static 'images/deskplus-icon.svg' %}" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
@@ -50,10 +50,10 @@
     <div class="app-shell">
         <header class="topbar">
             <a href="{% url 'tickets_list' %}" class="brand" aria-label="DeskPlus Home">
-                <img src="{% static 'images/deskplus-brand-light.svg' %}?v=5" alt="" class="brand-logo brand-logo--light" width="46" height="28">
-                <img src="{% static 'images/deskplus-brand-dark.svg' %}?v=5" alt="" class="brand-logo brand-logo--dark" width="46" height="28">
+                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--light" height="28">
+                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--dark" height="28">
                 <span class="brand-text">
-                    <span class="brand-desk">Desk</span><span class="brand-plus">Plus</span><sup class="brand-plus-mark">+</sup>
+                    <span class="brand-desk" style="font-weight: 800; color: #4f46e5;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
                 </span>
             </a>
 
