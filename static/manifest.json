@@ -1,0 +1,22 @@
+{
+  "name": "DeskPlus",
+  "short_name": "DeskPlus",
+  "description": "Help Desk Application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#818cf8",
+  "icons": [
+    {
+      "src": "/static/images/deskplus-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/deskplus-logo.png",
+      "sizes": "1536x1024",
+      "type": "image/png"
+    }
+  ]
+}

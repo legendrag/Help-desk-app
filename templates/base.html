@@ -1,4 +1,4 @@
-{% load static %}
+{% load static webpush_notifications %}
 <!DOCTYPE html>
 <html lang="en">
 <script>
@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.19">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/deskplus-icon.svg' %}" type="image/svg+xml">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#818cf8">
+    {% webpush_header %}
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
@@ -658,5 +661,8 @@
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/loading.js' %}?v=1"></script>
+    <div style="display: none;" id="hidden-webpush-container">
+        {% webpush_button %}
+    </div>
 </body>
 </html>

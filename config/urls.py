@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.urls import include, path
 
 from django.shortcuts import redirect
-from django.views.generic.base import RedirectView
+from django.views.generic.base import RedirectView, TemplateView
 
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico', permanent=True)),
@@ -13,6 +13,8 @@ urlpatterns = [
     path("notifications/", include("notifications.urls")),
     path("news/", include("news.urls")),
     path("kb/", include("kb.urls")),
+    path("webpush/", include("webpush.urls")),
+    path("sw.js", TemplateView.as_view(template_name="sw.js", content_type="application/javascript"), name="sw.js"),
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]
 

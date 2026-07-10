@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "notifications",
     "news",
     "kb",
+    "webpush",
 ]
 
 MIDDLEWARE = [
@@ -149,12 +150,19 @@ ALLOWED_ATTACHMENT_EXTENSIONS = [".pdf", ".docx", ".xlsx", ".jpg", ".jpeg", ".pn
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # Session Configuration
-# 60 minutes = 3600 seconds
-SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 3600))
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# 3 days = 259200 seconds
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 259200))
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
 
 # Force reload
 
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = DEBUG
+
+# Web Push Settings
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": os.getenv("VAPID_PUBLIC_KEY", os.path.join(BASE_DIR, "public_key.pem")),
+    "VAPID_PRIVATE_KEY": os.getenv("VAPID_PRIVATE_KEY", os.path.join(BASE_DIR, "private_key.pem")),
+    "VAPID_ADMIN_EMAIL": os.getenv("VAPID_ADMIN_EMAIL", "admin@deskplus.local")
+}

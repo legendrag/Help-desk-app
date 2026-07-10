@@ -356,7 +356,7 @@ function clearReadNotifications() {
 }
 
 // ── Dropdown Toggle (CSS class-based for animation) ──
-function toggleDropdown(forceClose) {
+function toggleDropdown(forceClose = false) {
     const dropdown = document.getElementById("notification-dropdown");
     if (!dropdown) return;
     const isOpen = dropdown.classList.contains("open");
@@ -366,6 +366,14 @@ function toggleDropdown(forceClose) {
     } else {
         dropdown.classList.add("open");
         fetchNotifications();
+        
+        // Auto-subscribe to Web Push
+        if ("Notification" in window && Notification.permission === "default") {
+            const hiddenWebpushButton = document.querySelector("#hidden-webpush-container button");
+            if (hiddenWebpushButton) {
+                hiddenWebpushButton.click();
+            }
+        }
     }
 }
 

@@ -15,6 +15,7 @@ frontend/dist/
 
 # Env
 .env
+*.pem
 
 # IDE
 .vscode/

@@ -9,6 +9,10 @@ from django.utils import timezone
 from accounts.models import User
 from tickets.models import Ticket, TicketMessage
 from .models import InAppNotification
+try:
+    from webpush import send_user_notification
+except ImportError:
+    send_user_notification = None
 from .email_jobs import (
     send_new_ticket_email,
     send_ticket_picked_email,
@@ -90,7 +94,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
         if exclude_user and user.id == exclude_user.id:
             continue
         # Deduplication: skip if an identical notification was created in the last 60s
-        if InAppNotification.objects.filter(
+        if notification_type != "message" and InAppNotification.objects.filter(
             recipient=user,
             title=title,
             link=link,
@@ -105,6 +109,18 @@ def _notify_users(users, title, message, link, notification_type="general", excl
             notification_type=notification_type,
         )
         _broadcast_notification(notification)
+        
+        if send_user_notification:
+            try:
+                payload = {
+                    "head": title,
+                    "body": message,
+                    "icon": "/static/images/deskplus-icon.svg",
+                    "data": {"url": link}
+                }
+                send_user_notification(user=user, payload=payload, ttl=1000)
+            except Exception as e:
+                logger.warning(f"Web push failed for user {user.id}: {e}")
 
 
 def _format_status_label(status):
