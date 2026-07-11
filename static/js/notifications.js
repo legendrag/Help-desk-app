@@ -533,11 +533,6 @@ function initWebPush() {
 
         try {
             let subscription = await reg.pushManager.getSubscription();
-            if (subscription) {
-                console.log("[WebPush] Found existing subscription. Forcing refresh...");
-                await subscription.unsubscribe();
-                subscription = null;
-            }
 
             if (!subscription) {
                 console.log("[WebPush] No subscription found. Subscribing with new VAPID key...");
@@ -546,8 +541,12 @@ function initWebPush() {
                     applicationServerKey: urlB64ToUint8Array(vapidKey)
                 });
                 console.log("[WebPush] Subscribed successfully. Saving to server...");
-                await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
+            } else {
+                console.log("[WebPush] Existing subscription found. Syncing with server...");
             }
+            
+            // Always sync the subscription with the server to prevent desync (e.g., if a previous save failed)
+            await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
         } catch (err) {
             console.error("[WebPush] Error during subscription flow:", err);
         }
