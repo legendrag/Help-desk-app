@@ -1,8 +1,7 @@
 {% if user.is_authenticated or group %}
   {% load static %}
-  <script src="{% url 'javascript-catalog' %}"></script>
-  <script id="webpush-js" type="text/javascript" src="{% static 'webpush/webpush.js' %}"></script>
   <!-- Point to OUR custom service worker instead of django-webpush's default -->
   <meta name="service-worker-js" content="{% url 'sw.js' %}">
   <meta name="django-webpush-vapid-key" content="{{ vapid_public_key }}">
+  <meta name="django-webpush-save-url" content="{% url 'save_webpush_info' %}">
 {% endif %}

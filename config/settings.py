@@ -161,8 +161,43 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = DEBUG
 
 # Web Push Settings
+def get_vapid_keys():
+    import base64
+    from py_vapid import Vapid
+    from cryptography.hazmat.primitives import serialization
+    
+    private_key_path = os.getenv("VAPID_PRIVATE_KEY", os.path.join(BASE_DIR, "private_key.pem"))
+    public_key_path = os.path.join(BASE_DIR, "public_key.pem")
+    
+    # Auto-generate keys if they don't exist
+    if not os.path.exists(private_key_path):
+        try:
+            v = Vapid()
+            v.generate_keys()
+            v.save_key(private_key_path)
+            v.save_public_key(public_key_path)
+        except Exception:
+            pass
+            
+    # Load public key string
+    public_key_str = os.getenv("VAPID_PUBLIC_KEY")
+    if not public_key_str and os.path.exists(private_key_path):
+        try:
+            v = Vapid.from_file(private_key_path)
+            pb = v.public_key.public_bytes(
+                serialization.Encoding.X962,
+                serialization.PublicFormat.UncompressedPoint
+            )
+            public_key_str = base64.urlsafe_b64encode(pb).decode('utf-8').rstrip('=')
+        except Exception:
+            public_key_str = ""
+            
+    return public_key_str, private_key_path
+
+VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY = get_vapid_keys()
+
 WEBPUSH_SETTINGS = {
-    "VAPID_PUBLIC_KEY": os.getenv("VAPID_PUBLIC_KEY", os.path.join(BASE_DIR, "public_key.pem")),
-    "VAPID_PRIVATE_KEY": os.getenv("VAPID_PRIVATE_KEY", os.path.join(BASE_DIR, "private_key.pem")),
+    "VAPID_PUBLIC_KEY": VAPID_PUBLIC_KEY,
+    "VAPID_PRIVATE_KEY": VAPID_PRIVATE_KEY,
     "VAPID_ADMIN_EMAIL": os.getenv("VAPID_ADMIN_EMAIL", "admin@deskplus.local")
 }

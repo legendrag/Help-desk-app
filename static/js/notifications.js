@@ -477,16 +477,106 @@ function initNotificationUI() {
 
     fetchNotifications();
 
-    // Auto-subscribe to Web Push on page load
-    if ("Notification" in window && Notification.permission !== "denied") {
-        const hiddenWebpushButton = document.querySelector("#hidden-webpush-container button");
-        if (hiddenWebpushButton) {
-            hiddenWebpushButton.click();
-        }
-    }
+    // Initialize Web Push subscription
+    initWebPush();
 
     // Refresh relative timestamps every minute
     setInterval(refreshTimestamps, 60000);
+}
+
+// ── Web Push Subscription ──
+function urlB64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+function initWebPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn("[WebPush] Push notifications not supported in this browser.");
+        return;
+    }
+
+    const swMeta = document.querySelector('meta[name="service-worker-js"]');
+    const vapidMeta = document.querySelector('meta[name="django-webpush-vapid-key"]');
+    const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
+
+    if (!swMeta || !vapidMeta || !saveUrlMeta) {
+        console.warn("[WebPush] WebPush metadata missing.");
+        return;
+    }
+
+    const swUrl = swMeta.content;
+    const vapidKey = vapidMeta.content;
+    const saveUrl = saveUrlMeta.content;
+
+    navigator.serviceWorker.register(swUrl).then(async (reg) => {
+        console.log("[WebPush] Service Worker registered:", reg);
+
+        if (Notification.permission === "default") {
+            await Notification.requestPermission();
+        }
+
+        if (Notification.permission !== "granted") {
+            console.warn("[WebPush] Notification permission not granted.");
+            return;
+        }
+
+        try {
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+                console.log("[WebPush] No subscription found. Subscribing...");
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlB64ToUint8Array(vapidKey)
+                });
+                console.log("[WebPush] Subscribed successfully. Saving to server...");
+                await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
+            } else {
+                console.log("[WebPush] Already subscribed. Synchronizing with server...");
+                await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
+            }
+        } catch (err) {
+            console.error("[WebPush] Error during subscription flow:", err);
+        }
+    }).catch((err) => {
+        console.error("[WebPush] Service Worker registration failed:", err);
+    });
+}
+
+function sendSubscriptionToServer(subscription, statusType, saveUrl) {
+    let browser = "chrome";
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes("firefox")) browser = "firefox";
+    else if (userAgent.includes("safari") && !userAgent.includes("chrome")) browser = "safari";
+
+    const data = {
+        status_type: statusType,
+        subscription: subscription.toJSON(),
+        browser: browser,
+        group: null
+    };
+
+    return fetch(saveUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include'
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+        }
+        console.log("[WebPush] Subscription saved successfully.");
+    });
 }
 
 // ── Bootstrap ──

@@ -113,7 +113,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
         if send_user_notification:
             try:
                 payload = {
-                    "head": title,
+                    "title": title,
                     "body": message,
                     "icon": "/static/images/deskplus-icon.svg",
                     "data": {"url": link}
