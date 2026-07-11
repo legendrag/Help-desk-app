@@ -595,6 +595,7 @@ function getBrowserName() {
     return 'Other';
 }
 
+
 async function sendSubscriptionToServer(subscription, statusType, saveUrl) {
     const browser = getBrowserName();
     const data = {
@@ -611,7 +612,7 @@ async function sendSubscriptionToServer(subscription, statusType, saveUrl) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken")
+                "X-CSRFToken": getCsrfToken()
             },
             body: JSON.stringify(data)
         });
