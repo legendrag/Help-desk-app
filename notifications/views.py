@@ -67,27 +67,3 @@ def clear_read_notifications(request):
     unread_count = InAppNotification.objects.filter(recipient=request.user, is_read=False).count()
     return JsonResponse({"ok": True, "unread_count": unread_count})
 
-
-@require_POST
-@login_required
-def test_webpush(request):
-    if not send_user_notification:
-        return JsonResponse({"status": "error", "message": "django-webpush is not installed"}, status=400)
-    
-    try:
-        from webpush.models import PushInformation
-        count = PushInformation.objects.filter(user=request.user).count()
-        if count == 0:
-            return JsonResponse({"status": "error", "message": "No active webpush subscription in database for this user."}, status=400)
-        
-        payload = {
-            "title": "Test Web Push",
-            "body": "This is a test notification!",
-            "icon": "/static/images/deskplus-logo.png",
-            "data": {"url": "/"}
-        }
-        send_user_notification(user=request.user, payload=payload, ttl=1000)
-        return JsonResponse({"status": "success", "message": f"Push sent successfully to {count} subscriptions."})
-    except Exception as e:
-        import traceback
-        return JsonResponse({"status": "error", "message": str(e), "traceback": traceback.format_exc()}, status=500)

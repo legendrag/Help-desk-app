@@ -534,7 +534,7 @@ function urlB64ToUint8Array(base64String) {
 
 function initWebPush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        alert("[WebPush] Push notifications not supported in this browser. If on iOS, add this app to your Home Screen.");
+        console.warn("[WebPush] Push notifications not supported in this browser. If on iOS, add this app to your Home Screen.");
         return;
     }
 
@@ -543,7 +543,7 @@ function initWebPush() {
     const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
 
     if (!swMeta || !vapidMeta || !saveUrlMeta) {
-        alert("[WebPush] WebPush metadata missing from page! Is webpush_header included?");
+        console.warn("[WebPush] WebPush metadata missing from page! Is webpush_header included?");
         return;
     }
 
@@ -555,7 +555,7 @@ function initWebPush() {
         console.log("[WebPush] Service Worker registered:", reg);
 
         if (Notification.permission !== "granted") {
-            alert("Please allow notification permissions in your browser settings (click the lock icon next to the URL) to receive Push Notifications.");
+            console.warn("[WebPush] Notification permissions not granted.");
             return;
         }
 
@@ -577,43 +577,47 @@ function initWebPush() {
             await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
         } catch (err) {
             console.error("[WebPush] Error during subscription flow:", err);
-            alert("WebPush Subscription Error: " + err.message);
         }
     }).catch((err) => {
         console.error("[WebPush] Service Worker registration failed:", err);
-        alert("WebPush Service Worker Error: " + err.message);
     });
 }
 
-function sendSubscriptionToServer(subscription, statusType, saveUrl) {
-    let browser = "chrome";
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (userAgent.includes("firefox")) browser = "firefox";
-    else if (userAgent.includes("safari") && !userAgent.includes("chrome")) browser = "safari";
-
+async function sendSubscriptionToServer(subscription, statusType, saveUrl) {
+    const browser = getBrowserName();
     const data = {
         status_type: statusType,
         subscription: subscription.toJSON(),
-        browser: browser
+        browser: browser,
+        group: ""
     };
 
-    return fetch(saveUrl, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify(data),
-        credentials: 'include'
-    }).then(async response => {
+    console.log("[WebPush] Sending to server:", data);
+
+    try {
+        const response = await fetch(saveUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify(data)
+        });
+
         if (!response.ok) {
-            const text = await response.text();
-            console.error(`[WebPush] Server error ${response.status}: ${text}`);
-            alert(`WebPush Server Error ${response.status}: ${text}`);
-            throw new Error(`Server responded with ${response.status}`);
+            console.error("[WebPush] Server error during sync:", response.status);
+            throw new Error(`Server returned ${response.status}`);
         }
+
         console.log("[WebPush] Subscription saved successfully.");
-    });
+    } catch (err) {
+        console.error("[WebPush] Fetch error:", err);
+    }
+}
+
+async function syncSubscription(subscription, saveUrl) {
+    console.log("[WebPush] Syncing existing subscription...");
+    await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
 }
 
 // ── Bootstrap ──
