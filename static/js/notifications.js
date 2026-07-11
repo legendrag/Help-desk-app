@@ -638,5 +638,10 @@ if (window.Notification && Notification.permission === "default") {
 
 if (window.userIsAuthenticated) {
     initNotifications();
+
+    // If permission was already granted previously, initialize web push
+    if (window.Notification && Notification.permission === "granted") {
+        initWebPush();
+    }
     document.addEventListener("DOMContentLoaded", initNotificationUI);
 }

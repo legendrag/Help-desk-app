@@ -55,9 +55,11 @@ self.addEventListener('push', event => {
 
                 // If they are actively looking at the page, don't show the OS notification
                 if (isViewingTarget) {
+                    console.log("[SW] Suppressing push notification because user is viewing target");
                     return;
                 }
 
+                console.log("[SW] Showing notification:", payload.title || payload.head);
                 return self.registration.showNotification(payload.title || payload.head, options);
             })
     );

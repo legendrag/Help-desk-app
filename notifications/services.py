@@ -100,7 +100,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
 
             try:
                 payload = {
-                    "title": title,
+                    "head": title,
                     "body": message,
                     "icon": "/static/images/deskplus-icon.svg",
                     "data": {"url": link}
@@ -113,9 +113,9 @@ def _notify_users(users, title, message, link, notification_type="general", excl
 
 
 
-def _enqueue(func, *args):
+def _enqueue(func, *args, **kwargs):
     try:
-        enqueue_email(func, *args, max_attempts=1, retry_delay=2)
+        enqueue_email(func, *args, max_attempts=1, retry_delay=2, **kwargs)
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to enqueue email job: %s", exc)
 
