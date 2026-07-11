@@ -31,7 +31,26 @@ self.addEventListener('push', event => {
     };
 
     event.waitUntil(
-        self.registration.showNotification(payload.title || payload.head, options)
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(windowClients => {
+                const targetUrl = payload.data ? payload.data.url : null;
+                
+                // Check if any window is focused on the target URL
+                let isViewingTarget = false;
+                for (let client of windowClients) {
+                    if (client.focused && targetUrl && client.url.includes(targetUrl)) {
+                        isViewingTarget = true;
+                        break;
+                    }
+                }
+
+                // If they are actively looking at the page, don't show the OS notification
+                if (isViewingTarget) {
+                    return;
+                }
+
+                return self.registration.showNotification(payload.title || payload.head, options);
+            })
     );
 });
 
