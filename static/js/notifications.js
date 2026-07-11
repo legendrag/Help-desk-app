@@ -584,6 +584,17 @@ function initWebPush() {
     });
 }
 
+function getBrowserName() {
+    const agent = window.navigator.userAgent.toLowerCase();
+    if (agent.indexOf('edge') > -1 || agent.indexOf('edg') > -1) return 'Edge';
+    if (agent.indexOf('opr') > -1 || agent.indexOf('opera') > -1) return 'Opera';
+    if (agent.indexOf('chrome') > -1 && !!window.chrome) return 'Chrome';
+    if (agent.indexOf('trident') > -1) return 'IE';
+    if (agent.indexOf('firefox') > -1) return 'Firefox';
+    if (agent.indexOf('safari') > -1) return 'Safari';
+    return 'Other';
+}
+
 async function sendSubscriptionToServer(subscription, statusType, saveUrl) {
     const browser = getBrowserName();
     const data = {
