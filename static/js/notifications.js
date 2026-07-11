@@ -570,7 +570,10 @@ function sendSubscriptionToServer(subscription, statusType, saveUrl) {
 
     return fetch(saveUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
         body: JSON.stringify(data),
         credentials: 'include'
     }).then(async response => {
