@@ -198,6 +198,23 @@ def send_ticket_update_email(
                 f"{message.message[:200]}\n"
             )
 
+        from .models import InAppNotification
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        read_emails = set(
+            InAppNotification.objects.filter(
+                recipient__email__in=recipients,
+                link=f"/tickets/{ticket.id}",
+                notification_type="message",
+                is_read=True,
+                created_at__gte=timezone.now() - timedelta(minutes=5),
+            ).values_list("recipient__email", flat=True)
+        )
+        recipients = [r for r in recipients if r not in read_emails]
+        if not recipients:
+            return False
+
     return send_with_retries(subject, body, recipients)
 
 

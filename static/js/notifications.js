@@ -386,7 +386,20 @@ function initNotifications() {
 
     socket.onopen = function() {
         console.log("[Notifications WS] Connected");
+        socket.send(JSON.stringify({
+            type: "page_view",
+            path: window.location.pathname
+        }));
     };
+    
+    document.body.addEventListener("htmx:pushedIntoHistory", function() {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: "page_view",
+                path: window.location.pathname
+            }));
+        }
+    });
 
     socket.onmessage = function(e) {
         const data = JSON.parse(e.data);
@@ -395,9 +408,9 @@ function initNotifications() {
         // Fix Bug 2: exact path matching for suppression
         const currentPath = window.location.pathname;
         const isRelatedPage = data.link && currentPath === data.link;
-        const isFocused = document.hasFocus();
+        const isVisible = document.visibilityState === 'visible';
 
-        if (isRelatedPage && isFocused) {
+        if (isRelatedPage && isVisible) {
             // Suppress UI notification and silently mark as read
             fetch(`/notifications/mark-read/${data.id}/`, {
                 method: "POST",

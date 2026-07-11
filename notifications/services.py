@@ -97,6 +97,11 @@ def _notify_users(users, title, message, link, notification_type="general", excl
         _broadcast_notification(notification)
         
         if send_user_notification:
+            from django.core.cache import cache
+            active_path = cache.get(f"ws_active_{user.id}_path")
+            if active_path == link:
+                continue
+
             try:
                 payload = {
                     "title": title,
@@ -156,9 +161,18 @@ def notify_ticket_update(
     new_status: str | None = None,
 ):
     if message:
-        # Fix: notify BOTH the ticket creator and the assigned agent (minus actor), plus admins
-        extra = [u for u in [ticket.created_by, ticket.assigned_to] if u]
-        users = _unique_users(_get_admin_users(), extra_users=extra)
+        if ticket.assigned_to:
+            extra = [u for u in [ticket.created_by, ticket.assigned_to] if u]
+            users = _unique_users(_get_admin_users(), extra_users=extra)
+        else:
+            if ticket.messages.count() <= 1:
+                branch_users = get_branch_users(ticket)
+                dept_users = get_department_users(ticket)
+                extra = [ticket.created_by] if ticket.created_by else []
+                users = _unique_users(branch_users, dept_users, _get_admin_users(), extra_users=extra)
+            else:
+                extra = [ticket.created_by] if ticket.created_by else []
+                users = _unique_users(_get_admin_users(), extra_users=extra)
         title = f"New Reply: #{ticket.ticket_number}"
         message_text = f"{actor.username} replied to the ticket."
         n_type = "message"
@@ -185,7 +199,6 @@ def notify_ticket_update(
 
     _notify_users(users, title, message_text, f"/tickets/{ticket.id}", notification_type=n_type, exclude_user=actor)
 
-    # Email (async background queue)
     _enqueue(
         send_ticket_update_email,
         ticket.id,
@@ -193,6 +206,7 @@ def notify_ticket_update(
         message.id if message else None,
         status_changed,
         new_status,
+        delay_seconds=120 if message else 0,
     )
 
 

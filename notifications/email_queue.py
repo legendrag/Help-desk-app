@@ -32,9 +32,13 @@ def ensure_worker_started() -> None:
         _worker_started = True
 
 
-def enqueue_email(func: Callable[..., Any], *args, max_attempts: int = 3, retry_delay: int = 2, **kwargs) -> None:
+def enqueue_email(func: Callable[..., Any], *args, max_attempts: int = 3, retry_delay: int = 2, delay_seconds: int = 0, **kwargs) -> None:
     ensure_worker_started()
-    _QUEUE.put(EmailJob(func=func, args=args, kwargs=kwargs, max_attempts=max_attempts, retry_delay=retry_delay))
+    job = EmailJob(func=func, args=args, kwargs=kwargs, max_attempts=max_attempts, retry_delay=retry_delay)
+    if delay_seconds > 0:
+        threading.Timer(delay_seconds, _QUEUE.put, args=(job,)).start()
+    else:
+        _QUEUE.put(job)
 
 
 def _worker_loop() -> None:
