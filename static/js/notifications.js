@@ -533,16 +533,19 @@ function initWebPush() {
 
         try {
             let subscription = await reg.pushManager.getSubscription();
+            if (subscription) {
+                console.log("[WebPush] Found existing subscription. Forcing refresh...");
+                await subscription.unsubscribe();
+                subscription = null;
+            }
+
             if (!subscription) {
-                console.log("[WebPush] No subscription found. Subscribing...");
+                console.log("[WebPush] No subscription found. Subscribing with new VAPID key...");
                 subscription = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlB64ToUint8Array(vapidKey)
                 });
                 console.log("[WebPush] Subscribed successfully. Saving to server...");
-                await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
-            } else {
-                console.log("[WebPush] Already subscribed. Synchronizing with server...");
                 await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
             }
         } catch (err) {
@@ -562,8 +565,7 @@ function sendSubscriptionToServer(subscription, statusType, saveUrl) {
     const data = {
         status_type: statusType,
         subscription: subscription.toJSON(),
-        browser: browser,
-        group: null
+        browser: browser
     };
 
     return fetch(saveUrl, {
@@ -571,8 +573,10 @@ function sendSubscriptionToServer(subscription, statusType, saveUrl) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
         credentials: 'include'
-    }).then(response => {
+    }).then(async response => {
         if (!response.ok) {
+            const text = await response.text();
+            console.error(`[WebPush] Server error ${response.status}: ${text}`);
             throw new Error(`Server responded with ${response.status}`);
         }
         console.log("[WebPush] Subscription saved successfully.");

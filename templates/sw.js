@@ -24,9 +24,9 @@ self.addEventListener('push', event => {
 
     const options = {
         body: payload.body || payload.message,
-        icon: payload.icon || "/static/images/deskplus-icon.svg",
+        icon: payload.icon || "/static/images/deskplus-logo.png",
         data: payload.data || { url: "/" },
-        badge: "/static/images/deskplus-icon.svg",
+        badge: "/static/images/deskplus-logo.png",
         vibrate: [100, 50, 100],
     };
 

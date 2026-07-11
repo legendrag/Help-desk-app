@@ -165,8 +165,8 @@ def get_vapid_keys():
     import base64
     from py_vapid import Vapid
     from cryptography.hazmat.primitives import serialization
-    
-    private_key_path = os.getenv("VAPID_PRIVATE_KEY", os.path.join(BASE_DIR, "private_key.pem"))
+    private_key_env = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+    private_key_path = private_key_env if private_key_env else os.path.join(BASE_DIR, "private_key.pem")
     public_key_path = os.path.join(BASE_DIR, "public_key.pem")
     
     # Auto-generate keys if they don't exist
@@ -180,7 +180,7 @@ def get_vapid_keys():
             pass
             
     # Load public key string
-    public_key_str = os.getenv("VAPID_PUBLIC_KEY")
+    public_key_str = os.getenv("VAPID_PUBLIC_KEY", "").strip()
     if not public_key_str and os.path.exists(private_key_path):
         try:
             v = Vapid.from_file(private_key_path)
