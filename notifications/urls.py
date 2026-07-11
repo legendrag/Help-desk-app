@@ -6,6 +6,7 @@ from .views import (
     mark_notification_read,
     delete_notification,
     clear_read_notifications,
+    test_webpush,
 )
 
 urlpatterns = [
@@ -14,4 +15,5 @@ urlpatterns = [
     path("mark-read/<int:notification_id>/", mark_notification_read, name="notification_mark_read"),
     path("delete/<int:notification_id>/", delete_notification, name="notification_delete"),
     path("clear-read/", clear_read_notifications, name="notifications_clear_read"),
+    path("test-push/", test_webpush, name="test_webpush"),
 ]

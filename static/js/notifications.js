@@ -432,13 +432,45 @@ function initNotificationUI() {
     const dropdown = document.getElementById("notification-dropdown");
     const markReadBtn = document.getElementById("notification-mark-read");
     const clearReadBtn = document.getElementById("notification-clear-read");
+    const testPushBtn = document.getElementById("notification-test-push");
 
     if (!button || !dropdown) return;
 
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", async (event) => {
         event.stopPropagation();
         toggleDropdown();
+        
+        // Ensure we ask for permissions upon user gesture if they haven't been asked yet
+        if (window.Notification && Notification.permission === "default") {
+            const perm = await Notification.requestPermission();
+            if (perm === "granted") {
+                initWebPush();
+            }
+        }
     });
+
+    if (testPushBtn) {
+        testPushBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const url = testPushBtn.dataset.url;
+            if (!url) return;
+            try {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCsrfToken() },
+                    credentials: "same-origin"
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                } else {
+                    alert("Error: " + data.message);
+                }
+            } catch (err) {
+                alert("Failed to send test push: " + err);
+            }
+        });
+    }
 
     document.addEventListener("click", (event) => {
         if (!dropdown.contains(event.target) && !button.contains(event.target)) {
