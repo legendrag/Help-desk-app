@@ -35,12 +35,21 @@ self.addEventListener('push', event => {
             .then(windowClients => {
                 const targetUrl = payload.data ? payload.data.url : null;
                 
-                // Check if any window is focused on the target URL
+                // Check if any window is visible and on the exact target URL
                 let isViewingTarget = false;
                 for (let client of windowClients) {
-                    if (client.focused && targetUrl && client.url.includes(targetUrl)) {
-                        isViewingTarget = true;
-                        break;
+                    try {
+                        const clientPath = new URL(client.url).pathname;
+                        const normClient = clientPath.replace(/\/+$/, '');
+                        const normTarget = targetUrl ? targetUrl.replace(/\/+$/, '') : null;
+                        
+                        // If the tab is visible (even if not strictly focused) and on the same ticket page
+                        if (client.visibilityState === 'visible' && normTarget && normClient === normTarget) {
+                            isViewingTarget = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.error("URL parse error in sw:", e);
                     }
                 }
 
