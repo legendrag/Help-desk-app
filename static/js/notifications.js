@@ -394,8 +394,9 @@ function initNotifications() {
         console.log("[Notifications WS] message:", data);
 
         // Fix Bug 2: exact path matching for suppression
-        const currentPath = window.location.pathname;
-        const isRelatedPage = data.link && currentPath === data.link;
+        const currentPath = window.location.pathname.replace(/\/+$/, '');
+        const dataLink = data.link ? data.link.replace(/\/+$/, '') : null;
+        const isRelatedPage = dataLink && currentPath === dataLink;
         const isVisible = document.visibilityState === 'visible';
 
         if (isRelatedPage && isVisible) {
