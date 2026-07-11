@@ -157,17 +157,22 @@ def notify_ticket_update(
     new_status: str | None = None,
 ):
     if message:
-        if ticket.assigned_to:
-            extra = [u for u in [ticket.created_by, ticket.assigned_to] if u]
+        # Guarantee fresh User instances for django-webpush related managers
+        from accounts.models import User
+        assigned_user = User.objects.filter(id=ticket.assigned_to_id).first() if ticket.assigned_to_id else None
+        creator_user = User.objects.filter(id=ticket.created_by_id).first() if ticket.created_by_id else None
+        
+        if assigned_user:
+            extra = [u for u in [creator_user, assigned_user] if u]
             users = _unique_users(_get_admin_users(), extra_users=extra)
         else:
             if ticket.messages.count() <= 1:
                 branch_users = get_branch_users(ticket)
                 dept_users = get_department_users(ticket)
-                extra = [ticket.created_by] if ticket.created_by else []
+                extra = [creator_user] if creator_user else []
                 users = _unique_users(branch_users, dept_users, _get_admin_users(), extra_users=extra)
             else:
-                extra = [ticket.created_by] if ticket.created_by else []
+                extra = [creator_user] if creator_user else []
                 users = _unique_users(_get_admin_users(), extra_users=extra)
         title = f"New Reply: #{ticket.ticket_number}"
         message_text = f"{actor.username} replied to the ticket."

@@ -109,6 +109,8 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
         return False
 
     recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
+    if actor.email in recipients:
+        recipients.remove(actor.email)
     if not recipients:
         return False
 
