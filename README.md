@@ -33,7 +33,7 @@ DeskPlus is a modern, high-performance ticket management platform built with **D
 ### 2) Setup & Run
 ```powershell
 # 1. Create and activate virtual environment
-python -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
 # 2. Install dependencies

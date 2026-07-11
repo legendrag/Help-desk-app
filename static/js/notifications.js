@@ -366,14 +366,6 @@ function toggleDropdown(forceClose = false) {
     } else {
         dropdown.classList.add("open");
         fetchNotifications();
-        
-        // Auto-subscribe to Web Push
-        if ("Notification" in window && Notification.permission === "default") {
-            const hiddenWebpushButton = document.querySelector("#hidden-webpush-container button");
-            if (hiddenWebpushButton) {
-                hiddenWebpushButton.click();
-            }
-        }
     }
 }
 
@@ -415,14 +407,8 @@ function initNotifications() {
             return;
         }
 
-        // Browser push notification
-        if (Notification.permission === "granted") {
-            new Notification("DeskPlus", {
-                body: data.message || "New activity!",
-                icon: "/static/favicon.ico"
-            });
-        }
-
+        // Browser push notification is handled by the Service Worker (sw.js)
+        
         // Play sound
         playNotifSound();
 
@@ -490,6 +476,14 @@ function initNotificationUI() {
     });
 
     fetchNotifications();
+
+    // Auto-subscribe to Web Push on page load
+    if ("Notification" in window && Notification.permission !== "denied") {
+        const hiddenWebpushButton = document.querySelector("#hidden-webpush-container button");
+        if (hiddenWebpushButton) {
+            hiddenWebpushButton.click();
+        }
+    }
 
     // Refresh relative timestamps every minute
     setInterval(refreshTimestamps, 60000);
