@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import time
 
 from django.core.mail import EmailMessage, get_connection
@@ -32,7 +32,7 @@ def _build_connection(setting: EmailSetting):
     )
 
 
-def send_with_retries(subject, body, recipients, retries=3, delay_seconds=2, setting: EmailSetting | None = None):
+def send_with_retries(subject, body, recipients, retries=1, delay_seconds=2, setting: EmailSetting | None = None):
     if not recipients:
         return False
 

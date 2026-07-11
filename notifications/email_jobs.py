@@ -4,29 +4,14 @@ from django.utils import timezone
 
 from accounts.models import User
 from notifications.email_service import is_email_event_enabled, send_with_retries
+from notifications.utils import format_status_label, get_branch_users, get_department_users
 from tickets.models import Ticket, TicketMessage
 
 logger = logging.getLogger(__name__)
 
 
-def _format_status_label(status):
-    if not status:
-        return None
-    try:
-        return Ticket.Status(status).label
-    except Exception:
-        return str(status).replace("_", " " ).title()
-
-
-
-
 def _get_branch_recipients(ticket):
-    branch_users = User.objects.filter(
-        user_type=User.UserType.BRANCH,
-        branch=ticket.branch,
-        status=User.Status.ACTIVE,
-        is_superuser=False,
-    ).exclude(role__name__iexact="admin")
+    branch_users = get_branch_users(ticket)
     return list(
         branch_users.exclude(email__isnull=True)
         .exclude(email="")
@@ -34,12 +19,7 @@ def _get_branch_recipients(ticket):
     )
 
 def _get_department_recipients(ticket):
-    support_users = User.objects.filter(
-        user_type=User.UserType.SUPPORT,
-        department=ticket.department,
-        status=User.Status.ACTIVE,
-        is_superuser=False,
-    ).exclude(role__name__iexact="admin")
+    support_users = get_department_users(ticket)
     return list(
         support_users.exclude(email__isnull=True)
         .exclude(email="")
@@ -132,7 +112,7 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
     if not recipients:
         return False
 
-    status_label = _format_status_label(ticket.status) or ticket.status
+    status_label = format_status_label(ticket.status) or ticket.status
     subject = f"[DeskPlus] Ticket Picked {ticket.ticket_number}"
     body = (
         "Ticket pickup update.\n\n"
@@ -188,7 +168,7 @@ def send_ticket_update_email(
     if status_changed and new_status:
         status_label = _format_status_label(new_status) or new_status
     else:
-        status_label = _format_status_label(ticket.status) or ticket.status
+        status_label = format_status_label(ticket.status) or ticket.status
 
     subject = f"[DeskPlus] Update on Ticket {ticket.ticket_number}"
     if message_id:
@@ -240,7 +220,7 @@ def send_ticket_transferred_email(ticket_id: int, actor_id: int, new_assignee_id
     if not recipients:
         return False
 
-    status_label = _format_status_label(ticket.status) or ticket.status
+    status_label = format_status_label(ticket.status) or ticket.status
     subject = f"[DeskPlus] Ticket Transferred {ticket.ticket_number}"
     body = (
         "Ticket transfer update.\n\n"

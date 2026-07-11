@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from tickets.models import Ticket, TicketMessage
+from .utils import format_status_label, get_branch_users, get_department_users
 from .models import InAppNotification
 try:
     from webpush import send_user_notification
@@ -45,22 +46,7 @@ def _broadcast_notification(notification: InAppNotification):
     )
 
 
-def _get_branch_users(ticket: Ticket):
-    return User.objects.filter(
-        user_type=User.UserType.BRANCH,
-        branch=ticket.branch,
-        status=User.Status.ACTIVE,
-        is_superuser=False,
-    ).exclude(role__name__iexact="admin")
 
-
-def _get_department_users(ticket: Ticket):
-    return User.objects.filter(
-        user_type=User.UserType.SUPPORT,
-        department=ticket.department,
-        status=User.Status.ACTIVE,
-        is_superuser=False,
-    ).exclude(role__name__iexact="admin")
 
 
 def _get_admin_users():
@@ -123,13 +109,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
                 logger.warning(f"Web push failed for user {user.id}: {e}")
 
 
-def _format_status_label(status):
-    if not status:
-        return None
-    try:
-        return Ticket.Status(status).label
-    except Exception:
-        return str(status).replace("_", " ").title()
+
 
 
 def _enqueue(func, *args):
@@ -140,8 +120,8 @@ def _enqueue(func, *args):
 
 
 def notify_new_ticket(ticket: Ticket):
-    branch_users = _get_branch_users(ticket)
-    dept_users = _get_department_users(ticket)
+    branch_users = get_branch_users(ticket)
+    dept_users = get_department_users(ticket)
     admin_users = _get_admin_users()
     users = _unique_users(branch_users, dept_users, extra_users=admin_users)
 
@@ -154,12 +134,12 @@ def notify_new_ticket(ticket: Ticket):
 
 
 def notify_ticket_picked(ticket: Ticket, actor: User):
-    branch_users = _get_branch_users(ticket)
-    dept_users = _get_department_users(ticket)
+    branch_users = get_branch_users(ticket)
+    dept_users = get_department_users(ticket)
     admin_users = _get_admin_users()
     users = _unique_users(branch_users, dept_users, extra_users=admin_users)
 
-    status_label = _format_status_label(ticket.status) or ticket.status
+    status_label = format_status_label(ticket.status) or ticket.status
     title = f"Ticket Picked: #{ticket.ticket_number}"
     message = f"{actor.username} picked this ticket. Status is now {status_label}."
     _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="ticket_picked", exclude_user=actor)
@@ -183,17 +163,17 @@ def notify_ticket_update(
         message_text = f"{actor.username} replied to the ticket."
         n_type = "message"
     elif status_changed and new_status:
-        branch_users = _get_branch_users(ticket)
-        dept_users = _get_department_users(ticket)
+        branch_users = get_branch_users(ticket)
+        dept_users = get_department_users(ticket)
         admin_users = _get_admin_users()
         users = _unique_users(branch_users, dept_users, extra_users=admin_users)
-        status_label = _format_status_label(new_status) or new_status
+        status_label = format_status_label(new_status) or new_status
         title = f"Status Changed: #{ticket.ticket_number}"
         message_text = f"{actor.username} updated the status to {status_label}."
         n_type = "status_change"
     else:
-        branch_users = _get_branch_users(ticket)
-        dept_users = _get_department_users(ticket)
+        branch_users = get_branch_users(ticket)
+        dept_users = get_department_users(ticket)
         admin_users = _get_admin_users()
         users = _unique_users(branch_users, dept_users, extra_users=admin_users)
         title = f"Ticket Updated: #{ticket.ticket_number}"
@@ -217,8 +197,8 @@ def notify_ticket_update(
 
 
 def notify_ticket_transferred(ticket: Ticket, actor: User, new_assignee: User):
-    branch_users = _get_branch_users(ticket)
-    dept_users = _get_department_users(ticket)
+    branch_users = get_branch_users(ticket)
+    dept_users = get_department_users(ticket)
     admin_users = list(_get_admin_users())
     users = _unique_users(branch_users, dept_users, extra_users=admin_users + [new_assignee])
 
