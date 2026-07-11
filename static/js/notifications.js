@@ -534,7 +534,7 @@ function urlB64ToUint8Array(base64String) {
 
 function initWebPush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn("[WebPush] Push notifications not supported in this browser.");
+        alert("[WebPush] Push notifications not supported in this browser. If on iOS, add this app to your Home Screen.");
         return;
     }
 
@@ -543,7 +543,7 @@ function initWebPush() {
     const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
 
     if (!swMeta || !vapidMeta || !saveUrlMeta) {
-        console.warn("[WebPush] WebPush metadata missing.");
+        alert("[WebPush] WebPush metadata missing from page! Is webpush_header included?");
         return;
     }
 
@@ -554,12 +554,8 @@ function initWebPush() {
     navigator.serviceWorker.register(swUrl).then(async (reg) => {
         console.log("[WebPush] Service Worker registered:", reg);
 
-        if (Notification.permission === "default") {
-            await Notification.requestPermission();
-        }
-
         if (Notification.permission !== "granted") {
-            console.warn("[WebPush] Notification permission not granted.");
+            alert("Please allow notification permissions in your browser settings (click the lock icon next to the URL) to receive Push Notifications.");
             return;
         }
 
