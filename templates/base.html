@@ -50,6 +50,7 @@
     {% block extra_head %}{% endblock extra_head %}
 </head>
 <body class="{% block body_class %}{% endblock body_class %}">
+    <div style="display:none;">{% csrf_token %}</div>
     <div class="app-shell">
         <header class="topbar">
             <a href="{% url 'tickets_list' %}" class="brand" aria-label="DeskPlus Home">
