@@ -581,9 +581,11 @@ function initWebPush() {
             await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
         } catch (err) {
             console.error("[WebPush] Error during subscription flow:", err);
+            alert("WebPush Subscription Error: " + err.message);
         }
     }).catch((err) => {
         console.error("[WebPush] Service Worker registration failed:", err);
+        alert("WebPush Service Worker Error: " + err.message);
     });
 }
 
@@ -611,6 +613,7 @@ function sendSubscriptionToServer(subscription, statusType, saveUrl) {
         if (!response.ok) {
             const text = await response.text();
             console.error(`[WebPush] Server error ${response.status}: ${text}`);
+            alert(`WebPush Server Error ${response.status}: ${text}`);
             throw new Error(`Server responded with ${response.status}`);
         }
         console.log("[WebPush] Subscription saved successfully.");
