@@ -97,10 +97,6 @@ def _notify_users(users, title, message, link, notification_type="general", excl
         _broadcast_notification(notification)
         
         if send_user_notification:
-            from django.core.cache import cache
-            active_path = cache.get(f"ws_active_{user.id}_path")
-            if active_path == link:
-                continue
 
             try:
                 payload = {

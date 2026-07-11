@@ -386,20 +386,8 @@ function initNotifications() {
 
     socket.onopen = function() {
         console.log("[Notifications WS] Connected");
-        socket.send(JSON.stringify({
-            type: "page_view",
-            path: window.location.pathname
-        }));
     };
-    
-    document.body.addEventListener("htmx:pushedIntoHistory", function() {
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: "page_view",
-                path: window.location.pathname
-            }));
-        }
-    });
+
 
     socket.onmessage = function(e) {
         const data = JSON.parse(e.data);
@@ -635,7 +623,17 @@ async function syncSubscription(subscription, saveUrl) {
 
 // ── Bootstrap ──
 if (window.Notification && Notification.permission === "default") {
-    Notification.requestPermission();
+    // Browsers block requestPermission on page load without a user gesture.
+    // We bind it to the very first click anywhere on the document so it feels "automatic".
+    const requestOnInteraction = () => {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                initWebPush();
+            }
+        });
+        document.removeEventListener("click", requestOnInteraction);
+    };
+    document.addEventListener("click", requestOnInteraction);
 }
 
 if (window.userIsAuthenticated) {
