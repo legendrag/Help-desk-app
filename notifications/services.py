@@ -115,7 +115,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
                 payload = {
                     "title": title,
                     "body": message,
-                    "icon": "/static/images/deskplus-logo.png",
+                    "icon": "/static/images/deskplus-icon.svg",
                     "data": {"url": link}
                 }
                 send_user_notification(user=user, payload=payload, ttl=1000)

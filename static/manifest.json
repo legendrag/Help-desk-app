@@ -14,9 +14,9 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/static/images/deskplus-logo.png",
+      "src": "/static/images/deskplus-icon.svg",
       "sizes": "1536x1024",
-      "type": "image/png"
+      "type": "image/svg+xml"
     }
   ]
 }
