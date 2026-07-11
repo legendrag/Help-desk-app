@@ -9,6 +9,7 @@ from .forms import CustomAuthenticationForm
 class UserLoginView(LoginView):
     template_name = "accounts/login.html"
     form_class = CustomAuthenticationForm
+    redirect_authenticated_user = True
 
 class UserLogoutView(LogoutView):
     next_page = reverse_lazy("login")

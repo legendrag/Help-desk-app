@@ -1416,11 +1416,23 @@ tr:hover td {
 }
 
 /* Authentication Pages (Login, Change Password) */
+/* ── Auth pages: hide app chrome ── */
+.auth-body .topbar,
+.auth-body .sidebar,
+.auth-body .sidebar-overlay,
+.auth-body .global-progress-bar {
+  display: none !important;
+}
+
+.auth-body .content {
+  padding-top: 0;
+}
+
 .auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 12rem);
+  min-height: 100vh;
   width: 100%;
   padding: 1rem;
 }
