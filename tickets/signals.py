@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from tickets.models import Ticket, TicketMessage
+from tickets.models import Ticket, TicketMessage, TicketStatusHistory
 from tickets.realtime import broadcast_ticket_message, broadcast_ticket_list_event
 from notifications.services import notify_new_ticket, notify_ticket_update
 @receiver(post_save, sender=TicketMessage)
@@ -32,8 +32,37 @@ def broadcast_new_message(sender, instance, created, **kwargs):
                 } if reply_to else None,
             }
             broadcast_ticket_message(instance.ticket_id, payload)
-            # Notify owner/assignee about the reply
-            notify_ticket_update(instance.ticket, instance.sender, message=instance)
+            # Notify owner/assignee about the reply (exclude system messages)
+            if not getattr(instance, "is_system_message", False):
+                notify_ticket_update(instance.ticket, instance.sender, message=instance)
+
+                # Check if the branch user sends more than one message on an unpicked ticket
+                if instance.sender.user_type == "branch":
+                    ticket = instance.ticket
+                    if not ticket.assigned_to and ticket.status not in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+                        branch_msgs_count = TicketMessage.objects.filter(
+                            ticket=ticket,
+                            sender__user_type="branch",
+                            is_system_message=False
+                        ).count()
+
+                        if branch_msgs_count > 1:
+                            from django.conf import settings
+                            message_text = getattr(settings, "TICKET_UNPICKED_SYSTEM_MESSAGE", "Someone will help you soon.")
+
+                            already_sent = TicketMessage.objects.filter(
+                                ticket=ticket,
+                                is_system_message=True,
+                                message=message_text
+                            ).exists()
+
+                            if not already_sent:
+                                TicketMessage.objects.create(
+                                    ticket=ticket,
+                                    sender=ticket.created_by,
+                                    message=message_text,
+                                    is_system_message=True
+                                )
         except Exception as e:
             print(f"[WS-DEBUG] Error broadcasting message: {e}")
 
@@ -71,4 +100,32 @@ def broadcast_ticket_deletion(sender, instance, **kwargs):
         broadcast_ticket_list_event("ticket_deleted", payload, branch_id=instance.branch_id, department_id=instance.department_id)
     except Exception as e:
         print(f"[WS-DEBUG] Error broadcasting ticket deletion: {e}")
+
+
+@receiver(post_save, sender=TicketStatusHistory)
+def create_status_system_message(sender, instance, created, **kwargs):
+    if created:
+        try:
+            ticket = instance.ticket
+            user = instance.changed_by
+
+            if instance.status == Ticket.Status.CLOSED:
+                message_text = f"Ticket closed by {user.username}"
+                TicketMessage.objects.create(
+                    ticket=ticket,
+                    sender=user,
+                    message=message_text,
+                    is_system_message=True
+                )
+            elif instance.event_type == TicketStatusHistory.EventType.REOPENED:
+                message_text = f"Ticket reopened by {user.username}"
+                TicketMessage.objects.create(
+                    ticket=ticket,
+                    sender=user,
+                    message=message_text,
+                    is_system_message=True
+                )
+        except Exception as e:
+            print(f"[WS-DEBUG] Error creating status system message: {e}")
+
 

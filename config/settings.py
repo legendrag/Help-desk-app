@@ -217,3 +217,16 @@ WEBPUSH_SETTINGS = {
     "VAPID_PRIVATE_KEY": VAPID_PRIVATE_KEY,
     "VAPID_ADMIN_EMAIL": os.getenv("VAPID_ADMIN_EMAIL", "admin@deskplus.com")
 }
+
+# Ticket Auto-Response Settings
+TICKET_UNPICKED_SYSTEM_MESSAGE = os.getenv("TICKET_UNPICKED_SYSTEM_MESSAGE", "Someone will help you soon.")
+
+if 'test' in sys.argv:
+    class DisableMigrations:
+        def __contains__(self, item):
+            return True
+        def __getitem__(self, item):
+            return None
+    MIGRATION_MODULES = DisableMigrations()
+
+

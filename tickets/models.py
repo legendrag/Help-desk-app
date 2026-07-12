@@ -214,7 +214,7 @@ class TicketMessage(models.Model):
         ]
 
     def clean(self):
-        if self.ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+        if not self.is_system_message and self.ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
             raise ValidationError(f"Cannot send message on a {self.ticket.status} ticket.")
         if not self.message and not self.attachment:
             raise ValidationError("Message or attachment is required.")
