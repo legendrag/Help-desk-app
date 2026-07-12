@@ -11,9 +11,9 @@ from tickets.models import Ticket, TicketMessage
 from .utils import format_status_label, get_branch_users, get_department_users
 from .models import InAppNotification
 try:
-    from webpush import send_user_notification
+    import webpush
 except ImportError:
-    send_user_notification = None
+    webpush = None
 from .email_jobs import (
     send_new_ticket_email,
     send_ticket_picked_email,
@@ -96,16 +96,18 @@ def _notify_users(users, title, message, link, notification_type="general", excl
         )
         _broadcast_notification(notification)
         
-        if send_user_notification:
-
+        if webpush and getattr(webpush, "send_user_notification", None):
             try:
+                import json
                 payload = {
+                    "title": title,
                     "head": title,
                     "body": message,
+                    "message": message,
                     "icon": "/static/images/deskplus-icon.svg",
                     "data": {"url": link}
                 }
-                send_user_notification(user=user, payload=payload, ttl=1000)
+                webpush.send_user_notification(user=user, payload=json.dumps(payload), ttl=1000)
             except Exception as e:
                 logger.warning(f"Web push failed for user {user.id}: {e}")
 

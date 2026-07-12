@@ -534,9 +534,15 @@ function urlB64ToUint8Array(base64String) {
     return outputArray;
 }
 
+let isWebPushInitializing = false;
+
 function initWebPush() {
+    if (isWebPushInitializing) return;
+    isWebPushInitializing = true;
+
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn("[WebPush] Push notifications not supported in this browser. If on iOS, add this app to your Home Screen.");
+        isWebPushInitializing = false;
         return;
     }
 
@@ -546,6 +552,7 @@ function initWebPush() {
 
     if (!swMeta || !vapidMeta || !saveUrlMeta) {
         console.warn("[WebPush] WebPush metadata missing from page! Is webpush_header included?");
+        isWebPushInitializing = false;
         return;
     }
 
@@ -564,15 +571,49 @@ function initWebPush() {
         try {
             let subscription = await reg.pushManager.getSubscription();
 
+            // Fallback cross-browser check: compare VAPID key using localStorage (essential for iOS Safari)
+            const savedVapidKey = localStorage.getItem("deskplus_vapid_key");
+            if (savedVapidKey !== vapidKey) {
+                console.log("[WebPush] VAPID key change detected via localStorage. Resubscribing...");
+                if (subscription) {
+                    await subscription.unsubscribe();
+                    subscription = null;
+                }
+                localStorage.setItem("deskplus_vapid_key", vapidKey);
+            }
+
+            if (subscription) {
+                // Check if VAPID key matches via options.applicationServerKey
+                const rawKey = subscription.options.applicationServerKey;
+                if (rawKey) {
+                    const currentKey = urlB64ToUint8Array(vapidKey);
+                    const savedKey = new Uint8Array(rawKey);
+                    let match = savedKey.length === currentKey.length;
+                    if (match) {
+                        for (let i = 0; i < savedKey.length; i++) {
+                            if (savedKey[i] !== currentKey[i]) {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!match) {
+                        console.log("[WebPush] VAPID key mismatch. Resubscribing...");
+                        await subscription.unsubscribe();
+                        subscription = null;
+                    }
+                }
+            }
+
             if (!subscription) {
-                console.log("[WebPush] No subscription found. Subscribing with new VAPID key...");
+                console.log("[WebPush] No subscription found or VAPID mismatch. Subscribing with new VAPID key...");
                 subscription = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlB64ToUint8Array(vapidKey)
                 });
                 console.log("[WebPush] Subscribed successfully. Saving to server...");
             } else {
-                console.log("[WebPush] Existing subscription found. Syncing with server...");
+                console.log("[WebPush] Existing subscription found and matches VAPID key. Syncing with server...");
             }
             
             // Always sync the subscription with the server to prevent desync (e.g., if a previous save failed)
@@ -652,9 +693,5 @@ if (window.Notification && Notification.permission === "default") {
 if (window.userIsAuthenticated) {
     initNotifications();
 
-    // If permission was already granted previously, initialize web push
-    if (window.Notification && Notification.permission === "granted") {
-        initWebPush();
-    }
     document.addEventListener("DOMContentLoaded", initNotificationUI);
 }

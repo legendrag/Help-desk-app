@@ -15,15 +15,27 @@ self.addEventListener('push', event => {
     };
 
     if (event.data) {
+        console.log("[SW] Received raw event data text:", event.data.text());
         try {
             payload = event.data.json();
+            if (typeof payload === 'string') {
+                try {
+                    payload = JSON.parse(payload);
+                } catch (innerErr) {
+                    console.warn("[SW] Failed to parse inner JSON string:", innerErr);
+                }
+            }
+            console.log("[SW] Successfully parsed JSON payload:", payload);
         } catch (e) {
+            console.warn("[SW] Failed to parse JSON, using text as body:", e);
             payload.body = event.data.text();
         }
+    } else {
+        console.warn("[SW] Received push event with no data.");
     }
 
     const options = {
-        body: payload.body || payload.message,
+        body: payload.body || payload.message || "You have a new notification",
         icon: payload.icon || "/static/images/deskplus-icon.svg",
         data: payload.data || { url: "/" },
         badge: "/static/images/deskplus-icon.svg",
@@ -59,8 +71,9 @@ self.addEventListener('push', event => {
                     return;
                 }
 
-                console.log("[SW] Showing notification:", payload.title || payload.head);
-                return self.registration.showNotification(payload.title || payload.head, options);
+                const displayTitle = payload.title || payload.head || "DeskPlus Notification";
+                console.log("[SW] Showing notification:", displayTitle);
+                return self.registration.showNotification(displayTitle, options);
             })
     );
 });
