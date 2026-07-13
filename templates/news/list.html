@@ -35,10 +35,12 @@
                     <tr class="clickable-row" data-href="#" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal()">
                         <td data-label="Title"><strong>{{ announcement.title }}</strong></td>
                         <td data-label="Status">
-                            {% if announcement.is_active %}
-                            <span class="badge badge-open">Active</span>
-                            {% else %}
+                            {% if not announcement.is_active %}
                             <span class="badge badge-closed">Inactive</span>
+                            {% elif announcement.is_expired %}
+                            <span class="badge badge-expired">Expired</span>
+                            {% else %}
+                            <span class="badge badge-open">Active</span>
                             {% endif %}
                         </td>
                         <td data-label="Target">

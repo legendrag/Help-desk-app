@@ -1,4 +1,4 @@
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.http import HttpResponse
 from datetime import datetime
 import os
@@ -519,19 +519,27 @@ class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         return user.role and user.role.can_update_ticket
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Ticket.objects.select_related(
+        return Ticket.objects.select_related(
             "branch", "department", "category", "created_by", "assigned_to"
         ).all()
 
-        if user.is_superuser:
-            return queryset
-        if user.user_type == "branch":
-            return queryset.filter(branch_id=user.branch_id)
-        if user.user_type == "support":
-            return queryset.filter(department_id=user.department_id)
+    def get_object(self, queryset=None):
+        ticket = super().get_object(queryset)
+        user = self.request.user
 
-        return queryset.none()
+        if user.is_superuser:
+            return ticket
+
+        if user.user_type == "branch":
+            if ticket.branch_id != user.branch_id:
+                raise PermissionDenied("You do not have permission to edit this ticket.")
+        elif user.user_type == "support":
+            if ticket.department_id != user.department_id:
+                raise PermissionDenied("You do not have permission to edit this ticket.")
+        else:
+            raise PermissionDenied("You do not have permission to edit this ticket.")
+
+        return ticket
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -691,22 +699,29 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     pk_url_kwarg = "ticket_id"
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Ticket.objects.select_related(
+        return Ticket.objects.select_related(
             "branch", "department", "category", "created_by", "assigned_to"
         ).prefetch_related("messages", "messages__sender", "status_history", "status_history__changed_by")
 
+    def get_object(self, queryset=None):
+        ticket = super().get_object(queryset)
+        user = self.request.user
+
         if user.is_superuser:
-            return queryset
-            
-        kb_override = Q(kb_articles__is_published=True)
+            return ticket
+
+        has_kb_access = ticket.kb_articles.filter(is_published=True).exists()
 
         if user.user_type == "branch":
-            return queryset.filter(Q(branch_id=user.branch_id) | kb_override).distinct()
-        if user.user_type == "support":
-            return queryset.filter(Q(department_id=user.department_id) | kb_override).distinct()
+            if not (ticket.branch_id == user.branch_id or has_kb_access):
+                raise PermissionDenied("You do not have permission to view this ticket.")
+        elif user.user_type == "support":
+            if not (ticket.department_id == user.department_id or has_kb_access):
+                raise PermissionDenied("You do not have permission to view this ticket.")
+        else:
+            raise PermissionDenied("You do not have permission to view this ticket.")
 
-        return queryset.none()
+        return ticket
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -742,7 +757,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
         return context
 
-from django.core.exceptions import PermissionDenied
+# PermissionDenied imported at the top
 
 @login_required
 def ticket_category_options(request):

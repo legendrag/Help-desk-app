@@ -16,7 +16,7 @@
     <meta name="description" content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="deskplus, DeskPlus, support, ticketing, customer service">
     <title>{% block title %}DeskPlus{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.23">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.31">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.27">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.19">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
@@ -582,84 +582,7 @@
                 }
             }
         });
-
-        // --- Session Expiration Logic ---
-        if (window.userIsAuthenticated) {
-            const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
-            const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before timeout
-            
-            let lastServerActivity = Date.now();
-            let lastLocalActivity = Date.now();
-            let warningModalOpen = false;
-
-            // Track local activity
-            const updateLocalActivity = () => { lastLocalActivity = Date.now(); };
-            document.addEventListener('mousemove', updateLocalActivity, {passive: true});
-            document.addEventListener('keydown', updateLocalActivity, {passive: true});
-            document.addEventListener('click', updateLocalActivity, {passive: true});
-
-            // Every time htmx makes a request, consider server activity updated
-            document.body.addEventListener('htmx:afterRequest', () => {
-                lastServerActivity = Date.now();
-                if (warningModalOpen) {
-                    document.getElementById('session-warning-modal').style.display = 'none';
-                    warningModalOpen = false;
-                }
-            });
-
-            window.extendSession = function() {
-                fetch('/accounts/auth-check/', {credentials: 'same-origin'})
-                    .then(r => r.json())
-                    .then((data) => {
-                        if (data.authenticated) {
-                            lastServerActivity = Date.now();
-                            lastLocalActivity = Date.now();
-                            document.getElementById('session-warning-modal').style.display = 'none';
-                            warningModalOpen = false;
-                        } else {
-                            window.location.replace('/accounts/login/?next=' + encodeURIComponent(window.location.pathname));
-                        }
-                    })
-                    .catch(() => {});
-            };
-
-            setInterval(() => {
-                const now = Date.now();
-                const timeSinceServerActivity = now - lastServerActivity;
-
-                if (timeSinceServerActivity >= SESSION_TIMEOUT_MS) {
-                    // Session expired, redirect
-                    window.location.replace('/accounts/login/?next=' + encodeURIComponent(window.location.pathname));
-                } else if (timeSinceServerActivity >= (SESSION_TIMEOUT_MS - WARNING_THRESHOLD_MS)) {
-                    // We are in the warning zone
-                    const timeSinceLocalActivity = now - lastLocalActivity;
-                    if (timeSinceLocalActivity < WARNING_THRESHOLD_MS) {
-                        // User was locally active recently, auto-extend silently
-                        window.extendSession();
-                    } else if (!warningModalOpen) {
-                        // User is inactive locally, show warning modal
-                        document.getElementById('session-warning-modal').style.display = 'flex';
-                        warningModalOpen = true;
-                    }
-                }
-            }, 30000); // Check every 30 seconds
-        }
     </script>
-
-    <!-- Session Warning Modal -->
-    <div id="session-warning-modal" class="modal-overlay session-warning-overlay">
-        <div class="modal-content session-warning-box">
-            <h2>Session Expiring Soon</h2>
-            <p>Your session will expire soon due to inactivity. Would you like to stay logged in?</p>
-            <div class="session-warning-actions">
-                <button type="button" class="button" onclick="extendSession()">Stay Logged In</button>
-                <form action="{% url 'logout' %}" method="post" class="session-logout-form">
-                    {% csrf_token %}
-                    <button type="submit" class="button secondary session-logout-btn">Log Out</button>
-                </form>
-            </div>
-        </div>
-    </div>
     
     <!-- Global Spinner Overlay for Navigation -->
     <div id="global-spinner-overlay" class="global-spinner-overlay">

@@ -447,6 +447,12 @@
   border-color: rgba(148, 163, 184, 0.3);
 }
 
+[data-theme="dark"] .badge-expired {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
 [data-theme="dark"] .event-badge-transfer_requested,
 [data-theme="dark"] .event-badge-transfer_accepted,
 [data-theme="dark"] .event-badge-transfer_denied,

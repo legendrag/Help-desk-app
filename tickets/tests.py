@@ -174,3 +174,140 @@ class UnpickedTicketNoticeTests(TestCase):
         )
         self.assertEqual(system_msgs.count(), 1)
 
+
+from django.urls import reverse
+from core.models import Role
+
+class TicketAuthorizationViewTests(TestCase):
+    def setUp(self):
+        # Create Branches
+        self.branch_a = Branch.objects.create(code="BR-A", name="Branch A")
+        self.branch_b = Branch.objects.create(code="BR-B", name="Branch B")
+
+        # Create Departments
+        self.dept_a = Department.objects.create(name="Dept A")
+        self.dept_b = Department.objects.create(name="Dept B")
+
+        # Create Categories
+        self.category_a = Category.objects.create(
+            department=self.dept_a,
+            name="Category A",
+            default_priority=Ticket.Priority.MEDIUM
+        )
+        self.category_b = Category.objects.create(
+            department=self.dept_b,
+            name="Category B",
+            default_priority=Ticket.Priority.MEDIUM
+        )
+
+        # Create Role
+        self.role_with_edit = Role.objects.create(
+            name="Support Agent with Edit",
+            can_update_ticket=True
+        )
+
+        # Create Users
+        self.branch_user_a = User.objects.create_user(
+            username="branch_user_a",
+            email="branch_a@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_a
+        )
+        self.branch_user_b = User.objects.create_user(
+            username="branch_user_b",
+            email="branch_b@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_b
+        )
+
+        self.support_user_a = User.objects.create_user(
+            username="support_user_a",
+            email="support_a@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_a,
+            role=self.role_with_edit
+        )
+        self.support_user_b = User.objects.create_user(
+            username="support_user_b",
+            email="support_b@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_b,
+            role=self.role_with_edit
+        )
+
+        # Create Tickets
+        self.ticket_a = Ticket.objects.create(
+            ticket_number="TK-A",
+            title="Ticket A",
+            description="Branch A Ticket",
+            branch=self.branch_a,
+            department=self.dept_a,
+            category=self.category_a,
+            created_by=self.branch_user_a,
+            client_name="Client A",
+            client_phone="123456789"
+        )
+        self.ticket_b = Ticket.objects.create(
+            ticket_number="TK-B",
+            title="Ticket B",
+            description="Branch B Ticket",
+            branch=self.branch_b,
+            department=self.dept_b,
+            category=self.category_b,
+            created_by=self.branch_user_b,
+            client_name="Client B",
+            client_phone="987654321"
+        )
+
+    def test_detail_view_branch_user_authorized(self):
+        self.client.login(username="branch_user_a", password="password123")
+        url = reverse("ticket_detail", kwargs={"ticket_id": self.ticket_a.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_detail_view_branch_user_unauthorized(self):
+        self.client.login(username="branch_user_a", password="password123")
+        url = reverse("ticket_detail", kwargs={"ticket_id": self.ticket_b.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_detail_view_support_user_authorized(self):
+        self.client.login(username="support_user_a", password="password123")
+        url = reverse("ticket_detail", kwargs={"ticket_id": self.ticket_a.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_detail_view_support_user_unauthorized(self):
+        self.client.login(username="support_user_a", password="password123")
+        url = reverse("ticket_detail", kwargs={"ticket_id": self.ticket_b.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_detail_view_nonexistent_ticket(self):
+        self.client.login(username="branch_user_a", password="password123")
+        url = reverse("ticket_detail", kwargs={"ticket_id": 99999})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_edit_view_support_user_authorized(self):
+        self.client.login(username="support_user_a", password="password123")
+        url = reverse("ticket_update", kwargs={"ticket_id": self.ticket_a.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_edit_view_support_user_unauthorized(self):
+        self.client.login(username="support_user_a", password="password123")
+        url = reverse("ticket_update", kwargs={"ticket_id": self.ticket_b.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_edit_view_nonexistent_ticket(self):
+        self.client.login(username="support_user_a", password="password123")
+        url = reverse("ticket_update", kwargs={"ticket_id": 99999})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from core.models import TimeStampedModel, Branch, Department
 
 class Announcement(TimeStampedModel):
@@ -18,3 +19,7 @@ class Announcement(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
+    @property
+    def is_expired(self):
+        return self.expires_at is not None and self.expires_at <= timezone.now()

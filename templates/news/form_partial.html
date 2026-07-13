@@ -26,18 +26,11 @@
             {% if form.content.errors %}<div class="field-error">{{ form.content.errors }}</div>{% endif %}
         </div>
         
-        <div class="form-group">
+        <div class="form-group full">
             <label>Target Branch</label>
             {{ form.target_branch }}
             <div class="field-help">Leave blank to show to all branches.</div>
             {% if form.target_branch.errors %}<div class="field-error">{{ form.target_branch.errors }}</div>{% endif %}
-        </div>
-        
-        <div class="form-group">
-            <label>Target Department</label>
-            {{ form.target_department }}
-            <div class="field-help">Leave blank to show to all departments.</div>
-            {% if form.target_department.errors %}<div class="field-error">{{ form.target_department.errors }}</div>{% endif %}
         </div>
         
         <div class="form-group full">
