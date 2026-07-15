@@ -757,6 +757,60 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
         return context
 
+
+class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
+    model = Ticket
+    template_name = "tickets/partials/details_drawer.html"
+    context_object_name = "ticket"
+    pk_url_kwarg = "ticket_id"
+
+    def get_queryset(self):
+        return Ticket.objects.select_related(
+            "branch", "department", "category", "assigned_to"
+        ).prefetch_related(
+            "merged_tickets", "kb_articles", "kb_articles__created_by",
+            "status_history", "status_history__changed_by"
+        )
+
+    def get_object(self, queryset=None):
+        ticket = super().get_object(queryset)
+        user = self.request.user
+
+        if user.is_superuser:
+            return ticket
+
+        has_kb_access = ticket.kb_articles.filter(is_published=True).exists()
+
+        if user.user_type == "branch":
+            if not (ticket.branch_id == user.branch_id or has_kb_access):
+                raise PermissionDenied("You do not have permission to view this ticket.")
+        elif user.user_type == "support":
+            if not (ticket.department_id == user.department_id or has_kb_access):
+                raise PermissionDenied("You do not have permission to view this ticket.")
+        else:
+            raise PermissionDenied("You do not have permission to view this ticket.")
+
+        return ticket
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        ticket = self.get_object()
+        user = self.request.user
+
+        # Calculate metrics (same as detail view)
+        context['response_time'] = int((ticket.picked_at - ticket.created_at).total_seconds()) if ticket.picked_at else None
+        if ticket.closed_at and ticket.picked_at:
+            duration = (ticket.closed_at - ticket.picked_at).total_seconds()
+            context['resolution_time'] = int(duration - ticket.total_pending_duration_seconds)
+        else:
+            context['resolution_time'] = None
+        context['time_to_close'] = int((ticket.closed_at - ticket.created_at).total_seconds()) if ticket.closed_at else None
+
+        # Add auto_open context to trigger automatic opening when fetched via HTMX
+        context['auto_open'] = True
+
+        return context
+
 # PermissionDenied imported at the top
 
 @login_required

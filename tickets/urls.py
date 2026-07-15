@@ -2,6 +2,7 @@ from django.urls import path
 from .template_views import (
     TicketListView,
     TicketDetailView,
+    TicketDrawerPartialView,
     TicketCreateView,
     TicketUpdateView,
     DashboardView,
@@ -31,6 +32,7 @@ urlpatterns = [
     path("<int:ticket_id>/edit/", TicketUpdateView.as_view(), name="ticket_update"),
     path("category-options/", ticket_category_options, name="ticket_category_options"),
     path("<int:ticket_id>/", TicketDetailView.as_view(), name="ticket_detail"),
+    path("<int:ticket_id>/drawer/", TicketDrawerPartialView.as_view(), name="ticket_drawer"),
     path("<int:ticket_id>/message/", post_message, name="post_message"),
     path("message/<int:message_id>/delete/", delete_message, name="delete_message"),
     path("message/<int:message_id>/edit/", edit_message, name="edit_message"),

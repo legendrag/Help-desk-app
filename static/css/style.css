@@ -990,8 +990,8 @@ tr:hover td {
   padding-bottom: 0;
 }
 
-.meta-grid-single-col {
-  grid-template-columns: 1fr !important;
+.meta-grid-two-col {
+  grid-template-columns: repeat(2, 1fr) !important;
 }
 
 .chat-box {
@@ -2586,7 +2586,7 @@ button.success:hover,
 
 @media (max-width: 480px) {
   .meta-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
 }
@@ -4130,11 +4130,12 @@ html.modal-open body {
 }
 
 .pick-btn {
-  padding: 0.35rem 0.85rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
   white-space: nowrap;
   flex-shrink: 0;
+  min-width: 65px;
 }
 
 .pick-btn:hover {
@@ -4152,6 +4153,7 @@ html.modal-open body {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+  min-width: 65px;
 }
 
 .pagination {
@@ -4369,11 +4371,12 @@ html.modal-open body {
 }
 
 .pick-btn {
-  padding: 0.35rem 0.85rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
   white-space: nowrap;
   flex-shrink: 0;
+  min-width: 65px;
 }
 
 .pick-btn:hover {
@@ -4391,6 +4394,7 @@ html.modal-open body {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+  min-width: 65px;
 }
 
 .pagination {

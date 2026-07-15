@@ -48,7 +48,7 @@
                         </div>
                     </td>
                     <td data-label="Action" class="action-cell">
-                        <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end;">
+                        <div class="ticket-action-wrapper">
                             {% if user.is_superuser or user.role.can_pick_ticket %}
                                 {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
                                 <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
@@ -65,9 +65,12 @@
                             {% else %}
                             <span class="pill muted">--</span>
                             {% endif %}
-                            <a href="{% url 'ticket_detail' ticket.id %}?show_details=true" class="btn secondary btn--sm" aria-label="Details" title="Details" style="padding: 0.25rem 0.5rem;">
+                            <button type="button" class="btn secondary btn--sm btn-details-list" aria-label="Details" title="Details"
+                                    hx-get="{% url 'ticket_drawer' ticket.id %}"
+                                    hx-target="#drawer-container"
+                                    hx-swap="innerHTML">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            </a>
+                            </button>
                         </div>
                     </td>
                 </tr>

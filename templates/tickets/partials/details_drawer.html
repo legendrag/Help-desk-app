@@ -1,0 +1,184 @@
+{% load ticket_extras %}
+
+<!-- Overlay for offcanvas -->
+<div id="ticket-offcanvas-overlay" class="ticket-offcanvas-overlay" onclick="toggleTicketDetails()"></div>
+
+<!-- Sidebar: Ticket Info (Moved to Offcanvas) -->
+<div id="ticket-offcanvas" class="ticket-offcanvas">
+    <div class="ticket-offcanvas-header">
+        <h3>Ticket Details</h3>
+        <button type="button" class="modal-close" onclick="toggleTicketDetails()" aria-label="Close details">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <div class="ticket-offcanvas-body">
+    <aside class="offcanvas-section info-main-panel">
+        <header class="panel-header">
+            <div class="ticket-header-actions">
+                <span class="badge badge-{{ ticket.status }} ticket-status-pill">{{ ticket.get_status_display }}</span>
+            </div>
+            <h2 class="ticket-title-number">{{ ticket.ticket_number }}</h2>
+            <p class="ticket-title-text">{{ ticket.title }}</p>
+        </header>
+
+        <section class="description-box">
+            <label>Description</label>
+            <p>{{ ticket.description }}</p>
+        </section>
+
+        <div class="meta-grid meta-grid-two-col">
+            {% if not user.user_type == 'branch' %}
+            <div class="meta-item">
+                <label>Branch</label>
+                <span>{{ ticket.branch.name }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <label>Department</label>
+                <span>{{ ticket.department.name }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Category</label>
+                <span>{{ ticket.category.name }}</span>
+            </div>
+            {% if not user.user_type == 'branch' %}
+            <div class="meta-item">
+                <label>Assigned To</label>
+                <span id="ticket-assigned-to">{{ ticket.assigned_to.username|default:"Pending Support Agent" }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <label>Priority</label>
+                <span
+                    class="{% if ticket.priority == 'urgent' or ticket.priority == 'high' %}priority-alert{% else %}priority-normal{% endif %}">
+                    {{ ticket.get_priority_display|upper }}
+                </span>
+            </div>
+            <div class="meta-item">
+                <label>Created At</label>
+                <span>{{ ticket.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            {% if ticket.client_name %}
+            <div class="meta-item">
+                <label>Name</label>
+                <span>{{ ticket.client_name }}</span>
+            </div>
+            {% endif %}
+            {% if ticket.client_phone %}
+            <div class="meta-item">
+                <label>Phone Number</label>
+                <span>{{ ticket.client_phone }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if user.is_superuser or ticket.assigned_to == user %}
+        <div class="ticket-edit-btn-wrap">
+            <button type="button" hx-get="{% url 'ticket_update' ticket.id %}" hx-target="#modal-content"
+                onclick="openModal()" class="secondary">Edit Ticket</button>
+        </div>
+        {% endif %} 
+        {% if ticket.merged_tickets.exists %}
+        <div class="merged-tickets-section">
+            <label class="merged-tickets-label">Merged Tickets</label>
+            <div class="merged-tickets-sidebar-list">
+                {% for st in ticket.merged_tickets.all %}
+                <a href="{% url 'ticket_detail' st.id %}" class="merged-sidebar-item">
+                    <span>#{{ st.ticket_number }}</span>
+                    <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if ticket.kb_articles.exists %}
+        <div class="kb-articles-section">
+            <label class="merged-tickets-label">Related Knowledge Base Articles</label>
+            <div class="merged-tickets-sidebar-list">
+                {% for article in ticket.kb_articles.all %}
+                <a href="{% url 'kb_detail' article.id %}" class="merged-sidebar-item kb-article-link">
+                    <span class="kb-article-inner">
+                        <strong class="kb-article-title">{{ article.title }}</strong>
+                        <span class="kb-article-meta">
+                            By {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}
+                        </span>
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </aside>
+
+    {% if not user.user_type == 'branch' %}
+    <section class="offcanvas-section">
+        <h4 class="sidebar-panel-header">Performance</h4>
+        <div class="meta-grid meta-grid-two-col">
+            <div class="meta-item">
+                <label>Response Time</label>
+                <span>{{ response_time|human_duration }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Resolution Time</label>
+                <span>{{ resolution_time|human_duration }}</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="offcanvas-section">
+        <h4 class="sidebar-panel-header">Timeline</h4>
+        <div class="timeline-list timeline-list-scrollable">
+            {% for item in ticket.status_history.all %}
+            <div class="timeline-item">
+                <span class="timeline-dot event-{{ item.event_type }} {% if item.event_type == 'status_change' %}status-{{ item.status }}{% endif %}">
+                </span>
+                <div class="timeline-content">
+                    <div class="timeline-header">
+                        {% if item.event_type == 'status_change' %}
+                        <span class="badge badge-{{ item.status }} timeline-badge-text">{{ item.get_status_display }}</span>
+                        {% else %}
+                        <span class="badge event-badge event-badge-{{ item.event_type }} timeline-badge-text">{{ item.get_event_type_display }}</span>
+                        {% endif %}
+                        <span class="timeline-time timeline-time-text">{{ item.created_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                    <p class="timeline-by-text">By {{ item.changed_by.username }} {% if item.detail %}<span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="timeline-empty">No updates.</div>
+            {% endfor %}
+        </div>
+    </section>
+    </div>
+</div>
+
+<script>
+    // Definition of toggle function
+    if (typeof toggleTicketDetails !== 'function') {
+        window.toggleTicketDetails = function() {
+            const offcanvas = document.getElementById('ticket-offcanvas');
+            const overlay = document.getElementById('ticket-offcanvas-overlay');
+            if (offcanvas && overlay) {
+                offcanvas.classList.toggle('open');
+                overlay.classList.toggle('open');
+            }
+        }
+    }
+
+    {% if auto_open %}
+    // Automatically open drawer if loaded via HTMX
+    setTimeout(function() {
+        const offcanvas = document.getElementById('ticket-offcanvas');
+        const overlay = document.getElementById('ticket-offcanvas-overlay');
+        if (offcanvas && overlay && !offcanvas.classList.contains('open')) {
+            offcanvas.classList.add('open');
+            overlay.classList.add('open');
+        }
+    }, 50);
+    {% endif %}
+</script>
