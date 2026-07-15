@@ -4329,6 +4329,215 @@ select.kb-sort-select.no-tomselect:focus {
   .kb-article-main-content {
     padding: 1.5rem;
   }
+
+  /* ── Tickets List Premium Mobile Cards ── */
+  .tickets-table table, 
+  .tickets-table tbody, 
+  .tickets-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  .tickets-table tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto !important;
+    padding: 1.25rem !important;
+    gap: 0.65rem !important;
+    margin-bottom: 1.25rem !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    background: var(--bg-card, #ffffff) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    align-items: center !important;
+  }
+  
+  [data-theme="dark"] .tickets-table tr {
+    background: #1e293b !important;
+    border-color: rgba(148, 163, 184, 0.12) !important;
+  }
+  
+  .tickets-table td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    width: auto !important;
+    min-height: unset !important;
+  }
+  
+  /* Hide the data-label for obvious columns */
+  .tickets-table td[data-label="Ticket ID"]::before,
+  .tickets-table td[data-label="Title"]::before,
+  .tickets-table td[data-label="Status"]::before,
+  .tickets-table td[data-label="Date"]::before,
+  .tickets-table td[data-label="Action"]::before {
+    display: none !important;
+  }
+  
+  /* Small visual labels for attributes */
+  .tickets-table td[data-label="Branch"]::before,
+  .tickets-table td[data-label="Department"]::before,
+  .tickets-table td[data-label="Assigned"]::before,
+  .tickets-table td[data-label="Priority"]::before {
+    content: attr(data-label) ": " !important;
+    display: inline-block !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-right: 0.35rem !important;
+    flex: none !important;
+    min-width: unset !important;
+  }
+  
+  /* Grid Positions */
+  .tickets-table td[data-label="Ticket ID"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    align-self: center !important;
+  }
+  
+  .tickets-table td[data-label="Status"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: center !important;
+  }
+  
+  .tickets-table td[data-label="Title"] {
+    grid-column: 1 / 3 !important;
+    grid-row: 2 !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    margin: 0.15rem 0 0.35rem !important;
+  }
+  
+  .tickets-table td[data-label="Title"] a {
+    color: var(--text-main) !important;
+    text-decoration: none !important;
+  }
+  
+  .tickets-table td[data-label="Branch"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 3 !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table td[data-label="Department"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 3 !important;
+    justify-self: end !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table td[data-label="Assigned"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 4 !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table td[data-label="Priority"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 4 !important;
+    justify-self: end !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table td[data-label="Date"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 5 !important;
+    align-self: center !important;
+    font-size: 0.8rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 0.25rem !important;
+  }
+  
+  .tickets-table td[data-label="Date"] .date-stack {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table td[data-label="Date"] .date-stack small {
+    font-size: 0.8rem !important;
+    color: var(--text-muted) !important;
+  }
+  
+  .tickets-table td[data-label="Action"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 5 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: auto !important;
+    margin-top: 0.25rem !important;
+  }
+  
+  .tickets-table .action-cell {
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+  
+  .tickets-table .ticket-action-wrapper {
+    display: flex !important;
+    gap: 0.5rem !important;
+    width: auto !important;
+    align-items: center !important;
+  }
+  
+  .tickets-table .action-cell form {
+    margin: 0 !important;
+    display: inline-block !important;
+    width: auto !important;
+    flex: none !important;
+  }
+  
+  .tickets-table .pick-btn {
+    padding: 0.4rem 1rem !important;
+    font-size: 0.85rem !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    width: auto !important;
+    min-width: 70px !important;
+  }
+  
+  .tickets-table .btn-details-list {
+    min-height: 34px !important;
+    height: 34px !important;
+    width: 34px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex: none !important;
+  }
+  
+  .tickets-table .pill {
+    padding: 0.25rem 0.75rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 28px !important;
+    min-height: 28px !important;
+  }
 }
 
 
