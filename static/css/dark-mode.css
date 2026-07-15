@@ -254,7 +254,7 @@
 [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
 [data-theme="dark"] select,
 [data-theme="dark"] textarea {
-  background: #1e293b;
+  background-color: #1e293b;
   color: #f1f5f9;
   border-color: rgba(148, 163, 184, 0.2);
 }
@@ -271,7 +271,7 @@
 [data-theme="dark"] textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
-  background: #1e293b;
+  background-color: #1e293b;
 }
 
 [data-theme="dark"] input::placeholder,
@@ -1850,7 +1850,13 @@
 [data-theme="dark"] select.kb-sort-select.no-tomselect {
   background-color: var(--panel-bg);
   border-color: rgba(148, 163, 184, 0.2);
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.45rem center !important;
+  background-size: 14px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
 }
 
 [data-theme="dark"] .kb-sort-form .ts-wrapper.kb-sort-select .ts-control {

@@ -3,6 +3,15 @@
 {% load static %}
 {% load ticket_extras %}
 {% block content %}
+<div class="kb-back-navigation" style="margin-bottom: 1.25rem;">
+    <a href="{% url 'tickets_list' %}" class="ticket-back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="kb-back-icon">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Tickets
+    </a>
+</div>
 <div class="ticket-detail-grid">
 
     <!-- Main: Chat & History (Now on Top) -->
