@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block body_class %}ticket-detail-page{% endblock body_class %}
+{% block html_class %}ticket-detail-html{% endblock html_class %}
 {% load static %}
 {% load ticket_extras %}
 {% block content %}
 <div class="kb-back-navigation" style="margin-bottom: 1.25rem;">
     <a href="{% url 'tickets_list' %}" class="ticket-back-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="kb-back-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round" class="kb-back-icon">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
@@ -20,10 +22,16 @@
             <div class="chat-header-title">
                 Chat Support <span class="status-live">● Live</span>
             </div>
-            
+
             <div class="chat-header-details">
-                <button type="button" class="btn secondary btn--sm" onclick="toggleTicketDetails()" aria-label="View Details">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <button type="button" class="btn secondary btn--sm" onclick="toggleTicketDetails()"
+                    aria-label="View Details">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
                     Details
                 </button>
             </div>
@@ -31,25 +39,33 @@
 
         {% if ticket.status == 'merged' %}
         <div class="merged-ticket-banner">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="merged-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" class="merged-icon">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
                 <path d="M8 12h8"></path>
                 <path d="M12 8v8"></path>
             </svg>
-            <span>This ticket has been merged into <a href="{% url 'ticket_detail' ticket.merged_into.id %}" class="merged-link">#{{ ticket.merged_into.ticket_number }}</a>.</span>
+            <span>This ticket has been merged into <a href="{% url 'ticket_detail' ticket.merged_into.id %}"
+                    class="merged-link">#{{ ticket.merged_into.ticket_number }}</a>.</span>
         </div>
         {% endif %}
 
         {% if ticket.pending_transfer_to %}
         <div class="pending-transfer-banner">
             <div class="transfer-banner-left">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transfer-banner-icon">
-                    <path d="M17 3v18"></path><path d="M10 14l7 7 7-7"></path><path d="M7 21V3"></path><path d="M14 10L7 3 0 10"></path>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" class="transfer-banner-icon">
+                    <path d="M17 3v18"></path>
+                    <path d="M10 14l7 7 7-7"></path>
+                    <path d="M7 21V3"></path>
+                    <path d="M14 10L7 3 0 10"></path>
                 </svg>
                 {% if user == ticket.pending_transfer_to %}
-                <span><strong>{{ ticket.pending_transfer_by.username }}</strong> has requested to transfer this ticket to you.</span>
+                <span><strong>{{ ticket.pending_transfer_by.username }}</strong> has requested to transfer this ticket
+                    to you.</span>
                 {% elif user == ticket.pending_transfer_by %}
-                <span>Waiting for <strong>{{ ticket.pending_transfer_to.username }}</strong> to accept the transfer.</span>
+                <span>Waiting for <strong>{{ ticket.pending_transfer_to.username }}</strong> to accept the
+                    transfer.</span>
                 {% else %}
                 <span>Transfer to <strong>{{ ticket.pending_transfer_to.username }}</strong> is pending.</span>
                 {% endif %}
@@ -85,7 +101,8 @@
                 </div>
             </div>
             {% else %}
-            <article class="chat-item {% if message.sender == user %}me{% endif %}" id="message-{{ message.id }}" data-message-id="{{ message.id }}">
+            <article class="chat-item {% if message.sender == user %}me{% endif %}" id="message-{{ message.id }}"
+                data-message-id="{{ message.id }}">
                 <div class="chat-row">
                     <div class="chat-bubble">
                         <header>
@@ -105,8 +122,8 @@
                             {% if message.attachment %}
                             <div class="chat-bubble-attachment-wrap">
                                 {% if message.attachment.name|is_image %}
-                                <img src="{{ message.attachment.url }}" alt="Attachment" width="300" height="200" class="chat-image-preview"
-                                    tabindex="0" role="button"
+                                <img src="{{ message.attachment.url }}" alt="Attachment" width="300" height="200"
+                                    class="chat-image-preview" tabindex="0" role="button"
                                     onclick="openLightbox(this.src)"
                                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); openLightbox(this.src);}">
                                 {% else %}
@@ -140,19 +157,35 @@
                                 {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_edit_message and message.sender == user %}
                                 <button type="button" class="message-menu-item"
                                     onclick="toggleEdit({{ message.id }}); closeMessageMenu({{ message.id }});">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
                                     Edit
                                 </button>
                                 {% endif %}
                                 {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_delete_message and message.sender == user %}
-                                <button type="button" class="message-menu-item danger" onclick="openDeleteModal({{ message.id }}); closeMessageMenu({{ message.id }});">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <button type="button" class="message-menu-item danger"
+                                    onclick="openDeleteModal({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
                                     Delete
                                 </button>
                                 {% endif %}
                                 <button type="button" class="message-menu-item"
                                     onclick="toggleMessageDetails({{ message.id }}); closeMessageMenu({{ message.id }});">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
                                     Details
                                 </button>
                             </div>
@@ -168,15 +201,21 @@
                 <form id="msg-edit-{{ message.id }}" hx-post="{% url 'edit_message' message.id %}" hx-swap="none"
                     class="msg-edit-form">
                     {% csrf_token %}
-                    <textarea name="message" rows="2"
-                        class="chat-textarea-no-resize">{{ message.message }}</textarea>
+                    <textarea name="message" rows="2" class="chat-textarea-no-resize">{{ message.message }}</textarea>
                     <div class="msg-edit-actions">
                         <button type="button" class="btn-edit-cancel" onclick="toggleEdit({{ message.id }})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
                             Cancel
                         </button>
                         <button type="submit" class="btn-edit-save">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
                             Save
                         </button>
                     </div>
@@ -197,11 +236,12 @@
             <span class="typing-dots"><span><!-- dot --></span><span><!-- dot --></span><span><!-- dot --></span></span>
         </div>
         {% if user.is_superuser or can_chat and user.role and user.role.can_send_message %}
-        <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none"
-            method="post" enctype="multipart/form-data" class="chat-form" id="chat-message-form">
+        <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none" method="post" enctype="multipart/form-data"
+            class="chat-form" id="chat-message-form">
             <div class="drop-zone-overlay" id="drop-zone-overlay">
                 <div class="drop-zone-content">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="17 8 12 3 7 8"></polyline>
                         <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -218,19 +258,32 @@
                     </div>
                     <div class="reply-preview-text" id="reply-to-text"></div>
                 </div>
-                <button type="button" class="reply-cancel" onclick="clearReply()"
-                    aria-label="Cancel reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                <button type="button" class="reply-cancel" onclick="clearReply()" aria-label="Cancel reply"><svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg></button>
             </div>
             <input type="hidden" name="reply_to" id="reply-to-id">
             {% csrf_token %}
-            <textarea name="message" rows="3" placeholder="Type your message or paste/drop a file..." class="chat-textarea-no-resize"></textarea>
+            <textarea name="message" rows="3" placeholder="Type your message or paste/drop a file..."
+                class="chat-textarea-no-resize"></textarea>
             <div class="file-preview-bar file-preview-hidden" id="file-preview-bar">
                 <div class="file-preview-info">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
                     <span id="file-preview-name"></span>
                     <span id="file-preview-size" class="file-preview-size-text"></span>
                 </div>
-                <button type="button" class="file-preview-remove" onclick="clearFilePreview()" aria-label="Remove file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                <button type="button" class="file-preview-remove" onclick="clearFilePreview()"
+                    aria-label="Remove file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg></button>
             </div>
             <div class="chat-actions">
                 <!-- Action Bar (Left) -->
@@ -252,29 +305,33 @@
                         {% if user.is_superuser or ticket.assigned_to == user %}
                         <div class="action-bar-group">
                             <button type="button" class="action-bar-execute" id="action-bar-execute"
-                                data-action="closed"
-                                data-confirm="close"
-                                onclick="executeActionBar()">Close</button>
-                            <button type="button" class="action-bar-toggle" id="action-bar-toggle" onclick="toggleActionMenu()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                data-action="closed" data-confirm="close" onclick="executeActionBar()">Close</button>
+                            <button type="button" class="action-bar-toggle" id="action-bar-toggle"
+                                onclick="toggleActionMenu()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </button>
                             <div class="action-bar-menu" id="action-bar-menu">
-                                <button type="button" class="action-bar-menu-item active" data-action="closed" data-label="Close" data-confirm="close"
-                                    onclick="selectAction(this)">Close</button>
+                                <button type="button" class="action-bar-menu-item active" data-action="closed"
+                                    data-label="Close" data-confirm="close" onclick="selectAction(this)">Close</button>
                                 {% if ticket.status != 'waiting_for_branch' %}
-                                <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch" data-label="Wait for User"
-                                    onclick="selectAction(this)">Wait for User</button>
+                                <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch"
+                                    data-label="Wait for User" onclick="selectAction(this)">Wait for User</button>
                                 {% endif %}
                                 {% if ticket.status != 'in_progress' %}
-                                <button type="button" class="action-bar-menu-item" data-action="in_progress" data-label="In Progress"
-                                    onclick="selectAction(this)">In Progress</button>
+                                <button type="button" class="action-bar-menu-item" data-action="in_progress"
+                                    data-label="In Progress" onclick="selectAction(this)">In Progress</button>
                                 {% endif %}
-                                <button type="button" class="action-bar-menu-item" data-action="merge" data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge Ticket</button>
+                                <button type="button" class="action-bar-menu-item" data-action="merge"
+                                    data-label="Merge" data-confirm="merge" onclick="selectAction(this)">Merge
+                                    Ticket</button>
                                 {% if user.is_superuser or ticket.assigned_to == user %}
                                 {% if not ticket.pending_transfer_to %}
-                                <button type="button" class="action-bar-menu-item" data-action="transfer" data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer Ticket</button>
+                                <button type="button" class="action-bar-menu-item" data-action="transfer"
+                                    data-label="Transfer" data-confirm="transfer" onclick="selectAction(this)">Transfer
+                                    Ticket</button>
                                 {% endif %}
                                 {% endif %}
                             </div>
@@ -295,10 +352,14 @@
                 <!-- Attach and Send (Right) -->
                 <div class="chat-actions-right">
                     <div class="chat-attach-container">
-                        <input type="file" name="attachment" id="file-upload" class="file-preview-hidden" onchange="showFilePreview(this)" form="chat-message-form">
+                        <input type="file" name="attachment" id="file-upload" class="file-preview-hidden"
+                            onchange="showFilePreview(this)" form="chat-message-form">
                         <label for="file-upload" id="file-label" class="chat-attach-icon-btn" title="Attach File">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                                </path>
                             </svg>
                         </label>
                     </div>
@@ -326,14 +387,14 @@
             <form id="pick-ticket-form" action="{% url 'pick_ticket' ticket.id %}" method="post">{% csrf_token %}</form>
             {% endif %}
             {% endif %}
-            
+
             {% if user.is_superuser or ticket.assigned_to == user %}
             <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="status" id="action-bar-status" value="closed">
             </form>
             {% endif %}
-            
+
             {% if user.is_superuser or user.user_type == 'support' %}
             <form id="reopen-ticket-form" action="{% url 'update_status' ticket.id %}" method="post">
                 {% csrf_token %}
@@ -452,7 +513,7 @@
         const editForm = document.getElementById('msg-edit-' + id);
         const detailsPanel = document.getElementById('message-details-' + id);
         if (!editForm || !displayDiv) return;
-        
+
         if (editForm.style.display === 'none' || editForm.style.display === '') {
             editForm.style.display = 'block';
             displayDiv.style.display = 'none';
@@ -559,7 +620,7 @@
     }
 
     // Close dropdown on outside click
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!e.target.closest('.action-bar-group')) {
             closeActionMenu();
         }
@@ -568,41 +629,59 @@
 
 <!-- Lightbox Modal -->
 <div id="lightbox-modal" class="lightbox-modal" onclick="closeLightbox()">
-    <span class="lightbox-close"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+    <span class="lightbox-close"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg></span>
     <img id="lightbox-image" class="lightbox-content" src="" alt="Enlarged image" width="800" height="600">
 </div>
 
 <!-- Custom Close Ticket Modal -->
-<div id="custom-close-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('custom-close-modal').style.display='none'">
+<div id="custom-close-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-close-modal').style.display='none'">
     <div class="modal-content modal-close-ticket">
         <div class="modal-header">
             <h2 class="modal-title-text">Close Ticket</h2>
-            <button type="button" class="modal-close" onclick="document.getElementById('custom-close-modal').style.display='none'">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-close-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
         <div>
-            <p class="modal-description-text-close">Are you sure you want to close this ticket? You will not be able to send new messages.</p>
+            <p class="modal-description-text-close">Are you sure you want to close this ticket? You will not be able to
+                send new messages.</p>
             <form action="{% url 'update_status' ticket.id %}" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="status" value="closed">
                 <div class="form-actions modal-actions-flex">
-                    <button type="button" class="btn secondary" onclick="document.getElementById('custom-close-modal').style.display='none'">Cancel</button>
+                    <button type="button" class="btn secondary"
+                        onclick="document.getElementById('custom-close-modal').style.display='none'">Cancel</button>
                     <button type="submit" class="btn danger">Yes, Close</button>
                 </div>
             </form>
         </div>
-        </div>
     </div>
+</div>
 </div>
 
 <!-- Custom Merge Ticket Modal -->
-<div id="custom-merge-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('custom-merge-modal').style.display='none'">
+<div id="custom-merge-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-merge-modal').style.display='none'">
     <div class="modal-content modal-merge-ticket">
         <div class="modal-header">
             <h2 class="modal-title-text">Merge Ticket</h2>
-            <button type="button" class="modal-close" onclick="document.getElementById('custom-merge-modal').style.display='none'">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-merge-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
         <div>
@@ -612,36 +691,42 @@
                 <div class="form-group full modal-form-group-merge">
                     <label for="target_ticket_number">Search Ticket to Merge</label>
                     <div class="position-relative">
-                        <input type="text" name="target_ticket_number" id="target_ticket_number" class="form-control" 
+                        <input type="text" name="target_ticket_number" id="target_ticket_number" class="form-control"
                             placeholder="Type ticket number or title..." required autocomplete="off"
                             oninput="document.getElementById('merge-submit-btn').disabled = true; document.getElementById('selected-ticket-preview').innerHTML = '';"
-                            hx-get="{% url 'ticket_search_options' %}?exclude={{ ticket.id }}" 
-                            hx-trigger="input changed delay:150ms, search" 
-                            hx-target="#search-results-container" 
+                            hx-get="{% url 'ticket_search_options' %}?exclude={{ ticket.id }}"
+                            hx-trigger="input changed delay:150ms, search" hx-target="#search-results-container"
                             hx-swap="outerHTML">
                         <div id="search-results-container"></div>
                     </div>
                 </div>
                 <!-- Selected Ticket Preview Container -->
                 <div id="selected-ticket-preview" class="margin-bottom-medium"></div>
-                
+
                 <div class="form-actions modal-form-actions-merge">
-                    <button type="button" class="btn secondary" onclick="document.getElementById('custom-merge-modal').style.display='none'">Cancel</button>
+                    <button type="button" class="btn secondary"
+                        onclick="document.getElementById('custom-merge-modal').style.display='none'">Cancel</button>
                     <button type="submit" id="merge-submit-btn" class="btn primary" disabled>Merge Ticket</button>
                 </div>
             </form>
         </div>
-        </div>
     </div>
+</div>
 </div>
 
 <!-- Custom Transfer Ticket Modal -->
-<div id="custom-transfer-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('custom-transfer-modal').style.display='none'">
+<div id="custom-transfer-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-transfer-modal').style.display='none'">
     <div class="modal-content modal-transfer-ticket">
         <div class="modal-header">
             <h2 class="modal-title-text">Transfer Ticket</h2>
-            <button type="button" class="modal-close" onclick="document.getElementById('custom-transfer-modal').style.display='none'">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-transfer-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
         <div>
@@ -653,19 +738,21 @@
                     <select name="new_assignee" id="new_assignee" class="form-control" required>
                         <option value="">-- Select Agent --</option>
                         {% for supporter in supporters %}
-                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }})</option>
+                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }})
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
-                
+
                 <div class="form-actions modal-form-actions-transfer">
-                    <button type="button" class="btn secondary" onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
+                    <button type="button" class="btn secondary"
+                        onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
                     <button type="submit" class="btn primary">Transfer Ticket</button>
                 </div>
             </form>
         </div>
-        </div>
     </div>
+</div>
 </div>
 
 <script>
@@ -676,7 +763,7 @@
                 title: 'Delete Message',
                 message: 'Are you sure you want to delete this message?',
                 yesText: 'Yes, Delete',
-                onConfirm: function() {
+                onConfirm: function () {
                     const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
                     htmx.ajax('POST', url, {
                         headers: {

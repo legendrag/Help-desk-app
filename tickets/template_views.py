@@ -1,7 +1,9 @@
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.http import HttpResponse
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 import os
+from django.utils import timezone as tz
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -10,7 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse_lazy
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg
-from django.db.models.functions import TruncDate, TruncMonth, TruncWeek, TruncYear
+# TruncDate, TruncMonth, TruncWeek, TruncYear removed because DB-side timezone conversion crashes SQLite with USE_TZ=True
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from core.models import Branch, Category, Department
 from accounts.models import User
@@ -154,35 +156,37 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         )
         branch_items = [{"label": item["branch__name"], "count": item["count"]} for item in branch_items]
 
-        if filters["date_view"] == "year":
-            trunc_fn = TruncYear("created_at")
-        elif filters["date_view"] == "month":
-            trunc_fn = TruncMonth("created_at")
-        elif filters["date_view"] == "week":
-            trunc_fn = TruncWeek("created_at")
-        else:
-            trunc_fn = TruncDate("created_at")
-
-        date_items = list(
-            filtered_queryset.annotate(period=trunc_fn)
-            .values("period")
-            .annotate(count=Count("id"))
-            .order_by("period")
-        )
-        date_items = date_items[-7:]
-        formatted_dates = []
-        for item in date_items:
-            if not item["period"]:
-                label = "--"
-            elif filters["date_view"] == "month":
-                label = item["period"].strftime("%b %Y")
-            elif filters["date_view"] == "week":
-                label = f"Week of {item['period'].strftime('%m/%d/%Y')}"
-            elif filters["date_view"] == "year":
-                label = item["period"].strftime("%Y")
+        def bucket_key(dt, view):
+            local_dt = tz.localtime(dt)
+            if view == "year":
+                return local_dt.strftime("%Y")
+            elif view == "month":
+                return local_dt.strftime("%Y-%m")
+            elif view == "week":
+                monday = local_dt.date() - timedelta(days=local_dt.weekday())
+                return monday.strftime("%Y-%m-%d")
             else:
-                label = item["period"].strftime("%m/%d/%Y")
-            formatted_dates.append({"label": label, "count": item["count"]})
+                return local_dt.strftime("%Y-%m-%d")
+
+        raw_timestamps = filtered_queryset.values_list("created_at", flat=True)
+        bucket_counts = defaultdict(int)
+        for ts in raw_timestamps:
+            if ts:
+                bucket_counts[bucket_key(ts, filters["date_view"])] += 1
+
+        sorted_buckets = sorted(bucket_counts.items())[-7:]
+        formatted_dates = []
+        for key, count in sorted_buckets:
+            view = filters["date_view"]
+            if view == "year":
+                label = key
+            elif view == "month":
+                label = datetime.strptime(key, "%Y-%m").strftime("%b %Y")
+            elif view == "week":
+                label = f"Week of {datetime.strptime(key, '%Y-%m-%d').strftime('%m/%d/%Y')}"
+            else:
+                label = datetime.strptime(key, "%Y-%m-%d").strftime("%m/%d/%Y")
+            formatted_dates.append({"label": label, "count": count})
 
         total_tickets = filtered_queryset.count()
         total_users = User.objects.filter(

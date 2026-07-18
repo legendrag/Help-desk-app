@@ -1,23 +1,36 @@
 {% load static webpush_notifications %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{% block html_class %}{% endblock html_class %}">
 <script>
+    // Reset scroll restoration to manual and force top scroll on load to prevent transition offsets
+    if ('history' in window && 'scrollRestoration' in window) {
+        window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+    window.addEventListener('load', () => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    });
+
     // FOUC prevention: apply saved theme before first paint
-    (function() {
+    (function () {
         var theme = localStorage.getItem('theme');
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
     })();
 </script>
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <meta name="description" content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, viewport-fit=cover">
+    <meta name="description"
+        content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="deskplus, DeskPlus, support, ticketing, customer service">
     <title>{% block title %}DeskPlus{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.31">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.27">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.45">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.29">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.19">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/deskplus-icon.svg' %}" type="image/svg+xml">
@@ -27,37 +40,42 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
-        window.userIsAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+        window.userIsAuthenticated = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
         window.userId = "{{ user.id }}";
-        window.userIsSuperuser = {{ user.is_superuser|yesno:"true,false" }};
+        window.userIsSuperuser = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 
         // Defeat browser bfcache: when the page is restored from
         // back/forward cache, verify the session is still alive.
-        window.addEventListener('pageshow', function(event) {
+        window.addEventListener('pageshow', function (event) {
             if (event.persisted) {
                 fetch('/accounts/auth-check/', {
                     credentials: 'same-origin'
-                }).then(function(r) { return r.json(); })
-                  .then(function(data) {
-                    if (!data.authenticated) {
-                        window.location.replace('/accounts/login/');
-                    }
-                }).catch(function() {});
+                }).then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.authenticated) {
+                            window.location.replace('/accounts/login/');
+                        }
+                    }).catch(function () { });
             }
         });
     </script>
     <script src="{% static 'js/notifications.js' %}?v=1.12" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
+
 <body class="{% block body_class %}{% endblock body_class %}">
     <div style="display:none;">{% csrf_token %}</div>
     <div class="app-shell">
         <header class="topbar">
             <a href="{% url 'tickets_list' %}" class="brand" aria-label="DeskPlus Home">
-                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--light" height="28">
-                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--dark" height="28">
+                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--light"
+                    height="28">
+                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--dark"
+                    height="28">
                 <span class="brand-text">
-                    <span class="brand-desk" style="font-weight: 800; color: #818cf8;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
+                    <span class="brand-desk" style="font-weight: 800; color: #818cf8;">Desk</span><span
+                        class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup
+                        class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
                 </span>
             </a>
 
@@ -68,32 +86,58 @@
                     Hi, {{ user.first_name|default:user.username }}
                 </div>
                 <div class="notification-bell-container">
-                    <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications" data-no-loading>
+                    <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications"
+                        data-no-loading>
                         <span id="notification-count" class="notification-badge">0</span>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
                     </button>
                     <div id="notification-dropdown" class="notification-dropdown">
                         <div class="notification-header">
                             <h4>Notifications</h4>
                             <div class="notification-header-actions">
 
-                                <button type="button" class="notif-action-btn" id="notification-mark-read" title="Mark all as read" data-no-loading>
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <button type="button" class="notif-action-btn" id="notification-mark-read"
+                                    title="Mark all as read" data-no-loading>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
                                 </button>
-                                <button type="button" class="notif-action-btn" id="notification-clear-read" title="Clear read notifications" data-no-loading>
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <button type="button" class="notif-action-btn" id="notification-clear-read"
+                                    title="Clear read notifications" data-no-loading>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div id="notification-list" class="notification-list"></div>
                         <div id="notification-empty" class="notification-empty">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
                             <span>No notifications yet</span>
                         </div>
                     </div>
                 </div>
                 <button type="button" class="menu-btn-universal" onclick="openSidebar()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
                 </button>
                 {% endif %}
             </div>
@@ -114,46 +158,69 @@
         </div>
 
         <!-- Unsaved Changes Discard Confirmation Modal -->
-        <div id="discard-confirm-modal" class="modal-overlay discard-modal-overlay" onclick="if(event.target == this) cancelDiscard()">
+        <div id="discard-confirm-modal" class="modal-overlay discard-modal-overlay"
+            onclick="if(event.target == this) cancelDiscard()">
             <div class="modal-content discard-modal-content">
                 <div class="modal-header discard-modal-header">
                     <h3 class="discard-modal-title">Unsaved Changes</h3>
-                    <button type="button" class="modal-close discard-modal-close" onclick="cancelDiscard()" data-no-loading>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <button type="button" class="modal-close discard-modal-close" onclick="cancelDiscard()"
+                        data-no-loading>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </button>
                 </div>
                 <p class="discard-modal-text">You have unsaved changes. Are you sure you want to discard them?</p>
                 <div class="form-actions discard-modal-actions">
-                    <button type="button" class="btn secondary discard-modal-btn" onclick="cancelDiscard()" data-no-loading>Cancel</button>
-                    <button type="button" class="btn danger discard-modal-btn" onclick="confirmDiscard()" data-no-loading>Yes, Discard</button>
+                    <button type="button" class="btn secondary discard-modal-btn" onclick="cancelDiscard()"
+                        data-no-loading>Cancel</button>
+                    <button type="button" class="btn danger discard-modal-btn" onclick="confirmDiscard()"
+                        data-no-loading>Yes, Discard</button>
                 </div>
             </div>
         </div>
 
         <!-- Global Confirm Action Modal -->
-        <div id="global-confirm-modal" class="modal-overlay discard-modal-overlay" onclick="if(event.target == this) closeGlobalConfirmModal()">
+        <div id="global-confirm-modal" class="modal-overlay discard-modal-overlay"
+            onclick="if(event.target == this) closeGlobalConfirmModal()">
             <div class="modal-content discard-modal-content">
                 <div class="modal-header discard-modal-header">
-                    <h3 class="discard-modal-title" id="global-confirm-title" style="color: var(--danger);">Confirm Action</h3>
-                    <button type="button" class="modal-close discard-modal-close" onclick="closeGlobalConfirmModal()" data-no-loading>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <h3 class="discard-modal-title" id="global-confirm-title" style="color: var(--danger);">Confirm
+                        Action</h3>
+                    <button type="button" class="modal-close discard-modal-close" onclick="closeGlobalConfirmModal()"
+                        data-no-loading>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </button>
                 </div>
                 <p class="discard-modal-text" id="global-confirm-text">Are you sure you want to proceed?</p>
                 <div class="form-actions discard-modal-actions">
-                    <button type="button" class="btn secondary discard-modal-btn" onclick="closeGlobalConfirmModal()" data-no-loading id="global-confirm-cancel-btn">Cancel</button>
-                    <button type="button" class="btn danger discard-modal-btn" data-no-loading id="global-confirm-action-btn">Yes, Delete</button>
+                    <button type="button" class="btn secondary discard-modal-btn" onclick="closeGlobalConfirmModal()"
+                        data-no-loading id="global-confirm-cancel-btn">Cancel</button>
+                    <button type="button" class="btn danger discard-modal-btn" data-no-loading
+                        id="global-confirm-action-btn">Yes, Delete</button>
                 </div>
             </div>
         </div>
 
-        <div id="overlay" class="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open'); this.classList.remove('open');"></div>
+        <div id="overlay" class="sidebar-overlay"
+            onclick="document.getElementById('sidebar').classList.remove('open'); this.classList.remove('open');"></div>
 
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <span class="brand">Menu</span>
-                <button type="button" class="close-btn" onclick="document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open');">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button type="button" class="close-btn"
+                    onclick="document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open');">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
             <nav class="sidebar-nav">
@@ -171,25 +238,41 @@
                 <a href="{% url 'settings' %}">Settings Hub</a>
                 {% endif %}
                 <hr>
-                <a href="#" 
-                   hx-get="{% url 'password_change' %}" 
-                   hx-target="#modal-content" 
-                   hx-trigger="click"
-                   onclick="openModal()" 
-                   class="sidebar-action-btn button">Change Password</a>
-                
+                <a href="#" hx-get="{% url 'password_change' %}" hx-target="#modal-content" hx-trigger="click"
+                    onclick="openModal()" class="sidebar-action-btn button">Change Password</a>
+
                 <form action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
                     <button type="submit" class="sidebar-action-btn danger">Logout</button>
                 </form>
 
-                <div style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <div
+                    style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
                     <span>Theme</span>
-                    <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode" role="switch">
+                    <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleDarkMode()"
+                        aria-label="Toggle dark mode" title="Toggle dark mode" role="switch">
                         <span class="theme-switch-track">
                             <span class="theme-switch-knob">
-                                <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"></circle><rect x="11" y="0" width="2" height="4" rx="1"></rect><rect x="11" y="20" width="2" height="4" rx="1"></rect><rect x="0" y="11" width="4" height="2" rx="1"></rect><rect x="20" y="11" width="4" height="2" rx="1"></rect><rect x="3.3" y="3.3" width="2" height="4" rx="1" transform="rotate(-45 4.3 5.3)"></rect><rect x="18.7" y="16.7" width="2" height="4" rx="1" transform="rotate(-45 19.7 18.7)"></rect><rect x="16.7" y="3.3" width="4" height="2" rx="1" transform="rotate(-45 18.7 4.3)"></rect><rect x="3.3" y="18.7" width="4" height="2" rx="1" transform="rotate(-45 5.3 19.7)"></rect></svg>
-                                <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                                <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+                                    stroke="none">
+                                    <circle cx="12" cy="12" r="5"></circle>
+                                    <rect x="11" y="0" width="2" height="4" rx="1"></rect>
+                                    <rect x="11" y="20" width="2" height="4" rx="1"></rect>
+                                    <rect x="0" y="11" width="4" height="2" rx="1"></rect>
+                                    <rect x="20" y="11" width="4" height="2" rx="1"></rect>
+                                    <rect x="3.3" y="3.3" width="2" height="4" rx="1" transform="rotate(-45 4.3 5.3)">
+                                    </rect>
+                                    <rect x="18.7" y="16.7" width="2" height="4" rx="1"
+                                        transform="rotate(-45 19.7 18.7)"></rect>
+                                    <rect x="16.7" y="3.3" width="4" height="2" rx="1" transform="rotate(-45 18.7 4.3)">
+                                    </rect>
+                                    <rect x="3.3" y="18.7" width="4" height="2" rx="1" transform="rotate(-45 5.3 19.7)">
+                                    </rect>
+                                </svg>
+                                <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+                                    stroke="none">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                                </svg>
                             </span>
                         </span>
                     </button>
@@ -219,11 +302,11 @@
             }, 50);
         }
 
-        document.getElementById('sidebar').addEventListener('keydown', function(e) {
+        document.getElementById('sidebar').addEventListener('keydown', function (e) {
             if (e.key === 'Tab') {
                 const focusableElements = this.querySelectorAll('a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
                 if (focusableElements.length === 0) return;
-                
+
                 const firstElement = focusableElements[0];
                 const lastElement = focusableElements[focusableElements.length - 1];
 
@@ -245,16 +328,16 @@
             const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
             document.documentElement.classList.add('modal-open');
-            
+
             // Add a spinner to the modal content so it doesn't look like an empty box while loading
             const content = document.getElementById('modal-content');
             if (content) {
-                const textWithoutComments = content.innerHTML.replace(/<!--[\s\S]*?-->/g, '').trim();
+                const textWithoutComments = content.innerHTML.replace(new RegExp('<!--[\\\\s\\\\S]*?-->', 'g'), '').trim();
                 if (!textWithoutComments) {
                     content.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; padding: 3rem;"><div class="spinner-large"></div></div>';
                 }
             }
-            
+
             const container = document.getElementById('modal-container');
             if (container) {
                 container.style.display = 'flex';
@@ -266,7 +349,7 @@
         function closeModal(force = false) {
             const container = document.getElementById('modal-container');
             if (!force && container && container.dataset.dirty === 'true') {
-                discardCallback = function() {
+                discardCallback = function () {
                     performCloseModal();
                 };
                 document.getElementById('discard-confirm-modal').style.display = 'flex';
@@ -307,10 +390,10 @@
         function showConfirmModal(options) {
             document.getElementById('global-confirm-title').textContent = options.title || 'Confirm Action';
             document.getElementById('global-confirm-text').textContent = options.message || 'Are you sure you want to proceed?';
-            
+
             const actionBtn = document.getElementById('global-confirm-action-btn');
             actionBtn.textContent = options.yesText || 'Yes, Delete';
-            
+
             if (options.isDanger === false) {
                 actionBtn.className = 'btn primary discard-modal-btn';
                 document.getElementById('global-confirm-title').style.color = 'var(--text-main)';
@@ -330,10 +413,10 @@
             globalConfirmCallback = null;
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const confirmActionBtn = document.getElementById('global-confirm-action-btn');
             if (confirmActionBtn) {
-                confirmActionBtn.addEventListener('click', function() {
+                confirmActionBtn.addEventListener('click', function () {
                     if (globalConfirmCallback) {
                         globalConfirmCallback();
                     }
@@ -343,28 +426,28 @@
         });
 
         // Intercept HTMX confirm requests
-        document.body.addEventListener('htmx:confirm', function(evt) {
+        document.body.addEventListener('htmx:confirm', function (evt) {
             const confirmQuestion = evt.detail.question;
             if (confirmQuestion) {
                 evt.preventDefault();
                 const element = evt.detail.elt;
-                
+
                 // Smart defaults based on context/classes
-                const isDelete = confirmQuestion.toLowerCase().includes('delete') || 
-                                 element.classList.contains('danger') || 
-                                 (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
-                                 (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
-                
+                const isDelete = confirmQuestion.toLowerCase().includes('delete') ||
+                    element.classList.contains('danger') ||
+                    (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
+                    (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
+
                 const title = element.getAttribute('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
                 const yesText = element.getAttribute('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
                 const isDanger = element.getAttribute('data-confirm-type') !== 'primary' && (isDelete || element.classList.contains('danger'));
-                
+
                 showConfirmModal({
                     title: title,
                     message: confirmQuestion,
                     yesText: yesText,
                     isDanger: isDanger,
-                    onConfirm: function() {
+                    onConfirm: function () {
                         evt.detail.issueRequest();
                     }
                 });
@@ -372,10 +455,10 @@
         });
 
         // Listen for input/change inside the modal container to track dirty state
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const container = document.getElementById('modal-container');
             if (container) {
-                const markDirty = function(e) {
+                const markDirty = function (e) {
                     // Only mark dirty for real user interactions, ignore programmatic events (like TomSelect init)
                     if (!e.isTrusted) return;
 
@@ -500,12 +583,12 @@
             `;
             openModal();
         }
-        
+
         // Close modal or sidebar on escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
-                
+
                 const sidebar = document.getElementById('sidebar');
                 const overlay = document.getElementById('overlay');
                 if (sidebar && sidebar.classList.contains('open')) {
@@ -527,7 +610,7 @@
                         }
                     }
                 });
-                
+
                 // Handle action bar dropdown
                 const actionMenu = document.getElementById('action-bar-menu');
                 const actionToggle = document.getElementById('action-bar-toggle');
@@ -547,11 +630,11 @@
         });
 
         // Listen for HX-Trigger: closeModal from server
-        document.body.addEventListener('closeModal', function() {
+        document.body.addEventListener('closeModal', function () {
             closeModal(true); // Force close since the server instructed it
         });
 
-        document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+        document.body.addEventListener('htmx:afterOnLoad', function (evt) {
             // Re-bind items if needed after HTMX swaps
             if (evt.detail.target.id === 'modal-content' && evt.detail.xhr && evt.detail.xhr.status !== 204) {
                 openModal();
@@ -560,24 +643,24 @@
             initPasswordToggles(document);
         });
 
-        document.body.addEventListener('reloadPage', function() {
+        document.body.addEventListener('reloadPage', function () {
             window.location.reload();
         });
 
-        document.body.addEventListener('refreshTickets', function() {
+        document.body.addEventListener('refreshTickets', function () {
             const list = document.getElementById('ticket-list');
             if (list && window.htmx) {
-                window.htmx.ajax('GET', window.location.href, {target: '#ticket-list'});
+                window.htmx.ajax('GET', window.location.href, { target: '#ticket-list' });
             }
         });
 
-        document.addEventListener('htmx:afterRequest', function(evt) {
+        document.addEventListener('htmx:afterRequest', function (evt) {
             const xhr = evt.detail.xhr;
             if (!xhr) return;
-            
+
             const trigger = xhr.getResponseHeader('HX-Trigger') || '';
             const isNoContent = xhr.status === 204;
-            
+
             if (isNoContent || trigger.includes('closeModal')) {
                 closeModal(true);
             }
@@ -595,7 +678,7 @@
         // Initialize Tom Select robustly
         function initializeChoices(targetElement) {
             const selects = Array.from(targetElement.querySelectorAll ? targetElement.querySelectorAll('select:not(.tomselected):not(.no-tomselect)') : []);
-            
+
             if (targetElement.tagName && targetElement.tagName.toLowerCase() === 'select') {
                 if (!targetElement.classList.contains('tomselected')) {
                     selects.push(targetElement);
@@ -622,15 +705,15 @@
                 };
 
                 if (select.classList.contains('icon-select')) {
-                    const renderIcon = function(data, escape) {
+                    const renderIcon = function (data, escape) {
                         const svgInner = iconSvgMap[data.value] || iconSvgMap['document'];
                         if (!data.value) return '<div>' + escape(data.text) + '</div>'; // Handle empty placeholder if any
-                        return '<div>' + 
-                               '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">' + 
-                               svgInner + 
-                               '</svg>' + 
-                               '<span style="vertical-align: middle;">' + escape(data.text) + '</span>' + 
-                               '</div>';
+                        return '<div>' +
+                            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">' +
+                            svgInner +
+                            '</svg>' +
+                            '<span style="vertical-align: middle;">' + escape(data.text) + '</span>' +
+                            '</div>';
                     };
                     options.render = {
                         option: renderIcon,
@@ -641,7 +724,7 @@
                 new TomSelect(select, options);
             });
         }
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             initializeChoices(document);
         });
@@ -659,7 +742,7 @@
         document.body.addEventListener('htmx:load', (evt) => {
             const elt = evt.detail.elt;
             initializeChoices(elt);
-            
+
             // If options inside a select were swapped, re-initialize the parent select
             if (elt && typeof elt.closest === 'function') {
                 const parentSelect = elt.closest('select');
@@ -669,7 +752,7 @@
             }
         });
     </script>
-    
+
     <!-- Global Spinner Overlay for Navigation -->
     <div id="global-spinner-overlay" class="global-spinner-overlay">
         <div class="spinner-large"></div>
@@ -678,4 +761,5 @@
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/loading.js' %}?v=1"></script>
 </body>
+
 </html>
