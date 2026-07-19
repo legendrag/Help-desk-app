@@ -2593,9 +2593,25 @@ a.kb-article-card:hover {
   .modal-content, .session-warning-box {
     width: 90% !important;
     max-width: 550px !important;
-    margin: 20px auto 60px auto !important;
+    margin: auto !important;
+    max-height: 92vh !important;
     border-radius: 12px !important;
-    padding: 1.5rem 1rem !important;
+    padding: 0 !important;
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.25rem 0.75rem 1.25rem !important;
+  }
+
+  .modal-body {
+    padding: 1.25rem !important;
+  }
+
+  .modal-content .form-actions,
+  .modal-content .form-actions--end {
+    padding: 1rem 1.25rem !important;
+    border-bottom-left-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
   }
 
   /* Remove double-boxing for the main wrapper */

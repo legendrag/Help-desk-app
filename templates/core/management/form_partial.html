@@ -10,11 +10,12 @@
       class="management-form">
     {% csrf_token %}
 
-    {% if form.non_field_errors %}
-    <div class="notice notice-error">
-        {{ form.non_field_errors }}
-    </div>
-    {% endif %}
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+        <div class="notice notice-error">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
 
     {% if model_name == "Role" %}
     <div class="perm-card role-presets">
@@ -130,10 +131,6 @@
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit">Save Changes</button>
-            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
-        </div>
     </div>
     
     <script>
@@ -289,10 +286,6 @@
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit">Save Changes</button>
-            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
-        </div>
     </div>
     {% elif model_name == "User" %}
     <div class="form-stack">
@@ -379,10 +372,6 @@
             </div>
             {% endif %}
         </div>
-        <div class="form-actions">
-            <button type="submit">Save Changes</button>
-            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
-        </div>
     </div>
     {% else %}
     <div class="form-stack">
@@ -414,10 +403,12 @@
             {% endfor %}
         </div>
 
-        <div class="form-actions">
-            <button type="submit">Save Changes</button>
-            <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
-        </div>
     </div>
     {% endif %}
+    </div>
+
+    <div class="form-actions">
+        <button type="submit">Save Changes</button>
+        <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
 </form>

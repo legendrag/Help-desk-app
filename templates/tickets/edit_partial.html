@@ -9,65 +9,67 @@
       hx-target="#modal-content"
       enctype="multipart/form-data">
     {% csrf_token %}
-    <div class="form-stack">
-        {% if form.non_field_errors %}
-        <div class="notice notice-error">
-            {{ form.non_field_errors }}
-        </div>
-        {% endif %}
-        <div class="form-group full">
-            <label>{{ form.title.label }}</label>
-            {{ form.title }}
-            {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
-        </div>
+    <div class="modal-body">
+        <div class="form-stack">
+            {% if form.non_field_errors %}
+            <div class="notice notice-error">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+            <div class="form-group full">
+                <label>{{ form.title.label }}</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
+            </div>
 
-        <div class="form-grid">
-            <div class="form-group">
-                <label>{{ form.branch.label }}</label>
-                {{ form.branch }}
-                {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>{{ form.branch.label }}</label>
+                    {{ form.branch }}
+                    {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>{{ form.department.label }}</label>
+                    {{ form.department }}
+                    {% if form.department.errors %}<div class="field-error">{{ form.department.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>{{ form.category.label }}</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>{{ form.priority.label }}</label>
+                    {{ form.priority }}
+                    {% if form.priority.errors %}<div class="field-error">{{ form.priority.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>{{ form.client_name.label }}</label>
+                    {{ form.client_name }}
+                    {% if form.client_name.errors %}<div class="field-error">{{ form.client_name.errors }}</div>{% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>{{ form.client_phone.label }}</label>
+                    {{ form.client_phone }}
+                    {% if form.client_phone.errors %}<div class="field-error">{{ form.client_phone.errors }}</div>{% endif %}
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label>{{ form.department.label }}</label>
-                {{ form.department }}
-                {% if form.department.errors %}<div class="field-error">{{ form.department.errors }}</div>{% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.category.label }}</label>
-                {{ form.category }}
-                {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.priority.label }}</label>
-                {{ form.priority }}
-                {% if form.priority.errors %}<div class="field-error">{{ form.priority.errors }}</div>{% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.client_name.label }}</label>
-                {{ form.client_name }}
-                {% if form.client_name.errors %}<div class="field-error">{{ form.client_name.errors }}</div>{% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.client_phone.label }}</label>
-                {{ form.client_phone }}
-                {% if form.client_phone.errors %}<div class="field-error">{{ form.client_phone.errors }}</div>{% endif %}
-            </div>
-        </div>
 
-        <div class="form-group full form-group--mt">
-            <label>{{ form.description.label }}</label>
-            {{ form.description }}
-            {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
+            <div class="form-group full form-group--mt">
+                <label>{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
+            </div>
         </div>
+    </div>
 
-        <div class="form-actions--end">
-            <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
-            <button type="submit" class="btn primary">Save Changes</button>
-        </div>
+    <div class="form-actions--end">
+        <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn primary">Save Changes</button>
     </div>
 </form>

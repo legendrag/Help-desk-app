@@ -1606,10 +1606,10 @@ tr:hover td {
   -webkit-backdrop-filter: blur(10px);
   z-index: 9999;
   display: none;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 2rem 1rem 6rem 1rem;
-  overflow-y: auto;
+  padding: 1rem;
+  overflow: hidden;
 }
 
 .modal-content {
@@ -1622,8 +1622,11 @@ tr:hover td {
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(0, 0, 0, 0.05);
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
-  overflow: visible !important;
-  padding: 2rem;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(90vh, 750px) !important;
   position: relative;
   margin: auto;
   animation: modalBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1657,9 +1660,40 @@ tr:hover td {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0 !important;
+  padding: 1.5rem 2rem 1rem 2rem !important;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0 !important;
+}
+
+.modal-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 1.5rem 2rem !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modal-content .form-actions,
+.modal-content .form-actions--end {
+  margin: 0 !important;
+  padding: 1.25rem 2rem !important;
+  border-top: 1px solid var(--border) !important;
+  background: inherit !important;
+  display: flex !important;
+  gap: 1rem !important;
+  justify-content: flex-end !important;
+  flex-shrink: 0 !important;
+  border-bottom-left-radius: 20px !important;
+  border-bottom-right-radius: 20px !important;
+}
+
+.modal-content form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 .modal-close {
