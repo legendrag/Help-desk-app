@@ -41,12 +41,10 @@
                 <label>Category</label>
                 <span>{{ ticket.category.name }}</span>
             </div>
-            {% if not user.user_type == 'branch' %}
             <div class="meta-item">
                 <label>Assigned To</label>
                 <span id="ticket-assigned-to">{{ ticket.assigned_to.username|default:"Pending Support Agent" }}</span>
             </div>
-            {% endif %}
             <div class="meta-item">
                 <label>Priority</label>
                 <span
@@ -176,8 +174,7 @@
         const offcanvas = document.getElementById('ticket-offcanvas');
         const overlay = document.getElementById('ticket-offcanvas-overlay');
         if (offcanvas && overlay && !offcanvas.classList.contains('open')) {
-            offcanvas.classList.add('open');
-            overlay.classList.add('open');
+            toggleTicketDetails();
         }
     }, 50);
     {% endif %}

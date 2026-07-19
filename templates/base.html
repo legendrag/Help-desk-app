@@ -82,9 +82,7 @@
             <div class="topbar-controls">
 
                 {% if user.is_authenticated %}
-                <div class="topbar-user-name">
-                    Hi, {{ user.first_name|default:user.username }}
-                </div>
+
                 <div class="notification-bell-container">
                     <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications"
                         data-no-loading>
@@ -213,7 +211,11 @@
 
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
+                {% if user.is_authenticated %}
+                <span class="brand">Hi, {{ user.first_name|default:user.username }}</span>
+                {% else %}
                 <span class="brand">Menu</span>
+                {% endif %}
                 <button type="button" class="close-btn"
                     onclick="document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open');">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -727,6 +729,48 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initializeChoices(document);
+
+            // Automatic Scroll Lock Observer for all popups/modals/overlays
+            const checkScrollLock = () => {
+                let isLocked = false;
+                const overlays = document.querySelectorAll('.modal-overlay, .lightbox-modal, .ticket-offcanvas, #overlay');
+
+                overlays.forEach(el => {
+                    if (el.classList.contains('ticket-offcanvas') || el.id === 'overlay' || el.classList.contains('lightbox-modal')) {
+                        if (el.classList.contains('open')) {
+                            isLocked = true;
+                        }
+                    } else if (el.classList.contains('modal-overlay')) {
+                        const display = el.style.display || window.getComputedStyle(el).display;
+                        if (display === 'flex' || display === 'block') {
+                            isLocked = true;
+                        }
+                    }
+                });
+
+                if (isLocked) {
+                    if (!document.documentElement.classList.contains('modal-open')) {
+                        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+                        document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
+                        document.documentElement.classList.add('modal-open');
+                    }
+                } else {
+                    document.documentElement.classList.remove('modal-open');
+                    document.documentElement.style.removeProperty('--scrollbar-width');
+                }
+            };
+
+            const observer = new MutationObserver(() => {
+                checkScrollLock();
+            });
+
+            observer.observe(document.body, {
+                attributes: true,
+                subtree: true,
+                attributeFilter: ['style', 'class']
+            });
+
+            checkScrollLock();
         });
 
         document.body.addEventListener('htmx:beforeSwap', (evt) => {

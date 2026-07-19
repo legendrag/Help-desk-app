@@ -1608,14 +1608,14 @@ tr:hover td {
   display: none;
   align-items: flex-start;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 2rem 1rem 6rem 1rem;
   overflow-y: auto;
 }
 
 .modal-content {
   background: #ffffff;
   width: 100%;
-  max-width: min(820px, 92vw);
+  max-width: min(650px, 92vw);
   border-radius: 20px;
   /* Layered Box Shadow for depth */
   box-shadow:
@@ -3968,10 +3968,12 @@ body.ticket-detail-page .content {
 html.modal-open {
   overflow: hidden !important;
   padding-right: var(--scrollbar-width, 0px) !important;
+  height: 100% !important;
 }
 
 html.modal-open body {
   overflow: hidden !important;
+  height: 100% !important;
 }
 
 .btn-login {

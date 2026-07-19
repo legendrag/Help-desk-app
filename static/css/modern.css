@@ -2590,11 +2590,10 @@ a.kb-article-card:hover {
     font-size: 16px !important;
   }
 
-  /* 4. Modals and Dialogs Full Width */
   .modal-content, .session-warning-box {
-    width: 95% !important;
-    max-width: 100% !important;
-    margin: 10px auto !important;
+    width: 90% !important;
+    max-width: 550px !important;
+    margin: 20px auto 60px auto !important;
     border-radius: 12px !important;
     padding: 1.5rem 1rem !important;
   }
@@ -4534,13 +4533,15 @@ select.kb-sort-select.no-tomselect:focus {
   }
   
   .tickets-table .pill {
-    padding: 0.25rem 0.75rem !important;
-    font-size: 0.8rem !important;
-    border-radius: 6px !important;
+    padding: 0.4rem 1rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 8px !important;
     display: inline-flex !important;
     align-items: center !important;
-    height: 28px !important;
-    min-height: 28px !important;
+    justify-content: center !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    min-width: 70px !important;
   }
 }
 

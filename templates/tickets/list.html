@@ -46,7 +46,6 @@
                         {% endfor %}
                     </select>
                     
-                    {% if not user.user_type == 'branch' %}
                     <select name="assignment" onchange="this.form.submit()">
                         <option value="all">All Assignments</option>
                         <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>Unassigned</option>
@@ -54,7 +53,6 @@
                         <option value="{{ assignee.id }}"{% if filter_values.assignment|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
                         {% endfor %}
                     </select>
-                    {% endif %}
                 </div>
                 <button type="submit" class="visually-hidden">Apply</button>
             </form>

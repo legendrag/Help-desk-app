@@ -10,7 +10,6 @@
         </span>
     </td>
     <td data-label="Priority"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
-    {% if not user.user_type == 'branch' %}
     <td data-label="Assigned">
         {% if ticket.assigned_to %}
         <span>{{ ticket.assigned_to.username }}</span>
@@ -18,7 +17,6 @@
         <span class="muted">Unassigned</span>
         {% endif %}
     </td>
-    {% endif %}
     <td data-label="Date">
         <div class="date-stack">
             <span>{{ ticket.created_at|date:"m/d/Y" }}</span>
@@ -41,7 +39,9 @@
                 <span class="pill muted">Closed</span>
                 {% endif %}
             {% else %}
-            <span class="pill muted">--</span>
+                {% if user.user_type != 'branch' %}
+                <span class="pill muted">--</span>
+                {% endif %}
             {% endif %}
             <button type="button" class="btn secondary btn--sm btn-details-list" aria-label="Details" title="Details"
                     hx-get="{% url 'ticket_drawer' ticket.id %}"
