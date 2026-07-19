@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.contrib import messages
 
 # We can reuse the built-in Django LoginView
-from .forms import CustomAuthenticationForm
+from .forms import CustomAuthenticationForm, CustomPasswordChangeForm
 
 class UserLoginView(LoginView):
     template_name = "accounts/login.html"
@@ -16,6 +16,7 @@ class UserLogoutView(LogoutView):
 
 class UserPasswordChangeView(PasswordChangeView):
     template_name = "accounts/password_change.html"
+    form_class = CustomPasswordChangeForm
     success_url = reverse_lazy("tickets_list")
     
     def form_valid(self, form):

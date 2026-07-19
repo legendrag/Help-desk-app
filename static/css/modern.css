@@ -905,6 +905,7 @@ ul.errorlist li {
 .timeline-list-scrollable {
   max-height: 430px;
   overflow-y: auto;
+  padding-bottom: 1.5rem;
 }
 .timeline-badge-text, .timeline-time-text {
   font-size: 0.7rem;
@@ -2550,8 +2551,9 @@ a.kb-article-card:hover {
     gap: 0.5rem;
   }
   
-  .date-filter-group input {
+  .date-filter-group input.inline-input {
     width: 10px !important; /* Forces flex to distribute evenly */
+    min-width: 0 !important;
     flex: 1 1 auto !important;
   }
 
@@ -2590,21 +2592,40 @@ a.kb-article-card:hover {
     font-size: 16px !important;
   }
 
+  .modal-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 2rem 1rem !important;
+  }
+
   .modal-content, .session-warning-box {
-    width: 90% !important;
+    width: 100% !important;
     max-width: 550px !important;
-    margin: auto !important;
-    max-height: 92vh !important;
+    margin: 0 auto !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
     border-radius: 12px !important;
     padding: 0 !important;
+  }
+
+  /* Let the form grow naturally — the overlay scrolls */
+  .modal-content form {
+    overflow: visible !important;
+    min-height: unset !important;
   }
 
   .modal-header {
     padding: 1.25rem 1.25rem 0.75rem 1.25rem !important;
   }
 
+  /* modal-body should NOT scroll independently on mobile — overlay scrolls */
   .modal-body {
+    overflow: visible !important;
+    overflow-y: visible !important;
     padding: 1.25rem !important;
+    flex: none !important;
   }
 
   .modal-content .form-actions,
@@ -2691,6 +2712,116 @@ a.kb-article-card:hover {
   .info-main-panel {
     position: relative !important;
     z-index: 400 !important;
+  }
+
+  /* Mobile Agent Leaderboard Card Redesign */
+  .tickets-table .leaderboard-table tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    gap: 0.75rem !important;
+    padding: 1.25rem !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    background: var(--bg-card, #ffffff) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+    align-items: start !important;
+  }
+
+  [data-theme="dark"] .tickets-table .leaderboard-table tbody tr {
+    background: #1e293b !important;
+    border-color: rgba(148, 163, 184, 0.12) !important;
+  }
+
+  .tickets-table .leaderboard-table td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    width: auto !important;
+    min-height: unset !important;
+  }
+
+  /* Header Row: Agent Name spans 2 columns, Grade spans the 3rd */
+  .tickets-table .leaderboard-table td[data-label="Agent"] {
+    grid-column: 1 / 3 !important;
+    grid-row: 1 !important;
+  }
+  
+  .tickets-table .leaderboard-table td[data-label="Agent"] strong {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Agent"]::before {
+    display: none !important; /* Hide redundant "AGENT" label */
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Grade"] {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: center !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Grade"]::before {
+    display: none !important; /* Hide redundant "GRADE" label */
+  }
+  
+  .tickets-table .leaderboard-table td[data-label="Grade"] > div {
+    justify-content: flex-end !important;
+    width: auto !important;
+  }
+
+  /* Stats Row: Resolved, Response Time, Resolution Time */
+  .tickets-table .leaderboard-table td[data-label="Resolved"],
+  .tickets-table .leaderboard-table td[data-label="Response Time"],
+  .tickets-table .leaderboard-table td[data-label="Resolution Time"] {
+    grid-row: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 0.2rem !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Resolved"] {
+    grid-column: 1 / 2 !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    font-size: 0.95rem !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Response Time"] {
+    grid-column: 2 / 3 !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Resolution Time"] {
+    grid-column: 3 / 4 !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Resolved"]::before,
+  .tickets-table .leaderboard-table td[data-label="Response Time"]::before,
+  .tickets-table .leaderboard-table td[data-label="Resolution Time"]::before {
+    content: attr(data-label) !important;
+    display: block !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    flex: none !important;
+    min-width: unset !important;
+    margin: 0 !important;
+  }
+
+  .tickets-table .leaderboard-table td[data-label="Response Time"] span,
+  .tickets-table .leaderboard-table td[data-label="Resolution Time"] span {
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    font-size: 0.95rem !important;
   }
 
 /* Removed action bar mobile overrides since it was moved to the chat header */
@@ -4559,6 +4690,138 @@ select.kb-sort-select.no-tomselect:focus {
     min-height: 34px !important;
     min-width: 70px !important;
   }
+
+  /* ── News List Premium Mobile Cards ── */
+  .news-table td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    width: auto !important;
+    min-height: unset !important;
+  }
+  
+  .news-table td[data-label="Title"]::before,
+  .news-table td[data-label="Status"]::before,
+  .news-table td[data-label="Date"]::before,
+  .news-table td[data-label="Actions"]::before {
+    display: none !important;
+  }
+  
+  .news-table td[data-label="Target"]::before,
+  .news-table td[data-label="Expires"]::before,
+  .news-table td[data-label="Created By"]::before {
+    content: attr(data-label) ": " !important;
+    display: inline-block !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-right: 0.25rem !important;
+    flex: none !important;
+    min-width: unset !important;
+  }
+  
+  .news-table td[data-label="Target"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+  
+  .news-table td[data-label="Status"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: center !important;
+  }
+  
+  .news-table td[data-label="Title"] {
+    grid-column: 1 / 3 !important;
+    grid-row: 2 !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    margin: 0.15rem 0 0.35rem !important;
+  }
+  
+  .news-table td[data-label="Expires"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 3 !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+  
+  .news-table td[data-label="Created By"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 3 !important;
+    justify-self: start !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+  
+  .news-table td[data-label="Date"] {
+    grid-column: 1 / 2 !important;
+    grid-row: 4 !important;
+    align-self: center !important;
+    font-size: 0.8rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 0.25rem !important;
+  }
+  
+  .news-table td[data-label="Actions"] {
+    grid-column: 2 / 3 !important;
+    grid-row: 4 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: auto !important;
+    margin-top: 0.25rem !important;
+  }
+
+  .news-table td[data-label="Actions"] .btn {
+    min-width: 80px !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+  
+  .tickets-new-btn {
+    white-space: nowrap !important;
+  }
+
+  @media (max-width: 768px) {
+    .tickets-new-btn {
+      font-size: 0.8rem !important;
+      padding: 0.45rem 0.9rem !important;
+    }
+    .tickets-title h2 {
+      font-size: 1.1rem !important;
+    }
+  }
+
+  /* Scale down modal actions on small mobile viewports to prevent layout overlap */
+  @media (max-width: 480px) {
+    .modal-content .form-actions,
+    .modal-content .form-actions--end {
+      padding: 0.75rem 1rem !important;
+      gap: 0.5rem !important;
+    }
+    
+    .modal-content .form-actions button,
+    .modal-content .form-actions--end button,
+    .modal-content .form-actions .btn,
+    .modal-content .form-actions--end .btn {
+      padding: 0.4rem 0.75rem !important;
+      font-size: 0.8rem !important;
+      min-width: unset !important;
+    }
+  }
 }
-
-

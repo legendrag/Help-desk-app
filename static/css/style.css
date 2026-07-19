@@ -2665,6 +2665,7 @@ button.success:hover,
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  padding-bottom: 1.5rem;
 }
 
 .timeline-item {

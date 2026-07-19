@@ -35,11 +35,6 @@ def _base_articles_qs(user, status_filter="published"):
     return qs.filter(is_published=True)
 
 
-def _apply_updated_filter(qs, updated):
-    if updated in ("7", "30", "90"):
-        since = timezone.now() - timedelta(days=int(updated))
-        return qs.filter(updated_at__gte=since)
-    return qs
 
 
 def _apply_sort(qs, sort, search_query):
@@ -116,8 +111,6 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         if category_ids:
             qs = qs.filter(category_id__in=category_ids)
 
-        updated = self.request.GET.get("updated", "any")
-        qs = _apply_updated_filter(qs, updated)
 
         sort = self.request.GET.get("sort", "")
         return _apply_sort(qs, sort, search_query)
@@ -131,7 +124,6 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         category_ids = [
             c for c in request.GET.getlist("category") if str(c).isdigit()
         ]
-        updated_filter = request.GET.get("updated", "any")
         sort = request.GET.get("sort", "relevance" if search_query else "newest")
 
         published_filter = _published_filter_for_status(status_filter, can_manage)
@@ -141,7 +133,6 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ctx["search_query"] = search_query
         ctx["current_categories"] = category_ids
         ctx["current_status"] = status_filter
-        ctx["current_updated"] = updated_filter
         ctx["current_sort"] = sort
         ctx["can_manage_kb"] = can_manage
         ctx["can_create_ticket"] = request.user.is_superuser or (
@@ -157,7 +148,6 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ctx["has_active_filters"] = bool(
             search_query
             or category_ids
-            or updated_filter not in ("", "any")
             or (can_manage and status_filter == "draft")
         )
 

@@ -128,21 +128,18 @@ ANNOUNCEMENTS = (
         "title": "Welcome to DeskPlus",
         "content": "The DeskPlus portal is now live. Use your branch account to submit and track tickets.",
         "target_branch": None,
-        "target_department": None,
         "is_active": True,
     },
     {
         "title": "Scheduled Maintenance — North Branch",
         "content": "Network maintenance is planned this Friday from 10 PM to 12 AM. Expect brief connectivity drops.",
         "target_branch": "NORTH",
-        "target_department": None,
         "is_active": True,
     },
     {
         "title": "HR Policy Update",
         "content": "Updated leave request guidelines are effective immediately. See the knowledge base for details.",
         "target_branch": None,
-        "target_department": "Human Resources",
         "is_active": True,
     },
 )

@@ -25,6 +25,12 @@ class NewsCreateView(LoginRequiredMixin, NewsPermissionMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
+        self.object = form.save()
+        if self.request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            resp = HttpResponse(status=204)
+            resp["HX-Trigger"] = "closeModal,reloadPage"
+            return resp
         return super().form_valid(form)
 
 class NewsUpdateView(LoginRequiredMixin, NewsPermissionMixin, UpdateView):
@@ -32,6 +38,15 @@ class NewsUpdateView(LoginRequiredMixin, NewsPermissionMixin, UpdateView):
     form_class = AnnouncementForm
     template_name = "news/form_partial.html"
     success_url = reverse_lazy("news_list")
+
+    def form_valid(self, form):
+        self.object = form.save()
+        if self.request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            resp = HttpResponse(status=204)
+            resp["HX-Trigger"] = "closeModal,reloadPage"
+            return resp
+        return super().form_valid(form)
 
 class NewsDeleteView(LoginRequiredMixin, NewsPermissionMixin, DeleteView):
     model = Announcement
@@ -41,5 +56,8 @@ class NewsDeleteView(LoginRequiredMixin, NewsPermissionMixin, DeleteView):
         self.object = self.get_object()
         self.object.delete()
         if request.headers.get("HX-Request"):
-            return HttpResponse(status=200)
+            from django.http import HttpResponse
+            resp = HttpResponse(status=204)
+            resp["HX-Trigger"] = "closeModal,reloadPage"
+            return resp
         return super().delete(request, *args, **kwargs)

@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <div class="table-wrap tickets-table">
+        <div class="table-wrap tickets-table news-table">
             <table>
                 <thead>
                     <tr>
@@ -46,8 +46,6 @@
                         <td data-label="Target">
                             {% if announcement.target_branch %}
                                 Branch: {{ announcement.target_branch.name }}
-                            {% elif announcement.target_department %}
-                                Dept: {{ announcement.target_department.name }}
                             {% else %}
                                 All
                             {% endif %}

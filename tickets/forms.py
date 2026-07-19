@@ -22,12 +22,12 @@ class TicketCreateForm(forms.ModelForm):
         fields = ["title", "description", "branch", "department", "category", "priority", "client_name", "client_phone"]
         widgets = {
             "priority": forms.HiddenInput(),
-            "title": forms.TextInput(attrs={"minlength": "4", "required": "required"}),
-            "description": forms.Textarea(attrs={"rows": 4, "minlength": "5", "required": "required"}),
-            "client_name": forms.TextInput(attrs={"minlength": "2", "required": "required"}),
+            "title": forms.TextInput(attrs={"minlength": "4", "required": "required", "placeholder": "Brief summary of the issue"}),
+            "description": forms.Textarea(attrs={"rows": 4, "minlength": "5", "required": "required", "placeholder": "Describe the issue in detail..."}),
+            "client_name": forms.TextInput(attrs={"minlength": "2", "required": "required", "placeholder": "Full name"}),
             "client_phone": forms.TextInput(attrs={
                 "type": "tel",
-                "pattern": "^\+?1?\d{9,15}$",
+                "pattern": r"^\+?1?\d{9,15}$",
                 "required": "required",
                 "placeholder": "e.g., +01020481863"
             }),
@@ -40,6 +40,12 @@ class TicketCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} form-check-input".strip()
+            elif not isinstance(field.widget, forms.HiddenInput):
+                field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} form-control".strip()
 
         for field_name in ("branch", "department", "category"):
             field = self.fields.get(field_name)

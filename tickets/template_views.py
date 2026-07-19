@@ -686,11 +686,11 @@ class TicketListView(LoginRequiredMixin, ListView):
             if user.user_type == "branch":
                 announcements = announcements.filter(
                     Q(target_branch__isnull=True) | Q(target_branch=user.branch)
-                ).filter(target_department__isnull=True)
+                )
             elif user.user_type == "support":
                 announcements = announcements.filter(
-                    Q(target_department__isnull=True) | Q(target_department=user.department)
-                ).filter(target_branch__isnull=True)
+                    target_branch__isnull=True
+                )
                 
         context["active_announcements"] = announcements.order_by('-created_at')
 

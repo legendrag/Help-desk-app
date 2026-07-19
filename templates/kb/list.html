@@ -45,43 +45,6 @@
                     </ul>
                 </fieldset>
 
-                <fieldset class="kb-filter-group">
-                    <legend class="kb-filter-label">Last Updated</legend>
-                    <ul class="kb-filter-list">
-                        <li class="kb-filter-item">
-                            <label class="kb-radio-label">
-                                <input type="radio" name="updated" value="any"
-                                    {% if current_updated == 'any' or not current_updated %}checked{% endif %}
-                                    onchange="document.getElementById('kb-filters-form').submit()">
-                                <span>Anytime</span>
-                            </label>
-                        </li>
-                        <li class="kb-filter-item">
-                            <label class="kb-radio-label">
-                                <input type="radio" name="updated" value="7"
-                                    {% if current_updated == '7' %}checked{% endif %}
-                                    onchange="document.getElementById('kb-filters-form').submit()">
-                                <span>Last 7 days</span>
-                            </label>
-                        </li>
-                        <li class="kb-filter-item">
-                            <label class="kb-radio-label">
-                                <input type="radio" name="updated" value="30"
-                                    {% if current_updated == '30' %}checked{% endif %}
-                                    onchange="document.getElementById('kb-filters-form').submit()">
-                                <span>Last 30 days</span>
-                            </label>
-                        </li>
-                        <li class="kb-filter-item">
-                            <label class="kb-radio-label">
-                                <input type="radio" name="updated" value="90"
-                                    {% if current_updated == '90' %}checked{% endif %}
-                                    onchange="document.getElementById('kb-filters-form').submit()">
-                                <span>Last 90 days</span>
-                            </label>
-                        </li>
-                    </ul>
-                </fieldset>
 
                 {% if can_manage_kb %}
                 <fieldset class="kb-filter-group kb-filter-group-divider">
@@ -124,9 +87,6 @@
                 {% for cat_id in current_categories %}
                 <input type="hidden" name="category" value="{{ cat_id }}">
                 {% endfor %}
-                {% if current_updated and current_updated != 'any' %}
-                <input type="hidden" name="updated" value="{{ current_updated }}">
-                {% endif %}
                 {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
             </form>
             {% endif %}
@@ -165,9 +125,6 @@
                 {% for cat_id in current_categories %}
                 <input type="hidden" name="category" value="{{ cat_id }}">
                 {% endfor %}
-                {% if current_updated and current_updated != 'any' %}
-                <input type="hidden" name="updated" value="{{ current_updated }}">
-                {% endif %}
                 {% if current_status and current_status != 'published' %}
                 <input type="hidden" name="status" value="{{ current_status }}">
                 {% endif %}
@@ -226,9 +183,6 @@
                         {% for cat_id in current_categories %}
                         <input type="hidden" name="category" value="{{ cat_id }}">
                         {% endfor %}
-                        {% if current_updated and current_updated != 'any' %}
-                        <input type="hidden" name="updated" value="{{ current_updated }}">
-                        {% endif %}
                         {% if current_status and current_status != 'published' %}
                         <input type="hidden" name="status" value="{{ current_status }}">
                         {% endif %}

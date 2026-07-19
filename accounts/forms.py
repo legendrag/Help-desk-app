@@ -1,7 +1,19 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm, PasswordChangeForm
+
+class CustomPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
 from django.core.cache import cache
 from .models import User
+
+def _style_fields(form):
+    for name, field in form.fields.items():
+        if isinstance(field.widget, forms.CheckboxInput):
+            field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} form-check-input".strip()
+        elif not isinstance(field.widget, forms.HiddenInput):
+            field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} form-control".strip()
 
 class CustomAuthenticationForm(AuthenticationForm):
     error_messages = {
@@ -51,14 +63,27 @@ class CustomUserCreationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _style_fields(self)
         if "username" in self.fields:
             self.fields["username"].help_text = ""
+            self.fields["username"].widget.attrs.setdefault("placeholder", "e.g., john.doe")
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
         for field_name in ("branch", "department"):
             if field_name in self.fields:
                 self.fields[field_name].required = False
+        _placeholders = {
+            "first_name": "First name",
+            "last_name": "Last name",
+            "email": "user@example.com",
+            "phone": "e.g., +01020481863",
+            "password1": "Choose a strong password",
+            "password2": "Repeat the password",
+        }
+        for fname, ph in _placeholders.items():
+            if fname in self.fields:
+                self.fields[fname].widget.attrs.setdefault("placeholder", ph)
 
     def clean_status(self):
         val = self.cleaned_data.get("status")
@@ -143,12 +168,25 @@ class CustomUserChangeForm(UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _style_fields(self)
         if "username" in self.fields:
             self.fields["username"].help_text = ""
-            
+            self.fields["username"].widget.attrs.setdefault("placeholder", "e.g., john.doe")
+
         if "password1" in self.fields:
             from django.contrib.auth.password_validation import password_validators_help_text_html
             self.fields["password1"].help_text = password_validators_help_text_html()
+        _placeholders = {
+            "first_name": "First name",
+            "last_name": "Last name",
+            "email": "user@example.com",
+            "phone": "e.g., +01020481863",
+            "password1": "New password (leave blank to keep current)",
+            "password2": "Repeat the new password",
+        }
+        for fname, ph in _placeholders.items():
+            if fname in self.fields:
+                self.fields[fname].widget.attrs.setdefault("placeholder", ph)
             
         if "password2" in self.fields:
             self.fields["password2"].help_text = "Enter the same password as before, for verification."

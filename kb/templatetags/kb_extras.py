@@ -1,3 +1,4 @@
+import html
 import math
 import re
 
@@ -16,7 +17,9 @@ CATEGORY_ICONS = {
 
 @register.filter
 def read_time(content):
-    text = strip_tags(str(content or ""))
+    # Decode entities and normalize non-breaking spaces
+    cleaned = html.unescape(str(content or "")).replace('\xa0', ' ')
+    text = strip_tags(cleaned)
     words = len(text.split())
     if not words:
         return "1 min read"
@@ -28,7 +31,9 @@ def read_time(content):
 def highlight(text, search):
     if not text:
         return ""
-    safe_text = escape(strip_tags(str(text)))
+    # Decode entities and normalize non-breaking spaces
+    cleaned = html.unescape(str(text)).replace('\xa0', ' ')
+    safe_text = escape(strip_tags(cleaned))
     if not search:
         return mark_safe(safe_text)
 

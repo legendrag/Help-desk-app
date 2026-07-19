@@ -5,55 +5,54 @@
     </button>
 </div>
 
-<form hx-post="{% if form.instance.pk %}{% url 'news_update' form.instance.pk %}{% else %}{% url 'news_create' %}{% endif %}" hx-target="body">
+<form hx-post="{% if form.instance.pk %}{% url 'news_update' form.instance.pk %}{% else %}{% url 'news_create' %}{% endif %}" hx-target="#modal-content">
     {% csrf_token %}
-    <div class="form-stack">
-        {% if form.non_field_errors %}
-        <div class="notice notice-error">
-            {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+    <div class="modal-body">
+        <div class="form-stack">
+            {% if form.non_field_errors %}
+            <div class="notice notice-error">
+                {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-group full">
+                <label>Title</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group full">
+                <label>Content</label>
+                {{ form.content }}
+                {% if form.content.errors %}<div class="field-error">{{ form.content.errors }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group full">
+                <label>Target Branch</label>
+                {{ form.target_branch }}
+                <div class="field-help">Leave blank to show to all branches.</div>
+                {% if form.target_branch.errors %}<div class="field-error">{{ form.target_branch.errors }}</div>{% endif %}
+            </div>
+
+            
+            <div class="form-group full">
+                <label>Expires At (Optional)</label>
+                {{ form.expires_at }}
+                {% if form.expires_at.errors %}<div class="field-error">{{ form.expires_at.errors }}</div>{% endif %}
+            </div>
+            
+            <div class="form-group full form-group-checkbox">
+                {{ form.is_active }}
+                <label for="{{ form.is_active.id_for_label }}" class="checkbox-label">Is Active</label>
+            </div>
         </div>
+    </div>
+
+    <div class="form-actions--end">
+        {% if form.instance.pk %}
+        <button type="button" class="btn danger" hx-post="{% url 'news_delete' form.instance.pk %}" hx-confirm="Are you sure you want to delete this announcement?" hx-target="#modal-content" data-confirm-title="Delete Announcement" data-confirm-button="Yes, Delete" style="margin-right: auto;">Delete</button>
         {% endif %}
-
-        <div class="form-group full">
-            <label>Title</label>
-            {{ form.title }}
-            {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
-        </div>
-
-        <div class="form-group full">
-            <label>Content</label>
-            {{ form.content }}
-            {% if form.content.errors %}<div class="field-error">{{ form.content.errors }}</div>{% endif %}
-        </div>
-        
-        <div class="form-group full">
-            <label>Target Branch</label>
-            {{ form.target_branch }}
-            <div class="field-help">Leave blank to show to all branches.</div>
-            {% if form.target_branch.errors %}<div class="field-error">{{ form.target_branch.errors }}</div>{% endif %}
-        </div>
-        
-        <div class="form-group full">
-            <label>Expires At (Optional)</label>
-            {{ form.expires_at }}
-            {% if form.expires_at.errors %}<div class="field-error">{{ form.expires_at.errors }}</div>{% endif %}
-        </div>
-        
-        <div class="form-group full form-group-checkbox">
-            {{ form.is_active }}
-            <label for="{{ form.is_active.id_for_label }}" class="checkbox-label">Is Active</label>
-        </div>
-
-        <div class="form-actions form-actions-spaced">
-            <div>
-                {% if form.instance.pk %}
-                <button type="button" class="btn danger" hx-post="{% url 'news_delete' form.instance.pk %}" hx-confirm="Are you sure you want to delete this announcement?" hx-target="body" data-confirm-title="Delete Announcement" data-confirm-button="Yes, Delete">Delete</button>
-                {% endif %}
-            </div>
-            <div class="form-actions-buttons">
-                <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn primary">Save</button>
-            </div>
-        </div>
+        <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn primary">{% if form.instance.pk %}Save Changes{% else %}Create Announcement{% endif %}</button>
     </div>
 </form>
