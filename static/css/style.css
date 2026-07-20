@@ -3269,6 +3269,7 @@ body.ticket-detail-page,
 @media (max-width: 768px) {
   .ticket-detail-page .content {
     padding: 0.75rem !important;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px), 1.75rem) !important;
   }
 }
 
@@ -5652,18 +5653,26 @@ tr#load-more-row,
 }
 
 /* --- Ticket Detail Page: Full Height viewport layout with smaller margins and compact messages --- */
+/* svh keeps the locked layout inside the visible viewport (URL bar / gesture nav).
+   dvh alone can sit taller than what's on screen while overflow:hidden blocks scrolling. */
 html.ticket-detail-html {
   overflow: hidden !important;
   height: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
+  height: 100svh !important;
   max-height: 100% !important;
+  max-height: 100vh !important;
   max-height: 100dvh !important;
+  max-height: 100svh !important;
 }
 
 body.ticket-detail-page {
   width: 100% !important;
   height: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
+  height: 100svh !important;
   overflow: hidden !important;
   overscroll-behavior: none !important;
   margin: 0 !important;
@@ -5675,9 +5684,13 @@ body.ticket-detail-page {
 
 body.ticket-detail-page .app-shell {
   height: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
+  height: 100svh !important;
   max-height: 100% !important;
+  max-height: 100vh !important;
   max-height: 100dvh !important;
+  max-height: 100svh !important;
   min-height: 0 !important;
   /* Reset the global min-height: 100vh that was overriding our layout */
   display: flex !important;
@@ -5704,8 +5717,8 @@ body.ticket-detail-page .content {
   min-height: 0 !important;
   max-height: none !important;
   padding: 0.75rem !important;
-  /* Smaller page margins */
-  padding-top: 0.75rem !important;
+  /* Keep composer above gesture bar even when safe-area reports 0 */
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px), 1.25rem) !important;
   /* Override calc(1.5rem + 72px) */
   box-sizing: border-box !important;
   overflow: hidden !important;
@@ -5738,7 +5751,8 @@ body.ticket-detail-page .chat-panel {
   flex-direction: column !important;
   overflow: hidden !important;
   -webkit-overflow-scrolling: touch;
-  padding: 0.75rem 0.75rem calc(0.75rem + max(0.5rem, env(safe-area-inset-bottom, 0px))) 0.75rem !important;
+  /* Bottom inset lives on .content so the panel itself isn't clipped */
+  padding: 0.75rem !important;
   margin: 0 !important;
 }
 
@@ -5812,6 +5826,20 @@ body.ticket-detail-page .merged-ticket-banner,
 body.ticket-detail-page .pending-transfer-banner,
 body.ticket-detail-page .typing-indicator,
 body.ticket-detail-page .chat-form,
-body.ticket-detail-page .chat-no-permission-alert {
+body.ticket-detail-page .chat-no-permission-alert,
+body.ticket-detail-page .chat-actions-closed {
   flex-shrink: 0 !important;
+}
+
+@media (max-width: 768px) {
+  body.ticket-detail-page .content {
+    /* Extra floor for Android gesture nav when env(safe-area-inset-bottom) is 0 */
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px), 1.75rem) !important;
+  }
+
+  body.ticket-detail-page .chat-form,
+  body.ticket-detail-page .chat-actions-closed,
+  body.ticket-detail-page .chat-no-permission-alert {
+    padding-bottom: 0.25rem;
+  }
 }
