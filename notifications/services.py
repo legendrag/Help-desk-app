@@ -87,8 +87,9 @@ def _unique_users(*querysets, extra_users=None):
 def _notify_users(users, title, message, link, notification_type="general", exclude_user=None):
     """Create and broadcast in-app notifications with deduplication."""
     dedup_window = timezone.now() - timedelta(seconds=60)
+    exclude_id = getattr(exclude_user, "id", None) if exclude_user is not None else None
     for user in users:
-        if exclude_user and user.id == exclude_user.id:
+        if exclude_id is not None and user.id == exclude_id:
             continue
         # Deduplication: skip if an identical notification was created in the last 60s
         if notification_type != "message" and InAppNotification.objects.filter(

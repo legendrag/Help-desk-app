@@ -34,44 +34,33 @@ self.addEventListener('push', event => {
         console.warn("[SW] Received push event with no data.");
     }
 
+    const displayTitle = payload.title || payload.head || "DeskPlus Notification";
+    const targetUrl = (payload.data && payload.data.url) ? payload.data.url : "/";
     const options = {
         body: payload.body || payload.message || "You have a new notification",
         icon: payload.icon || "/static/images/deskplus-icon.svg",
         data: payload.data || { url: "/" },
         badge: "/static/images/deskplus-icon.svg",
         vibrate: [100, 50, 100],
+        // Collapse duplicate pushes for the same event into one OS toast
+        tag: `deskplus:${displayTitle}:${targetUrl}`,
+        renotify: false,
     };
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                const targetUrl = payload.data ? payload.data.url : null;
-                
-                // Check if any window is visible and on the exact target URL
-                let isViewingTarget = false;
-                for (let client of windowClients) {
-                    try {
-                        const clientPath = new URL(client.url).pathname;
-                        const normClient = clientPath.replace(/\/+$/, '');
-                        const normTarget = targetUrl ? targetUrl.replace(/\/+$/, '') : null;
-                        
-                        // If the tab is visible (even if not strictly focused) and on the same ticket page
-                        if (client.visibilityState === 'visible' && normTarget && normClient === normTarget) {
-                            isViewingTarget = true;
-                            break;
-                        }
-                    } catch (e) {
-                        console.error("URL parse error in sw:", e);
-                    }
-                }
+                // In-app WebSocket already delivers live updates — suppress OS
+                // toasts whenever any DeskPlus tab/window is visible.
+                const hasVisibleClient = windowClients.some(
+                    client => client.visibilityState === 'visible'
+                );
 
-                // If they are actively looking at the page, don't show the OS notification
-                if (isViewingTarget) {
-                    console.log("[SW] Suppressing push notification because user is viewing target");
+                if (hasVisibleClient) {
+                    console.log("[SW] Suppressing push notification because DeskPlus is visible");
                     return;
                 }
 
-                const displayTitle = payload.title || payload.head || "DeskPlus Notification";
                 console.log("[SW] Showing notification:", displayTitle);
                 return self.registration.showNotification(displayTitle, options);
             })
