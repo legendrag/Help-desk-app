@@ -91,8 +91,8 @@
         </div>
         {% endif %}
 
-        {% if ticket.messages.all %}
         <div class="chat-box" id="chat-box">
+            {% if ticket.messages.all %}
             {% for message in ticket.messages.all %}
             {% if message.is_system_message %}
             <div class="chat-system-message-row" id="message-{{ message.id }}" data-message-id="{{ message.id }}">
@@ -224,10 +224,10 @@
             </article>
             {% endif %}
             {% endfor %}
+            {% else %}
+            <p class="no-messages-text">No messages yet.</p>
+            {% endif %}
         </div>
-        {% else %}
-        <p class="no-messages-text">No messages yet.</p>
-        {% endif %}
 
         {% if ticket.status != 'closed' and ticket.status != 'merged' %}
         <div class="typing-indicator typing-indicator-initially-hidden" id="typing-indicator">
@@ -781,5 +781,5 @@
     window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
     window.currentUsername = "{{ user.username|escapejs }}{% if user.user_type == 'branch' and user.branch_id == ticket.branch_id and ticket.client_name %} - {{ ticket.client_name|escapejs }}{% endif %}";
 </script>
-<script src="{% static 'js/chat.js' %}?v=11" defer></script>
+<script src="{% static 'js/chat.js' %}?v=12" defer></script>
 {% endblock content %}

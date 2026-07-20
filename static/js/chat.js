@@ -284,20 +284,15 @@ function initChat(ticketId) {
         hideTypingForUser(payload.sender);
 
         let chatBox = document.getElementById('chat-box');
-        
-        // If chatBox doesn't exist (e.g., initial empty state), try to find/create container
+
+        // Fallback: create chat-box if missing (should already exist in the template)
         if (!chatBox) {
             const container = document.querySelector('.chat-panel');
             if (container) {
-                // Remove the "No messages yet" placeholder if it exists
-                const placeholder = container.querySelector('.no-messages-text');
-                if (placeholder) placeholder.remove();
-
                 chatBox = document.createElement('div');
                 chatBox.id = 'chat-box';
                 chatBox.className = 'chat-box';
-                
-                // Insert before the typing indicator, or chat-form as fallback
+
                 const indicator = container.querySelector('#typing-indicator');
                 const form = container.querySelector('.chat-form');
                 if (indicator) {
@@ -311,6 +306,10 @@ function initChat(ticketId) {
         }
 
         if (!chatBox) return;
+
+        // Remove empty-state placeholder before appending the first message
+        const placeholder = chatBox.querySelector('.no-messages-text');
+        if (placeholder) placeholder.remove();
 
         if (document.getElementById(`message-${payload.id}`)) return;
 
@@ -482,13 +481,10 @@ function _findMatchingPendingMessage(confirmedText) {
 function appendOptimisticMessage(messageText, replyData) {
     let chatBox = document.getElementById('chat-box');
 
-    // Create chat-box if it doesn't exist (empty chat state)
+    // Fallback: create chat-box if missing (should already exist in the template)
     if (!chatBox) {
         const container = document.querySelector('.chat-panel');
         if (container) {
-            const placeholder = container.querySelector('.no-messages-text');
-            if (placeholder) placeholder.remove();
-
             chatBox = document.createElement('div');
             chatBox.id = 'chat-box';
             chatBox.className = 'chat-box';
@@ -506,6 +502,10 @@ function appendOptimisticMessage(messageText, replyData) {
     }
 
     if (!chatBox) return null;
+
+    // Remove empty-state placeholder before appending the first message
+    const emptyPlaceholder = chatBox.querySelector('.no-messages-text');
+    if (emptyPlaceholder) emptyPlaceholder.remove();
 
     const pendingKey = 'pending-' + Date.now();
     const now = new Date();

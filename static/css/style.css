@@ -2829,7 +2829,8 @@ button.success:hover,
 }
 
 @media (max-width: 768px) {
-  .chat-box {
+  /* Scoped away from ticket-detail (uses full-height flex stack) */
+  body:not(.ticket-detail-page) .chat-box {
     min-height: 500px;
     max-height: 70vh;
   }
@@ -3572,7 +3573,8 @@ body {
 
 @media (max-width: 768px) {
   .ticket-detail-page .chat-item {
-    width: 100%;
+    max-width: 88%;
+    width: fit-content;
   }
 
   .ticket-detail-page .chat-row {
@@ -3587,8 +3589,8 @@ body {
   }
 
   .ticket-detail-page .chat-bubble {
-    width: auto;
-    max-width: min(100%, 88vw);
+    width: fit-content;
+    max-width: 100%;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
@@ -3808,10 +3810,6 @@ body {
 }
 
 @media (max-width: 768px) {
-  .ticket-detail-page .chat-bubble {
-    max-width: calc(100vw - 4rem) !important;
-  }
-
   .ticket-detail-page .chat-bubble img,
   .ticket-detail-page .chat-image-preview {
     max-width: calc(100vw - 4.5rem) !important;
@@ -5715,6 +5713,10 @@ body.ticket-detail-page .content {
   flex-direction: column !important;
 }
 
+body.ticket-detail-page .kb-back-navigation {
+  flex-shrink: 0 !important;
+}
+
 body.ticket-detail-page .ticket-detail-grid {
   flex: 1 1 0% !important;
   min-height: 0 !important;
@@ -5734,8 +5736,7 @@ body.ticket-detail-page .chat-panel {
   max-height: none !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
+  overflow: hidden !important;
   -webkit-overflow-scrolling: touch;
   padding: 0.75rem 0.75rem calc(0.75rem + max(0.5rem, env(safe-area-inset-bottom, 0px))) 0.75rem !important;
   margin: 0 !important;
@@ -5747,14 +5748,27 @@ body.ticket-detail-page .chat-panel>h3 {
 }
 
 body.ticket-detail-page .chat-box {
+  height: auto !important;
+  /* kills height: 40vh */
   flex: 1 1 0% !important;
   min-height: 0 !important;
+  /* kills 400px / 500px mins */
   max-height: none !important;
   overflow-y: auto !important;
   padding: 0.75rem !important;
   /* Smaller scrollbox padding */
   gap: 0.5rem !important;
   /* Smaller gaps between messages */
+}
+
+body.ticket-detail-page .chat-box .no-messages-text {
+  margin: auto;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 2rem 1rem;
 }
 
 body.ticket-detail-page .chat-bubble {
