@@ -62,19 +62,24 @@ class NotificationsConfig(AppConfig):
                         subscription.delete()
                         return
 
-                    # Keep a single active push subscription per user so stale FCM
-                    # endpoints cannot produce duplicate OS toasts.
+                    # Allow multiple devices (browser + PWA + phone). Only remove
+                    # other PushInformation rows that share this exact endpoint.
                     if user.is_authenticated:
-                        stale = (
-                            PushInformation.objects.filter(user=user)
-                            .exclude(id=push_info.id)
-                            .select_related("subscription")
-                        )
-                        for old in stale:
-                            old_sub = old.subscription
-                            old.delete()
-                            if old_sub and not PushInformation.objects.filter(subscription=old_sub).exists():
-                                old_sub.delete()
+                        endpoint = getattr(subscription, "endpoint", None)
+                        if endpoint:
+                            stale = (
+                                PushInformation.objects.filter(
+                                    user=user,
+                                    subscription__endpoint=endpoint,
+                                )
+                                .exclude(id=push_info.id)
+                                .select_related("subscription")
+                            )
+                            for old in stale:
+                                old_sub = old.subscription
+                                old.delete()
+                                if old_sub and not PushInformation.objects.filter(subscription=old_sub).exists():
+                                    old_sub.delete()
 
             class SubscriptionForm(forms.ModelForm):
                 class Meta:

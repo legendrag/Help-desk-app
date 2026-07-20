@@ -50,14 +50,22 @@ self.addEventListener('push', event => {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // In-app WebSocket already delivers live updates — suppress OS
-                // toasts whenever any DeskPlus tab/window is visible.
-                const hasVisibleClient = windowClients.some(
-                    client => client.visibilityState === 'visible'
-                );
+                // Suppress OS toast only when the recipient is visibly in that ticket chat.
+                // Everywhere else (list, other ticket, background, other app) → show toast.
+                const normTarget = String(targetUrl || "/").replace(/\/+$/, '') || "/";
+                const isInThatChat = windowClients.some(client => {
+                    if (client.visibilityState !== 'visible') return false;
+                    try {
+                        const path = new URL(client.url).pathname.replace(/\/+$/, '') || "/";
+                        return path === normTarget;
+                    } catch (e) {
+                        console.error("URL parse error in sw:", e);
+                        return false;
+                    }
+                });
 
-                if (hasVisibleClient) {
-                    console.log("[SW] Suppressing push notification because DeskPlus is visible");
+                if (isInThatChat) {
+                    console.log("[SW] Suppressing push notification because user is in that chat");
                     return;
                 }
 
