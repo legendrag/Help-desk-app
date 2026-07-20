@@ -551,6 +551,15 @@
   color: #f1f5f9;
 }
 
+[data-theme="dark"] .notification-push-prompt {
+  background: #0f172a;
+  border-top-color: rgba(148, 163, 184, 0.12);
+}
+
+[data-theme="dark"] .notification-push-prompt-text {
+  color: #94a3b8;
+}
+
 [data-theme="dark"] .notif-action-btn {
   background: transparent;
   border: none;

@@ -374,6 +374,33 @@ body::before {
   pointer-events: auto;
 }
 
+.notification-push-prompt {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.notification-push-prompt.is-visible {
+  display: flex;
+}
+
+.notification-push-prompt-text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted, #64748b);
+}
+
+.notification-push-enable-btn {
+  align-self: flex-start;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  min-height: 32px;
+}
+
 @media (max-width: 768px) {
   .notification-dropdown {
     position: fixed;

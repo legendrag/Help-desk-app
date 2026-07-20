@@ -433,6 +433,50 @@ function initNotifications() {
     };
 }
 
+// ── Push permission prompt (visible in-app, not only native browser dialog) ──
+function updatePushPermissionPrompt() {
+    const prompt = document.getElementById("notification-push-prompt");
+    const text = document.getElementById("notification-push-prompt-text");
+    const enableBtn = document.getElementById("notification-push-enable");
+    if (!prompt || !text || !enableBtn) return;
+
+    if (!window.Notification) {
+        prompt.hidden = true;
+        prompt.classList.remove("is-visible");
+        return;
+    }
+
+    const permission = Notification.permission;
+    if (permission === "granted") {
+        prompt.hidden = true;
+        prompt.classList.remove("is-visible");
+        return;
+    }
+
+    prompt.hidden = false;
+    prompt.classList.add("is-visible");
+    if (permission === "denied") {
+        text.textContent = "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
+        enableBtn.style.display = "none";
+    } else {
+        text.textContent = "Enable browser notifications to get alerts when DeskPlus is in the background.";
+        enableBtn.style.display = "";
+    }
+}
+
+async function requestPushPermissionFromUi() {
+    if (!window.Notification) return;
+    try {
+        const perm = await Notification.requestPermission();
+        updatePushPermissionPrompt();
+        if (perm === "granted") {
+            initWebPush();
+        }
+    } catch (err) {
+        console.error("[WebPush] Permission request failed:", err);
+    }
+}
+
 // ── Init UI ──
 function initNotificationUI() {
     const button = document.getElementById("notification-btn");
@@ -440,21 +484,27 @@ function initNotificationUI() {
     const markReadBtn = document.getElementById("notification-mark-read");
     const clearReadBtn = document.getElementById("notification-clear-read");
     const testPushBtn = document.getElementById("notification-test-push");
+    const pushEnableBtn = document.getElementById("notification-push-enable");
 
     if (!button || !dropdown) return;
 
     button.addEventListener("click", async (event) => {
         event.stopPropagation();
         toggleDropdown();
-        
-        // Ensure we ask for permissions upon user gesture if they haven't been asked yet
+        updatePushPermissionPrompt();
+
+        // Ask for permissions on bell click if still undecided
         if (window.Notification && Notification.permission === "default") {
-            const perm = await Notification.requestPermission();
-            if (perm === "granted") {
-                initWebPush();
-            }
+            await requestPushPermissionFromUi();
         }
     });
+
+    if (pushEnableBtn) {
+        pushEnableBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            await requestPushPermissionFromUi();
+        });
+    }
 
     if (testPushBtn) {
         testPushBtn.addEventListener("click", async (e) => {
@@ -515,8 +565,9 @@ function initNotificationUI() {
     });
 
     fetchNotifications();
+    updatePushPermissionPrompt();
 
-    // Initialize Web Push subscription
+    // Initialize Web Push subscription (only if already granted)
     initWebPush();
 
     // Refresh relative timestamps every minute
