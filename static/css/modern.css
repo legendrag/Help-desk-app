@@ -905,7 +905,8 @@ ul.errorlist li {
 .timeline-list-scrollable {
   max-height: 430px;
   overflow-y: auto;
-  padding-bottom: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
 }
 .timeline-badge-text, .timeline-time-text {
   font-size: 0.7rem;
@@ -932,12 +933,14 @@ ul.errorlist li {
 .modal-description-text-close {
   color: var(--text-muted);
   margin-top: 0;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
+  line-height: 1.5;
 }
 .modal-description-text-merge {
   color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 .modal-actions-flex {
   display: flex;
@@ -1360,6 +1363,7 @@ td.mgmt-empty-cell {
   color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 .modal-transfer-ticket {
   max-width: 480px;
@@ -2610,6 +2614,10 @@ a.kb-article-card:hover {
     padding: 0 !important;
   }
 
+  .modal-content.discard-modal-content {
+    padding: 1.25rem !important;
+  }
+
   /* Let the form grow naturally — the overlay scrolls */
   .modal-content form {
     overflow: visible !important;
@@ -2626,6 +2634,17 @@ a.kb-article-card:hover {
     overflow-y: visible !important;
     padding: 1.25rem !important;
     flex: none !important;
+  }
+
+  /* Fallback padding for legacy unpadded modal wrappers */
+  .modal-content > div:not(.modal-header):not(.modal-body):not(.form-actions):not(.form-actions--end):not(.discard-modal-header) {
+    padding: 1.25rem !important;
+  }
+
+  .modal-content > div:not(.modal-header):not(.modal-body) > .form-actions,
+  .modal-content > div:not(.modal-header):not(.modal-body) .form-actions {
+    margin-left: -1.25rem !important;
+    margin-right: -1.25rem !important;
   }
 
   .modal-content .form-actions,

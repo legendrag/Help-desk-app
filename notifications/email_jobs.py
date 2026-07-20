@@ -168,7 +168,7 @@ def send_ticket_update_email(
             return False
 
     if status_changed and new_status:
-        status_label = _format_status_label(new_status) or new_status
+        status_label = format_status_label(new_status) or new_status
     else:
         status_label = format_status_label(ticket.status) or ticket.status
 
@@ -207,7 +207,7 @@ def send_ticket_update_email(
         read_emails = set(
             InAppNotification.objects.filter(
                 recipient__email__in=recipients,
-                link=f"/tickets/{ticket.id}",
+                link__in=[f"/tickets/{ticket.id}", f"/tickets/{ticket.id}/"],
                 notification_type="message",
                 is_read=True,
                 created_at__gte=timezone.now() - timedelta(minutes=5),
@@ -220,33 +220,49 @@ def send_ticket_update_email(
     return send_with_retries(subject, body, recipients)
 
 
-def send_ticket_transferred_email(ticket_id: int, actor_id: int, new_assignee_id: int) -> bool:
-    ticket = Ticket.objects.select_related("created_by", "department").filter(id=ticket_id).first()
+def send_transfer_event_email(ticket_id: int, actor_id: int, recipient_id: int, event: str) -> bool:
+    """Email the transfer counterparty for request / accept / deny events."""
+    ticket = Ticket.objects.select_related("created_by", "department", "branch").filter(id=ticket_id).first()
     if not ticket:
-        logger.warning("send_ticket_transferred_email: ticket %s not found", ticket_id)
+        logger.warning("send_transfer_event_email: ticket %s not found", ticket_id)
         return False
 
     actor = User.objects.filter(id=actor_id).first()
-    new_assignee = User.objects.filter(id=new_assignee_id).first()
-    if not actor or not new_assignee:
-        logger.warning("send_ticket_transferred_email: actor or new_assignee not found")
+    recipient_user = User.objects.filter(id=recipient_id).first()
+    if not actor or not recipient_user:
+        logger.warning("send_transfer_event_email: actor or recipient not found")
         return False
 
     if not is_email_event_enabled("notify_ticket_update"):
         return False
 
-    recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
-    if not recipients:
+    if not recipient_user.email:
         return False
 
     status_label = format_status_label(ticket.status) or ticket.status
-    subject = f"[DeskPlus] Ticket Transferred {ticket.ticket_number}"
+    event_copy = {
+        "requested": (
+            f"[DeskPlus] Transfer Requested {ticket.ticket_number}",
+            f"{actor.username} has requested to transfer this ticket to you.\n\n",
+        ),
+        "accepted": (
+            f"[DeskPlus] Transfer Accepted {ticket.ticket_number}",
+            f"{actor.username} accepted the ticket transfer.\n\n",
+        ),
+        "denied": (
+            f"[DeskPlus] Transfer Denied {ticket.ticket_number}",
+            f"{actor.username} denied the ticket transfer.\n\n",
+        ),
+    }
+    if event not in event_copy:
+        logger.warning("send_transfer_event_email: unknown event %s", event)
+        return False
+
+    subject, header = event_copy[event]
     body = (
-        "Ticket transfer update.\n\n"
-        f"Transferred By: {actor.username}\n"
-        f"New Assignee: {new_assignee.username}\n"
-        f"Status: {status_label}\n\n"
-        f"{_format_ticket_summary(ticket)}\n"
-        f"{_format_ticket_details(ticket)}"
+        header
+        + f"Status: {status_label}\n\n"
+        + f"{_format_ticket_summary(ticket)}\n"
+        + f"{_format_ticket_details(ticket)}"
     )
-    return send_with_retries(subject, body, recipients)
+    return send_with_retries(subject, body, [recipient_user.email])

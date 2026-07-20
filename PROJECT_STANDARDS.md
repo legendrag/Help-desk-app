@@ -134,28 +134,31 @@ Handled by `DashboardView`. Access is role-gated (`can_access_dashboard`).
 
 ### 7. Notification System
 
-A two-channel notification system powered by Django Channels and an async email queue.
+A multi-channel notification system powered by Django Channels, Web Push (service worker), and an async email queue.
 
 #### In-App Notifications
-- **Model**: `InAppNotification` stores `title`, `message`, `link`, `is_read`, and `created_at` per recipient user.
+- **Model**: `InAppNotification` stores `title`, `message`, `link`, `notification_type`, `is_read`, and `created_at` per recipient user.
 - **WebSocket Push** (`notifications/consumers.py`): Each logged-in user is connected to their own `user_{id}_notifications` WebSocket group. New notifications are pushed instantly without polling.
-- **Browser Push Notifications**: The frontend (`notifications.js`) requests browser `Notification` permission on load and fires a native OS notification for every incoming WebSocket message.
-- **Notification Bell UI**: A bell icon in the topbar shows an unread count badge. Clicking it opens a dropdown panel that:
-  1. Fetches the latest 20 notifications via the REST API (`/notifications/api/?limit=20`).
-  2. Calls `mark-all-read` immediately, updating both the badge and DOM state.
-- **Auto-Reconnect**: The WebSocket client reconnects automatically after 3 seconds on disconnect.
+- **Browser / OS Push**: Delivered via Web Push through the service worker (`sw.js`) when the user has granted notification permission and subscribed. The in-app WebSocket path does not call the native `Notification` API directly.
+- **Notification Bell UI**: A bell icon in the topbar shows an unread count badge. Clicking it opens a dropdown panel that fetches the latest 20 notifications via the REST API (`/notifications/api/?limit=20`). Mark-all-read and clear-read are separate header actions (opening the bell does not mark all as read).
+- **Auto-Reconnect**: The WebSocket client reconnects automatically after 3 seconds on disconnect, except on auth failure (close code `4401`).
+- **On-page suppression**: If the user is already viewing the related ticket page, the live in-app toast is suppressed and the notification is marked read; the service worker similarly suppresses the OS toast when a visible tab is on that ticket URL.
 
 #### Email Notifications (Async Queue)
-All email sends are enqueued into a background job queue (`email_queue.py`) rather than sent synchronously, so they never block the HTTP request cycle. Three email jobs exist:
+All email sends are enqueued into a background job queue (`email_queue.py`) rather than sent synchronously, so they never block the HTTP request cycle. Email jobs include:
 - `send_new_ticket_email`: Fired when a ticket is created.
 - `send_ticket_picked_email`: Fired when a support agent picks a ticket.
-- `send_ticket_update_email`: Fired on status changes and message replies.
+- `send_ticket_update_email`: Fired on status changes and message replies (message emails are delayed 120 seconds to reduce noise if the recipient already read the in-app notification).
+- `send_transfer_event_email`: Fired on transfer request / accept / deny, to the transfer counterparty.
+
+Email event flags on the active `EmailSetting` gate email only; they do not disable in-app or Web Push notifications.
 
 #### Notification Recipient Logic
-- **New Ticket**: Notifies all branch users of the ticket's branch + all support users of the ticket's department + all admins.
+- **New Ticket**: Notifies all branch users of the ticket's branch + all support users of the ticket's department + all admins, excluding the ticket creator.
 - **Ticket Picked**: Same audience as above, excluding the agent who performed the action.
-- **Status Updated**: Same audience, excluding the user who triggered the change.
-- **Message Reply**: Notifies the "other party" (if branch user replies, notify assigned agent; if agent replies, notify ticket creator) + all admins.
+- **Status Updated**: Same audience, excluding the user who triggered the change (only when the status actually changes).
+- **Message Reply**: Notifies creator + assignee + admins when assigned; for unassigned tickets, first message also notifies branch/department users. The actor is always excluded.
+- **Transfer request / accept / deny**: Notifies only the transfer counterparty (and emails that same user).
 
 ---
 

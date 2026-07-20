@@ -1030,15 +1030,15 @@ def update_ticket_status(request, ticket_id):
                             event_type=TicketStatusHistory.EventType.STATUS_CHANGE,
                             changed_by=request.user,
                         )
-                django_messages.success(request, f"Status updated to {ticket.get_status_display()}.")
-                notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
+                    django_messages.success(request, f"Status updated to {ticket.get_status_display()}.")
+                    notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
 
-                # Broadcast status change via WebSocket
-                _broadcast_ticket_update(ticket, "ticket_status_changed", {
-                    "changed_by": request.user.username,
-                    "new_status": new_status,
-                    "new_status_display": ticket.get_status_display(),
-                })
+                    # Broadcast status change via WebSocket
+                    _broadcast_ticket_update(ticket, "ticket_status_changed", {
+                        "changed_by": request.user.username,
+                        "new_status": new_status,
+                        "new_status_display": ticket.get_status_display(),
+                    })
                 
                 if request.headers.get('HX-Request'):
                     from django.http import HttpResponse

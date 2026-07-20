@@ -418,7 +418,12 @@ function initNotifications() {
         addNotificationToList(data, true);
     };
 
-    socket.onclose = function() {
+    socket.onclose = function(event) {
+        // Do not reconnect on auth failure (logged out / invalid session)
+        if (event.code === 4401) {
+            console.log("[Notifications WS] Closed: unauthenticated. Not reconnecting.");
+            return;
+        }
         console.log("[Notifications WS] Closed. Reconnecting in 3s...");
         setTimeout(initNotifications, 3000);
     };
@@ -623,6 +628,8 @@ function initWebPush() {
         }
     }).catch((err) => {
         console.error("[WebPush] Service Worker registration failed:", err);
+    }).finally(() => {
+        isWebPushInitializing = false;
     });
 }
 

@@ -18,7 +18,7 @@ from .email_jobs import (
     send_new_ticket_email,
     send_ticket_picked_email,
     send_ticket_update_email,
-    send_ticket_transferred_email,
+    send_transfer_event_email,
 )
 from .email_queue import enqueue_email
 
@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 def _broadcast_notification(notification: InAppNotification):
     channel_layer = get_channel_layer()
+    if not channel_layer:
+        logger.warning("No channel layer configured; skipping notification broadcast.")
+        return
     group_name = f"user_{notification.recipient.id}_notifications"
     payload = {
         "id": notification.id,
@@ -37,13 +40,21 @@ def _broadcast_notification(notification: InAppNotification):
         "is_read": notification.is_read,
         "created_at": notification.created_at.isoformat() if notification.created_at else None,
     }
-    async_to_sync(channel_layer.group_send)(
-        group_name,
-        {
-            "type": "notification.event",
-            "payload": payload,
-        }
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "notification.event",
+                "payload": payload,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Failed to broadcast notification %s to user %s: %s",
+            notification.id,
+            notification.recipient_id,
+            exc,
+        )
 
 
 
@@ -130,7 +141,14 @@ def notify_new_ticket(ticket: Ticket):
 
     title = f"New Ticket #{ticket.ticket_number}"
     message = f"A new ticket has been created for {ticket.department.name}: {ticket.title}"
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="new_ticket")
+    _notify_users(
+        users,
+        title,
+        message,
+        f"/tickets/{ticket.id}/",
+        notification_type="new_ticket",
+        exclude_user=ticket.created_by,
+    )
 
     # Email (async background queue)
     _enqueue(send_new_ticket_email, ticket.id)
@@ -145,7 +163,7 @@ def notify_ticket_picked(ticket: Ticket, actor: User):
     status_label = format_status_label(ticket.status) or ticket.status
     title = f"Ticket Picked: #{ticket.ticket_number}"
     message = f"{actor.username} picked this ticket. Status is now {status_label}."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="ticket_picked", exclude_user=actor)
+    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="ticket_picked", exclude_user=actor)
 
     # Email (async background queue)
     _enqueue(send_ticket_picked_email, ticket.id, actor.id)
@@ -200,7 +218,7 @@ def notify_ticket_update(
     if not users:
         return
 
-    _notify_users(users, title, message_text, f"/tickets/{ticket.id}", notification_type=n_type, exclude_user=actor)
+    _notify_users(users, title, message_text, f"/tickets/{ticket.id}/", notification_type=n_type, exclude_user=actor)
 
     _enqueue(
         send_ticket_update_email,
@@ -213,34 +231,25 @@ def notify_ticket_update(
     )
 
 
-def notify_ticket_transferred(ticket: Ticket, actor: User, new_assignee: User):
-    branch_users = get_branch_users(ticket)
-    dept_users = get_department_users(ticket)
-    admin_users = list(_get_admin_users())
-    users = _unique_users(branch_users, dept_users, extra_users=admin_users + [new_assignee])
-
-    title = f"Ticket Transferred: #{ticket.ticket_number}"
-    message = f"{actor.username} transferred this ticket to {new_assignee.username}."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="transfer", exclude_user=actor)
-
-    # Email (async background queue)
-    _enqueue(send_ticket_transferred_email, ticket.id, actor.id, new_assignee.id)
-
-
 def notify_transfer_requested(ticket: Ticket, actor: User, new_assignee: User):
     users = _unique_users([new_assignee])
     title = f"Transfer Requested: #{ticket.ticket_number}"
     message = f"{actor.username} has requested to transfer this ticket to you."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="transfer", exclude_user=actor)
+    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _enqueue(send_transfer_event_email, ticket.id, actor.id, new_assignee.id, "requested")
+
 
 def notify_transfer_accepted(ticket: Ticket, actor: User, requester: User):
     users = _unique_users([requester])
     title = f"Transfer Accepted: #{ticket.ticket_number}"
     message = f"{actor.username} accepted the ticket transfer."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="transfer", exclude_user=actor)
+    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "accepted")
+
 
 def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
     users = _unique_users([requester])
     title = f"Transfer Denied: #{ticket.ticket_number}"
     message = f"{actor.username} denied the ticket transfer."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}", notification_type="transfer", exclude_user=actor)
+    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "denied")

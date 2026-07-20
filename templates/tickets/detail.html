@@ -338,14 +338,6 @@
                         </div>
                         {% endif %}
                     </div>
-                    {% else %}
-                    {# ── Closed state ── #}
-                    <div class="action-bar">
-                        <span class="action-bar-closed-badge">Ticket is Closed</span>
-                        {% if user.is_superuser or user.user_type == 'support' %}
-                        <button type="submit" class="action-bar-reopen" form="reopen-ticket-form">Reopen</button>
-                        {% endif %}
-                    </div>
                     {% endif %}
                 </div>
 
@@ -376,6 +368,16 @@
         {% else %}
         <div class="chat-no-permission-alert">
             You do not have permission to send messages.
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if ticket.status == 'closed' %}
+        {% if user.is_superuser or user.user_type == 'support' %}
+        <div class="chat-actions chat-actions-closed">
+            <div class="action-bar">
+                <button type="submit" class="action-bar-reopen" form="reopen-ticket-form">Reopen</button>
+            </div>
         </div>
         {% endif %}
         {% endif %}
@@ -652,19 +654,19 @@
                 </svg>
             </button>
         </div>
-        <div>
-            <p class="modal-description-text-close">Are you sure you want to close this ticket? You will not be able to
-                send new messages.</p>
-            <form action="{% url 'update_status' ticket.id %}" method="post">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="closed">
-                <div class="form-actions modal-actions-flex">
-                    <button type="button" class="btn secondary"
-                        onclick="document.getElementById('custom-close-modal').style.display='none'">Cancel</button>
-                    <button type="submit" class="btn danger">Yes, Close</button>
-                </div>
-            </form>
-        </div>
+        <form action="{% url 'update_status' ticket.id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="closed">
+            <div class="modal-body">
+                <p class="modal-description-text-close">Are you sure you want to close this ticket? You will not be able to
+                    send new messages.</p>
+            </div>
+            <div class="form-actions modal-actions-flex">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-close-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn danger">Yes, Close</button>
+            </div>
+        </form>
     </div>
 </div>
 </div>
@@ -684,10 +686,10 @@
                 </svg>
             </button>
         </div>
-        <div>
-            <p class="modal-description-text-merge">Search and select the ticket you want to absorb into this one.</p>
-            <form action="{% url 'merge_ticket' ticket.id %}" method="post">
-                {% csrf_token %}
+        <form action="{% url 'merge_ticket' ticket.id %}" method="post">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p class="modal-description-text-merge">Search and select the ticket you want to absorb into this one.</p>
                 <div class="form-group full modal-form-group-merge">
                     <label for="target_ticket_number">Search Ticket to Merge</label>
                     <div class="position-relative">
@@ -702,14 +704,13 @@
                 </div>
                 <!-- Selected Ticket Preview Container -->
                 <div id="selected-ticket-preview" class="margin-bottom-medium"></div>
-
-                <div class="form-actions modal-form-actions-merge">
-                    <button type="button" class="btn secondary"
-                        onclick="document.getElementById('custom-merge-modal').style.display='none'">Cancel</button>
-                    <button type="submit" id="merge-submit-btn" class="btn primary" disabled>Merge Ticket</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="form-actions modal-form-actions-merge">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-merge-modal').style.display='none'">Cancel</button>
+                <button type="submit" id="merge-submit-btn" class="btn primary" disabled>Merge Ticket</button>
+            </div>
+        </form>
     </div>
 </div>
 </div>
@@ -729,10 +730,10 @@
                 </svg>
             </button>
         </div>
-        <div>
-            <p class="modal-description-text-transfer">Select a support agent to transfer this ticket to.</p>
-            <form hx-post="{% url 'transfer_ticket' ticket.id %}">
-                {% csrf_token %}
+        <form hx-post="{% url 'transfer_ticket' ticket.id %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p class="modal-description-text-transfer">Select a support agent to transfer this ticket to.</p>
                 <div class="form-group full modal-form-group-transfer">
                     <label for="new_assignee">New Assignee</label>
                     <select name="new_assignee" id="new_assignee" class="form-control" required>
@@ -743,14 +744,13 @@
                         {% endfor %}
                     </select>
                 </div>
-
-                <div class="form-actions modal-form-actions-transfer">
-                    <button type="button" class="btn secondary"
-                        onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
-                    <button type="submit" class="btn primary">Transfer Ticket</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="form-actions modal-form-actions-transfer">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-transfer-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn primary">Transfer Ticket</button>
+            </div>
+        </form>
     </div>
 </div>
 </div>
