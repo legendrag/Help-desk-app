@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.http import HttpResponse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from collections import defaultdict
 import os
 from django.utils import timezone as tz
@@ -27,6 +27,23 @@ def _default_month_range():
     start = today.replace(day=1)
     end = (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
     return start, end
+
+
+def _aware_day_bounds(start_date, end_date):
+    """
+    Convert local calendar dates to aware datetimes for filtering.
+
+    Avoid created_at__date lookups: with USE_TZ=True they rely on DB CONVERT_TZ,
+    which returns NULL on MySQL when timezone tables are missing and empties results.
+    """
+    start_dt = None
+    end_dt = None
+    if start_date:
+        start_dt = tz.make_aware(datetime.combine(start_date, time.min))
+    if end_date:
+        # exclusive upper bound: start of the next local day
+        end_dt = tz.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
+    return start_dt, end_dt
 
 
 def _iter_bucket_keys(start_date, end_date, view):
@@ -144,10 +161,11 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             filters["start_date"] = start_date.isoformat()
             filters["end_date"] = end_date.isoformat()
 
-        if start_date:
-            filtered_queryset = filtered_queryset.filter(created_at__date__gte=start_date)
-        if end_date:
-            filtered_queryset = filtered_queryset.filter(created_at__date__lte=end_date)
+        start_dt, end_dt = _aware_day_bounds(start_date, end_date)
+        if start_dt:
+            filtered_queryset = filtered_queryset.filter(created_at__gte=start_dt)
+        if end_dt:
+            filtered_queryset = filtered_queryset.filter(created_at__lt=end_dt)
 
         if filters["department"] and filters["department"] != "all":
             filtered_queryset = filtered_queryset.filter(department_id=filters["department"])
@@ -414,10 +432,11 @@ class ExportDashboardExcelView(DashboardView):
             filters["start_date"] = start_date.isoformat()
             filters["end_date"] = end_date.isoformat()
 
-        if start_date:
-            qs = qs.filter(created_at__date__gte=start_date)
-        if end_date:
-            qs = qs.filter(created_at__date__lte=end_date)
+        start_dt, end_dt = _aware_day_bounds(start_date, end_date)
+        if start_dt:
+            qs = qs.filter(created_at__gte=start_dt)
+        if end_dt:
+            qs = qs.filter(created_at__lt=end_dt)
         if filters["department"] and filters["department"] != "all":
             qs = qs.filter(department_id=filters["department"])
         if filters["branch"] and filters["branch"] != "all":
