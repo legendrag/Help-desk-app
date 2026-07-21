@@ -29,9 +29,9 @@
         content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="deskplus, DeskPlus, support, ticketing, customer service">
     <title>{% block title %}DeskPlus{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.58">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.41">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.20">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.59">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.42">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.21">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/deskplus-icon.svg' %}" type="image/svg+xml">
     <link rel="manifest" href="{% static 'manifest.json' %}">
@@ -369,12 +369,20 @@
             document.documentElement.classList.remove('modal-open');
             document.documentElement.style.removeProperty('--scrollbar-width');
             const container = document.getElementById('modal-container');
+            const content = document.getElementById('modal-content');
+            // Destroy Tom Selects before clearing HTML — body-mounted dropdowns otherwise linger
+            if (content) {
+                content.querySelectorAll('select').forEach((select) => {
+                    if (select.tomselect) {
+                        select.tomselect.destroy();
+                    }
+                });
+            }
             if (container) {
                 container.style.display = 'none';
                 container.dataset.dirty = 'false';
             }
             setTimeout(() => {
-                const content = document.getElementById('modal-content');
                 if (content) content.innerHTML = '';
             }, 100);
         }
@@ -705,11 +713,20 @@
             };
 
             selects.forEach(select => {
+                if (select.tomselect || select.classList.contains('tomselected') || select.classList.contains('no-tomselect')) {
+                    return;
+                }
+
                 let options = {
                     controlInput: null,
                     sortField: null,
                     searchField: []
                 };
+
+                // Modal/offcanvas use overflow:hidden — keep the menu outside so it isn't clipped
+                if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas')) {
+                    options.dropdownParent = 'body';
+                }
 
                 if (select.classList.contains('icon-select')) {
                     const renderIcon = function (data, escape) {
@@ -726,6 +743,8 @@
                         option: renderIcon,
                         item: renderIcon
                     };
+                    // Icon list is always opened from the KB category modal
+                    options.dropdownParent = 'body';
                 }
 
                 new TomSelect(select, options);

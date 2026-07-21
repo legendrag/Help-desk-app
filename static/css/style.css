@@ -1466,6 +1466,12 @@ tr:hover td {
   border-color: rgba(148, 163, 184, 0.45);
 }
 
+.badge-merged {
+  background: rgba(99, 102, 241, 0.15);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
 .badge-expired {
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;

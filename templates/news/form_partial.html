@@ -37,8 +37,13 @@
             
             <div class="form-group full">
                 <label>Expires At (Optional)</label>
-                {{ form.expires_at }}
-                {% if form.expires_at.errors %}<div class="field-error">{{ form.expires_at.errors }}</div>{% endif %}
+                <div class="datetime-split">
+                    {{ form.expires_date }}
+                    {{ form.expires_time }}
+                </div>
+                <div class="field-help">Date required if you set a time. Time defaults to 11:59 PM when omitted.</div>
+                {% if form.expires_date.errors %}<div class="field-error">{{ form.expires_date.errors }}</div>{% endif %}
+                {% if form.expires_time.errors %}<div class="field-error">{{ form.expires_time.errors }}</div>{% endif %}
             </div>
             
             <div class="form-group full form-group-checkbox">
