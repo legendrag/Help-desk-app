@@ -45,14 +45,28 @@
                         </td>
                         <td data-label="Target">
                             {% if announcement.target_branch %}
-                                Branch: {{ announcement.target_branch.name }}
+                                {{ announcement.target_branch.name }}
                             {% else %}
-                                All
+                                All branches
                             {% endif %}
                         </td>
-                        <td class="muted" data-label="Expires">{{ announcement.expires_at|date:"Y-m-d H:i"|default:"Never" }}</td>
+                        <td class="muted" data-label="Expires">
+                            {% if announcement.expires_at %}
+                            <div class="date-stack news-expires-stack">
+                                <span>{{ announcement.expires_at|date:"M j, Y" }}</span>
+                                <small>{{ announcement.expires_at|date:"g:i A" }}</small>
+                            </div>
+                            {% else %}
+                            <span>Never</span>
+                            {% endif %}
+                        </td>
                         <td data-label="Created By">{{ announcement.created_by.username }}</td>
-                        <td class="muted" data-label="Date">{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="muted" data-label="Date">
+                            <div class="date-stack news-created-stack">
+                                <span>{{ announcement.created_at|date:"M j, Y" }}</span>
+                                <small>{{ announcement.created_at|date:"g:i A" }}</small>
+                            </div>
+                        </td>
                         <td class="action-cell" data-label="Actions">
                             <button type="button" class="btn secondary btn--sm" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal(); event.stopPropagation();">Edit</button>
                         </td>
