@@ -345,14 +345,14 @@ body::before {
   right: -0.5rem;
   left: auto;
   width: min(360px, calc(100vw - 1rem));
-  background: white;
+  background: #ffffff;
   color: var(--text-main);
   border-radius: 16px;
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(0, 0, 0, 0.04);
   z-index: 1100;
-  border: none;
+  border: 1px solid #e2e8f0;
   max-height: 520px;
   display: flex;
   flex-direction: column;
@@ -380,7 +380,7 @@ body::before {
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: #f1f5f9;
 }
 
 .notification-push-prompt.is-visible {
@@ -418,7 +418,7 @@ body::before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
+  background: #f1f5f9;
   border-radius: 16px 16px 0 0;
   flex-shrink: 0;
 }
@@ -513,7 +513,7 @@ body::before {
 }
 
 .notification-item:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
 }
 
 .notification-item.unread {

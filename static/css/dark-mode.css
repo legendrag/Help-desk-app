@@ -538,13 +538,14 @@
 
 /* ── Notifications ── */
 [data-theme="dark"] .notification-dropdown {
-  background: #1e293b;
+  background: #243044;
+  border: 1px solid rgba(148, 163, 184, 0.14);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.08);
   color: var(--text-main);
 }
 
 [data-theme="dark"] .notification-header {
-  background: #0f172a;
+  background: #1a2336;
   border-bottom-color: rgba(148, 163, 184, 0.12);
 }
 [data-theme="dark"] .notification-header h4 {
@@ -552,7 +553,7 @@
 }
 
 [data-theme="dark"] .notification-push-prompt {
-  background: #0f172a;
+  background: #1a2336;
   border-top-color: rgba(148, 163, 184, 0.12);
 }
 
