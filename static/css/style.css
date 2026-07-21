@@ -3922,6 +3922,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 40px;
+  min-width: 140px;
   padding: 0 1.2rem;
   font-size: 0.95rem;
   font-weight: 600;
@@ -4114,6 +4115,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 40px;
+  min-width: 140px;
   padding: 0 1.2rem;
   font-size: 0.95rem;
   font-weight: 600;
@@ -5854,7 +5856,8 @@ body.ticket-detail-page .chat-form {
   flex-shrink: 0 !important;
 }
 
-body.ticket-detail-page .chat-actions-closed {
+body.ticket-detail-page .chat-actions-closed,
+body.ticket-detail-page .chat-no-permission-alert {
   margin-top: 0.75rem !important;
   flex-shrink: 0 !important;
 }

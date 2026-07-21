@@ -368,11 +368,9 @@
         {% else %}
         {% if not ticket.assigned_to %}
         {% if user.is_superuser or user.role and user.role.can_pick_ticket %}
-        <div class="chat-actions">
-            <div class="chat-actions-left">
-                <div class="action-bar" id="action-bar">
-                    <button type="submit" class="action-bar-accept" form="pick-ticket-form">Accept</button>
-                </div>
+        <div class="chat-actions chat-actions-closed">
+            <div class="action-bar">
+                <button type="submit" class="action-bar-accept" form="pick-ticket-form">Accept</button>
             </div>
         </div>
         {% else %}

@@ -873,11 +873,12 @@ ul.errorlist li {
   font-weight: 600;
 }
 .chat-no-permission-alert {
-  padding: 1rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
   text-align: center;
   color: var(--text-muted);
   background: #f8fafc;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px dashed var(--border);
 }
 .ticket-title-number {
