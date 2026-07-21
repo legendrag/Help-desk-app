@@ -2644,7 +2644,7 @@ a.kb-article-card:hover {
     align-items: center !important;
     justify-content: center !important;
     overflow: hidden !important;
-    padding: max(0.75rem, env(safe-area-inset-top, 0px)) 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px)) 0.75rem !important;
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1.25rem max(1.25rem, env(safe-area-inset-bottom, 0px)) 1.25rem !important;
   }
 
   .modal-content, .session-warning-box {
@@ -2653,7 +2653,7 @@ a.kb-article-card:hover {
     margin: 0 auto !important;
     /* Content-sized, capped to viewport; body scrolls, actions stay put */
     height: auto !important;
-    max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100dvh - 2.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     overflow: hidden !important;
     border-radius: 12px !important;
     padding: 0 !important;
