@@ -54,4 +54,9 @@
 </tr>
 {% endfor %}
 
-{% include "tickets/load_more_button.html" with oob=True %}
+{# Wrapper tr keeps the response valid for tbody swaps; CSS hides it on mobile cards #}
+<tr class="d-none load-more-oob-row" aria-hidden="true">
+    <td colspan="9">
+        {% include "tickets/load_more_button.html" with oob=True %}
+    </td>
+</tr>
