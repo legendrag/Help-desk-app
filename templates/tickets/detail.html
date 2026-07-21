@@ -366,7 +366,8 @@
             </div>
         </form>
         {% else %}
-        {% if not ticket.assigned_to and (user.is_superuser or user.role and user.role.can_pick_ticket) %}
+        {% if not ticket.assigned_to %}
+        {% if user.is_superuser or user.role and user.role.can_pick_ticket %}
         <div class="chat-actions">
             <div class="chat-actions-left">
                 <div class="action-bar" id="action-bar">
@@ -374,6 +375,11 @@
                 </div>
             </div>
         </div>
+        {% else %}
+        <div class="chat-no-permission-alert">
+            You do not have permission to send messages.
+        </div>
+        {% endif %}
         {% else %}
         <div class="chat-no-permission-alert">
             You do not have permission to send messages.
