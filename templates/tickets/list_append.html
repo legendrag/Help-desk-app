@@ -54,8 +54,4 @@
 </tr>
 {% endfor %}
 
-<tr class="d-none" aria-hidden="true">
-    <td colspan="10">
-        {% include "tickets/load_more_button.html" with oob=True %}
-    </td>
-</tr>
+{% include "tickets/load_more_button.html" with oob=True %}

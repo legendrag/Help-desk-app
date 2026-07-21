@@ -4562,6 +4562,17 @@ select.kb-sort-select.no-tomselect:focus {
     transition: transform 0.2s ease, box-shadow 0.2s ease !important;
     align-items: center !important;
   }
+
+  /* Never turn hidden/OOB helper rows into empty mobile cards */
+  .tickets-table tr.d-none,
+  .tickets-table tr[aria-hidden="true"] {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
   
   [data-theme="dark"] .tickets-table tr {
     background: #1e293b !important;
