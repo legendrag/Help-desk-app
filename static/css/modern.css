@@ -2641,49 +2641,59 @@ a.kb-article-card:hover {
   }
 
   .modal-overlay {
-    align-items: flex-start !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    /* Bottom padding on overflow containers is unreliable on iOS — use margin on .modal-content instead */
-    padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem 0 1rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px)) 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px)) 0.75rem !important;
   }
 
   .modal-content, .session-warning-box {
     width: 100% !important;
     max-width: 550px !important;
-    margin: 0 auto max(1.5rem, env(safe-area-inset-bottom, 0px), 2rem) auto !important;
-    max-height: none !important;
+    margin: 0 auto !important;
+    /* Content-sized, capped to viewport; body scrolls, actions stay put */
     height: auto !important;
-    overflow: visible !important;
+    max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
     border-radius: 12px !important;
     padding: 0 !important;
   }
 
   .modal-content.discard-modal-content {
     padding: 1.25rem !important;
+    overflow: auto !important;
   }
 
-  /* Let the form grow naturally — the overlay scrolls */
   .modal-content form {
-    overflow: visible !important;
-    min-height: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
   }
 
   .modal-header {
     padding: 1.25rem 1.25rem 0.75rem 1.25rem !important;
+    flex-shrink: 0 !important;
   }
 
-  /* modal-body should NOT scroll independently on mobile — overlay scrolls */
   .modal-body {
-    overflow: visible !important;
-    overflow-y: visible !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     padding: 1.25rem !important;
-    flex: none !important;
   }
 
   /* Fallback padding for legacy unpadded modal wrappers */
   .modal-content > div:not(.modal-header):not(.modal-body):not(.form-actions):not(.form-actions--end):not(.discard-modal-header) {
     padding: 1.25rem !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .modal-content > div:not(.modal-header):not(.modal-body) > .form-actions,
@@ -2694,9 +2704,14 @@ a.kb-article-card:hover {
 
   .modal-content .form-actions,
   .modal-content .form-actions--end {
-    padding: 1rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px), 1.5rem) 1.25rem !important;
+    flex-shrink: 0 !important;
+    margin-top: auto !important;
+    padding: 1rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px)) 1.25rem !important;
     border-bottom-left-radius: 12px !important;
     border-bottom-right-radius: 12px !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
   }
 
   /* Remove double-boxing for the main wrapper */
