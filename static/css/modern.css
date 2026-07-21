@@ -2497,6 +2497,34 @@ a.kb-article-card:hover {
   input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-wrapper {
     width: 100% !important;
   }
+
+  /* iOS datetime-local: avoid clipped / vertically off text & picker icon */
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 0.7rem 0.75rem !important;
+    line-height: 1.25 !important;
+    display: block;
+    box-sizing: border-box;
+  }
+
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+  }
+
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: 0.35rem;
+    padding: 0.2rem;
+    opacity: 1;
+    cursor: pointer;
+  }
   
   /* Prevent small action buttons from becoming giant circles */
   .btn-edit-save, .btn-edit-cancel {
@@ -2555,10 +2583,26 @@ a.kb-article-card:hover {
     gap: 0.5rem;
   }
   
+  /* Avoid width:10px flex hack — clips native date text/icons on iOS */
   .date-filter-group input.inline-input {
-    width: 10px !important; /* Forces flex to distribute evenly */
+    width: auto !important;
     min-width: 0 !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0 !important;
+    max-width: 100% !important;
+    padding: 0.55rem 0.5rem !important;
+    font-size: 16px !important;
+    line-height: 1.25 !important;
+  }
+
+  .date-filter-group input.inline-input::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+  }
+
+  .date-filter-group input.inline-input::-webkit-calendar-picker-indicator {
+    margin-left: 0.15rem;
+    padding: 0.15rem;
+    opacity: 1;
   }
 
   .date-filter-group .muted {
@@ -2600,13 +2644,14 @@ a.kb-article-card:hover {
     align-items: flex-start !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding: 2rem 1rem !important;
+    /* Bottom padding on overflow containers is unreliable on iOS — use margin on .modal-content instead */
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem 0 1rem !important;
   }
 
   .modal-content, .session-warning-box {
     width: 100% !important;
     max-width: 550px !important;
-    margin: 0 auto !important;
+    margin: 0 auto max(1.5rem, env(safe-area-inset-bottom, 0px), 2rem) auto !important;
     max-height: none !important;
     height: auto !important;
     overflow: visible !important;
@@ -2649,7 +2694,7 @@ a.kb-article-card:hover {
 
   .modal-content .form-actions,
   .modal-content .form-actions--end {
-    padding: 1rem 1.25rem !important;
+    padding: 1rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px), 1.5rem) 1.25rem !important;
     border-bottom-left-radius: 12px !important;
     border-bottom-right-radius: 12px !important;
   }
@@ -4830,7 +4875,7 @@ select.kb-sort-select.no-tomselect:focus {
   @media (max-width: 480px) {
     .modal-content .form-actions,
     .modal-content .form-actions--end {
-      padding: 0.75rem 1rem !important;
+      padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom, 0px), 1.25rem) 1rem !important;
       gap: 0.5rem !important;
     }
     
