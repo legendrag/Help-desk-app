@@ -1808,6 +1808,18 @@ td.mgmt-empty-cell {
   color: var(--text-main);
 }
 
+.volume-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  margin-top: 0.5rem;
+}
+
+.volume-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .pie-chart-wrapper {
   display: flex;
   align-items: center;

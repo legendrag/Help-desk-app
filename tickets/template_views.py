@@ -21,6 +21,54 @@ from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
 # ... (existing code)
 
+def _default_month_range():
+    """Return (start_date, end_date) for the current local calendar month."""
+    today = tz.localdate()
+    start = today.replace(day=1)
+    end = (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    return start, end
+
+
+def _iter_bucket_keys(start_date, end_date, view):
+    """Yield continuous bucket keys between start_date and end_date for date_view."""
+    if not start_date or not end_date or start_date > end_date:
+        return
+
+    if view == "year":
+        for year in range(start_date.year, end_date.year + 1):
+            yield str(year)
+    elif view == "month":
+        current = start_date.replace(day=1)
+        end_month = end_date.replace(day=1)
+        while current <= end_month:
+            yield current.strftime("%Y-%m")
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+    elif view == "week":
+        current = start_date - timedelta(days=start_date.weekday())
+        end_monday = end_date - timedelta(days=end_date.weekday())
+        while current <= end_monday:
+            yield current.strftime("%Y-%m-%d")
+            current += timedelta(days=7)
+    else:
+        current = start_date
+        while current <= end_date:
+            yield current.strftime("%Y-%m-%d")
+            current += timedelta(days=1)
+
+
+def _format_bucket_label(key, view):
+    if view == "year":
+        return key
+    if view == "month":
+        return datetime.strptime(key, "%Y-%m").strftime("%b %Y")
+    if view == "week":
+        return f"Week of {datetime.strptime(key, '%Y-%m-%d').strftime('%m/%d/%Y')}"
+    return datetime.strptime(key, "%Y-%m-%d").strftime("%m/%d/%Y")
+
+
 class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = "core/settings.html"
 
@@ -90,6 +138,11 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         filtered_queryset = base_queryset
         start_date = parse_date(filters["start_date"])
         end_date = parse_date(filters["end_date"])
+
+        if not start_date and not end_date:
+            start_date, end_date = _default_month_range()
+            filters["start_date"] = start_date.isoformat()
+            filters["end_date"] = end_date.isoformat()
 
         if start_date:
             filtered_queryset = filtered_queryset.filter(created_at__date__gte=start_date)
@@ -174,19 +227,16 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             if ts:
                 bucket_counts[bucket_key(ts, filters["date_view"])] += 1
 
-        sorted_buckets = sorted(bucket_counts.items())[-7:]
-        formatted_dates = []
-        for key, count in sorted_buckets:
-            view = filters["date_view"]
-            if view == "year":
-                label = key
-            elif view == "month":
-                label = datetime.strptime(key, "%Y-%m").strftime("%b %Y")
-            elif view == "week":
-                label = f"Week of {datetime.strptime(key, '%Y-%m-%d').strftime('%m/%d/%Y')}"
-            else:
-                label = datetime.strptime(key, "%Y-%m-%d").strftime("%m/%d/%Y")
-            formatted_dates.append({"label": label, "count": count})
+        view = filters["date_view"]
+        if start_date and end_date:
+            ordered_keys = list(_iter_bucket_keys(start_date, end_date, view))
+        else:
+            ordered_keys = sorted(bucket_counts.keys())
+
+        formatted_dates = [
+            {"label": _format_bucket_label(key, view), "count": bucket_counts.get(key, 0)}
+            for key in ordered_keys
+        ]
 
         total_tickets = filtered_queryset.count()
         total_users = User.objects.filter(
@@ -358,6 +408,11 @@ class ExportDashboardExcelView(DashboardView):
         qs = self.object_list
         start_date = parse_date(filters["start_date"])
         end_date = parse_date(filters["end_date"])
+
+        if not start_date and not end_date:
+            start_date, end_date = _default_month_range()
+            filters["start_date"] = start_date.isoformat()
+            filters["end_date"] = end_date.isoformat()
 
         if start_date:
             qs = qs.filter(created_at__date__gte=start_date)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Branch Dashboard - DeskPlus{% endblock %}
 {% block body_class %}dashboard-page{% endblock %}
@@ -146,22 +147,21 @@
                     </div>
                 </div>
             </div>
-            <div class="metric-list">
-                {% for item in tickets_by_date %}
-                <div class="metric-row">
-                    <div class="metric-label">{{ item.label }}</div>
-                    <div class="metric-bar">
-                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
-                    </div>
-                    <div class="metric-count">{{ item.count }}</div>
-                </div>
-                {% empty %}
-                <div class="empty-state">No data available.</div>
-                {% endfor %}
+            {% if tickets_by_date %}
+            <div class="volume-chart-wrap">
+                <canvas id="ticket-volume-chart" aria-label="Request activity by date chart"></canvas>
             </div>
+            {{ tickets_by_date|json_script:"volume-trend-data" }}
+            {% else %}
+            <div class="empty-state">No data available.</div>
+            {% endif %}
         </div>
     </div>
 </div>
+{% if tickets_by_date %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/volume-trend-chart.js' %}?v=1"></script>
+{% endif %}
 <script>
 (function () {
     function isReloadNavigation(event) {
