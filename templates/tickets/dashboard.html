@@ -294,17 +294,13 @@
                             offset += percent;
                             
                             const legItem = document.createElement('div');
-                            legItem.style.display = 'flex';
-                            legItem.style.justifyContent = 'space-between';
-                            legItem.style.alignItems = 'center';
-                            legItem.style.fontSize = '0.85rem';
-                            
+                            legItem.className = 'pie-legend-item';
                             legItem.innerHTML = `
-                                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted);">
-                                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color};"></span>
+                                <div class="pie-legend-label">
+                                    <span class="pie-legend-swatch" style="background: ${color};"></span>
                                     ${item.label}
                                 </div>
-                                <div style="font-weight: 600; color: var(--text-main);">${item.count}</div>
+                                <div class="pie-legend-count">${item.count}</div>
                             `;
                             legend.appendChild(legItem);
                         });
