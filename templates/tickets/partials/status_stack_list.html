@@ -1,0 +1,47 @@
+{% comment %}
+Requires:
+  items — list of {label, count, statuses:[{value, label, count, percent}]}
+  status_legend — list of {value, label}
+{% endcomment %}
+<div class="status-stack-panel">
+{% if items %}
+    <div class="status-stack-legend" aria-label="Status legend">
+        {% for status in status_legend %}
+        <span class="status-stack-legend-item">
+            <span class="status-dot status-{{ status.value }}"></span>
+            <span>{{ status.label }}</span>
+        </span>
+        {% endfor %}
+    </div>
+    <div class="status-stack-list">
+        {% for item in items %}
+        <div class="status-stack">
+            <div class="status-stack-header">
+                <div class="status-stack-label">{{ item.label }}</div>
+                <div class="status-stack-total">{{ item.count }}</div>
+            </div>
+            {% if item.statuses %}
+            <div class="status-stack-bar" role="img" aria-label="Status breakdown for {{ item.label }}">
+                {% for status in item.statuses %}
+                <button
+                    type="button"
+                    class="status-stack-segment metric-bar-fill status-{{ status.value }}"
+                    style="flex-grow: {{ status.percent }}; flex-basis: 0;"
+                    title="{{ status.label }}: {{ status.count }}"
+                    data-status-label="{{ status.label }}"
+                    data-status-count="{{ status.count }}"
+                    aria-label="{{ status.label }}: {{ status.count }}"
+                ></button>
+                {% endfor %}
+            </div>
+            <div class="status-stack-detail" hidden></div>
+            {% else %}
+            <div class="status-stack-bar is-empty"></div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">No data available.</div>
+{% endif %}
+</div>

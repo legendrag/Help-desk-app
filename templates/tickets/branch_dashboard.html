@@ -92,19 +92,7 @@
             <div class="card-header">
                 <h3>Requests by Department</h3>
             </div>
-            <div class="metric-list">
-                {% for item in tickets_by_department %}
-                <div class="metric-row">
-                    <div class="metric-label">{{ item.label }}</div>
-                    <div class="metric-bar">
-                        <span class="metric-bar-fill neutral" style="width: {{ item.percent }}%"></span>
-                    </div>
-                    <div class="metric-count">{{ item.count }}</div>
-                </div>
-                {% empty %}
-                <div class="empty-state">No data available.</div>
-                {% endfor %}
-            </div>
+            {% include "tickets/partials/status_stack_list.html" with items=tickets_by_department status_legend=status_legend %}
         </div>
 
         <div class="panel dashboard-card">
@@ -158,6 +146,7 @@
         </div>
     </div>
 </div>
+<script src="{% static 'js/status-stack.js' %}?v=1"></script>
 {% if tickets_by_date %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="{% static 'js/volume-trend-chart.js' %}?v=1"></script>

@@ -86,6 +86,54 @@ def _format_bucket_label(key, view):
     return datetime.strptime(key, "%Y-%m-%d").strftime("%m/%d/%Y")
 
 
+def _status_breakdown_rows(queryset, group_field):
+    """
+    Build rows like {label, count, statuses[{value, label, count, percent}]}
+    grouped by group_field (e.g. branch__name / department__name).
+    """
+    status_labels = dict(Ticket.Status.choices)
+    status_order = [value for value, _ in Ticket.Status.choices]
+
+    grouped = list(
+        queryset.values(group_field, "status")
+        .annotate(count=Count("id"))
+        .order_by(group_field, "status")
+    )
+
+    by_label = defaultdict(lambda: defaultdict(int))
+    for item in grouped:
+        label = item[group_field] or "—"
+        by_label[label][item["status"]] += item["count"]
+
+    rows = []
+    for label, status_counts in by_label.items():
+        total = sum(status_counts.values())
+        statuses = []
+        for value in status_order:
+            count = status_counts.get(value, 0)
+            if count <= 0:
+                continue
+            percent = int(round((count / total) * 100)) if total else 0
+            statuses.append(
+                {
+                    "value": value,
+                    "label": status_labels.get(value, value),
+                    "count": count,
+                    "percent": percent,
+                }
+            )
+        # Fix rounding so percents sum to ~100 for flex basis
+        if statuses and total:
+            drift = 100 - sum(s["percent"] for s in statuses)
+            if drift:
+                statuses[0]["percent"] = max(0, statuses[0]["percent"] + drift)
+
+        rows.append({"label": label, "count": total, "statuses": statuses})
+
+    rows.sort(key=lambda row: (-row["count"], row["label"] or ""))
+    return rows
+
+
 class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = "core/settings.html"
 
@@ -198,14 +246,8 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 item["percent"] = int((item["count"] / max_count) * 100) if max_count else 0
             return items
 
-        department_items = list(
-            filtered_queryset.values("department__name")
-            .annotate(count=Count("id"))
-            .order_by("-count", "department__name")
-        )
-        department_items = [
-            {"label": item["department__name"], "count": item["count"]} for item in department_items
-        ]
+        department_items = _status_breakdown_rows(filtered_queryset, "department__name")
+        branch_items = _status_breakdown_rows(filtered_queryset, "branch__name")
 
         category_items = list(
             filtered_queryset.values("category__name", "category__department__name")
@@ -219,13 +261,6 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 "count": item["count"]
             } for item in category_items
         ]
-
-        branch_items = list(
-            filtered_queryset.values("branch__name")
-            .annotate(count=Count("id"))
-            .order_by("-count", "branch__name")
-        )
-        branch_items = [{"label": item["branch__name"], "count": item["count"]} for item in branch_items]
 
         def bucket_key(dt, view):
             local_dt = tz.localtime(dt)
@@ -411,9 +446,12 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 "branches_count": branches_count,
                 "departments_count": departments_count,
                 "status_summary": apply_percent(status_summary),
-                "tickets_by_department": apply_percent(department_items),
+                "tickets_by_department": department_items,
                 "tickets_by_category": apply_percent(category_items),
-                "tickets_by_branch": apply_percent(branch_items),
+                "tickets_by_branch": branch_items,
+                "status_legend": [
+                    {"value": value, "label": label} for value, label in Ticket.Status.choices
+                ],
                 "tickets_by_date": apply_percent(formatted_dates),
                 "date_view": filters["date_view"],
                 "drill_down_query": build_query(drill_down_view) if drill_down_view else "",
@@ -530,13 +568,24 @@ class ExportDashboardExcelView(DashboardView):
             ws_status.cell(row=row, column=2, value=stat['count'])
             ws_status.cell(row=row, column=3, value=f"{stat.get('percent', 0)}%")
 
+        status_headers = [label for _, label in Ticket.Status.choices]
+
+        def write_status_breakdown_sheet(ws, title_col, rows):
+            make_header(ws, 1, [title_col, *status_headers, 'Total'])
+            for row_num, item in enumerate(rows, 2):
+                counts_by_status = {
+                    s["value"]: s["count"] for s in item.get("statuses", [])
+                }
+                ws.cell(row=row_num, column=1, value=item["label"])
+                for col_num, (value, _) in enumerate(Ticket.Status.choices, 2):
+                    ws.cell(row=row_num, column=col_num, value=counts_by_status.get(value, 0))
+                ws.cell(row=row_num, column=2 + len(status_headers), value=item["count"])
+
         # Sheet 4: Departments
         ws_dept = wb.create_sheet(title="Departments")
-        make_header(ws_dept, 1, ['Department', 'Count', 'Percentage'])
-        for row, dpt in enumerate(context.get('tickets_by_department', []), 2):
-            ws_dept.cell(row=row, column=1, value=dpt['label'])
-            ws_dept.cell(row=row, column=2, value=dpt['count'])
-            ws_dept.cell(row=row, column=3, value=f"{dpt.get('percent', 0)}%")
+        write_status_breakdown_sheet(
+            ws_dept, "Department", context.get("tickets_by_department", [])
+        )
 
         # Sheet 5: Categories
         ws_cat = wb.create_sheet(title="Categories")
@@ -549,11 +598,9 @@ class ExportDashboardExcelView(DashboardView):
 
         # Sheet 6: Branches
         ws_branch = wb.create_sheet(title="Branches")
-        make_header(ws_branch, 1, ['Branch', 'Count', 'Percentage'])
-        for row, brn in enumerate(context.get('tickets_by_branch', []), 2):
-            ws_branch.cell(row=row, column=1, value=brn['label'])
-            ws_branch.cell(row=row, column=2, value=brn['count'])
-            ws_branch.cell(row=row, column=3, value=f"{brn.get('percent', 0)}%")
+        write_status_breakdown_sheet(
+            ws_branch, "Branch", context.get("tickets_by_branch", [])
+        )
 
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename="dashboard_export_{timezone.now().strftime("%Y%m%d%H%M")}.xlsx"'
