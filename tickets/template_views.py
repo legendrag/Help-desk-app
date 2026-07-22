@@ -303,7 +303,7 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         agent_performance = []
         if user.is_superuser or (user.role and getattr(user.role, 'can_view_leaderboard', False)):
             resolved_tickets = filtered_queryset.filter(status=Ticket.Status.CLOSED, assigned_to__isnull=False)
-            
+
             performance_qs = resolved_tickets.values(
                 'assigned_to__username', 'assigned_to__first_name', 'assigned_to__last_name'
             ).annotate(
@@ -315,11 +315,27 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                     ExpressionWrapper(F('closed_at') - F('created_at'), output_field=fields.DurationField())
                 )
             ).order_by('-tickets_resolved')[:10]
-            
+
+            # Working time = sum of (closed_at - picked_at - waiting) across resolved tickets.
+            # Computed in Python so pending seconds subtract cleanly on SQLite and MySQL.
+            working_totals = defaultdict(float)
+            for username, picked_at, closed_at, pending in resolved_tickets.exclude(
+                picked_at__isnull=True
+            ).exclude(closed_at__isnull=True).values_list(
+                "assigned_to__username",
+                "picked_at",
+                "closed_at",
+                "total_pending_duration_seconds",
+            ):
+                working_seconds = (closed_at - picked_at).total_seconds() - (pending or 0)
+                if working_seconds < 0:
+                    working_seconds = 0
+                working_totals[username] += working_seconds
+
             def format_duration(duration):
                 if not duration:
                     return "--"
-                total_seconds = int(duration.total_seconds())
+                total_seconds = int(duration.total_seconds()) if hasattr(duration, "total_seconds") else int(duration)
                 if total_seconds < 0:
                     total_seconds = 0
                 hours, remainder = divmod(total_seconds, 3600)
@@ -329,25 +345,33 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                     return f"{days}d {hours}h {minutes}m"
                 return f"{hours}h {minutes}m"
 
+            def total_working_duration(username):
+                total_seconds = working_totals.get(username)
+                if not total_seconds:
+                    return None
+                return timedelta(seconds=total_seconds)
+
             TARGET_VOLUME = 30 # Loosened volume baseline
             MAX_HOURS = 40 # Loosened worst acceptable avg resolution time
 
             for agent in performance_qs:
                 name = f"{agent['assigned_to__first_name']} {agent['assigned_to__last_name']}".strip() or agent['assigned_to__username']
-                
+                username = agent['assigned_to__username']
+
                 resolved = agent['tickets_resolved']
                 res_time = agent['avg_resolution_time']
-                
+                work_time = total_working_duration(username)
+
                 vol_score = min(100, (resolved / TARGET_VOLUME) * 100) if TARGET_VOLUME else 0
-                
+
                 if res_time:
                     res_hours = res_time.total_seconds() / 3600
                     speed_score = max(0, 100 - ((res_hours / MAX_HOURS) * 100))
                 else:
                     speed_score = 100
-                    
+
                 final_score = round((speed_score * 0.8) + (vol_score * 0.2))
-                
+
                 if final_score >= 85:
                     grade, color = 'A', 'success'
                 elif final_score >= 70:
@@ -364,11 +388,12 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                     "tickets_resolved": resolved,
                     "avg_response_time": format_duration(agent['avg_response_time']),
                     "avg_resolution_time": format_duration(res_time),
+                    "total_working_time": format_duration(work_time),
                     "score": final_score,
                     "grade": grade,
                     "grade_color": color
                 })
-            
+
             # Sort by highest score first
             agent_performance.sort(key=lambda x: x['score'], reverse=True)
 
@@ -479,14 +504,23 @@ class ExportDashboardExcelView(DashboardView):
 
         # Sheet 2: Agent Performance
         ws_perf = wb.create_sheet(title="Agent Performance")
-        make_header(ws_perf, 1, ['Agent', 'Resolved', 'Avg Response Time', 'Avg Resolution Time', 'Score', 'Grade'])
+        make_header(ws_perf, 1, [
+            'Agent',
+            'Resolved',
+            'Avg Response Time',
+            'Avg Resolution Time',
+            'Total Working Time',
+            'Score',
+            'Grade',
+        ])
         for row, agent in enumerate(context.get('agent_performance', []), 2):
             ws_perf.cell(row=row, column=1, value=agent['name'])
             ws_perf.cell(row=row, column=2, value=agent['tickets_resolved'])
             ws_perf.cell(row=row, column=3, value=agent['avg_response_time'])
             ws_perf.cell(row=row, column=4, value=agent['avg_resolution_time'])
-            ws_perf.cell(row=row, column=5, value=agent['score'])
-            ws_perf.cell(row=row, column=6, value=agent['grade'])
+            ws_perf.cell(row=row, column=5, value=agent['total_working_time'])
+            ws_perf.cell(row=row, column=6, value=agent['score'])
+            ws_perf.cell(row=row, column=7, value=agent['grade'])
 
         # Sheet 3: Status Summary
         ws_status = wb.create_sheet(title="Status Summary")

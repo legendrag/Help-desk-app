@@ -170,6 +170,7 @@
                                 <th>Resolved</th>
                                 <th>Response Time</th>
                                 <th>Resolution Time</th>
+                                <th>Working Time</th>
                                 <th>Grade</th>
                             </tr>
                         </thead>
@@ -180,6 +181,7 @@
                                 <td data-label="Resolved">{{ agent.tickets_resolved }}</td>
                                 <td data-label="Response Time"><span class="muted">{{ agent.avg_response_time }}</span></td>
                                 <td data-label="Resolution Time"><span class="muted">{{ agent.avg_resolution_time }}</span></td>
+                                <td data-label="Working Time"><span class="muted">{{ agent.total_working_time }}</span></td>
                                 <td data-label="Grade">
                                     <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
                                         <span class="badge badge-{{ agent.grade_color }}" style="width: 28px; text-align: center;">{{ agent.grade }}</span>
@@ -187,7 +189,7 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="5" class="empty-state">No data available.</td></tr>
+                            <tr><td colspan="6" class="empty-state">No data available.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
