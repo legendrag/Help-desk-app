@@ -14,7 +14,7 @@ class Ticket(models.Model):
     class Status(models.TextChoices):
         OPEN = "open", "Open"
         IN_PROGRESS = "in_progress", "In Progress"
-        WAITING_FOR_BRANCH = "waiting_for_branch", "Waiting for Branch"
+        WAITING_FOR_BRANCH = "waiting_for_branch", "Waiting"
         CLOSED = "closed", "Closed"
         MERGED = "merged", "Merged"
 

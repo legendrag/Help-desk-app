@@ -15,7 +15,7 @@ The ticket is the core entity of the application, managed via `tickets/models.py
 - **Title & Description**: Free-text fields captured during ticket creation.
 - **Branch / Department / Category**: Three-level organizational hierarchy. Category options are dynamically loaded via HTMX when a department is selected (`ticket_category_options` endpoint). Categories are validated server-side to belong to the selected department.
 - **Priority**: Four levels — `Low`, `Medium`, `High`, `Urgent`.
-- **Status**: Five states — `Open`, `In Progress`, `Waiting for Branch`, `Closed`, `Merged`.
+- **Status**: Five states — `Open`, `In Progress`, `Waiting`, `Closed`, `Merged`.
 - **Assigned To**: Foreign key to a support user. Set automatically when a ticket is picked.
 - **Merge Tracking**: A `merged_into` self-referential foreign key marks merged tickets. A full `TicketMergeHistory` log records who merged, when, and which tickets were involved.
 
@@ -23,7 +23,7 @@ The ticket is the core entity of the application, managed via `tickets/models.py
 The model automatically records and calculates time metrics on save:
 - **`picked_at`**: Timestamped when the ticket first transitions to `In Progress`.
 - **`closed_at`**: Timestamped when the ticket first transitions to `Closed`.
-- **`total_pending_duration_seconds`**: Accumulates total time spent in the `Waiting for Branch` status to exclude idle time from resolution time calculations.
+- **`total_pending_duration_seconds`**: Accumulates total time spent in the `Waiting` status to exclude idle time from resolution time calculations.
 - **`last_status_change_at`**: Updated on every status transition.
 
 These raw timestamps are exposed as calculated metrics on the ticket detail page:
@@ -124,7 +124,7 @@ Handled by `DashboardView`. Access is role-gated (`can_access_dashboard`).
   - Total Active Users
   - Active Branches
   - Active Departments
-- **Status Breakdown**: Visual horizontal bar chart showing counts and percentages for each status (`Open`, `In Progress`, `Waiting for Branch`, `Closed`, `Merged`).
+- **Status Breakdown**: Visual horizontal bar chart showing counts and percentages for each status (`Open`, `In Progress`, `Waiting`, `Closed`, `Merged`).
 - **Breakdowns by Category, Department, and Branch**: Each shows a ranked list with relative percentage bars.
 - **Date-Series Chart**: Tickets created over time, with **drill-down navigation**:
   - **Year → Month → Week → Day** progressively narrow the period. Drill-up is also supported.
