@@ -193,24 +193,3 @@ class TicketListConsumer(AsyncJsonWebsocketConsumer):
             "event": event.get("event"),
             "payload": event.get("payload"),
         })
-
-    @database_sync_to_async
-    def _user_has_permission(self, user_id, entity, field):
-        from accounts.models import User
-
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return False
-
-        if user.is_superuser:
-            return True
-
-        if not user.role_id:
-            return False
-
-        permission = user.role.permissions.filter(entity=entity).first()
-        if not permission:
-            return False
-
-        return bool(getattr(permission, field, False))

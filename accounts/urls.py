@@ -1,6 +1,5 @@
 from django.urls import path
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
 from .template_views import UserLoginView, UserLogoutView, UserPasswordChangeView
 from .management_views import UserListView, UserCreateView, UserUpdateView, UserDeleteView
 
@@ -8,9 +7,6 @@ from .management_views import UserListView, UserCreateView, UserUpdateView, User
 def auth_check(request):
     return JsonResponse({'authenticated': request.user.is_authenticated})
 
-@login_required
-def keep_alive(request):
-    return JsonResponse({'status': 'ok'})
 
 urlpatterns = [
     path("login/", UserLoginView.as_view(), name="login"),
@@ -23,5 +19,4 @@ urlpatterns = [
     path("users/<int:pk>/edit/", UserUpdateView.as_view(), name="user_update"),
     path("users/<int:pk>/delete/", UserDeleteView.as_view(), name="user_delete"),
     path("auth-check/", auth_check, name="auth_check"),
-    path("keep-alive/", keep_alive, name="keep_alive"),
 ]

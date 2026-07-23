@@ -133,4 +133,5 @@ python manage.py cleanup_notifications --read-days 14 --all-days 60
 ## Documentation
 - [Gmail Setup](docs/GMAIL_APP_PASSWORD.md)
 - [Deployment Guide](docs/deployment_guide.md)
-- [Refactor Task](docs/refactor/task.md)
+- [Backup & Restore](docs/backup-restore-guide.md)
+- [System Reference](docs/REFERENCE.md)

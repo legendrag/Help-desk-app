@@ -1,23 +1,7 @@
 from django.conf import settings
 
 from accounts.models import User
-from core.models import Role, RolePermission
-from core.permission_entities import PERMISSION_ENTITIES, flags_for_entity
-from core.seeds import data
-
-
-def _apply_entity_permissions(role, entity_flags):
-    for entity, flags in entity_flags.items():
-        RolePermission.objects.update_or_create(
-            role=role,
-            entity=entity,
-            defaults={
-                "can_create": flags[0],
-                "can_read": flags[1],
-                "can_update": flags[2],
-                "can_delete": flags[3],
-            },
-        )
+from core.models import Role
 
 
 def seed_roles(stdout=None):
@@ -41,57 +25,6 @@ def seed_roles(stdout=None):
         name="KB Editor",
         defaults={"description": "Knowledge base author"},
     )
-
-    seeded_roles = [admin_role, support_role, branch_role, team_lead_role, kb_editor_role]
-    RolePermission.objects.filter(role__in=seeded_roles).delete()
-
-    for entity in PERMISSION_ENTITIES:
-        RolePermission.objects.create(
-            role=admin_role,
-            entity=entity,
-            **flags_for_entity(entity),
-        )
-
-    support_entities = {
-        "dashboard_read": (False, True, False, False),
-        "tickets_list": (False, True, False, False),
-        "ticket_details": (False, True, False, False),
-        "ticket_pick": (False, False, True, False),
-        "ticket_status": (False, False, True, False),
-        "ticket_messages_read": (False, True, False, False),
-        "ticket_messages_create": (True, False, False, False),
-    }
-    _apply_entity_permissions(support_role, support_entities)
-
-    branch_entities = {
-        "ticket_create": (True, False, False, False),
-        "tickets_list": (False, True, False, False),
-        "ticket_details": (False, True, False, False),
-        "ticket_messages_read": (False, True, False, False),
-        "ticket_messages_create": (True, False, False, False),
-    }
-    _apply_entity_permissions(branch_role, branch_entities)
-
-    team_lead_entities = {
-        "dashboard_read": (False, True, False, False),
-        "tickets_list": (False, True, False, False),
-        "ticket_details": (False, True, False, False),
-        "ticket_create": (True, False, False, False),
-        "ticket_pick": (False, False, True, False),
-        "ticket_status": (False, False, True, False),
-        "ticket_update": (False, False, True, False),
-        "ticket_messages_read": (False, True, False, False),
-        "ticket_messages_create": (True, False, False, False),
-        "ticket_messages_update": (False, False, True, False),
-    }
-    _apply_entity_permissions(team_lead_role, team_lead_entities)
-
-    kb_entities = {
-        "tickets_list": (False, True, False, False),
-        "ticket_details": (False, True, False, False),
-        "ticket_messages_read": (False, True, False, False),
-    }
-    _apply_entity_permissions(kb_editor_role, kb_entities)
 
     support_role.can_create_ticket = False
     support_role.can_update_ticket = False

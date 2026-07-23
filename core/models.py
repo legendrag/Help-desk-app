@@ -130,24 +130,6 @@ class Role(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
-class RolePermission(models.Model):
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="permissions")
-    entity = models.CharField(max_length=50)
-    can_create = models.BooleanField(default=False)
-    can_read = models.BooleanField(default=False)
-    can_update = models.BooleanField(default=False)
-    can_delete = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["entity"]
-        constraints = [
-            models.UniqueConstraint(fields=["role", "entity"], name="uniq_role_entity_permission"),
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.role.name} -> {self.entity}"
-
-
 class EmailSetting(TimeStampedModel):
     ENCRYPTION_CHOICES = (
         ("none", "None"),

@@ -977,7 +977,7 @@ def ticket_category_options(request):
     user = request.user
     if not user.is_superuser:
         if user.user_type == "support":
-            if not (user.role and (user.role.can_create_ticket or user.role.can_edit_ticket)):
+            if not (user.role and (user.role.can_create_ticket or user.role.can_update_ticket)):
                 raise PermissionDenied("You do not have permission to access categories.")
 
     department_id = request.GET.get("department")

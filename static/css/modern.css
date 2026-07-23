@@ -40,28 +40,31 @@ body {
 .topbar .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   text-decoration: none;
 }
 
 .brand-mark {
-  /* Match full wordmark height (MLAMEH + Ticket), keep ticket aspect */
+  /* Slightly shorter than wordmark; centered beside MLAMEH + Ticket */
   width: auto;
-  height: 40px;
+  height: 30px;
   flex-shrink: 0;
   object-fit: contain;
+  object-position: center;
   display: block;
   background: transparent;
+  align-self: center;
 }
 
 .brand-logo {
   width: auto;
-  height: 40px;
-  max-width: min(190px, 48vw);
+  height: 36px;
+  max-width: min(180px, 46vw);
   flex-shrink: 0;
   object-fit: contain;
   background: transparent;
   display: block;
+  align-self: center;
 }
 
 .brand-logo--dark,
@@ -79,11 +82,13 @@ body {
 
 .auth-brand-mark {
   width: auto;
-  height: 56px;
+  height: 42px;
   flex-shrink: 0;
   object-fit: contain;
+  object-position: center;
   display: block;
   background: transparent;
+  align-self: center;
 }
 
 .auth-brand-lockup {
