@@ -44,6 +44,14 @@ body {
   text-decoration: none;
 }
 
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
+}
+
 .brand-logo {
   width: auto;
   height: 36px;
@@ -56,12 +64,22 @@ body {
 
 .auth-brand {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
 
+.auth-brand-mark {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
+}
+
 .auth-brand-lockup {
-  width: min(260px, 78vw);
+  width: min(220px, 68vw);
   height: auto;
   display: block;
   object-fit: contain;

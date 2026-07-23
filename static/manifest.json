@@ -1,21 +1,21 @@
 {
-  "name": "MLAMEH Ticket",
-  "short_name": "MLAMEH",
-  "description": "MLAMEH Ticket help desk application",
+  "name": "mlameh ticket",
+  "short_name": "mlameh ticket",
+  "description": "mlameh ticket help desk application",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#ffffff",
   "theme_color": "#a751f4",
   "icons": [
     {
       "src": "/static/images/mlameh-icon.png",
-      "sizes": "392x392",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/images/mlameh-icon.png",
-      "sizes": "392x392",
+      "src": "/static/images/mlameh-icon-maskable.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
