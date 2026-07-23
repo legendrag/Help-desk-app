@@ -349,6 +349,9 @@ body::before {
   color: var(--text-main);
   border-radius: 16px;
   overflow: hidden;
+  /* Safari/iOS: overflow+border-radius fails to clip when transform is set */
+  clip-path: inset(0 round 16px);
+  -webkit-clip-path: inset(0 round 16px);
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -386,6 +389,8 @@ body::before {
 
 .notification-push-prompt.is-visible {
   display: flex;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 }
 
 .notification-push-prompt-text {
@@ -506,20 +511,41 @@ body::before {
   cursor: pointer;
   transition: background 0.15s ease;
   position: relative;
-  border-left: 3px solid transparent;
+  overflow: hidden;
 }
 
 .notification-item:last-child {
   border-bottom: none;
 }
 
+/* Round bottom corners when this item is the visual bottom of the panel */
+.notification-dropdown:not(:has(.notification-push-prompt.is-visible)) .notification-item:last-child {
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
 .notification-item:hover {
   background: #f1f5f9;
 }
 
+/* Unread accent — pseudo-element so it can follow corner radius on mobile */
+.notification-item.unread::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--primary);
+  pointer-events: none;
+}
+
+.notification-dropdown:not(:has(.notification-push-prompt.is-visible)) .notification-item:last-child.unread::before {
+  border-bottom-left-radius: 16px;
+}
+
 .notification-item.unread {
   background: #f0f7ff;
-  border-left-color: var(--primary);
 }
 
 .notification-item.unread:hover {

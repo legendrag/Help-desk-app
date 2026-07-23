@@ -61,11 +61,15 @@
   color: var(--text-main);
 }
 
+[data-theme="dark"] .brand-mlameh--light,
+[data-theme="dark"] .auth-brand-mlameh--light,
 [data-theme="dark"] .brand-logo--light,
 [data-theme="dark"] .auth-brand-lockup--light {
   display: none;
 }
 
+[data-theme="dark"] .brand-mlameh--dark,
+[data-theme="dark"] .auth-brand-mlameh--dark,
 [data-theme="dark"] .brand-logo--dark,
 [data-theme="dark"] .auth-brand-lockup--dark {
   display: block;
@@ -581,7 +585,9 @@
 }
 [data-theme="dark"] .notification-item.unread {
   background: rgba(129, 140, 248, 0.08);
-  border-left-color: #818cf8;
+}
+[data-theme="dark"] .notification-item.unread::before {
+  background: #818cf8;
 }
 [data-theme="dark"] .notification-item.unread:hover {
   background: rgba(129, 140, 248, 0.12);
