@@ -21,7 +21,7 @@ WizardStyle=modern
 PrivilegesRequired=admin
 SetupIconFile=
 DisableProgramGroupPage=yes
-UninstallDisplayIcon={app}\static\images\deskplus-icon.png
+UninstallDisplayIcon={app}\static\images\mlameh-icon.png
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -459,7 +459,7 @@ function updatePushPermissionPrompt() {
         text.textContent = "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
         enableBtn.style.display = "none";
     } else {
-        text.textContent = "Enable browser notifications to get alerts when DeskPlus is in the background.";
+        text.textContent = "Enable browser notifications to get alerts when MLAMEH Ticket is in the background.";
         enableBtn.style.display = "";
     }
 }

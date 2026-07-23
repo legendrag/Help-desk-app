@@ -1,18 +1,15 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Login - DeskPlus{% endblock title %}
+{% block title %}Login - MLAMEH Ticket{% endblock title %}
 {% block body_class %}auth-body{% endblock body_class %}
 
 {% block content %}
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-header">
-            <div class="auth-brand" style="display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 2.2rem; margin-bottom: 1rem;">
-                <img src="{% static 'images/deskplus-icon.svg' %}" alt="DeskPlus" class="auth-brand-icon" style="height: 48px; width: auto;">
-                <span class="brand-text" style="line-height: 1; letter-spacing: -0.5px;">
-                    <span class="brand-desk" style="font-weight: 800; color: #818cf8;">Desk</span><span class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup class="brand-plus-mark" style="font-weight: 800; color: #22c55e; font-size: 0.65em;">+</sup>
-                </span>
+            <div class="auth-brand">
+                <img src="{% static 'images/mlameh-ticket-logo.png' %}" alt="MLAMEH Ticket" class="auth-brand-lockup">
             </div>
             <h2>Welcome Back</h2>
             <p>Login to your account</p>

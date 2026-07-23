@@ -8,9 +8,9 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('push', event => {
     let payload = {
-        title: "DeskPlus Notification",
+        title: "MLAMEH Ticket Notification",
         body: "You have a new notification",
-        icon: "/static/images/deskplus-icon.svg",
+        icon: "/static/images/mlameh-icon.png",
         data: { url: "/" }
     };
 
@@ -34,16 +34,16 @@ self.addEventListener('push', event => {
         console.warn("[SW] Received push event with no data.");
     }
 
-    const displayTitle = payload.title || payload.head || "DeskPlus Notification";
+    const displayTitle = payload.title || payload.head || "MLAMEH Ticket Notification";
     const targetUrl = (payload.data && payload.data.url) ? payload.data.url : "/";
     const options = {
         body: payload.body || payload.message || "You have a new notification",
-        icon: payload.icon || "/static/images/deskplus-icon.svg",
+        icon: payload.icon || "/static/images/mlameh-icon.png",
         data: payload.data || { url: "/" },
-        badge: "/static/images/deskplus-icon.svg",
+        badge: "/static/images/mlameh-icon.png",
         vibrate: [100, 50, 100],
         // Collapse duplicate pushes for the same event into one OS toast
-        tag: `deskplus:${displayTitle}:${targetUrl}`,
+        tag: `mlameh:${displayTitle}:${targetUrl}`,
         renotify: false,
     };
 

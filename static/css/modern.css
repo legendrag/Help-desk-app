@@ -45,43 +45,13 @@ body {
 }
 
 .brand-logo {
-  width: 46px;
-  height: 28px;
+  width: auto;
+  height: 36px;
+  max-width: min(168px, 42vw);
   flex-shrink: 0;
   object-fit: contain;
   background: transparent;
-}
-
-.brand-logo--dark {
-  display: none;
-}
-
-.topbar .brand-text {
-  display: inline-flex;
-  align-items: baseline;
-  font-family: 'Outfit', system-ui, sans-serif;
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.topbar .brand-desk {
-  color: #818cf8;
-}
-
-.topbar .brand-plus {
-  color: #2ecc71;
-}
-
-.brand-plus-mark {
-  font-size: 0.62em;
-  font-weight: 700;
-  color: #2ecc71;
-  margin-left: 0.02em;
-  line-height: 0;
-  position: relative;
-  top: -0.65em;
+  display: block;
 }
 
 .auth-brand {
@@ -91,14 +61,10 @@ body {
 }
 
 .auth-brand-lockup {
-  width: min(220px, 78vw);
+  width: min(260px, 78vw);
   height: auto;
   display: block;
   object-fit: contain;
-}
-
-.auth-brand-lockup--dark {
-  display: none;
 }
 
 .menu-btn-universal {

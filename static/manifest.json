@@ -1,22 +1,23 @@
 {
-  "name": "DeskPlus",
-  "short_name": "DeskPlus",
-  "description": "Help Desk Application",
+  "name": "MLAMEH Ticket",
+  "short_name": "MLAMEH",
+  "description": "MLAMEH Ticket help desk application",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#818cf8",
+  "background_color": "#000000",
+  "theme_color": "#a751f4",
   "icons": [
     {
-      "src": "/static/images/deskplus-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/static/images/mlameh-icon.png",
+      "sizes": "392x392",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/static/images/deskplus-icon.svg",
-      "sizes": "1536x1024",
-      "type": "image/svg+xml"
+      "src": "/static/images/mlameh-icon.png",
+      "sizes": "392x392",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -26,16 +26,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, viewport-fit=cover">
     <meta name="description"
-        content="DeskPlus — Modern DeskPlus platform with real-time chat, smart routing, and knowledge base.">
-    <meta name="keywords" content="deskplus, DeskPlus, support, ticketing, customer service">
-    <title>{% block title %}DeskPlus{% endblock title %}</title>
+        content="MLAMEH Ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
+    <meta name="keywords" content="mlameh, MLAMEH Ticket, support, ticketing, customer service">
+    <title>{% block title %}MLAMEH Ticket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.59">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.45">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.21">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.46">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.22">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
-    <link rel="icon" href="{% static 'images/deskplus-icon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{% static 'images/mlameh-icon.png' %}" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon.png' %}">
     <link rel="manifest" href="{% static 'manifest.json' %}">
-    <meta name="theme-color" content="#818cf8">
+    <meta name="theme-color" content="#a751f4">
     {% webpush_header %}
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -59,7 +60,7 @@
             }
         });
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.15" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.16" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -67,16 +68,9 @@
     <div style="display:none;">{% csrf_token %}</div>
     <div class="app-shell">
         <header class="topbar">
-            <a href="{% url 'tickets_list' %}" class="brand" aria-label="DeskPlus Home">
-                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--light"
-                    height="28">
-                <img src="{% static 'images/deskplus-icon.svg' %}" alt="" class="brand-logo brand-logo--dark"
-                    height="28">
-                <span class="brand-text">
-                    <span class="brand-desk" style="font-weight: 800; color: #818cf8;">Desk</span><span
-                        class="brand-plus" style="font-weight: 500; color: #22c55e;">Plus</span><sup
-                        class="brand-plus-mark" style="font-weight: 800; color: #22c55e;">+</sup>
-                </span>
+            <a href="{% url 'tickets_list' %}" class="brand" aria-label="MLAMEH Ticket Home">
+                <img src="{% static 'images/mlameh-ticket-logo.png' %}" alt="MLAMEH Ticket" class="brand-logo"
+                    height="36">
             </a>
 
             <div class="topbar-controls">
