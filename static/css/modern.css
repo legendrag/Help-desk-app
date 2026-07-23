@@ -39,21 +39,21 @@ body {
 
 .topbar .brand {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   text-decoration: none;
 }
 
 .brand-mark {
   width: auto;
-  height: 28px;
+  height: 26px;
   flex-shrink: 0;
   object-fit: contain;
   object-position: center;
   display: block;
   background: transparent;
-  /* Nudge up so icon centers with MLAMEH, not the Ticket line below */
-  margin-top: -0.35rem;
+  /* Align vertical center with MLAMEH (not full lockup incl. Ticket) */
+  margin-top: -1px;
 }
 
 .brand-logo {
