@@ -4,8 +4,8 @@
   "description": "mlameh ticket help desk application",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#a751f4",
+  "background_color": "#0a0818",
+  "theme_color": "#7880f0",
   "icons": [
     {
       "src": "/static/images/mlameh-icon.png",

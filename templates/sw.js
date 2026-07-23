@@ -10,7 +10,7 @@ self.addEventListener('push', event => {
     let payload = {
         title: "mlameh ticket Notification",
         body: "You have a new notification",
-        icon: "/static/images/mlameh-icon.png",
+        icon: "/static/images/mlameh-icon-fg.png",
         data: { url: "/" }
     };
 
@@ -38,9 +38,9 @@ self.addEventListener('push', event => {
     const targetUrl = (payload.data && payload.data.url) ? payload.data.url : "/";
     const options = {
         body: payload.body || payload.message || "You have a new notification",
-        icon: payload.icon || "/static/images/mlameh-icon.png",
+        icon: payload.icon || "/static/images/mlameh-icon-fg.png",
         data: payload.data || { url: "/" },
-        badge: "/static/images/mlameh-icon.png",
+        badge: "/static/images/mlameh-icon-fg.png",
         vibrate: [100, 50, 100],
         // Collapse duplicate pushes for the same event into one OS toast
         tag: `mlameh:${displayTitle}:${targetUrl}`,

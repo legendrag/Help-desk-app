@@ -116,7 +116,7 @@ def _notify_users(users, title, message, link, notification_type="general", excl
                     "head": title,
                     "body": message,
                     "message": message,
-                    "icon": "/static/images/mlameh-icon.png",
+                    "icon": "/static/images/mlameh-icon-fg.png",
                     "data": {"url": link}
                 }
                 webpush.send_user_notification(user=user, payload=json.dumps(payload), ttl=1000)

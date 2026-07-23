@@ -30,13 +30,13 @@
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.59">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.47">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.22">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.50">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.24">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
-    <link rel="icon" href="{% static 'images/mlameh-icon.png' %}" type="image/png">
+    <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
-    <link rel="manifest" href="{% static 'manifest.json' %}?v=2">
-    <meta name="theme-color" content="#a751f4">
+    <link rel="manifest" href="{% static 'manifest.json' %}?v=5">
+    <meta name="theme-color" content="#7880f0">
     <meta name="application-name" content="mlameh ticket">
     <meta name="apple-mobile-web-app-title" content="mlameh ticket">
     <meta name="mobile-web-app-capable" content="yes">
@@ -73,8 +73,10 @@
         <header class="topbar">
             <a href="{% url 'tickets_list' %}" class="brand" aria-label="mlameh ticket Home">
                 <img src="{% static 'images/mlameh-icon-fg.png' %}" alt="" class="brand-mark" width="32" height="32">
-                <img src="{% static 'images/mlameh-ticket-logo.png' %}" alt="mlameh ticket" class="brand-logo"
-                    height="36">
+                <img src="{% static 'images/mlameh-ticket-logo.png' %}" alt="mlameh ticket"
+                    class="brand-logo brand-logo--light" height="36">
+                <img src="{% static 'images/mlameh-ticket-logo-dark.png' %}" alt="mlameh ticket"
+                    class="brand-logo brand-logo--dark" height="36">
             </a>
 
             <div class="topbar-controls">

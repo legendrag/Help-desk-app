@@ -50,6 +50,7 @@ body {
   flex-shrink: 0;
   object-fit: contain;
   display: block;
+  background: transparent;
 }
 
 .brand-logo {
@@ -60,6 +61,11 @@ body {
   object-fit: contain;
   background: transparent;
   display: block;
+}
+
+.brand-logo--dark,
+.auth-brand-lockup--dark {
+  display: none;
 }
 
 .auth-brand {

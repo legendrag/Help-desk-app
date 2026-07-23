@@ -61,6 +61,16 @@
   color: var(--text-main);
 }
 
+[data-theme="dark"] .brand-logo--light,
+[data-theme="dark"] .auth-brand-lockup--light {
+  display: none;
+}
+
+[data-theme="dark"] .brand-logo--dark,
+[data-theme="dark"] .auth-brand-lockup--dark {
+  display: block;
+}
+
 [data-theme="dark"] .topbar .brand-plus,
 [data-theme="dark"] .brand-plus-mark {
   color: #34d399;
