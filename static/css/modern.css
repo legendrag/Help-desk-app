@@ -63,17 +63,19 @@ body {
   flex-shrink: 0;
   object-fit: contain;
   background: transparent;
+}
+
+.brand-logo--light {
   display: block;
 }
 
-.brand-logo--dark,
-.auth-brand-lockup--dark {
+.brand-logo--dark {
   display: none;
 }
 
 .auth-brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 0.7rem;
   margin-bottom: 0.75rem;
@@ -81,19 +83,28 @@ body {
 
 .auth-brand-mark {
   width: auto;
-  height: 40px;
+  height: 48px;
   flex-shrink: 0;
   object-fit: contain;
+  object-position: center;
   display: block;
   background: transparent;
-  margin-top: -0.45rem;
+  /* Same optical align as header: center with MLAMEH, not Ticket */
+  margin-top: -2px;
 }
 
 .auth-brand-lockup {
   width: min(240px, 68vw);
   height: auto;
-  display: block;
   object-fit: contain;
+}
+
+.auth-brand-lockup--light {
+  display: block;
+}
+
+.auth-brand-lockup--dark {
+  display: none;
 }
 
 .menu-btn-universal {
