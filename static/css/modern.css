@@ -1914,16 +1914,35 @@ td.mgmt-empty-cell {
   color: var(--text-main);
 }
 
+/* Chart.js canvas inside a backdrop-filtered .panel goes blank on iOS Safari
+   (and some Android WebViews). Opt the volume card out of glass blur and force
+   a transparent canvas paint so the line chart composites correctly. */
+.dashboard-card:has(.volume-chart-wrap) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--panel-bg-solid, #ffffff);
+}
+
+[data-theme="dark"] .dashboard-card:has(.volume-chart-wrap) {
+  background: var(--panel-bg-solid, #1e293b);
+}
+
 .volume-chart-wrap {
   position: relative;
   width: 100%;
   height: 260px;
   margin-top: 0.5rem;
+  /* Own compositing layer — keeps canvas off the filtered ancestor surface */
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 .volume-chart-wrap canvas {
+  display: block;
   width: 100% !important;
   height: 100% !important;
+  /* WebKit workaround: transparent bg-image forces canvas to paint */
+  background-image: linear-gradient(transparent, transparent);
 }
 
 .pie-chart-wrapper {

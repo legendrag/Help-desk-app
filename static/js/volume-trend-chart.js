@@ -41,7 +41,7 @@
         var labels = items.map(function (item) { return item.label; });
         var counts = items.map(function (item) { return item.count; });
 
-        new Chart(canvas.getContext("2d"), {
+        var chart = new Chart(canvas.getContext("2d"), {
             type: "line",
             data: {
                 labels: labels,
@@ -98,6 +98,12 @@
                     }
                 }
             }
+        });
+
+        // Mobile layout can settle after first paint; force a resize so the
+        // canvas isn't left at 0×0 from the initial measure.
+        requestAnimationFrame(function () {
+            chart.resize();
         });
     }
 
