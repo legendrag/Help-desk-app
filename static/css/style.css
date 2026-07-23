@@ -348,6 +348,7 @@ body::before {
   background: #ffffff;
   color: var(--text-main);
   border-radius: 16px;
+  overflow: hidden;
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(0, 0, 0, 0.04);
