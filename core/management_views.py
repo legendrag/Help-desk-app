@@ -2,28 +2,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
-from notifications.email_defaults import (
-    ANNOUNCEMENT_INSERT_FIELDS,
-    TICKET_INSERT_FIELDS,
-)
-from .models import (
-    Branch,
-    Department,
-    Category,
-    Role,
-    EmailAppearance,
-    EmailSetting,
-    EmailTemplate,
-)
-from .forms import (
-    BranchForm,
-    DepartmentForm,
-    CategoryForm,
-    RoleForm,
-    EmailAppearanceForm,
-    EmailSettingForm,
-    EmailTemplateForm,
-)
+from .models import Branch, Department, Category, Role, EmailSetting
+from .forms import BranchForm, DepartmentForm, CategoryForm, RoleForm, EmailSettingForm
 
 class BaseSettingsRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -177,61 +157,6 @@ class EmailSettingUpdateView(EmailPermissionMixin, LoginRequiredMixin, BaseManag
     partial_template_name = "core/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-
-class EmailAppearanceUpdateView(EmailPermissionMixin, LoginRequiredMixin, BaseManagementView, UpdateView):
-    model = EmailAppearance
-    form_class = EmailAppearanceForm
-    template_name = "core/management/form.html"
-    partial_template_name = "core/management/form_partial.html"
-    success_url = reverse_lazy("settings")
-
-    def get_object(self, queryset=None):
-        return EmailAppearance.load()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["model_name"] = "Email Appearance"
-        context["email_editor"] = "appearance"
-        return context
-
-
-class EmailTemplateUpdateView(EmailPermissionMixin, LoginRequiredMixin, BaseManagementView, UpdateView):
-    model = EmailTemplate
-    form_class = EmailTemplateForm
-    template_name = "core/management/form.html"
-    partial_template_name = "core/management/form_partial.html"
-    success_url = reverse_lazy("settings")
-    slug_field = "event_type"
-    slug_url_kwarg = "event_type"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["model_name"] = "Email Template"
-        context["email_editor"] = "template"
-        appearance = EmailAppearance.load()
-        event_type = self.object.event_type if self.object else ""
-        source = (
-            ANNOUNCEMENT_INSERT_FIELDS
-            if event_type == EmailTemplate.EventType.ANNOUNCEMENT
-            else TICKET_INSERT_FIELDS
-        )
-        context["insert_fields"] = [
-            {
-                **field,
-                "sample": (
-                    (appearance.brand_name or field["sample"])
-                    if field["key"] == "brand_name"
-                    else field["sample"]
-                ),
-            }
-            for field in source
-        ]
-        context["preview_brand_name"] = appearance.brand_name
-        context["preview_accent_color"] = appearance.accent_color
-        context["preview_footer_note"] = appearance.footer_note
-        return context
-
-
 # Delete Views (simplified)
 class BaseDeleteView(LoginRequiredMixin):
     template_name = "core/management/delete_confirm.html"
@@ -377,22 +302,13 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
         return [self.template_name]
 
     def get_context_data(self, **kwargs):
-        from notifications.email_defaults import ensure_email_format_defaults
-
         context = super().get_context_data(**kwargs)
-        can_manage = self.request.user.is_superuser or (
-            self.request.user.role and self.request.user.role.can_manage_email
-        )
-        ensure_email_format_defaults()
         context.update({
             'model_name': 'Email Settings',
             'create_url': reverse_lazy('email_setting_create'),
             'edit_url_prefix': '/core/email-settings/',
-            'can_add': can_manage,
-            'can_edit': can_manage,
-            'can_delete': can_manage,
-            'email_appearance': EmailAppearance.load(),
-            'email_templates': EmailTemplate.objects.all().order_by('event_type'),
-            'appearance_edit_url': reverse_lazy('email_appearance_update'),
+            'can_add': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
+            'can_edit': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
+            'can_delete': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
         })
         return context

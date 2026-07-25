@@ -4,43 +4,13 @@ from django.db import migrations, models
 
 
 def seed_email_format(apps, schema_editor):
-    from notifications.email_defaults import (
-        DEFAULT_ACCENT_COLOR,
-        DEFAULT_BRAND_NAME,
-        DEFAULT_EMAIL_TEMPLATES,
-        DEFAULT_FOOTER_NOTE,
-    )
-
-    EmailAppearance = apps.get_model("core", "EmailAppearance")
-    EmailTemplate = apps.get_model("core", "EmailTemplate")
-
-    if not EmailAppearance.objects.filter(pk=1).exists():
-        EmailAppearance.objects.create(
-            pk=1,
-            brand_name=DEFAULT_BRAND_NAME,
-            accent_color=DEFAULT_ACCENT_COLOR,
-            footer_note=DEFAULT_FOOTER_NOTE,
-        )
-
-    for event_type, fields in DEFAULT_EMAIL_TEMPLATES.items():
-        EmailTemplate.objects.get_or_create(
-            event_type=event_type,
-            defaults={
-                "subject": fields["subject"],
-                "headline": fields["headline"],
-                "intro": fields["intro"],
-                "message_title": fields["message_title"],
-                "cta_label": fields["cta_label"],
-                "is_active": True,
-            },
-        )
+    # Historical no-op: these models were later removed in 0016.
+    # Kept so fresh installs do not depend on deleted app modules.
+    pass
 
 
 def unseed_email_format(apps, schema_editor):
-    EmailAppearance = apps.get_model("core", "EmailAppearance")
-    EmailTemplate = apps.get_model("core", "EmailTemplate")
-    EmailTemplate.objects.all().delete()
-    EmailAppearance.objects.all().delete()
+    pass
 
 
 class Migration(migrations.Migration):

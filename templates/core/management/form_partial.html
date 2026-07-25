@@ -1,15 +1,5 @@
 <div class="modal-header">
-    <h2>
-        {% if email_editor == "template" and object %}
-            Edit “{{ object.get_event_type_display }}” email
-        {% elif email_editor == "appearance" %}
-            Edit email look
-        {% elif object %}
-            Edit {{ model_name|default:"Entry" }}
-        {% else %}
-            Add {{ model_name|default:"Entry" }}
-        {% endif %}
-    </h2>
+    <h2>{% if object %}Edit{% else %}Add{% endif %} {{ model_name|default:"Entry" }}</h2>
     <button type="button" class="modal-close" onclick="closeModal()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -17,7 +7,7 @@
 
 <form hx-post="{{ request.path }}" 
       hx-target="#modal-content" 
-      class="management-form{% if email_editor %} email-format-editor-form{% endif %}">
+      class="management-form">
     {% csrf_token %}
 
     <div class="modal-body">
@@ -301,225 +291,13 @@
         </div>
 
     </div>
-    {% elif model_name == "Email Appearance" %}
-    <div class="email-editor email-appearance-editor" id="email-appearance-editor">
-        <div class="email-editor__main">
-            <div class="email-editor__field">
-                <label for="{{ form.brand_name.id_for_label }}">{{ form.brand_name.label }}</label>
-                {{ form.brand_name }}
-                {% if form.brand_name.errors %}<div class="field-error">{{ form.brand_name.errors }}</div>{% endif %}
-            </div>
-            <div class="email-editor__field">
-                <label for="{{ form.accent_color.id_for_label }}">{{ form.accent_color.label }}</label>
-                <div class="email-color-row">
-                    <input type="color" id="email-accent-picker" class="email-color-picker" value="{{ form.accent_color.value|default:'#4f46e5' }}" aria-label="Pick accent color">
-                    {{ form.accent_color }}
-                </div>
-                {% if form.accent_color.errors %}<div class="field-error">{{ form.accent_color.errors }}</div>{% endif %}
-            </div>
-            <div class="email-editor__field">
-                <label for="{{ form.footer_note.id_for_label }}">{{ form.footer_note.label }}</label>
-                {{ form.footer_note }}
-                {% if form.footer_note.errors %}<div class="field-error">{{ form.footer_note.errors }}</div>{% endif %}
-            </div>
-        </div>
-        <aside class="email-editor__preview" aria-live="polite">
-            <div class="email-live-preview__label">Preview</div>
-            <div class="email-mini-mail">
-                <div class="email-mini-mail__header" data-preview-accent>
-                    <span data-preview-brand>{{ form.brand_name.value|default:"mlamehticket" }}</span>
-                </div>
-                <div class="email-mini-mail__body">
-                    <div class="email-mini-mail__title">New ticket #TK-1042</div>
-                    <p class="email-mini-mail__intro">Sam Rivera submitted a new request.</p>
-                    <div class="email-mini-mail__cta" data-preview-accent>View ticket</div>
-                </div>
-                <div class="email-mini-mail__footer" data-preview-footer>{{ form.footer_note.value }}</div>
-            </div>
-        </aside>
-    </div>
-    <script>
-    (function () {
-        var root = document.getElementById('email-appearance-editor');
-        if (!root) return;
-        var brandInput = root.querySelector('[data-email-preview="brand"]');
-        var accentInput = root.querySelector('[data-email-preview="accent"]');
-        var footerInput = root.querySelector('[data-email-preview="footer"]');
-        var picker = document.getElementById('email-accent-picker');
-        var brandEls = root.querySelectorAll('[data-preview-brand]');
-        var footerEls = root.querySelectorAll('[data-preview-footer]');
-        var accentEls = root.querySelectorAll('[data-preview-accent]');
-
-        function refresh() {
-            var brand = (brandInput && brandInput.value.trim()) || 'mlamehticket';
-            var footer = (footerInput && footerInput.value.trim()) || '';
-            var accent = (accentInput && accentInput.value.trim()) || '#4f46e5';
-            brandEls.forEach(function (el) { el.textContent = brand; });
-            footerEls.forEach(function (el) { el.textContent = footer; });
-            if (/^#[0-9A-Fa-f]{6}$/.test(accent)) {
-                accentEls.forEach(function (el) { el.style.background = accent; });
-                if (picker) picker.value = accent;
-            }
-        }
-
-        if (picker && accentInput) {
-            picker.addEventListener('input', function () {
-                accentInput.value = picker.value;
-                refresh();
-            });
-            accentInput.addEventListener('input', refresh);
-        }
-        if (brandInput) brandInput.addEventListener('input', refresh);
-        if (footerInput) footerInput.addEventListener('input', refresh);
-        refresh();
-    })();
-    </script>
-    {% elif model_name == "Email Template" %}
-    <div class="email-editor email-template-editor" id="email-template-editor">
-        {% if insert_fields %}
-        <div class="email-insert-bar">
-            <span class="email-insert-bar__label">Insert</span>
-            <div class="email-insert-bar__chips" role="group" aria-label="Insert dynamic fields">
-                {% for field in insert_fields %}
-                <button type="button"
-                        class="email-insert-chip"
-                        data-insert-key="{{ field.key }}"
-                        title="Insert {{ field.label }}">+ {{ field.label }}</button>
-                {% endfor %}
-            </div>
-        </div>
-        <script type="application/json" id="email-preview-samples">{
-            {
-                {% for field in insert_fields %}
-                "{{ field.key|escapejs }}": "{{ field.sample|escapejs }}"{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            }
-        </script>
-        {% endif %}
-
-        <div class="email-editor__main">
-            <div class="email-editor__field">
-                <label for="{{ form.subject.id_for_label }}">{{ form.subject.label }}</label>
-                {{ form.subject }}
-                {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors }}</div>{% endif %}
-            </div>
-            <div class="email-editor__field">
-                <label for="{{ form.headline.id_for_label }}">{{ form.headline.label }}</label>
-                {{ form.headline }}
-                {% if form.headline.errors %}<div class="field-error">{{ form.headline.errors }}</div>{% endif %}
-            </div>
-            <div class="email-editor__field">
-                <label for="{{ form.intro.id_for_label }}">{{ form.intro.label }}</label>
-                {{ form.intro }}
-                {% if form.intro.errors %}<div class="field-error">{{ form.intro.errors }}</div>{% endif %}
-            </div>
-            <div class="email-editor__row">
-                <div class="email-editor__field">
-                    <label for="{{ form.message_title.id_for_label }}">{{ form.message_title.label }}</label>
-                    {{ form.message_title }}
-                    {% if form.message_title.errors %}<div class="field-error">{{ form.message_title.errors }}</div>{% endif %}
-                </div>
-                <div class="email-editor__field">
-                    <label for="{{ form.cta_label.id_for_label }}">{{ form.cta_label.label }}</label>
-                    {{ form.cta_label }}
-                    {% if form.cta_label.errors %}<div class="field-error">{{ form.cta_label.errors }}</div>{% endif %}
-                </div>
-            </div>
-            <div class="email-editor__toggle">
-                <div class="checkbox-field">
-                    {{ form.is_active }}
-                    <label for="{{ form.is_active.id_for_label }}" class="checkbox-label">{{ form.is_active.label }}</label>
-                </div>
-                {% if form.is_active.errors %}<div class="field-error">{{ form.is_active.errors }}</div>{% endif %}
-            </div>
-        </div>
-
-        <aside class="email-editor__preview" aria-live="polite">
-            <div class="email-live-preview__label">Preview</div>
-            <div class="email-mini-mail">
-                <div class="email-mini-mail__subject" data-preview-out="subject">Subject</div>
-                <div class="email-mini-mail__header" data-preview-accent style="background: {{ preview_accent_color|default:'#4f46e5' }};">
-                    <span data-preview-brand>{{ preview_brand_name|default:"mlamehticket" }}</span>
-                </div>
-                <div class="email-mini-mail__body">
-                    <div class="email-mini-mail__title" data-preview-out="headline">Headline</div>
-                    <p class="email-mini-mail__intro" data-preview-out="intro">Intro</p>
-                    <div class="email-mini-mail__message">
-                        <div class="email-mini-mail__message-label" data-preview-out="message_title">Request</div>
-                        <div class="email-mini-mail__message-body">Sample message body</div>
-                    </div>
-                    <div class="email-mini-mail__cta" data-preview-out="cta_label" data-preview-accent style="background: {{ preview_accent_color|default:'#4f46e5' }};">Open</div>
-                </div>
-            </div>
-        </aside>
-    </div>
-    <script>
-    (function () {
-        var root = document.getElementById('email-template-editor');
-        if (!root) return;
-
-        var samples = {};
-        var samplesEl = document.getElementById('email-preview-samples');
-        if (samplesEl) {
-            try { samples = JSON.parse(samplesEl.textContent || '{}'); } catch (e) { samples = {}; }
-        }
-
-        var lastTarget = root.querySelector('[data-email-insert-target]');
-        var fields = root.querySelectorAll('[data-email-insert-target]');
-
-        function fillTemplate(template) {
-            return String(template || '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, function (_, key) {
-                return samples[key] != null ? samples[key] : '';
-            });
-        }
-
-        function refreshPreview() {
-            root.querySelectorAll('[data-preview-out]').forEach(function (el) {
-                var name = el.getAttribute('data-preview-out');
-                var input = root.querySelector('[data-email-field="' + name + '"]');
-                var raw = input ? input.value : '';
-                el.textContent = fillTemplate(raw) || '—';
-            });
-        }
-
-        function insertAtCursor(input, text) {
-            if (!input) return;
-            input.focus();
-            var start = input.selectionStart != null ? input.selectionStart : input.value.length;
-            var end = input.selectionEnd != null ? input.selectionEnd : start;
-            var value = input.value || '';
-            input.value = value.slice(0, start) + text + value.slice(end);
-            var pos = start + text.length;
-            if (input.setSelectionRange) input.setSelectionRange(pos, pos);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-
-        fields.forEach(function (field) {
-            field.addEventListener('focus', function () { lastTarget = field; });
-            field.addEventListener('input', refreshPreview);
-        });
-
-        root.querySelectorAll('.email-insert-chip').forEach(function (chip) {
-            chip.addEventListener('click', function () {
-                var key = chip.getAttribute('data-insert-key');
-                if (!key) return;
-                if (!lastTarget || !root.contains(lastTarget)) {
-                    lastTarget = root.querySelector('[data-email-insert-target]');
-                }
-                insertAtCursor(lastTarget, '{' + '{ ' + key + ' }' + '}');
-                refreshPreview();
-            });
-        });
-
-        refreshPreview();
-    })();
-    </script>
     {% elif model_name == "User" %}
     <div class="form-stack">
         <div class="form-grid">
             <div class="form-group">
                 <label>{{ form.username.label }}</label>
-                {{ form.username }}                {% if form.username.errors %}<div class="field-error">{{ form.username.errors }}</div>{% endif %}
+                {{ form.username }}
+                {% if form.username.errors %}<div class="field-error">{{ form.username.errors }}</div>{% endif %}
                 {% if form.username.help_text %}<div class="help-text">{{ form.username.help_text|safe }}</div>{% endif %}
             </div>
             <div class="form-group">
