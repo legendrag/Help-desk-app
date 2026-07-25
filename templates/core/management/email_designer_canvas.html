@@ -38,8 +38,18 @@
     </div>
     {% endif %}
 
-    <div class="email-canvas__stage">
-        <div class="email-canvas__mail" style="--email-accent: {{ brand.accent_color }};">
+    <div class="email-canvas__stage"
+         style="--email-page-bg: {{ brand.page_background }};">
+        <div class="email-canvas__mail"
+             data-table-style="{{ brand.table_style }}"
+             style="
+                --email-accent: {{ brand.accent_color }};
+                --email-card-bg: {{ brand.card_background }};
+                --email-table-bg: {{ brand.table_header_bg }};
+                --email-table-border: {{ brand.table_border_color }};
+                --email-text: {{ brand.text_color }};
+                --email-muted: {{ brand.muted_text_color }};
+             ">
             <div class="email-canvas__subject-row">
                 <span class="email-canvas__subject-label">Subject</span>
                 <div class="email-canvas__region{% if can_edit_email_format %} is-editable{% endif %}"

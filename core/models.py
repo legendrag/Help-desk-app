@@ -165,8 +165,24 @@ class EmailSetting(TimeStampedModel):
 class EmailBrand(TimeStampedModel):
     """Singleton branding for notification emails."""
 
+    class TableStyle(models.TextChoices):
+        PLAIN = "plain", "Plain"
+        STRIPED = "striped", "Striped rows"
+        FILLED = "filled", "Filled labels"
+
     brand_name = models.CharField(max_length=100, default="mlamehticket")
     accent_color = models.CharField(max_length=7, default="#4f46e5")
+    page_background = models.CharField(max_length=7, default="#f8fafc")
+    card_background = models.CharField(max_length=7, default="#ffffff")
+    table_header_bg = models.CharField(max_length=7, default="#f8fafc")
+    table_border_color = models.CharField(max_length=7, default="#e2e8f0")
+    text_color = models.CharField(max_length=7, default="#0f172a")
+    muted_text_color = models.CharField(max_length=7, default="#64748b")
+    table_style = models.CharField(
+        max_length=20,
+        choices=TableStyle.choices,
+        default=TableStyle.STRIPED,
+    )
     footer_note = models.TextField(
         default=(
             "You’re receiving this because email notifications are enabled "

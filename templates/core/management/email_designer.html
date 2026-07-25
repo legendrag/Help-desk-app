@@ -14,7 +14,7 @@
         <div class="email-brand-strip__head">
             <div>
                 <p class="email-brand-strip__eyebrow">Brand look</p>
-                <p class="email-brand-strip__desc">Shared header color, name, and footer for every notification.</p>
+                <p class="email-brand-strip__desc">Colors, table style, and footer shared by every notification email.</p>
             </div>
             <div class="email-brand-strip__actions">
                 <span class="email-save-status" id="email-brand-status" hidden></span>
@@ -23,6 +23,16 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if can_edit_email_format %}
+        <div class="email-brand-presets" role="group" aria-label="Look presets">
+            <span class="email-brand-presets__label">Quick look</span>
+            <button type="button" class="email-preset-btn" data-preset="light">Light</button>
+            <button type="button" class="email-preset-btn" data-preset="soft">Soft</button>
+            <button type="button" class="email-preset-btn" data-preset="dark">Dark</button>
+        </div>
+        {% endif %}
+
         <div class="email-brand-strip__fields">
             <label class="email-brand-field">
                 <span>Brand name</span>
@@ -32,14 +42,15 @@
                        {% if not can_edit_email_format %}disabled{% endif %}>
             </label>
             <label class="email-brand-field email-brand-field--color">
-                <span>Accent color</span>
+                <span>Accent</span>
                 <div class="email-brand-color-row">
                     <input type="color" id="email-brand-color-picker" value="{{ email_brand.accent_color }}"
+                           data-sync-hex="email-brand-accent"
                            aria-label="Pick accent color"
                            {% if not can_edit_email_format %}disabled{% endif %}>
                     <input type="text" name="accent_color" id="email-brand-accent" class="form-control"
                            value="{{ email_brand.accent_color }}" spellcheck="false"
-                           inputmode="text" pattern="#[0-9A-Fa-f]{6}"
+                           data-sync-picker="email-brand-color-picker"
                            {% if not can_edit_email_format %}disabled{% endif %}>
                 </div>
             </label>
@@ -50,60 +61,152 @@
                        {% if not can_edit_email_format %}disabled{% endif %}>
             </label>
         </div>
+
+        <div class="email-brand-surface">
+            <label class="email-brand-field email-brand-field--color">
+                <span>Page background</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-page-bg-picker" value="{{ email_brand.page_background }}"
+                           data-sync-hex="email-page-bg"
+                           aria-label="Page background"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="page_background" id="email-page-bg" class="form-control"
+                           value="{{ email_brand.page_background }}" spellcheck="false"
+                           data-sync-picker="email-page-bg-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field email-brand-field--color">
+                <span>Card background</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-card-bg-picker" value="{{ email_brand.card_background }}"
+                           data-sync-hex="email-card-bg"
+                           aria-label="Card background"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="card_background" id="email-card-bg" class="form-control"
+                           value="{{ email_brand.card_background }}" spellcheck="false"
+                           data-sync-picker="email-card-bg-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field email-brand-field--color">
+                <span>Table fill</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-table-bg-picker" value="{{ email_brand.table_header_bg }}"
+                           data-sync-hex="email-table-bg"
+                           aria-label="Table fill"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="table_header_bg" id="email-table-bg" class="form-control"
+                           value="{{ email_brand.table_header_bg }}" spellcheck="false"
+                           data-sync-picker="email-table-bg-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field email-brand-field--color">
+                <span>Table border</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-table-border-picker" value="{{ email_brand.table_border_color }}"
+                           data-sync-hex="email-table-border"
+                           aria-label="Table border"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="table_border_color" id="email-table-border" class="form-control"
+                           value="{{ email_brand.table_border_color }}" spellcheck="false"
+                           data-sync-picker="email-table-border-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field email-brand-field--color">
+                <span>Text</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-text-picker" value="{{ email_brand.text_color }}"
+                           data-sync-hex="email-text-color"
+                           aria-label="Text color"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="text_color" id="email-text-color" class="form-control"
+                           value="{{ email_brand.text_color }}" spellcheck="false"
+                           data-sync-picker="email-text-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field email-brand-field--color">
+                <span>Muted text</span>
+                <div class="email-brand-color-row">
+                    <input type="color" id="email-muted-picker" value="{{ email_brand.muted_text_color }}"
+                           data-sync-hex="email-muted-color"
+                           aria-label="Muted text color"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                    <input type="text" name="muted_text_color" id="email-muted-color" class="form-control"
+                           value="{{ email_brand.muted_text_color }}" spellcheck="false"
+                           data-sync-picker="email-muted-picker"
+                           {% if not can_edit_email_format %}disabled{% endif %}>
+                </div>
+            </label>
+            <label class="email-brand-field">
+                <span>Table style</span>
+                <select name="table_style" id="email-table-style" class="form-control"
+                        {% if not can_edit_email_format %}disabled{% endif %}>
+                    <option value="plain" {% if email_brand.table_style == "plain" %}selected{% endif %}>Plain</option>
+                    <option value="striped" {% if email_brand.table_style == "striped" %}selected{% endif %}>Striped rows</option>
+                    <option value="filled" {% if email_brand.table_style == "filled" %}selected{% endif %}>Filled labels</option>
+                </select>
+            </label>
+        </div>
     </form>
 
     <div class="email-designer__workspace">
         <aside class="email-type-list" aria-label="Email types">
-            <div class="email-type-list__mobile">
-                <label for="email-type-select">Email type</label>
-                <select id="email-type-select" class="form-control">
+            <div class="email-type-list__panel">
+                <div class="email-type-list__mobile">
+                    <label for="email-type-select">Email type</label>
+                    <select id="email-type-select" class="form-control">
+                        {% for item in email_event_types %}
+                        <option value="{{ item.event_type }}" {% if item.event_type == selected_email_type %}selected{% endif %}>
+                            {{ item.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <p class="email-type-list__heading">Tickets</p>
+                <ul class="email-type-list__items">
                     {% for item in email_event_types %}
-                    <option value="{{ item.event_type }}" {% if item.event_type == selected_email_type %}selected{% endif %}>
-                        {{ item.label }}
-                    </option>
+                    {% if item.group == "ticket" %}
+                    <li>
+                        <button type="button"
+                                class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
+                                data-event-type="{{ item.event_type }}"
+                                hx-get="{% url 'email_designer_canvas' item.event_type %}"
+                                hx-target="#email-canvas-host"
+                                hx-swap="innerHTML"
+                                hx-indicator="#email-canvas-host">
+                            <span class="email-type-btn__label">{{ item.label }}</span>
+                            <span class="email-type-btn__purpose">{{ item.purpose }}</span>
+                        </button>
+                    </li>
+                    {% endif %}
                     {% endfor %}
-                </select>
+                </ul>
+
+                <p class="email-type-list__heading email-type-list__heading--spaced">News</p>
+                <ul class="email-type-list__items">
+                    {% for item in email_event_types %}
+                    {% if item.group == "announcement" %}
+                    <li>
+                        <button type="button"
+                                class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
+                                data-event-type="{{ item.event_type }}"
+                                hx-get="{% url 'email_designer_canvas' item.event_type %}"
+                                hx-target="#email-canvas-host"
+                                hx-swap="innerHTML"
+                                hx-indicator="#email-canvas-host">
+                            <span class="email-type-btn__label">{{ item.label }}</span>
+                            <span class="email-type-btn__purpose">{{ item.purpose }}</span>
+                        </button>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
             </div>
-
-            <p class="email-type-list__heading">Tickets</p>
-            <ul class="email-type-list__items">
-                {% for item in email_event_types %}
-                {% if item.group == "ticket" %}
-                <li>
-                    <button type="button"
-                            class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
-                            data-event-type="{{ item.event_type }}"
-                            hx-get="{% url 'email_designer_canvas' item.event_type %}"
-                            hx-target="#email-canvas-host"
-                            hx-swap="innerHTML"
-                            hx-indicator="#email-canvas-host">
-                        <span class="email-type-btn__label">{{ item.label }}</span>
-                        <span class="email-type-btn__purpose">{{ item.purpose }}</span>
-                    </button>
-                </li>
-                {% endif %}
-                {% endfor %}
-            </ul>
-
-            <p class="email-type-list__heading email-type-list__heading--spaced">News</p>
-            <ul class="email-type-list__items">
-                {% for item in email_event_types %}
-                {% if item.group == "announcement" %}
-                <li>
-                    <button type="button"
-                            class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
-                            data-event-type="{{ item.event_type }}"
-                            hx-get="{% url 'email_designer_canvas' item.event_type %}"
-                            hx-target="#email-canvas-host"
-                            hx-swap="innerHTML"
-                            hx-indicator="#email-canvas-host">
-                        <span class="email-type-btn__label">{{ item.label }}</span>
-                        <span class="email-type-btn__purpose">{{ item.purpose }}</span>
-                    </button>
-                </li>
-                {% endif %}
-                {% endfor %}
-            </ul>
         </aside>
 
         <div class="email-designer__canvas-host" id="email-canvas-host">

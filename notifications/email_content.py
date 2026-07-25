@@ -8,6 +8,7 @@ from notifications.email_messages import (
     DEFAULT_ACCENT_COLOR,
     DEFAULT_BRAND_NAME,
     DEFAULT_FOOTER_NOTE,
+    brand_surface_context,
     get_email_brand,
 )
 from notifications.utils import format_status_label
@@ -115,8 +116,16 @@ def render_notification_email(
     footer_note: str = "",
     brand_name: str = "",
     accent_color: str = "",
+    page_background: str = "",
+    card_background: str = "",
+    table_header_bg: str = "",
+    table_border_color: str = "",
+    text_color: str = "",
+    muted_text_color: str = "",
+    table_style: str = "",
 ) -> tuple[str, str]:
     brand = get_email_brand()
+    surface = brand_surface_context(brand)
     context = {
         "brand_name": brand_name or brand.brand_name or DEFAULT_BRAND_NAME,
         "accent_color": accent_color or brand.accent_color or DEFAULT_ACCENT_COLOR,
@@ -128,6 +137,13 @@ def render_notification_email(
         "cta_url": cta_url,
         "cta_label": cta_label,
         "footer_note": footer_note or brand.footer_note or DEFAULT_FOOTER_NOTE,
+        "page_background": page_background or surface["page_background"],
+        "card_background": card_background or surface["card_background"],
+        "table_header_bg": table_header_bg or surface["table_header_bg"],
+        "table_border_color": table_border_color or surface["table_border_color"],
+        "text_color": text_color or surface["text_color"],
+        "muted_text_color": muted_text_color or surface["muted_text_color"],
+        "table_style": table_style or surface["table_style"],
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)

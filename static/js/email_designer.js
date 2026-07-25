@@ -4,6 +4,49 @@
   var savedRange = null;
   var activeRegion = null;
 
+  var PRESETS = {
+    light: {
+      accent_color: "#4f46e5",
+      page_background: "#f8fafc",
+      card_background: "#ffffff",
+      table_header_bg: "#f8fafc",
+      table_border_color: "#e2e8f0",
+      text_color: "#0f172a",
+      muted_text_color: "#64748b",
+      table_style: "striped",
+    },
+    soft: {
+      accent_color: "#0f766e",
+      page_background: "#ecfdf5",
+      card_background: "#ffffff",
+      table_header_bg: "#f0fdfa",
+      table_border_color: "#99f6e4",
+      text_color: "#134e4a",
+      muted_text_color: "#0f766e",
+      table_style: "filled",
+    },
+    dark: {
+      accent_color: "#818cf8",
+      page_background: "#0f172a",
+      card_background: "#1e293b",
+      table_header_bg: "#0f172a",
+      table_border_color: "#334155",
+      text_color: "#f1f5f9",
+      muted_text_color: "#94a3b8",
+      table_style: "striped",
+    },
+  };
+
+  var FIELD_IDS = {
+    accent_color: "email-brand-accent",
+    page_background: "email-page-bg",
+    card_background: "email-card-bg",
+    table_header_bg: "email-table-bg",
+    table_border_color: "email-table-border",
+    text_color: "email-text-color",
+    muted_text_color: "email-muted-color",
+  };
+
   function designerRoot() {
     return document.getElementById("email-designer");
   }
@@ -57,28 +100,90 @@
     );
   }
 
+  function readHex(id, fallback) {
+    var el = document.getElementById(id);
+    var value = el ? el.value.trim() : "";
+    return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
+  }
+
   function applyBrandPreview() {
     var root = designerRoot();
     if (!root) return;
     var name = (document.getElementById("email-brand-name") || {}).value || "mlamehticket";
-    var accent = (document.getElementById("email-brand-accent") || {}).value || "#4f46e5";
+    var accent = readHex("email-brand-accent", "#4f46e5");
     var footer = (document.getElementById("email-brand-footer") || {}).value || "";
+    var pageBg = readHex("email-page-bg", "#f8fafc");
+    var cardBg = readHex("email-card-bg", "#ffffff");
+    var tableBg = readHex("email-table-bg", "#f8fafc");
+    var tableBorder = readHex("email-table-border", "#e2e8f0");
+    var text = readHex("email-text-color", "#0f172a");
+    var muted = readHex("email-muted-color", "#64748b");
+    var tableStyle = (document.getElementById("email-table-style") || {}).value || "striped";
+
     root.querySelectorAll("[data-brand-name]").forEach(function (el) {
       el.textContent = name;
     });
     root.querySelectorAll("[data-brand-footer]").forEach(function (el) {
       el.textContent = footer;
     });
-    if (/^#[0-9A-Fa-f]{6}$/.test(accent)) {
-      root.querySelectorAll("[data-brand-accent]").forEach(function (el) {
-        el.style.background = accent;
-      });
-      root.querySelectorAll("[data-brand-border]").forEach(function (el) {
-        el.style.borderLeftColor = accent;
-      });
-      var mail = root.querySelector(".email-canvas__mail");
-      if (mail) mail.style.setProperty("--email-accent", accent);
+    root.querySelectorAll("[data-brand-accent]").forEach(function (el) {
+      el.style.background = accent;
+    });
+    root.querySelectorAll("[data-brand-border]").forEach(function (el) {
+      el.style.borderLeftColor = accent;
+    });
+
+    var stage = root.querySelector(".email-canvas__stage");
+    if (stage) stage.style.setProperty("--email-page-bg", pageBg);
+
+    var mail = root.querySelector(".email-canvas__mail");
+    if (mail) {
+      mail.style.setProperty("--email-accent", accent);
+      mail.style.setProperty("--email-card-bg", cardBg);
+      mail.style.setProperty("--email-table-bg", tableBg);
+      mail.style.setProperty("--email-table-border", tableBorder);
+      mail.style.setProperty("--email-text", text);
+      mail.style.setProperty("--email-muted", muted);
+      mail.dataset.tableStyle = tableStyle;
     }
+  }
+
+  function applyPreset(name) {
+    var preset = PRESETS[name];
+    if (!preset) return;
+    Object.keys(FIELD_IDS).forEach(function (key) {
+      var input = document.getElementById(FIELD_IDS[key]);
+      if (!input) return;
+      input.value = preset[key];
+      var pickerId = input.getAttribute("data-sync-picker");
+      var picker = pickerId ? document.getElementById(pickerId) : null;
+      if (picker) picker.value = preset[key];
+    });
+    var style = document.getElementById("email-table-style");
+    if (style) style.value = preset.table_style;
+    applyBrandPreview();
+    markBrandDirty(true);
+  }
+
+  function bindColorPairs(root) {
+    root.querySelectorAll('input[type="color"][data-sync-hex]').forEach(function (picker) {
+      picker.addEventListener("input", function () {
+        var hex = document.getElementById(picker.getAttribute("data-sync-hex"));
+        if (hex) hex.value = picker.value;
+        applyBrandPreview();
+        markBrandDirty(true);
+      });
+    });
+    root.querySelectorAll("input[data-sync-picker]").forEach(function (hex) {
+      hex.addEventListener("input", function () {
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex.value)) {
+          var picker = document.getElementById(hex.getAttribute("data-sync-picker"));
+          if (picker) picker.value = hex.value;
+        }
+        applyBrandPreview();
+        markBrandDirty(true);
+      });
+    });
   }
 
   function updateInsertBar(region) {
@@ -233,29 +338,27 @@
     if (!root || root.dataset.bound === "1") return;
     root.dataset.bound = "1";
 
-    var picker = document.getElementById("email-brand-color-picker");
-    var accent = document.getElementById("email-brand-accent");
     var nameInput = document.getElementById("email-brand-name");
     var footerInput = document.getElementById("email-brand-footer");
+    var tableStyle = document.getElementById("email-table-style");
     var brandForm = document.getElementById("email-brand-form");
+
+    bindColorPairs(root);
 
     function onBrandChange() {
       applyBrandPreview();
       markBrandDirty(true);
     }
 
-    if (picker && accent) {
-      picker.addEventListener("input", function () {
-        accent.value = picker.value;
-        onBrandChange();
-      });
-      accent.addEventListener("input", function () {
-        if (/^#[0-9A-Fa-f]{6}$/.test(accent.value)) picker.value = accent.value;
-        onBrandChange();
-      });
-    }
     if (nameInput) nameInput.addEventListener("input", onBrandChange);
     if (footerInput) footerInput.addEventListener("input", onBrandChange);
+    if (tableStyle) tableStyle.addEventListener("change", onBrandChange);
+
+    root.querySelectorAll("[data-preset]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        applyPreset(btn.dataset.preset);
+      });
+    });
 
     markBrandDirty(false);
 
@@ -362,7 +465,6 @@
       var canvas = document.getElementById("email-canvas");
       if (canvas) {
         canvas.classList.remove("is-entering");
-        // Force reflow so enter animation can replay
         void canvas.offsetWidth;
         canvas.classList.add("is-entering");
       }

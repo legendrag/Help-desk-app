@@ -205,15 +205,46 @@ class EmailSettingForm(forms.ModelForm):
 
 
 class EmailBrandForm(forms.ModelForm):
+    COLOR_FIELDS = (
+        "accent_color",
+        "page_background",
+        "card_background",
+        "table_header_bg",
+        "table_border_color",
+        "text_color",
+        "muted_text_color",
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
 
-    def clean_accent_color(self):
-        color = (self.cleaned_data.get("accent_color") or "").strip()
+    def _clean_hex(self, field_name: str) -> str:
+        color = (self.cleaned_data.get(field_name) or "").strip()
         if not re.match(r"^#[0-9A-Fa-f]{6}$", color):
             raise forms.ValidationError("Enter a valid hex color like #4f46e5.")
         return color.lower()
+
+    def clean_accent_color(self):
+        return self._clean_hex("accent_color")
+
+    def clean_page_background(self):
+        return self._clean_hex("page_background")
+
+    def clean_card_background(self):
+        return self._clean_hex("card_background")
+
+    def clean_table_header_bg(self):
+        return self._clean_hex("table_header_bg")
+
+    def clean_table_border_color(self):
+        return self._clean_hex("table_border_color")
+
+    def clean_text_color(self):
+        return self._clean_hex("text_color")
+
+    def clean_muted_text_color(self):
+        return self._clean_hex("muted_text_color")
 
     def clean_brand_name(self):
         name = (self.cleaned_data.get("brand_name") or "").strip()
@@ -223,7 +254,18 @@ class EmailBrandForm(forms.ModelForm):
 
     class Meta:
         model = EmailBrand
-        fields = ["brand_name", "accent_color", "footer_note"]
+        fields = [
+            "brand_name",
+            "accent_color",
+            "page_background",
+            "card_background",
+            "table_header_bg",
+            "table_border_color",
+            "text_color",
+            "muted_text_color",
+            "table_style",
+            "footer_note",
+        ]
 
 
 class EmailMessageForm(forms.ModelForm):

@@ -14,10 +14,27 @@ _TEMPLATE_ENGINE = Engine(autoescape=False)
 
 DEFAULT_BRAND_NAME = "mlamehticket"
 DEFAULT_ACCENT_COLOR = "#4f46e5"
+DEFAULT_PAGE_BACKGROUND = "#f8fafc"
+DEFAULT_CARD_BACKGROUND = "#ffffff"
+DEFAULT_TABLE_HEADER_BG = "#f8fafc"
+DEFAULT_TABLE_BORDER_COLOR = "#e2e8f0"
+DEFAULT_TEXT_COLOR = "#0f172a"
+DEFAULT_MUTED_TEXT_COLOR = "#64748b"
+DEFAULT_TABLE_STYLE = "striped"
 DEFAULT_FOOTER_NOTE = (
     "You’re receiving this because email notifications are enabled "
     "for your mlamehticket account."
 )
+
+BRAND_SURFACE_DEFAULTS = {
+    "page_background": DEFAULT_PAGE_BACKGROUND,
+    "card_background": DEFAULT_CARD_BACKGROUND,
+    "table_header_bg": DEFAULT_TABLE_HEADER_BG,
+    "table_border_color": DEFAULT_TABLE_BORDER_COLOR,
+    "text_color": DEFAULT_TEXT_COLOR,
+    "muted_text_color": DEFAULT_MUTED_TEXT_COLOR,
+    "table_style": DEFAULT_TABLE_STYLE,
+}
 
 EVENT_META = [
     {
@@ -187,6 +204,7 @@ def ensure_email_designer_defaults() -> None:
             "brand_name": DEFAULT_BRAND_NAME,
             "accent_color": DEFAULT_ACCENT_COLOR,
             "footer_note": DEFAULT_FOOTER_NOTE,
+            **BRAND_SURFACE_DEFAULTS,
         },
     )
     for event_type, fields in DEFAULT_EMAIL_MESSAGES.items():
@@ -213,7 +231,22 @@ def get_email_brand():
         brand_name=DEFAULT_BRAND_NAME,
         accent_color=DEFAULT_ACCENT_COLOR,
         footer_note=DEFAULT_FOOTER_NOTE,
+        **BRAND_SURFACE_DEFAULTS,
     )
+
+
+def brand_surface_context(brand=None) -> dict:
+    brand = brand or get_email_brand()
+    return {
+        "page_background": getattr(brand, "page_background", None) or DEFAULT_PAGE_BACKGROUND,
+        "card_background": getattr(brand, "card_background", None) or DEFAULT_CARD_BACKGROUND,
+        "table_header_bg": getattr(brand, "table_header_bg", None) or DEFAULT_TABLE_HEADER_BG,
+        "table_border_color": getattr(brand, "table_border_color", None)
+        or DEFAULT_TABLE_BORDER_COLOR,
+        "text_color": getattr(brand, "text_color", None) or DEFAULT_TEXT_COLOR,
+        "muted_text_color": getattr(brand, "muted_text_color", None) or DEFAULT_MUTED_TEXT_COLOR,
+        "table_style": getattr(brand, "table_style", None) or DEFAULT_TABLE_STYLE,
+    }
 
 
 def get_email_message(event_type: str):
@@ -268,6 +301,7 @@ def resolve_message_copy(event_type: str, context: dict, defaults: dict) -> dict
         "brand_name": brand.brand_name or DEFAULT_BRAND_NAME,
         "accent_color": brand.accent_color or DEFAULT_ACCENT_COLOR,
         "footer_note": brand.footer_note or DEFAULT_FOOTER_NOTE,
+        **brand_surface_context(brand),
     }
 
 

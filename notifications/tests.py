@@ -273,6 +273,13 @@ class EmailDesignerSendTests(TestCase):
         brand = EmailBrand.load()
         brand.brand_name = "AcmeDesk"
         brand.accent_color = "#0d9488"
+        brand.page_background = "#0f172a"
+        brand.card_background = "#1e293b"
+        brand.table_header_bg = "#0f172a"
+        brand.table_border_color = "#334155"
+        brand.text_color = "#f1f5f9"
+        brand.muted_text_color = "#94a3b8"
+        brand.table_style = "filled"
         brand.footer_note = "Custom footer."
         brand.save()
 
@@ -342,6 +349,8 @@ class EmailDesignerSendTests(TestCase):
         self.assertIn("Sam Requester filed VPN down.", body)
         self.assertIn("Inspect ticket", html_body)
         self.assertIn("#0d9488", html_body)
+        self.assertIn("#0f172a", html_body)
+        self.assertIn("#1e293b", html_body)
         self.assertIn("AcmeDesk", html_body)
         self.assertIn("Custom footer.", html_body)
 
@@ -409,6 +418,13 @@ class EmailDesignerPermissionTests(TestCase):
             {
                 "brand_name": "ManagedBrand",
                 "accent_color": "#abcdef",
+                "page_background": "#111827",
+                "card_background": "#1f2937",
+                "table_header_bg": "#111827",
+                "table_border_color": "#374151",
+                "text_color": "#f9fafb",
+                "muted_text_color": "#9ca3af",
+                "table_style": "plain",
                 "footer_note": "Managed footer",
             },
             HTTP_HX_REQUEST="true",
@@ -417,6 +433,8 @@ class EmailDesignerPermissionTests(TestCase):
         brand = EmailBrand.load()
         self.assertEqual(brand.brand_name, "ManagedBrand")
         self.assertEqual(brand.accent_color, "#abcdef")
+        self.assertEqual(brand.page_background, "#111827")
+        self.assertEqual(brand.table_style, "plain")
 
     def test_viewer_cannot_save_message(self):
         self.client.force_login(self.viewer)
