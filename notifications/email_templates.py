@@ -294,3 +294,61 @@ def announcement_merge_context(announcement) -> dict:
 def body_to_html(body: str) -> str:
     """Escape plain body text and preserve line breaks for the email shell."""
     return escape(body or "").replace("\n", "<br>\n")
+
+
+def sample_context_for_event(event_type: str) -> dict:
+    """Deterministic sample values for test emails and field demos."""
+    sample_url = absolute_url("/tickets/0/") or "/tickets/0/"
+    ticketish = {
+        "brand_name": BRAND_NAME,
+        "ticket_number": "TK-1001",
+        "title": "Printer offline in lobby",
+        "status": "Open",
+        "priority": "High",
+        "department": "IT Support",
+        "branch": "Main Branch",
+        "requester": "Alex Requester",
+        "assignee": "Sam Agent",
+        "actor": "Sam Agent",
+        "description": "The lobby printer shows offline and will not accept jobs.",
+        "message": "I restarted it twice; still offline.",
+        "ticket_url": sample_url,
+    }
+    if event_type == "announcement":
+        return {
+            "brand_name": BRAND_NAME,
+            "title": "Office closed Friday",
+            "content": "The office will be closed this Friday for maintenance.",
+            "audience": "All users",
+            "expires": "Jul 31, 2026 at 17:00",
+            "posted_by": "Admin User",
+            "announcement_url": absolute_url("/tickets/") or "/tickets/",
+        }
+    if event_type == "ticket_status":
+        ticketish["status"] = "In Progress"
+    if event_type == "ticket_picked":
+        ticketish["status"] = "In Progress"
+        ticketish["assignee"] = "Sam Agent"
+    return ticketish
+
+
+def render_subject_body(
+    event_type: str,
+    subject: str,
+    body: str,
+    context: dict | None = None,
+) -> tuple[str, str, str]:
+    """Resolve subject/body strings with context; cta_label from defaults."""
+    defaults = get_template_defaults(event_type)
+    ctx = context or sample_context_for_event(event_type)
+    return (
+        render_tokens(subject, ctx).strip(),
+        render_tokens(body, ctx).strip(),
+        defaults.get("cta_label") or "Open",
+    )
+
+
+def cta_url_for_event(event_type: str, context: dict) -> str:
+    if event_type == "announcement":
+        return context.get("announcement_url") or ""
+    return context.get("ticket_url") or ""

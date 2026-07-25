@@ -1,13 +1,20 @@
+import json
+
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 
+from notifications.email_content import render_notification_email
+from notifications.email_service import send_with_retries
 from notifications.email_templates import (
     EVENT_META,
+    cta_url_for_event,
     ensure_email_templates,
     merge_fields_for_event,
+    render_subject_body,
+    sample_context_for_event,
 )
 from .models import Branch, Department, Category, Role, EmailSetting, EmailTemplate
 from .forms import (
@@ -387,3 +394,67 @@ class EmailTemplateSaveView(EmailPermissionMixin, LoginRequiredMixin, View):
             "can_edit_email_templates": True,
         }
         return render(request, "core/management/email_template_form.html", context)
+
+
+class EmailTemplateTestSendView(EmailPermissionMixin, LoginRequiredMixin, View):
+    """Send the current form subject/body as a sample email to the signed-in user."""
+
+    def post(self, request, event_type):
+        if not _can_manage_email(request.user):
+            return self._trigger_response(False, "Permission denied.")
+        if not any(m["event_type"] == event_type for m in EVENT_META):
+            raise Http404("Unknown email type")
+
+        recipient = (request.user.email or "").strip()
+        if not recipient:
+            return self._trigger_response(False, "Your account has no email address.")
+
+        form = EmailTemplateForm(request.POST)
+        if not form.is_valid():
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+            return self._trigger_response(
+                False,
+                errors[0] if errors else "Invalid template.",
+            )
+
+        sample = sample_context_for_event(event_type)
+        subject, body, cta_label = render_subject_body(
+            event_type,
+            form.cleaned_data["subject"],
+            form.cleaned_data["body"],
+            sample,
+        )
+        if not subject.startswith("[TEST]"):
+            subject = f"[TEST] {subject}"
+
+        text_body, html_body = render_notification_email(
+            body=body,
+            cta_url=cta_url_for_event(event_type, sample),
+            cta_label=cta_label,
+            brand_name=sample.get("brand_name") or "mlamehticket",
+            footer_note="This is a test email from Email Settings. Sample field values were used.",
+        )
+        sent = send_with_retries(
+            subject,
+            text_body,
+            [recipient],
+            html_body=html_body,
+        )
+        if not sent:
+            return self._trigger_response(
+                False,
+                "Could not send. Check that an SMTP setting is active.",
+            )
+        return self._trigger_response(True, f"Test email sent to {recipient}.")
+
+
+    @staticmethod
+    def _trigger_response(ok: bool, message: str, status: int = 204):
+        # Always return 2xx so HTMX still processes HX-Trigger for error toasts.
+        response = HttpResponse(status=204 if ok else 200)
+        response["HX-Trigger"] = json.dumps(
+            {"emailTemplateTestResult": {"ok": ok, "message": message}}
+        )
+        return response

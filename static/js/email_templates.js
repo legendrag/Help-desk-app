@@ -23,21 +23,33 @@
     insertAtCursor(document.getElementById(targetId), "{{ " + key + " }}");
   }
 
-  function showSavedToast() {
-    if (typeof window.showToast === "function") {
-      window.showToast("Email template saved.", "success");
-      return;
-    }
+  function setStatus(message, isError) {
     var el = document.getElementById("email-template-status");
     if (el) {
-      el.textContent = "Saved.";
-      el.hidden = false;
-      setTimeout(function () {
-        el.hidden = true;
-      }, 2500);
+      el.textContent = message;
+      el.hidden = !message;
+      el.classList.toggle("email-templates-panel__status--error", !!isError);
+      if (message) {
+        setTimeout(function () {
+          el.hidden = true;
+        }, 4000);
+      }
     }
+    if (typeof window.showToast === "function") {
+      window.showToast(message, isError ? "error" : "success");
+    }
+  }
+
+  function showSavedToast() {
+    setStatus("Email template saved.", false);
+  }
+
+  function onTestResult(event) {
+    var detail = event.detail || {};
+    setStatus(detail.message || (detail.ok ? "Test email sent." : "Test email failed."), !detail.ok);
   }
 
   document.addEventListener("click", onClick);
   document.body.addEventListener("emailTemplateSaved", showSavedToast);
+  document.body.addEventListener("emailTemplateTestResult", onTestResult);
 })();

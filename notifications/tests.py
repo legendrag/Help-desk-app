@@ -332,3 +332,61 @@ class EmailContentTests(TestCase):
         subject, body, _recipients = send_with_retries.call_args.args[:3]
         self.assertEqual(subject, "ALERT TK-CUSTOM-1")
         self.assertIn("Please help with VPN down", body)
+
+
+class EmailTemplateTestSendTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="email_admin",
+            email="admin@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            is_superuser=True,
+            is_staff=True,
+        )
+        EmailSetting.objects.create(
+            smtp_host="smtp.test.local",
+            smtp_port=587,
+            smtp_email="noreply@test.local",
+            smtp_password="secret",
+            encryption="tls",
+            from_name="mlamehticket Test",
+            from_email="noreply@test.local",
+            is_active=True,
+        )
+        self.client.force_login(self.user)
+
+    @patch("core.management_views.send_with_retries")
+    def test_send_test_email_uses_form_and_sample_data(self, send_with_retries):
+        send_with_retries.return_value = True
+        response = self.client.post(
+            "/core/email-templates/new_ticket/test/",
+            {
+                "subject": "[{{ brand_name }}] Test #{{ ticket_number }}",
+                "body": "Hello {{ requester }}\n\n{{ description }}",
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        send_with_retries.assert_called_once()
+        subject, body, recipients = send_with_retries.call_args.args[:3]
+        self.assertTrue(subject.startswith("[TEST]"))
+        self.assertIn("TK-1001", subject)
+        self.assertIn("Alex Requester", body)
+        self.assertEqual(recipients, ["admin@test.com"])
+        trigger = response.headers.get("HX-Trigger", "")
+        self.assertIn("emailTemplateTestResult", trigger)
+        self.assertIn("admin@test.com", trigger)
+
+    @patch("core.management_views.send_with_retries")
+    def test_send_test_email_requires_active_smtp(self, send_with_retries):
+        send_with_retries.return_value = False
+        response = self.client.post(
+            "/core/email-templates/new_ticket/test/",
+            {
+                "subject": "Subject",
+                "body": "Body",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        trigger = response.headers.get("HX-Trigger", "")
+        self.assertIn("Could not send", trigger)

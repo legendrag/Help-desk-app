@@ -6,7 +6,7 @@ from .management_views import (
     RoleCreateView, RoleUpdateView, RoleDeleteView,
     EmailSettingCreateView, EmailSettingUpdateView, EmailSettingDeleteView,
     BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView,
-    EmailTemplateFormPartialView, EmailTemplateSaveView,
+    EmailTemplateFormPartialView, EmailTemplateSaveView, EmailTemplateTestSendView,
 )
 from .maintenance_views import (
     MaintenanceView, ExportTicketsView, BackupMediaView,
@@ -50,6 +50,11 @@ urlpatterns = [
         'email-templates/<str:event_type>/save/',
         EmailTemplateSaveView.as_view(),
         name='email_template_save',
+    ),
+    path(
+        'email-templates/<str:event_type>/test/',
+        EmailTemplateTestSendView.as_view(),
+        name='email_template_test',
     ),
 
     # Maintenance

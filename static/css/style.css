@@ -5926,6 +5926,10 @@ body.ticket-detail-page .chat-actions-closed {
   white-space: nowrap;
 }
 
+.email-templates-panel__status--error {
+  color: var(--danger, #b91c1c);
+}
+
 .email-templates-panel__select {
   max-width: 320px;
   margin-bottom: 1.25rem;
@@ -5985,7 +5989,9 @@ body.ticket-detail-page .chat-actions-closed {
 
 .email-template-form__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
+  gap: 0.75rem;
   margin-top: 0.5rem;
 }
 

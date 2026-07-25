@@ -57,7 +57,19 @@
     {% if can_edit_email_templates %}
     <div class="email-template-form__actions">
         <button type="submit" class="primary">Save template</button>
+        <button
+            type="button"
+            class="secondary"
+            hx-post="{% url 'email_template_test' selected_email_type %}"
+            hx-include="#email-template-editor"
+            hx-swap="none"
+        >
+            Send test email
+        </button>
     </div>
+    <p class="email-template-form__help">
+        Test email uses the subject/body above (even if unsaved) with sample field values, and is sent to your account email.
+    </p>
     {% else %}
     <p class="email-template-form__help">You can view templates but need Manage Email Settings permission to edit them.</p>
     {% endif %}
