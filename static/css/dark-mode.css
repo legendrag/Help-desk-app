@@ -175,10 +175,10 @@
 }
 [data-theme="dark"] button.close-btn:hover,
 [data-theme="dark"] button.close-btn:active,
-[data-theme="dark"] button.close-btn:focus,
+[data-theme="dark"] button.close-btn:focus-visible,
 [data-theme="dark"] .sidebar-header .close-btn:hover,
 [data-theme="dark"] .sidebar-header .close-btn:active,
-[data-theme="dark"] .sidebar-header .close-btn:focus {
+[data-theme="dark"] .sidebar-header .close-btn:focus-visible {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }

@@ -176,10 +176,10 @@ body::before {
   transform: translateY(-7px) rotate(-45deg);
 }
 
-/* Sidebar Drawer - Now on the Right */
+/* Sidebar Drawer - Now on the Right (below topbar so menu→X stays visible) */
 .sidebar {
   position: fixed;
-  top: 0;
+  top: 60px;
   right: 0;
   bottom: 0;
   width: 280px;
@@ -199,7 +199,10 @@ body::before {
 
 .sidebar-overlay {
   position: fixed;
-  inset: 0;
+  top: 60px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -246,7 +249,7 @@ body::before {
 
 .sidebar-header .close-btn:hover,
 .sidebar-header .close-btn:active,
-.sidebar-header .close-btn:focus {
+.sidebar-header .close-btn:focus-visible {
   background: rgba(0, 0, 0, 0.06);
   color: var(--text-main);
   box-shadow: none;

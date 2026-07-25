@@ -2,10 +2,12 @@
  * Global Loading Indicators
  * Top progress bar + button spinners for HTMX, native forms, and navigation.
  * Every start path has a matching cleanup (success, error, abort, timeout, bfcache).
+ * Also covers sidebar page selection and browser/programmatic refresh.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('global-progress-bar');
+    const PAGE_LOADING_KEY = 'deskplus-page-loading';
     let activeRequests = 0;
     let progressTimer = null;
     let downloadWatchers = [];
@@ -27,13 +29,50 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadWatchers = [];
     }
 
-    function startProgress() {
+    function markFullPageLoading() {
+        try {
+            sessionStorage.setItem(PAGE_LOADING_KEY, '1');
+        } catch (e) { /* private mode */ }
+    }
+
+    function consumeFullPageLoadingFlag() {
+        try {
+            const flagged = sessionStorage.getItem(PAGE_LOADING_KEY) === '1';
+            if (flagged) sessionStorage.removeItem(PAGE_LOADING_KEY);
+            return flagged;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function isReloadNavigation() {
+        try {
+            const entries = performance.getEntriesByType('navigation');
+            if (entries && entries[0]) return entries[0].type === 'reload';
+            if (performance.navigation) return performance.navigation.type === 1;
+        } catch (e) { /* ignore */ }
+        return false;
+    }
+
+    function showProgressNow() {
+        if (!progressBar) return;
+        clearProgressTimer();
+        progressBar.classList.remove('finished');
+        progressBar.classList.add('loading');
+    }
+
+    function startProgress(options) {
+        const immediate = options && options.immediate;
         activeRequests++;
         if (activeRequests === 1 && progressBar) {
-            progressTimer = setTimeout(function() {
-                progressBar.classList.remove('finished');
-                progressBar.classList.add('loading');
-            }, 300);
+            if (immediate) {
+                showProgressNow();
+            } else {
+                progressTimer = setTimeout(function() {
+                    progressBar.classList.remove('finished');
+                    progressBar.classList.add('loading');
+                }, 300);
+            }
         }
     }
 
@@ -157,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
             enableButton(elt);
             return;
         }
-        // Non-element or already cleaned (e.g. duplicate error + afterRequest)
         if (!elt) {
             finishProgress();
         }
@@ -168,10 +206,17 @@ document.addEventListener('DOMContentLoaded', function() {
         clearAllButtonLoading();
     }
 
-    // Expose for maintenance export and other manual fetch flows
+    function reloadWithLoading() {
+        markFullPageLoading();
+        startProgress({ immediate: true });
+        window.location.reload();
+    }
+
+    // Expose for maintenance export, reload triggers, and other manual flows
     window.startProgress = startProgress;
     window.finishProgress = finishProgress;
     window.clearLoadingUI = clearLoadingUI;
+    window.reloadWithLoading = reloadWithLoading;
 
     function shouldTrackElement(elt) {
         return !isExcluded(elt);
@@ -186,6 +231,18 @@ document.addEventListener('DOMContentLoaded', function() {
             elt.tagName === 'TR' ||
             isButtonLike(elt)
         );
+    }
+
+    // --- Arrival loading after sidebar nav / refresh ---
+    if (consumeFullPageLoadingFlag() || isReloadNavigation()) {
+        startProgress({ immediate: true });
+        if (document.readyState === 'complete') {
+            finishProgress();
+        } else {
+            window.addEventListener('load', function() {
+                finishProgress();
+            }, { once: true });
+        }
     }
 
     // --- HTMX Hooks ---
@@ -250,13 +307,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!isExcluded(form)) {
-            startProgress();
+            // Full-page posts (including sidebar logout) should persist loading into next paint
+            markFullPageLoading();
+            startProgress({ immediate: true });
             disableButton(form);
             watchForDownload(form);
         }
     });
 
-    // --- Standard Navigation Hooks ---
+    // --- Standard Navigation Hooks (including sidebar page selection) ---
     document.addEventListener('click', function(evt) {
         const target = evt.target.closest('a[href], .clickable-row');
         if (!target) return;
@@ -292,13 +351,34 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Progress bar + disable for non-sidebar navigations (no full-screen overlay)
-        if (!target.closest('.sidebar')) {
-            startProgress();
-            disableButton(target);
-        }
+        // Same-page hash-only or identical path without query change: skip
+        try {
+            const url = new URL(href, window.location.origin);
+            if (
+                url.origin === window.location.origin &&
+                url.pathname === window.location.pathname &&
+                url.search === window.location.search &&
+                url.hash
+            ) {
+                return;
+            }
+        } catch (e) { /* relative parse issues — continue */ }
 
+        // Full-page navigation: sidebar links, top links, clickable rows
+        markFullPageLoading();
+        startProgress({ immediate: true });
+        disableButton(target);
         watchForDownload(target);
+    });
+
+    // Keyboard refresh (F5 / Ctrl+R / Cmd+R) — show bar before unload
+    document.addEventListener('keydown', function(evt) {
+        const key = evt.key;
+        const isF5 = key === 'F5';
+        const isSoftReload = (key === 'r' || key === 'R') && (evt.ctrlKey || evt.metaKey);
+        if (!isF5 && !isSoftReload) return;
+        markFullPageLoading();
+        startProgress({ immediate: true });
     });
 
     // Reset sticky loading UI when returning via bfcache / back-forward
@@ -306,7 +386,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (evt.persisted) {
             clearLoadingUI();
         } else {
-            // Full navigations remount, but clear any in-flight timer state just in case
             clearProgressTimer();
             if (window.navigationSpinnerTimer) {
                 clearTimeout(window.navigationSpinnerTimer);

@@ -29,9 +29,9 @@
         content="mlameh ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.64">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.66">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.64">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.28">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.29">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -223,13 +223,6 @@
                 {% else %}
                 <span class="brand">Menu</span>
                 {% endif %}
-                <button type="button" class="close-btn" onclick="closeSidebar()" aria-label="Close menu">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
             </div>
             <nav class="sidebar-nav">
                 <a href="{% url 'tickets_list' %}">Tickets</a>
@@ -316,10 +309,6 @@
             sidebar.classList.add('open');
             overlay.classList.add('open');
             setMenuButtonOpen(true);
-            setTimeout(() => {
-                const closeBtn = document.querySelector('#sidebar .close-btn');
-                if (closeBtn) closeBtn.focus();
-            }, 50);
         }
 
         function closeSidebar() {
@@ -712,7 +701,11 @@
         });
 
         document.body.addEventListener('reloadPage', function () {
-            window.location.reload();
+            if (typeof window.reloadWithLoading === 'function') {
+                window.reloadWithLoading();
+            } else {
+                window.location.reload();
+            }
         });
 
         document.body.addEventListener('refreshTickets', function () {
@@ -739,7 +732,11 @@
                 document.body.dispatchEvent(new CustomEvent('refreshTickets'));
             }
             if (trigger.includes('reloadPage')) {
-                window.location.reload();
+                if (typeof window.reloadWithLoading === 'function') {
+                    window.reloadWithLoading();
+                } else {
+                    window.location.reload();
+                }
             }
         });
 
@@ -875,7 +872,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=2"></script>
+    <script src="{% static 'js/loading.js' %}?v=3"></script>
 </body>
 
 </html>

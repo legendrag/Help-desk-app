@@ -61,7 +61,11 @@ function initChat(ticketId) {
         } else if (data.event === "typing") {
             showTypingIndicator(data.payload);
         } else if (data.event === "ticket_transfer_update") {
-            window.location.reload();
+            if (typeof window.reloadWithLoading === 'function') {
+                window.reloadWithLoading();
+            } else {
+                window.location.reload();
+            }
         }
     };
 
@@ -224,14 +228,22 @@ function initChat(ticketId) {
         if (isNowClosed) {
             lockComposerForClosedTicket();
             if (!wasClosed) {
-                window.location.reload();
+                if (typeof window.reloadWithLoading === 'function') {
+                    window.reloadWithLoading();
+                } else {
+                    window.location.reload();
+                }
             }
             return;
         }
 
         // Reopened (or left closed/merged): reload so composer/actions return correctly
         if (wasClosed && !isNowClosed) {
-            window.location.reload();
+            if (typeof window.reloadWithLoading === 'function') {
+                window.reloadWithLoading();
+            } else {
+                window.location.reload();
+            }
         }
     }
 
@@ -270,7 +282,11 @@ function initChat(ticketId) {
         
         if (newAssigneeId !== currentAssigneeId) {
             if (newAssigneeId === window.userId || currentAssigneeId === window.userId) {
-                window.location.reload();
+                if (typeof window.reloadWithLoading === 'function') {
+                    window.reloadWithLoading();
+                } else {
+                    window.location.reload();
+                }
                 return;
             }
             window.ticketAssigneeId = newAssigneeId;
