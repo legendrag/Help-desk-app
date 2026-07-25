@@ -283,8 +283,12 @@ document.addEventListener('DOMContentLoaded', function() {
         fullPageNavPending = true;
         if (target) {
             target.classList.add('is-navigating');
+            // Nav bar / sidebar selection → close the drawer so the full-screen skeleton shows
+            if (target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
+                window.closeSidebar();
+            }
         }
-        // Paint press state + overlay before any navigation work
+        // Paint press state + full-screen skeleton before any navigation work
         setPageNavigating(true);
         markFullPageLoading();
         startProgress({ immediate: true });
