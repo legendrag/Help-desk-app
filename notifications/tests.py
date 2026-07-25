@@ -3,10 +3,11 @@
 from django.test import TestCase, override_settings
 
 from accounts.models import User
-from core.models import Branch, Category, Department, EmailSetting
+from core.models import Branch, Category, Department, EmailSetting, EmailTemplate
 from news.models import Announcement
 from notifications.email_content import render_notification_email
 from notifications.email_jobs import send_announcement_email, send_new_ticket_email
+from notifications.email_templates import ensure_email_templates, render_tokens, resolve_template
 from notifications.models import InAppNotification
 from notifications.services import notify_announcement_created
 from tickets.models import Ticket
@@ -154,30 +155,65 @@ class AnnouncementNotificationTests(TestCase):
         self.assertIn("View announcements", body)
         self.assertTrue(html_body)
         self.assertIn("Office closed", html_body)
+        self.assertNotIn("<td style=\"width:38%", html_body)
 
 
 class EmailContentTests(TestCase):
-    def test_render_notification_email_includes_cta_and_details(self):
+    def test_render_notification_email_is_table_free_shell(self):
         text_body, html_body = render_notification_email(
-            headline="New ticket #TK-1",
-            intro="A new request was submitted.",
-            details=[("Ticket", "TK-1"), ("Priority", "High")],
-            message_title="Request",
-            message_body="Printer is offline.",
+            body="New ticket #TK-1\n\nPrinter is offline.",
             cta_url="https://helpdesk.example.com/tickets/1/",
             cta_label="View ticket",
         )
         self.assertIn("New ticket #TK-1", text_body)
-        self.assertIn("Ticket: TK-1", text_body)
         self.assertIn("Printer is offline.", text_body)
         self.assertIn("https://helpdesk.example.com/tickets/1/", text_body)
         self.assertIn("View ticket", html_body)
         self.assertIn("Printer is offline.", html_body)
+        self.assertNotIn("Priority", html_body)
+        self.assertNotIn('width:38%', html_body)
+
+    def test_render_tokens_and_fallback_defaults(self):
+        rendered = render_tokens(
+            "Hello {{ requester }} — #{{ ticket_number }}",
+            {"requester": "Ada", "ticket_number": "TK-9"},
+        )
+        self.assertEqual(rendered, "Hello Ada — #TK-9")
+
+        EmailTemplate.objects.all().delete()
+        subject, body, cta = resolve_template(
+            "new_ticket",
+            {
+                "brand_name": "mlamehticket",
+                "ticket_number": "TK-9",
+                "title": "Printer",
+                "requester": "Ada",
+                "department": "IT",
+                "description": "Jammed",
+            },
+        )
+        self.assertIn("TK-9", subject)
+        self.assertIn("Ada", body)
+        self.assertEqual(cta, "View ticket")
+
+    def test_custom_template_overrides_defaults(self):
+        ensure_email_templates()
+        EmailTemplate.objects.filter(event_type="new_ticket").update(
+            subject="CUSTOM {{ ticket_number }}",
+            body="Body for {{ title }}",
+        )
+        subject, body, _cta = resolve_template(
+            "new_ticket",
+            {"ticket_number": "TK-1", "title": "Outage"},
+        )
+        self.assertEqual(subject, "CUSTOM TK-1")
+        self.assertEqual(body, "Body for Outage")
 
     @override_settings(SITE_URL="https://helpdesk.example.com")
     @patch("notifications.email_jobs.send_with_retries")
     def test_new_ticket_email_content(self, send_with_retries):
         send_with_retries.return_value = True
+        ensure_email_templates()
         branch = Branch.objects.create(code="EM", name="Email Branch")
         department = Department.objects.create(name="Email Dept")
         category = Category.objects.create(
@@ -234,4 +270,65 @@ class EmailContentTests(TestCase):
         self.assertIn("The lobby printer is jammed.", body)
         self.assertIn("https://helpdesk.example.com/tickets/", body)
         self.assertIn("View ticket", html_body)
-        self.assertIn("High", body)
+        self.assertNotIn('width:38%', html_body)
+
+    @override_settings(SITE_URL="https://helpdesk.example.com")
+    @patch("notifications.email_jobs.send_with_retries")
+    def test_custom_new_ticket_template_is_used(self, send_with_retries):
+        send_with_retries.return_value = True
+        ensure_email_templates()
+        EmailTemplate.objects.filter(event_type="new_ticket").update(
+            subject="ALERT {{ ticket_number }}",
+            body="Please help with {{ title }}",
+        )
+        branch = Branch.objects.create(code="EM2", name="Email Branch 2")
+        department = Department.objects.create(name="Email Dept 2")
+        category = Category.objects.create(
+            department=department,
+            name="Email Cat 2",
+            default_priority=Ticket.Priority.HIGH,
+        )
+        creator = User.objects.create_user(
+            username="email_creator2",
+            email="creator2@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=branch,
+        )
+        User.objects.create_user(
+            username="email_support2",
+            email="support2@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=department,
+        )
+        EmailSetting.objects.create(
+            smtp_host="smtp.test.local",
+            smtp_port=587,
+            smtp_email="noreply@test.local",
+            smtp_password="secret",
+            encryption="tls",
+            from_name="mlamehticket Test",
+            from_email="noreply@test.local",
+            is_active=True,
+            notify_new_ticket=True,
+        )
+        ticket = Ticket.objects.create(
+            ticket_number="TK-CUSTOM-1",
+            title="VPN down",
+            description="Cannot connect",
+            branch=branch,
+            department=department,
+            category=category,
+            created_by=creator,
+            priority=Ticket.Priority.HIGH,
+            client_name="Client",
+            client_phone="555",
+        )
+
+        sent = send_new_ticket_email(ticket.id)
+
+        self.assertTrue(sent)
+        subject, body, _recipients = send_with_retries.call_args.args[:3]
+        self.assertEqual(subject, "ALERT TK-CUSTOM-1")
+        self.assertIn("Please help with VPN down", body)

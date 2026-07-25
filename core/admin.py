@@ -5,6 +5,7 @@ from core.models import (
     Category,
     Department,
     EmailSetting,
+    EmailTemplate,
     Role,
 )
 
@@ -13,3 +14,4 @@ admin.site.register(Department)
 admin.site.register(Category)
 admin.site.register(Role)
 admin.site.register(EmailSetting)
+admin.site.register(EmailTemplate)

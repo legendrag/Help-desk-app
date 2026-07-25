@@ -6,17 +6,14 @@ from django.utils import timezone
 
 from accounts.models import User
 from news.models import Announcement
-from notifications.email_content import (
-    absolute_url,
-    display_name,
-    format_datetime,
-    render_notification_email,
-    ticket_details,
-    ticket_url,
-    truncate_text,
-)
+from notifications.email_content import render_notification_email, ticket_url
 from notifications.email_service import is_email_event_enabled, send_with_retries
-from notifications.utils import format_status_label, get_branch_users, get_department_users
+from notifications.email_templates import (
+    announcement_merge_context,
+    resolve_template,
+    ticket_merge_context,
+)
+from notifications.utils import get_branch_users, get_department_users
 from tickets.models import Ticket, TicketMessage
 
 logger = logging.getLogger(__name__)
@@ -46,10 +43,26 @@ def _ticket_queryset():
     )
 
 
-def _send_rendered(subject, recipients, **email_kwargs) -> bool:
+def _send_template(
+    event_type: str,
+    recipients,
+    context: dict,
+    *,
+    cta_url: str = "",
+    footer_note: str | None = None,
+) -> bool:
     if not recipients:
         return False
-    text_body, html_body = render_notification_email(**email_kwargs)
+    subject, body, cta_label = resolve_template(event_type, context)
+    kwargs = {
+        "body": body,
+        "cta_url": cta_url,
+        "cta_label": cta_label,
+        "brand_name": context.get("brand_name") or "mlamehticket",
+    }
+    if footer_note is not None:
+        kwargs["footer_note"] = footer_note
+    text_body, html_body = render_notification_email(**kwargs)
     return send_with_retries(subject, text_body, recipients, html_body=html_body)
 
 
@@ -64,26 +77,16 @@ def send_new_ticket_email(ticket_id: int) -> bool:
 
     recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
     if ticket.created_by and ticket.created_by.email:
-        # Branch/support recipients only — creator already knows they opened it.
         recipients = [email for email in recipients if email != ticket.created_by.email]
     if not recipients:
         return False
 
-    title = truncate_text(ticket.title, 80)
-    subject = f"[mlamehticket] New ticket #{ticket.ticket_number}: {title}"
-    return _send_rendered(
-        subject,
+    context = ticket_merge_context(ticket)
+    return _send_template(
+        "new_ticket",
         recipients,
-        headline=f"New ticket #{ticket.ticket_number}",
-        intro=(
-            f"{display_name(ticket.created_by)} submitted a new request"
-            f"{f' for {ticket.department.name}' if ticket.department_id else ''}."
-        ),
-        details=ticket_details(ticket),
-        message_title="Request",
-        message_body=truncate_text(ticket.description, 800) or ticket.title,
+        context,
         cta_url=ticket_url(ticket),
-        cta_label="View ticket",
     )
 
 
@@ -107,18 +110,12 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
     if not recipients:
         return False
 
-    status_label = format_status_label(ticket.status) or ticket.status
-    subject = f"[mlamehticket] Ticket #{ticket.ticket_number} picked up"
-    return _send_rendered(
-        subject,
+    context = ticket_merge_context(ticket, actor=actor)
+    return _send_template(
+        "ticket_picked",
         recipients,
-        headline=f"Ticket #{ticket.ticket_number} was picked up",
-        intro=f"{display_name(actor)} is now handling this ticket. Status is {status_label}.",
-        details=ticket_details(ticket),
-        message_title="Request",
-        message_body=truncate_text(ticket.description, 500) or ticket.title,
+        context,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
     )
 
 
@@ -152,12 +149,7 @@ def send_ticket_update_email(
             return False
         recipients = [recipient.email]
         message = TicketMessage.objects.filter(id=message_id).first()
-        message_text = truncate_text(message.message, 1000) if message and message.message else ""
-        subject = f"[mlamehticket] New reply on #{ticket.ticket_number}"
-        headline = f"New reply on #{ticket.ticket_number}"
-        intro = f"{display_name(actor)} replied to the ticket."
-        message_title = "Message"
-        message_body = message_text
+        message_text = message.message if message and message.message else ""
 
         from .models import InAppNotification
 
@@ -173,7 +165,16 @@ def send_ticket_update_email(
         recipients = [r for r in recipients if r not in read_emails]
         if not recipients:
             return False
-    elif status_changed and new_status:
+
+        context = ticket_merge_context(ticket, actor=actor, message=message_text)
+        return _send_template(
+            "ticket_message",
+            recipients,
+            context,
+            cta_url=ticket_url(ticket),
+        )
+
+    if status_changed and new_status:
         if not is_email_event_enabled("notify_ticket_status"):
             return False
         recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
@@ -181,37 +182,27 @@ def send_ticket_update_email(
             recipients.remove(actor.email)
         if not recipients:
             return False
-        status_label = format_status_label(new_status) or new_status
-        subject = f"[mlamehticket] Status update on #{ticket.ticket_number}: {status_label}"
-        headline = f"Status changed on #{ticket.ticket_number}"
-        intro = f"{display_name(actor)} updated the status to {status_label}."
-        message_title = "Request"
-        message_body = truncate_text(ticket.description, 500) or ticket.title
-    else:
-        if not is_email_event_enabled("notify_ticket_update"):
-            return False
-        recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
-        if actor.email in recipients:
-            recipients.remove(actor.email)
-        if not recipients:
-            return False
-        status_label = format_status_label(ticket.status) or ticket.status
-        subject = f"[mlamehticket] Update on ticket #{ticket.ticket_number}"
-        headline = f"Ticket #{ticket.ticket_number} was updated"
-        intro = f"{display_name(actor)} made an update to this ticket."
-        message_title = "Request"
-        message_body = truncate_text(ticket.description, 500) or ticket.title
+        context = ticket_merge_context(ticket, actor=actor, status=new_status)
+        return _send_template(
+            "ticket_status",
+            recipients,
+            context,
+            cta_url=ticket_url(ticket),
+        )
 
-    return _send_rendered(
-        subject,
+    if not is_email_event_enabled("notify_ticket_update"):
+        return False
+    recipients = list(set(_get_branch_recipients(ticket) + _get_department_recipients(ticket)))
+    if actor.email in recipients:
+        recipients.remove(actor.email)
+    if not recipients:
+        return False
+    context = ticket_merge_context(ticket, actor=actor)
+    return _send_template(
+        "ticket_update",
         recipients,
-        headline=headline,
-        intro=intro,
-        details=ticket_details(ticket),
-        message_title=message_title,
-        message_body=message_body,
+        context,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
     )
 
 
@@ -234,38 +225,22 @@ def send_transfer_event_email(ticket_id: int, actor_id: int, recipient_id: int, 
     if not recipient_user.email:
         return False
 
-    event_copy = {
-        "requested": (
-            f"[mlamehticket] Transfer requested: #{ticket.ticket_number}",
-            f"Transfer requested for #{ticket.ticket_number}",
-            f"{display_name(actor)} wants to transfer this ticket to you.",
-        ),
-        "accepted": (
-            f"[mlamehticket] Transfer accepted: #{ticket.ticket_number}",
-            f"Transfer accepted for #{ticket.ticket_number}",
-            f"{display_name(actor)} accepted the ticket transfer.",
-        ),
-        "denied": (
-            f"[mlamehticket] Transfer declined: #{ticket.ticket_number}",
-            f"Transfer declined for #{ticket.ticket_number}",
-            f"{display_name(actor)} declined the ticket transfer.",
-        ),
+    event_map = {
+        "requested": "transfer_requested",
+        "accepted": "transfer_accepted",
+        "denied": "transfer_denied",
     }
-    if event not in event_copy:
+    event_type = event_map.get(event)
+    if not event_type:
         logger.warning("send_transfer_event_email: unknown event %s", event)
         return False
 
-    subject, headline, intro = event_copy[event]
-    return _send_rendered(
-        subject,
+    context = ticket_merge_context(ticket, actor=actor)
+    return _send_template(
+        event_type,
         [recipient_user.email],
-        headline=headline,
-        intro=intro,
-        details=ticket_details(ticket),
-        message_title="Request",
-        message_body=truncate_text(ticket.description, 500) or ticket.title,
+        context,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
     )
 
 
@@ -299,28 +274,11 @@ def send_announcement_email(announcement_id: int, actor_id: int | None = None) -
     if not recipients:
         return False
 
-    details = []
-    if announcement.target_branch_id:
-        details.append(("Audience", f"{announcement.target_branch.name} branch"))
-    else:
-        details.append(("Audience", "All users"))
-    if announcement.expires_at:
-        details.append(("Expires", format_datetime(announcement.expires_at)))
-    if announcement.created_by_id:
-        details.append(("Posted by", display_name(announcement.created_by)))
-    details.append(("Posted", format_datetime(announcement.created_at)))
-
-    title = truncate_text(announcement.title, 80)
-    subject = f"[mlamehticket] Announcement: {title}"
-    return _send_rendered(
-        subject,
+    context = announcement_merge_context(announcement)
+    return _send_template(
+        "announcement",
         recipients,
-        headline=announcement.title,
-        intro="A new announcement has been posted in mlamehticket.",
-        details=details,
-        message_title="Announcement",
-        message_body=truncate_text(announcement.content, 1500) or announcement.title,
-        cta_url=absolute_url("/tickets/"),
-        cta_label="View announcements",
+        context,
+        cta_url=context.get("announcement_url") or "",
         footer_note="You’re receiving this because announcement email notifications are enabled.",
     )

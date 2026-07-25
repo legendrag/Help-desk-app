@@ -5,6 +5,7 @@ from .models import (
     Category,
     Role,
     EmailSetting,
+    EmailTemplate,
 )
 
 def _style_fields(form):
@@ -198,4 +199,41 @@ class EmailSettingForm(forms.ModelForm):
             'from_name': forms.TextInput(attrs={'placeholder': 'e.g., mlamehticket Support'}),
             'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
         }
+
+
+class EmailTemplateForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+        self.fields["subject"].widget.attrs.update(
+            {"placeholder": "[{{ brand_name }}] New ticket #{{ ticket_number }}"}
+        )
+        self.fields["body"].widget.attrs.update(
+            {
+                "rows": 10,
+                "placeholder": "Write the email body. Use Insert field buttons for merge values.",
+            }
+        )
+
+    def _reject_tags(self, value: str, label: str) -> str:
+        value = (value or "").strip()
+        if "{%" in value or "%}" in value:
+            raise forms.ValidationError(f"{label} contains unsupported template tags.")
+        return value
+
+    def clean_subject(self):
+        subject = self._reject_tags(self.cleaned_data.get("subject"), "Subject")
+        if not subject:
+            raise forms.ValidationError("Subject is required.")
+        return subject
+
+    def clean_body(self):
+        body = self._reject_tags(self.cleaned_data.get("body"), "Body")
+        if not body:
+            raise forms.ValidationError("Body is required.")
+        return body
+
+    class Meta:
+        model = EmailTemplate
+        fields = ["subject", "body"]
 

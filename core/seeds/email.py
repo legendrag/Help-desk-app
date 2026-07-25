@@ -1,8 +1,10 @@
 ﻿from core.models import EmailSetting
 from core.seeds import data
+from notifications.email_templates import ensure_email_templates
 
 
 def seed_email(stdout=None):
+    ensure_email_templates()
     setting, created = EmailSetting.objects.get_or_create(
         smtp_host=data.DEMO_EMAIL_HOST,
         defaults={

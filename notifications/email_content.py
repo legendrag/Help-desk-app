@@ -46,6 +46,7 @@ def ticket_url(ticket) -> str:
 
 
 def ticket_details(ticket) -> list[tuple[str, str]]:
+    """Legacy helper kept for tests/callers; not used in the simple email shell."""
     requester = ticket.created_by
     requester_name = display_name(requester) if requester else "—"
     requester_phone = ""
@@ -83,28 +84,23 @@ def ticket_details(ticket) -> list[tuple[str, str]]:
 
 def render_notification_email(
     *,
-    headline: str,
-    intro: str,
-    details: list[tuple[str, str]] | None = None,
-    message_title: str = "",
-    message_body: str = "",
+    body: str,
     cta_url: str = "",
     cta_label: str = "Open in mlamehticket",
     footer_note: str = "You’re receiving this because email notifications are enabled for your mlamehticket account.",
+    brand_name: str = "mlamehticket",
 ) -> tuple[str, str]:
+    from notifications.email_templates import body_to_html
+
     context = {
-        "brand_name": "mlamehticket",
-        "headline": headline,
-        "intro": intro,
-        "details": details or [],
-        "message_title": message_title,
-        "message_body": message_body,
+        "brand_name": brand_name,
+        "body": body,
+        "body_html": body_to_html(body),
         "cta_url": cta_url,
         "cta_label": cta_label,
         "footer_note": footer_note,
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)
-    # Keep plain text readable even if HTML somehow sneaks into fields.
     text_body = strip_tags(text_body).replace("\r\n", "\n")
     return text_body.strip() + "\n", html_body

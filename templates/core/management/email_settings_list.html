@@ -29,9 +29,9 @@
                 {% for item in object_list %}
                 <tr class="mgmt-tr {% if can_edit %}clickable-row{% endif %}"
                     {% if can_edit %}
-                    hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" 
-                    hx-target="#modal-content" 
-                    hx-trigger="click" 
+                    hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/"
+                    hx-target="#modal-content"
+                    hx-trigger="click"
                     onclick="openModal()"
                     {% endif %}>
                     <td data-label="SMTP Host" class="mgmt-td--bold">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
@@ -70,4 +70,39 @@
             </tbody>
         </table>
     </div>
+
+    <section class="email-templates-panel" aria-labelledby="email-templates-heading">
+        <div class="email-templates-panel__header">
+            <div>
+                <h3 id="email-templates-heading" class="email-templates-panel__title">Email templates</h3>
+                <p class="email-templates-panel__subtitle">
+                    Edit the subject and body for each notification. Insert fields where you need ticket values.
+                </p>
+            </div>
+            <p id="email-template-status" class="email-templates-panel__status" hidden>Saved.</p>
+        </div>
+
+        <label class="email-template-form__label" for="email-type-select">Notification type</label>
+        <select
+            id="email-type-select"
+            class="form-control email-templates-panel__select"
+            name="email_type"
+            hx-get="{% url 'email_template_form' %}"
+            hx-target="#email-template-form-slot"
+            hx-include="this"
+            hx-trigger="change"
+        >
+            {% for item in email_event_types %}
+            <option value="{{ item.event_type }}" {% if item.event_type == selected_email_type %}selected{% endif %}>
+                {{ item.label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <div id="email-template-form-slot" class="email-templates-panel__form">
+            {% include "core/management/email_template_form.html" %}
+        </div>
+    </section>
 </div>
+
+<script src="{% static 'js/email_templates.js' %}?v=1"></script>

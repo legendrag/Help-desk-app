@@ -1,0 +1,64 @@
+<form
+    id="email-template-editor"
+    class="email-template-form"
+    hx-post="{% url 'email_template_save' selected_email_type %}"
+    hx-target="#email-template-form-slot"
+    hx-swap="innerHTML"
+    {% if not can_edit_email_templates %}aria-disabled="true"{% endif %}
+>
+    {% csrf_token %}
+    <div class="email-template-form__field">
+        <label class="email-template-form__label" for="id_email_subject">Subject</label>
+        <input
+            type="text"
+            name="subject"
+            id="id_email_subject"
+            class="form-control"
+            value="{{ email_template_form.subject.value|default_if_none:'' }}"
+            maxlength="255"
+            {% if not can_edit_email_templates %}readonly{% endif %}
+            required
+        >
+        {% if email_template_form.subject.errors %}
+        <p class="mgmt-error-msg">{{ email_template_form.subject.errors|join:", " }}</p>
+        {% endif %}
+    </div>
+
+    <div class="email-template-form__field">
+        <label class="email-template-form__label" for="id_email_body">Body</label>
+        <div class="email-template-fields" aria-label="Insert merge fields">
+            <span class="email-template-fields__hint">Insert field:</span>
+            {% for key, label in merge_fields %}
+            <button
+                type="button"
+                class="email-template-field-btn"
+                data-insert="{{ key }}"
+                data-target="id_email_body"
+                {% if not can_edit_email_templates %}disabled{% endif %}
+            >{{ label }}</button>
+            {% endfor %}
+        </div>
+        <textarea
+            name="body"
+            id="id_email_body"
+            class="form-control email-template-form__body"
+            rows="10"
+            {% if not can_edit_email_templates %}readonly{% endif %}
+            required
+        >{{ email_template_form.body.value|default_if_none:'' }}</textarea>
+        {% if email_template_form.body.errors %}
+        <p class="mgmt-error-msg">{{ email_template_form.body.errors|join:", " }}</p>
+        {% endif %}
+        <p class="email-template-form__help">
+            Plain text only. A View/Open button is added automatically under the body.
+        </p>
+    </div>
+
+    {% if can_edit_email_templates %}
+    <div class="email-template-form__actions">
+        <button type="submit" class="primary">Save template</button>
+    </div>
+    {% else %}
+    <p class="email-template-form__help">You can view templates but need Manage Email Settings permission to edit them.</p>
+    {% endif %}
+</form>

@@ -160,3 +160,34 @@ class EmailSetting(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"SMTP {self.smtp_host}:{self.smtp_port}"
+
+
+class EmailTemplate(TimeStampedModel):
+    """Per-event subject/body for notification emails (plain text + merge tokens)."""
+
+    class EventType(models.TextChoices):
+        NEW_TICKET = "new_ticket", "New ticket"
+        TICKET_PICKED = "ticket_picked", "Ticket picked"
+        TICKET_MESSAGE = "ticket_message", "Ticket reply"
+        TICKET_STATUS = "ticket_status", "Status change"
+        TICKET_UPDATE = "ticket_update", "Ticket update"
+        TRANSFER_REQUESTED = "transfer_requested", "Transfer requested"
+        TRANSFER_ACCEPTED = "transfer_accepted", "Transfer accepted"
+        TRANSFER_DENIED = "transfer_denied", "Transfer declined"
+        ANNOUNCEMENT = "announcement", "Announcement"
+
+    event_type = models.CharField(
+        max_length=40,
+        choices=EventType.choices,
+        unique=True,
+    )
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+
+    class Meta:
+        ordering = ["event_type"]
+        verbose_name = "Email template"
+        verbose_name_plural = "Email templates"
+
+    def __str__(self) -> str:
+        return self.get_event_type_display()

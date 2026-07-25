@@ -1,15 +1,22 @@
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
 
-from .models import Branch, Department, Category, Role, EmailSetting
+from notifications.email_templates import (
+    EVENT_META,
+    ensure_email_templates,
+    merge_fields_for_event,
+)
+from .models import Branch, Department, Category, Role, EmailSetting, EmailTemplate
 from .forms import (
     BranchForm,
     DepartmentForm,
     CategoryForm,
     RoleForm,
     EmailSettingForm,
+    EmailTemplateForm,
 )
 
 class BaseSettingsRequiredMixin(UserPassesTestMixin):
@@ -304,6 +311,22 @@ def _can_manage_email(user) -> bool:
     )
 
 
+def _email_template_form_context(event_type: str, can_edit: bool) -> dict:
+    if not any(m["event_type"] == event_type for m in EVENT_META):
+        raise Http404("Unknown email type")
+    ensure_email_templates()
+    template = get_object_or_404(EmailTemplate, event_type=event_type)
+    form = EmailTemplateForm(instance=template)
+    return {
+        "email_template": template,
+        "email_template_form": form,
+        "selected_email_type": event_type,
+        "email_event_types": EVENT_META,
+        "merge_fields": merge_fields_for_event(event_type),
+        "can_edit_email_templates": can_edit,
+    }
+
+
 class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
     model = EmailSetting
     template_name = "core/management/email_settings_list.html"
@@ -317,6 +340,9 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         can_manage = _can_manage_email(self.request.user)
+        selected = self.request.GET.get("email_type") or "new_ticket"
+        if not any(m["event_type"] == selected for m in EVENT_META):
+            selected = "new_ticket"
         context.update({
             'model_name': 'Email Settings',
             'create_url': reverse_lazy('email_setting_create'),
@@ -324,5 +350,40 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
             'can_add': can_manage,
             'can_edit': can_manage,
             'can_delete': can_manage,
+            **_email_template_form_context(selected, can_manage),
         })
         return context
+
+
+class EmailTemplateFormPartialView(EmailPermissionMixin, LoginRequiredMixin, View):
+    def get(self, request):
+        event_type = request.GET.get("email_type") or "new_ticket"
+        can_manage = _can_manage_email(request.user)
+        context = _email_template_form_context(event_type, can_manage)
+        return render(request, "core/management/email_template_form.html", context)
+
+
+class EmailTemplateSaveView(EmailPermissionMixin, LoginRequiredMixin, View):
+    def post(self, request, event_type):
+        if not _can_manage_email(request.user):
+            return JsonResponse({"ok": False, "error": "Permission denied."}, status=403)
+        if not any(m["event_type"] == event_type for m in EVENT_META):
+            raise Http404("Unknown email type")
+        ensure_email_templates()
+        template = get_object_or_404(EmailTemplate, event_type=event_type)
+        form = EmailTemplateForm(request.POST, instance=template)
+        if form.is_valid():
+            form.save()
+            context = _email_template_form_context(event_type, True)
+            response = render(request, "core/management/email_template_form.html", context)
+            response["HX-Trigger"] = "emailTemplateSaved"
+            return response
+        context = {
+            "email_template": template,
+            "email_template_form": form,
+            "selected_email_type": event_type,
+            "email_event_types": EVENT_META,
+            "merge_fields": merge_fields_for_event(event_type),
+            "can_edit_email_templates": True,
+        }
+        return render(request, "core/management/email_template_form.html", context)

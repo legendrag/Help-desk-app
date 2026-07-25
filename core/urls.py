@@ -5,7 +5,8 @@ from .management_views import (
     CategoryCreateView, CategoryUpdateView, CategoryDeleteView,
     RoleCreateView, RoleUpdateView, RoleDeleteView,
     EmailSettingCreateView, EmailSettingUpdateView, EmailSettingDeleteView,
-    BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView
+    BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView,
+    EmailTemplateFormPartialView, EmailTemplateSaveView,
 )
 from .maintenance_views import (
     MaintenanceView, ExportTicketsView, BackupMediaView,
@@ -44,6 +45,12 @@ urlpatterns = [
     path('categories/', CategoryListView.as_view(), name='category_list'),
     path('roles/', RoleListView.as_view(), name='role_list'),
     path('email-settings/', EmailSettingListView.as_view(), name='email_setting_list'),
+    path('email-templates/form/', EmailTemplateFormPartialView.as_view(), name='email_template_form'),
+    path(
+        'email-templates/<str:event_type>/save/',
+        EmailTemplateSaveView.as_view(),
+        name='email_template_save',
+    ),
 
     # Maintenance
     path('maintenance/', MaintenanceView.as_view(), name='maintenance'),
