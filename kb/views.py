@@ -1,15 +1,13 @@
-from datetime import timedelta
-
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q, Count, Case, When, Value, IntegerField
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from core.management_views import BaseManagementView, BaseDeleteView
 from tickets.models import Ticket
+from tickets.search import apply_ticket_search
 
 from .forms import ArticleForm, KBCategoryForm
 from .models import Article, ArticleAttachment, Category
@@ -28,13 +26,10 @@ def _published_filter_for_status(status_filter, can_manage):
 
 
 def _base_articles_qs(user, status_filter="published"):
-    can_manage = _user_can_manage_kb(user)
     qs = Article.objects.select_related("category", "created_by")
-    if status_filter == "draft" and can_manage:
+    if status_filter == "draft" and _user_can_manage_kb(user):
         return qs.filter(is_published=False)
     return qs.filter(is_published=True)
-
-
 
 
 def _apply_sort(qs, sort, search_query):
@@ -55,30 +50,6 @@ def _apply_sort(qs, sort, search_query):
     return qs.order_by("-updated_at")
 
 
-def _get_suggested_articles(user, status_filter, search_query, category_ids, exclude_ids):
-    qs = _base_articles_qs(user, status_filter)
-    if search_query:
-        match = qs.filter(
-            Q(title__icontains=search_query) | Q(content__icontains=search_query)
-        ).first()
-        if match and match.category_id:
-            qs = qs.filter(category_id=match.category_id)
-        elif category_ids:
-            qs = qs.filter(category_id__in=category_ids)
-    if exclude_ids:
-        qs = qs.exclude(pk__in=exclude_ids)
-    suggested = list(qs.order_by("-updated_at")[:5])
-    if len(suggested) < 3:
-        fallback = _base_articles_qs(user, status_filter).order_by("-updated_at")[:5]
-        seen = {a.pk for a in suggested}
-        for article in fallback:
-            if article.pk not in seen:
-                suggested.append(article)
-                seen.add(article.pk)
-            if len(suggested) >= 5:
-                break
-    return suggested[:5]
-
 class KBPermissionMixin(UserPassesTestMixin):
     def test_func(self):
         user = self.request.user
@@ -94,9 +65,16 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     context_object_name = "articles"
     paginate_by = 8
 
+    def get_template_names(self):
+        if (
+            self.request.headers.get("HX-Request")
+            and self.request.GET.get("append") == "true"
+        ):
+            return ["kb/partials/results_append.html"]
+        return [self.template_name]
+
     def get_queryset(self):
         status_filter = self.request.GET.get("status", "published")
-        can_manage = _user_can_manage_kb(self.request.user)
         qs = _base_articles_qs(self.request.user, status_filter)
 
         search_query = (self.request.GET.get("q") or "").strip()
@@ -110,7 +88,6 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ]
         if category_ids:
             qs = qs.filter(category_id__in=category_ids)
-
 
         sort = self.request.GET.get("sort", "")
         return _apply_sort(qs, sort, search_query)
@@ -145,6 +122,8 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         paginator = ctx.get("paginator")
         ctx["article_count"] = paginator.count if paginator else len(ctx["articles"])
 
+        is_browse_home = not search_query and not category_ids and status_filter != "draft"
+        ctx["is_browse_home"] = is_browse_home
         ctx["has_active_filters"] = bool(
             search_query
             or category_ids
@@ -154,20 +133,18 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         if can_manage:
             ctx["draft_count"] = Article.objects.filter(is_published=False).count()
 
-        article_ids = [a.pk for a in ctx["articles"]]
-        ctx["suggested_articles"] = _get_suggested_articles(
-            request.user,
-            status_filter,
-            search_query,
-            category_ids,
-            article_ids,
-        )
+        if is_browse_home:
+            ctx["recent_articles"] = list(
+                _base_articles_qs(request.user, status_filter).order_by("-updated_at")[:6]
+            )
 
         params = request.GET.copy()
         params.pop("page", None)
+        params.pop("append", None)
         ctx["filter_query"] = params.urlencode()
         params_no_q = request.GET.copy()
         params_no_q.pop("page", None)
+        params_no_q.pop("append", None)
         params_no_q.pop("q", None)
         ctx["filter_query_no_q"] = params_no_q.urlencode()
 
@@ -177,6 +154,28 @@ class ArticleDetailView(LoginRequiredMixin, KBPermissionMixin, DetailView):
     model = Article
     template_name = "kb/detail.html"
     context_object_name = "article"
+
+    def get_queryset(self):
+        return Article.objects.select_related(
+            "category", "created_by", "related_ticket"
+        ).prefetch_related("attachments")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        article = self.object
+        related = []
+        if article.category_id:
+            related_qs = Article.objects.filter(
+                category_id=article.category_id
+            ).exclude(pk=article.pk)
+            if not _user_can_manage_kb(self.request.user):
+                related_qs = related_qs.filter(is_published=True)
+            related = list(
+                related_qs.select_related("category").order_by("-updated_at")[:5]
+            )
+        ctx["related_articles"] = related
+        ctx["can_manage_kb"] = _user_can_manage_kb(self.request.user)
+        return ctx
 
 class ArticleCreateView(LoginRequiredMixin, KBPermissionMixin, CreateView):
     model = Article
@@ -200,6 +199,11 @@ class ArticleUpdateView(LoginRequiredMixin, KBPermissionMixin, UpdateView):
     model = Article
     form_class = ArticleForm
     template_name = "kb/form.html"
+
+    def get_queryset(self):
+        return Article.objects.select_related(
+            "category", "related_ticket", "related_ticket__department", "related_ticket__created_by"
+        ).prefetch_related("attachments")
 
     def form_valid(self, form):
         action = self.request.POST.get('action')
@@ -301,14 +305,12 @@ def kb_search_suggest(request):
 def kb_ticket_search(request):
     user = request.user
     query = request.GET.get("q", "").strip()
-    
+
     if len(query) < 1:
         return HttpResponse('<div id="kb-search-results-container"></div>')
-        
-    tickets = Ticket.objects.filter(
-        Q(ticket_number__icontains=query) | Q(title__icontains=query)
-    )
-    
+
+    tickets = Ticket.objects.all()
+
     if not user.is_superuser:
         if user.user_type == "branch" and user.branch_id:
             tickets = tickets.filter(branch_id=user.branch_id)
@@ -316,8 +318,11 @@ def kb_ticket_search(request):
             tickets = tickets.filter(department_id=user.department_id)
         else:
             tickets = tickets.none()
-            
-    tickets = tickets.select_related("department", "branch", "created_by")[:10]
+
+    tickets = apply_ticket_search(
+        tickets.select_related("department", "branch", "created_by"),
+        query,
+    )[:10]
     
     if not tickets.exists():
         return HttpResponse('<div id="kb-search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')

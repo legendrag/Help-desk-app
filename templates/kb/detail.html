@@ -1,123 +1,207 @@
 {% extends "base.html" %}
+{% load kb_extras %}
 
 {% block title %}{{ article.title }} | Knowledge Base{% endblock title %}
 
-{% block body_class %}kb-page{% endblock body_class %}
+{% block body_class %}kb-page kb-detail-page{% endblock body_class %}
 
 {% block content %}
-<div class="kb-container-centered">
-    <!-- Back Navigation -->
-    <div class="kb-back-navigation">
-        <a href="{% url 'kb_list' %}" class="kb-back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="kb-back-icon">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Back to Articles
-        </a>
-    </div>
-
-    <!-- Unified Article Header -->
-    <header class="kb-article-header">
-        <div class="kb-header-details">
-            <h1 class="kb-article-title-text">
-                {{ article.title }}
-                {% if not article.is_published %}
-                <span class="pill kb-draft-pill">Draft</span>
-                {% endif %}
-            </h1>
-            <div class="kb-article-meta-info">
-                <span class="kb-meta-author">Author: {{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
-                <span class="kb-meta-divider">|</span>
-                <span class="kb-meta-date">Date: {{ article.created_at|date:"M j, Y" }}</span>
-                {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
-                <span class="kb-meta-divider">|</span>
-                <span class="kb-meta-date">Updated: {{ article.updated_at|date:"M j, Y" }}</span>
-                {% endif %}
-            </div>
-        </div>
-        
-        {% if user.is_superuser or user.role.can_manage_kb %}
-        <div class="kb-header-actions">
-            <a href="{% url 'kb_update' article.id %}" class="btn kb-btn-edit">Edit</a>
-            <button type="button" class="btn kb-btn-delete" onclick="showConfirmModal({ title: 'Delete Article', message: 'Are you sure you want to delete this article? This action cannot be undone.', onConfirm: () => document.getElementById('kb-delete-form').submit() })">Delete</button>
-            <form id="kb-delete-form" action="{% url 'kb_delete' article.id %}" method="post" style="display:none;">
-                {% csrf_token %}
-            </form>
-        </div>
+<div class="kb-detail-shell">
+    <nav class="kb-breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'kb_list' %}" class="kb-breadcrumb-link">Knowledge Base</a>
+        <span class="kb-breadcrumb-sep" aria-hidden="true">&rsaquo;</span>
+        {% if article.category %}
+        <a href="{% url 'kb_list' %}?category={{ article.category.id }}" class="kb-breadcrumb-link">{{ article.category.name }}</a>
+        <span class="kb-breadcrumb-sep" aria-hidden="true">&rsaquo;</span>
         {% endif %}
+        <span class="kb-breadcrumb-current">{{ article.title|truncatechars:48 }}</span>
+    </nav>
+
+    <header class="kb-detail-header">
+        <h1 class="kb-detail-title">
+            {{ article.title }}
+            {% if not article.is_published %}
+            <span class="pill kb-draft-pill">Draft</span>
+            {% endif %}
+        </h1>
+        <div class="kb-detail-meta">
+            <span>{{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+            <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
+            <span>{{ article.created_at|date:"M j, Y" }}</span>
+            {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
+            <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
+            <span>Updated {{ article.updated_at|date:"M j, Y" }}</span>
+            {% endif %}
+            <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
+            <span>{{ article.content|read_time }}</span>
+        </div>
     </header>
 
-    <!-- 2-Column Redesigned Grid -->
-    <div class="kb-layout-grid-centered">
-        <!-- Main Article Content (Seamless layout, borderless for readability) -->
-        <main class="kb-article-main-content">
-            <article class="kb-content">
-                {{ article.content|safe }}
+    <div class="kb-detail-layout">
+        <main class="kb-detail-main">
+            <article class="panel kb-detail-content">
+                <div class="kb-content">
+                    {{ article.content|safe }}
+                </div>
             </article>
+
+            {% if related_articles %}
+            <section class="kb-related-section" aria-label="More in this category">
+                <h2 class="kb-related-heading">More in this category</h2>
+                <ul class="kb-related-list">
+                    {% for related in related_articles %}
+                    <li>
+                        <a href="{% url 'kb_detail' related.id %}" class="kb-related-link panel">
+                            <span class="kb-related-title">{{ related.title }}</span>
+                            <span class="kb-related-meta">
+                                Updated {{ related.updated_at|date:"M j, Y" }}
+                                <span aria-hidden="true">&middot;</span>
+                                {{ related.content|read_time }}
+                                {% if not related.is_published %}
+                                <span class="pill kb-draft-pill">Draft</span>
+                                {% endif %}
+                            </span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
         </main>
 
-        <!-- Right Sidebar (Quick Actions Glass Card) -->
-        <aside class="kb-article-sidebar">
-            <div class="kb-quick-actions-card">
-                <h3 class="kb-card-title">Quick Actions</h3>
-                
-                <div class="kb-card-section">
-                    <h4 class="kb-card-section-label">Category</h4>
-                    <div>
-                        <span class="kb-card-category-text">{{ article.category.name|default:"Uncategorized" }}</span>
-                    </div>
+        <aside class="kb-detail-sidebar" aria-label="Article details">
+            <section class="panel kb-detail-side-card">
+                <div class="kb-detail-side-block">
+                    <h2 class="kb-detail-side-label">Category</h2>
+                    {% if article.category %}
+                    <a href="{% url 'kb_list' %}?category={{ article.category.id }}" class="kb-detail-side-value kb-card-category-link">{{ article.category.name }}</a>
+                    {% else %}
+                    <span class="kb-detail-side-value">Uncategorized</span>
+                    {% endif %}
                 </div>
-                
+
                 {% if article.related_ticket %}
-                <div class="kb-card-section">
-                    <h4 class="kb-card-section-label">Related Tickets</h4>
-                    <div class="kb-card-list">
-                        <a href="{% url 'ticket_detail' article.related_ticket.id %}" class="kb-card-list-item-link">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="kb-card-icon kb-ticket-icon">
-                                <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
-                                <line x1="8" y1="12" x2="16" y2="12"></line>
-                            </svg>
-                            #{{ article.related_ticket.ticket_number }}
-                        </a>
-                    </div>
+                <div class="kb-detail-side-block">
+                    <h2 class="kb-detail-side-label">Related ticket</h2>
+                    <a href="{% url 'ticket_detail' article.related_ticket.id %}" class="kb-detail-ticket-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        #{{ article.related_ticket.ticket_number }}
+                    </a>
                 </div>
                 {% endif %}
-                
-                {% if article.attachments.exists %}
-                <div class="kb-card-section">
-                    <h4 class="kb-card-section-label">Attachments</h4>
-                    <div class="kb-card-list">
+
+                {% if article.attachments.all %}
+                <div class="kb-detail-side-block">
+                    <h2 class="kb-detail-side-label">Attachments</h2>
+                    <ul class="kb-detail-attachment-list">
                         {% for attachment in article.attachments.all %}
-                        <div class="kb-card-attachment-item">
-                            {% if attachment.file.url|lower|slice:"-4:" == ".jpg" or attachment.file.url|lower|slice:"-4:" == ".png" or attachment.file.url|lower|slice:"-5:" == ".jpeg" or attachment.file.url|lower|slice:"-4:" == ".gif" %}
-                            <a href="{{ attachment.file.url }}" target="_blank" class="kb-card-list-item-link">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="kb-card-icon kb-attachment-icon">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                    <polyline points="21 15 16 10 5 21"></polyline>
-                                </svg>
-                                <span class="kb-attachment-filename">{{ attachment.file.name|slice:"15:"|default:attachment.file.name }}</span>
-                            </a>
-                            {% else %}
-                            <a href="{{ attachment.file.url }}" target="_blank" download class="kb-card-list-item-link">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="kb-card-icon kb-attachment-icon">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                </svg>
-                                <span class="kb-attachment-filename">{{ attachment.file.name|slice:"15:"|default:attachment.file.name }}</span>
-                            </a>
-                            {% endif %}
-                        </div>
+                        {% with kind=attachment.file.url|kb_attachment_kind name=attachment.file.name|basename %}
+                        <li>
+                            <button type="button"
+                                    class="kb-detail-attachment-btn"
+                                    data-kb-preview-url="{{ attachment.file.url }}"
+                                    data-kb-preview-kind="{{ kind }}"
+                                    data-kb-preview-name="{{ name }}"
+                                    onclick="openKbAttachmentPreview(this)">
+                                {% if kind == "image" %}
+                                <img src="{{ attachment.file.url }}" alt="" class="kb-detail-attachment-thumb">
+                                {% else %}
+                                <span class="kb-detail-attachment-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                    </svg>
+                                </span>
+                                {% endif %}
+                                <span class="kb-detail-attachment-name">{{ name }}</span>
+                            </button>
+                        </li>
+                        {% endwith %}
                         {% endfor %}
-                    </div>
+                    </ul>
                 </div>
                 {% endif %}
-            </div>
+
+                {% if can_manage_kb %}
+                <div class="kb-detail-side-actions">
+                    <a href="{% url 'kb_update' article.id %}" class="btn primary kb-detail-edit-btn">Edit</a>
+                    <button type="button" class="btn secondary kb-detail-delete-btn" onclick="showConfirmModal({ title: 'Delete article', message: 'This permanently removes the article and its attachments. This cannot be undone.', yesText: 'Delete', onConfirm: () => document.getElementById('kb-delete-form').submit() })">Delete</button>
+                    <form id="kb-delete-form" action="{% url 'kb_delete' article.id %}" method="post" style="display:none;">
+                        {% csrf_token %}
+                    </form>
+                </div>
+                {% endif %}
+            </section>
         </aside>
     </div>
 </div>
+
+<div id="kb-attachment-preview" class="kb-attachment-preview" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Attachment preview">
+    <button type="button" class="kb-attachment-preview-close" onclick="closeKbAttachmentPreview()" aria-label="Close preview">&times;</button>
+    <div class="kb-attachment-preview-stage" onclick="if(event.target === this) closeKbAttachmentPreview()">
+        <img id="kb-attachment-preview-image" class="kb-attachment-preview-media" alt="Attachment preview" hidden>
+        <iframe id="kb-attachment-preview-frame" class="kb-attachment-preview-frame" title="Attachment preview" hidden></iframe>
+    </div>
+</div>
+
+<script>
+(function () {
+    const overlay = document.getElementById('kb-attachment-preview');
+    const imageEl = document.getElementById('kb-attachment-preview-image');
+    const frameEl = document.getElementById('kb-attachment-preview-frame');
+
+    function hideAll() {
+        imageEl.hidden = true;
+        frameEl.hidden = true;
+        imageEl.removeAttribute('src');
+        frameEl.removeAttribute('src');
+    }
+
+    window.openKbAttachmentPreview = function (btn) {
+        if (!overlay || !btn) return;
+        const url = btn.getAttribute('data-kb-preview-url');
+        const kind = btn.getAttribute('data-kb-preview-kind') || 'file';
+        const name = btn.getAttribute('data-kb-preview-name') || 'Attachment';
+        if (!url) return;
+
+        // Only preview images/PDFs in the lightbox; other files open in a new tab.
+        if (kind !== 'image' && kind !== 'pdf') {
+            window.open(url, '_blank', 'noopener');
+            return;
+        }
+
+        hideAll();
+
+        if (kind === 'image') {
+            imageEl.src = url;
+            imageEl.alt = name;
+            imageEl.hidden = false;
+        } else {
+            frameEl.src = url;
+            frameEl.hidden = false;
+        }
+
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('kb-preview-open');
+        overlay.querySelector('.kb-attachment-preview-close')?.focus();
+    };
+
+    window.closeKbAttachmentPreview = function () {
+        if (!overlay) return;
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('kb-preview-open');
+        hideAll();
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay && !overlay.hidden) {
+            closeKbAttachmentPreview();
+        }
+    });
+})();
+</script>
 {% endblock content %}

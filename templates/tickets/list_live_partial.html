@@ -81,6 +81,6 @@
         </table>
     </div>
 </div>
-{% if request.htmx %}
+{% if is_htmx %}
 {% include "tickets/load_more_button.html" with oob=True %}
 {% endif %}

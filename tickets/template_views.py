@@ -17,6 +17,7 @@ from .models import Ticket, TicketMessage, TicketStatusHistory
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
+from .search import apply_ticket_search
 from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
 # ... (existing code)
@@ -773,14 +774,6 @@ class TicketListView(LoginRequiredMixin, ListView):
 
         self.base_queryset = base_queryset
 
-        search_query = self.request.GET.get("q", "").strip()
-        if search_query:
-            base_queryset = base_queryset.filter(
-                Q(ticket_number__icontains=search_query)
-                | Q(title__icontains=search_query)
-                | Q(description__icontains=search_query)
-            )
-
         branch_filter = self.request.GET.get("branch")
         if branch_filter and branch_filter != "all":
             base_queryset = base_queryset.filter(branch_id=branch_filter)
@@ -796,11 +789,14 @@ class TicketListView(LoginRequiredMixin, ListView):
             else:
                 base_queryset = base_queryset.filter(assigned_to_id=assignment_filter)
 
-        return base_queryset
+        # Apply search last so relevance ordering wins over default created_at order.
+        search_query = self.request.GET.get("q", "").strip()
+        return apply_ticket_search(base_queryset, search_query)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+        context["is_htmx"] = bool(self.request.headers.get("HX-Request"))
 
         context["filter_values"] = {
             "q": self.request.GET.get("q", ""),
@@ -1438,11 +1434,9 @@ def ticket_search_options(request):
     
     if len(query) < 1:
         return HttpResponse('<div id="search-results-container"></div>')
-        
-    tickets = Ticket.objects.filter(
-        Q(ticket_number__icontains=query) | Q(title__icontains=query)
-    ).exclude(merged_into__isnull=False)
-    
+
+    tickets = Ticket.objects.exclude(merged_into__isnull=False)
+
     if not user.is_superuser:
         if user.user_type == "branch" and user.branch_id:
             tickets = tickets.filter(branch_id=user.branch_id)
@@ -1450,11 +1444,14 @@ def ticket_search_options(request):
             tickets = tickets.filter(department_id=user.department_id)
         else:
             tickets = tickets.none()
-    
+
     if exclude_id and exclude_id.isdigit():
         tickets = tickets.exclude(id=exclude_id)
-        
-    tickets = tickets.select_related("department", "branch", "created_by")[:10]
+
+    tickets = apply_ticket_search(
+        tickets.select_related("department", "branch", "created_by"),
+        query,
+    )[:10]
     
     if not tickets.exists():
         return HttpResponse('<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')

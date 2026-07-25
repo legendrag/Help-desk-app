@@ -47,6 +47,21 @@ def highlight(text, search):
     return mark_safe(safe_text)
 
 
+@register.filter
+def basename(path):
+    return str(path or "").replace("\\", "/").rsplit("/", 1)[-1]
+
+
+@register.filter
+def kb_attachment_kind(url):
+    name = str(url or "").lower().split("?", 1)[0]
+    if name.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")):
+        return "image"
+    if name.endswith(".pdf"):
+        return "pdf"
+    return "file"
+
+
 @register.inclusion_tag("kb/partials/category_icon.html")
 def kb_category_icon(category):
     if not category:

@@ -1,0 +1,14 @@
+{% if page_obj.has_next %}
+<div id="kb-load-more-container"{% if oob %} hx-swap-oob="true"{% endif %} class="kb-load-more-wrap">
+    <button type="button"
+            class="btn secondary kb-load-more-btn"
+            hx-get="{% url 'kb_list' %}?page={{ page_obj.next_page_number }}&append=true{% if filter_query %}&{{ filter_query }}{% endif %}"
+            hx-target="#kb-results-list"
+            hx-swap="beforeend"
+            hx-indicator="this">
+        Load more results
+    </button>
+</div>
+{% else %}
+<div id="kb-load-more-container"{% if oob %} hx-swap-oob="true"{% endif %} class="kb-load-more-wrap"></div>
+{% endif %}

@@ -73,7 +73,7 @@
             </div>
             <div class="metric-list">
                 {% for item in status_summary %}
-                <div class="metric-row">
+                <a class="metric-row" href="{% url 'tickets_list' %}?status={{ item.value }}">
                     <div class="metric-label">
                         <span class="badge badge-{{ item.value }}">{{ item.label }}</span>
                     </div>
@@ -81,7 +81,7 @@
                         <span class="metric-bar-fill status-{{ item.value }}" style="width: {{ item.percent }}%"></span>
                     </div>
                     <div class="metric-count">{{ item.count }}</div>
-                </div>
+                </a>
                 {% empty %}
                 <div class="empty-state">No data available.</div>
                 {% endfor %}
@@ -149,7 +149,7 @@
 <script src="{% static 'js/status-stack.js' %}?v=1"></script>
 {% if tickets_by_date %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="{% static 'js/volume-trend-chart.js' %}?v=2"></script>
+<script src="{% static 'js/volume-trend-chart.js' %}?v=4"></script>
 {% endif %}
 <script>
 (function () {

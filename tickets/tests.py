@@ -311,3 +311,109 @@ class TicketAuthorizationViewTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
 
+
+class TicketListSearchTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="SRCH", name="Search Branch")
+        self.department = Department.objects.create(name="Search Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="VPN Issues",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.role = Role.objects.create(name="Search Support", can_create_ticket=True)
+        self.support = User.objects.create_user(
+            username="search_agent",
+            email="search@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+            role=self.role,
+        )
+        self.creator = User.objects.create_user(
+            username="branch_creator",
+            email="creator@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+        self.by_title = Ticket.objects.create(
+            ticket_number="TK-2001",
+            title="Cannot reset password",
+            description="Login page error",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.creator,
+            client_name="Alice Smith",
+            client_phone="555-0100",
+        )
+        self.by_client = Ticket.objects.create(
+            ticket_number="TK-2002",
+            title="Printer offline",
+            description="Hardware issue",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.creator,
+            assigned_to=self.support,
+            client_name="Bob Jones",
+            client_phone="555-0199",
+        )
+        self.by_category = Ticket.objects.create(
+            ticket_number="TK-2003",
+            title="Network dropouts",
+            description="Intermittent wifi",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.creator,
+            client_name="Carol",
+            client_phone="555-0111",
+        )
+        self.client.login(username="search_agent", password="password123")
+
+    def test_search_by_client_name(self):
+        response = self.client.get(reverse("tickets_list"), {"q": "Alice"})
+        self.assertEqual(response.status_code, 200)
+        tickets = list(response.context["tickets"])
+        self.assertIn(self.by_title, tickets)
+        self.assertNotIn(self.by_client, tickets)
+
+    def test_search_by_phone_digits(self):
+        response = self.client.get(reverse("tickets_list"), {"q": "5550199"})
+        self.assertEqual(response.status_code, 200)
+        tickets = list(response.context["tickets"])
+        self.assertIn(self.by_client, tickets)
+
+    def test_search_by_assignee_username(self):
+        response = self.client.get(reverse("tickets_list"), {"q": "search_agent"})
+        self.assertEqual(response.status_code, 200)
+        tickets = list(response.context["tickets"])
+        self.assertIn(self.by_client, tickets)
+        self.assertNotIn(self.by_title, tickets)
+
+    def test_multi_word_and_search(self):
+        response = self.client.get(reverse("tickets_list"), {"q": "reset password"})
+        self.assertEqual(response.status_code, 200)
+        tickets = list(response.context["tickets"])
+        self.assertIn(self.by_title, tickets)
+        self.assertNotIn(self.by_client, tickets)
+
+    def test_relevance_ranks_ticket_number_first(self):
+        response = self.client.get(reverse("tickets_list"), {"q": "TK-2001"})
+        self.assertEqual(response.status_code, 200)
+        tickets = list(response.context["tickets"])
+        self.assertEqual(tickets[0], self.by_title)
+
+    def test_htmx_partial_updates_load_more(self):
+        response = self.client.get(
+            reverse("tickets_list"),
+            {"q": "Alice"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/list_live_partial.html")
+        self.assertTrue(response.context["is_htmx"])
+        self.assertContains(response, self.by_title.ticket_number)
+

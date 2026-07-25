@@ -1,0 +1,4 @@
+{% for article in articles %}
+{% include "kb/partials/result_item.html" with article=article search_query=search_query %}
+{% endfor %}
+{% include "kb/partials/load_more.html" with oob=True %}

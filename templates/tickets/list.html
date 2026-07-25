@@ -19,7 +19,12 @@
                 {% endif %}
             </div>
 
-            <form class="tickets-filters" method="get" autocomplete="off">
+            <form class="tickets-filters" method="get" autocomplete="off"
+                  hx-get="{% url 'tickets_list' %}"
+                  hx-trigger="submit, change from:select, keyup changed delay:300ms from:#search-q, search from:#search-q"
+                  hx-target="#tickets-live"
+                  hx-swap="outerHTML"
+                  hx-push-url="true">
                 <div class="search-field">
                     <span class="search-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -27,11 +32,14 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="text" name="q" id="search-q" class="search-input" placeholder="Search ID, Title, or Description..." value="{{ filter_values.q }}">
+                    <input type="search" name="q" id="search-q" class="search-input"
+                           placeholder="Search ID, title, client, phone, branch…"
+                           value="{{ filter_values.q }}"
+                           aria-label="Search tickets">
                 </div>
                 <div class="filter-row">
                     {% if not user.user_type == 'branch' %}
-                    <select name="branch" onchange="this.form.submit()">
+                    <select name="branch">
                         <option value="all">All Branches</option>
                         {% for branch in branches %}
                         <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
@@ -39,14 +47,14 @@
                     </select>
                     {% endif %}
                     
-                    <select name="status" onchange="this.form.submit()">
+                    <select name="status">
                         <option value="all">All Statuses</option>
                         {% for value, label in status_choices %}
                         <option value="{{ value }}"{% if filter_values.status == value %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                     
-                    <select name="assignment" onchange="this.form.submit()">
+                    <select name="assignment">
                         <option value="all">All Assignments</option>
                         <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>Unassigned</option>
                         {% for assignee in assignees %}

@@ -1859,6 +1859,43 @@
   color: #c7d2fe;
 }
 
+[data-theme="dark"] .kb-category-tile:hover {
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .kb-recent-item:hover {
+  border-color: var(--primary);
+}
+
+[data-theme="dark"] .kb-related-link:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+[data-theme="dark"] .kb-form-side-actions,
+[data-theme="dark"] .kb-detail-side-actions {
+  background: var(--panel-bg, #0f172a);
+}
+
+@media (max-width: 720px) {
+  [data-theme="dark"] .kb-form-side-actions,
+  [data-theme="dark"] .kb-detail-side-actions {
+    box-shadow: 0 -6px 20px -14px rgba(0, 0, 0, 0.65);
+  }
+}
+
+[data-theme="dark"] .kb-detail-page .kb-content code {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .kb-detail-attachment-btn {
+  background: var(--panel-bg, #0f172a);
+}
+
+[data-theme="dark"] .kb-detail-attachment-icon {
+  background: rgba(129, 140, 248, 0.12);
+  color: #a5b4fc;
+}
+
 [data-theme="dark"] .kb-help-card-icon {
   background: rgba(129, 140, 248, 0.12);
   color: #a5b4fc;

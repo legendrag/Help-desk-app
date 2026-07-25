@@ -1757,7 +1757,7 @@ tr:hover td {
 }
 
 /* Unpadded wrappers that aren't using .modal-body yet */
-.modal-content > div:not(.modal-header):not(.modal-body):not(.form-actions):not(.form-actions--end):not(.discard-modal-header) {
+.modal-content > div:not(.modal-header):not(.modal-body):not(.form-actions):not(.form-actions--end):not(.discard-modal-header):not(.discard-modal-body) {
   padding: 1.25rem 1.5rem;
   box-sizing: border-box;
   min-height: 0;
@@ -4272,10 +4272,19 @@ html.modal-open body {
   position: relative;
 }
 
-.search-field input[type="text"] {
-  padding-left: 2.6rem;
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
+/* Beat the global input padding rule (same specificity otherwise loses left inset). */
+.tickets-filters .search-field input.search-input,
+.tickets-filters .search-field input[type="search"],
+.tickets-filters .search-field input[type="text"] {
+  padding: 0.65rem 1rem 0.65rem 2.6rem;
+}
+
+.tickets-filters .search-field input[type="search"]::-webkit-search-decoration,
+.tickets-filters .search-field input[type="search"]::-webkit-search-cancel-button,
+.tickets-filters .search-field input[type="search"]::-webkit-search-results-button,
+.tickets-filters .search-field input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .search-icon {
@@ -4287,6 +4296,8 @@ html.modal-open body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .search-icon svg {
@@ -5641,70 +5652,125 @@ tr#load-more-row,
 
 /* Utility Classes */
 
-/* Discard Confirmation Modal */
+/* Discard / confirm modals */
 .discard-modal-overlay {
   display: none;
   z-index: 100001;
   align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
 }
 
-.discard-modal-content {
-  max-width: 440px;
-  padding: 1.5rem !important;
+.modal-content.discard-modal-content {
+  width: min(420px, 100%);
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 1.25rem 1.35rem 1.15rem !important;
+  box-sizing: border-box;
 }
 
-.discard-modal-header {
+.modal-content.discard-modal-content .discard-modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 0.7rem;
   border-bottom: none;
   padding: 0 !important;
+  flex-shrink: 0;
 }
 
-.discard-modal-title {
+.modal-content.discard-modal-content .discard-modal-title {
   margin: 0;
-  font-size: 1.15rem;
+  padding-top: 0.1rem;
+  font-size: 1.125rem;
   font-weight: 700;
+  line-height: 1.3;
   color: var(--text-main);
 }
 
-.discard-modal-close {
-  background: none;
+.modal-content.discard-modal-content .discard-modal-title.is-danger {
+  color: var(--danger);
+}
+
+.modal-content.discard-modal-content .discard-modal-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.25rem -0.35rem 0 0;
+  padding: 0;
+  background: transparent !important;
   border: none;
+  border-radius: 8px;
   cursor: pointer;
   color: var(--text-muted);
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  box-shadow: none !important;
 }
 
-.discard-modal-text {
-  margin: 0 0 1.5rem 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  padding: 0;
+.modal-content.discard-modal-content .discard-modal-close:hover,
+.modal-content.discard-modal-content .discard-modal-close:focus-visible {
+  background: var(--bg-hover, rgba(15, 23, 42, 0.06)) !important;
+  color: var(--text-main);
+  outline: none;
 }
 
-.discard-modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 0;
+.modal-content.discard-modal-content .discard-modal-body {
+  margin: 0;
   padding: 0 !important;
-  border-top: none !important;
+  overflow: visible !important;
+  min-height: 0;
 }
 
-.discard-modal-btn {
-  padding: 0.5rem 1.2rem;
-  min-height: auto;
-  min-width: auto;
+.modal-content.discard-modal-content .discard-modal-text {
+  margin: 0;
+  padding: 0;
+  font-size: 0.925rem;
+  color: var(--text-muted);
+  line-height: 1.55;
 }
 
-.discard-modal-btn.danger {
+.modal-content.discard-modal-content .form-actions.discard-modal-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem !important;
+  margin: 1.25rem 0 0 !important;
+  padding: 1.1rem 0 0 !important;
+  border-top: 1px solid var(--border) !important;
+  background: transparent !important;
+  width: auto !important;
+}
+
+.modal-content.discard-modal-content .discard-modal-btn {
+  min-width: 6.75rem;
+  min-height: 2.4rem;
+  padding: 0.55rem 1.15rem;
+  justify-content: center;
+}
+
+.modal-content.discard-modal-content .discard-modal-btn.danger {
   background-color: var(--danger);
   border-color: var(--danger);
   color: #fff;
+}
+
+@media (max-width: 480px) {
+  .modal-content.discard-modal-content .form-actions.discard-modal-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem !important;
+  }
+
+  .modal-content.discard-modal-content .discard-modal-btn {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* Management Error Messages */
