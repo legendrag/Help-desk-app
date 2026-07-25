@@ -65,6 +65,10 @@
   color: var(--text-main);
 }
 
+[data-theme="dark"] body.sidebar-open .topbar {
+  box-shadow: none;
+}
+
 [data-theme="dark"] .brand-mlameh--light,
 [data-theme="dark"] .auth-brand-mlameh--light,
 [data-theme="dark"] .brand-logo--light,
@@ -121,7 +125,7 @@
 /* ── Sidebar ── */
 [data-theme="dark"] .sidebar {
   background: #1e293b;
-  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.4);
+  box-shadow: -16px 8px 28px -12px rgba(0, 0, 0, 0.55);
 }
 
 [data-theme="dark"] .sidebar-header {
