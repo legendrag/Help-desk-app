@@ -291,13 +291,81 @@
         </div>
 
     </div>
+    {% elif model_name == "Email Appearance" %}
+    <div class="form-stack">
+        <p class="help-text">Controls the brand header, accent color, and footer on all notification emails.</p>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>{{ form.brand_name.label }}</label>
+                {{ form.brand_name }}
+                {% if form.brand_name.errors %}<div class="field-error">{{ form.brand_name.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.accent_color.label }}</label>
+                {{ form.accent_color }}
+                {% if form.accent_color.errors %}<div class="field-error">{{ form.accent_color.errors }}</div>{% endif %}
+                <div class="help-text">Hex color, e.g. #4f46e5</div>
+            </div>
+            <div class="form-group full">
+                <label>{{ form.footer_note.label }}</label>
+                {{ form.footer_note }}
+                {% if form.footer_note.errors %}<div class="field-error">{{ form.footer_note.errors }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% elif model_name == "Email Template" %}
+    <div class="form-stack">
+        <p class="help-text">Editing: <strong>{{ object.get_event_type_display }}</strong>. Placeholders below are filled in when the email is sent.</p>
+        {% if placeholder_help %}
+        <div class="email-placeholder-help">
+            <span class="help-text">Available placeholders:</span>
+            <div class="email-placeholder-list">
+                {% for ph in placeholder_help %}
+                <code>{{ ph }}</code>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="form-grid">
+            <div class="form-group full">
+                <label>{{ form.subject.label }}</label>
+                {{ form.subject }}
+                {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group full">
+                <label>{{ form.headline.label }}</label>
+                {{ form.headline }}
+                {% if form.headline.errors %}<div class="field-error">{{ form.headline.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group full">
+                <label>{{ form.intro.label }}</label>
+                {{ form.intro }}
+                {% if form.intro.errors %}<div class="field-error">{{ form.intro.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.message_title.label }}</label>
+                {{ form.message_title }}
+                {% if form.message_title.errors %}<div class="field-error">{{ form.message_title.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.cta_label.label }}</label>
+                {{ form.cta_label }}
+                {% if form.cta_label.errors %}<div class="field-error">{{ form.cta_label.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group checkbox-field">
+                {{ form.is_active }}
+                <label for="{{ form.is_active.id_for_label }}" class="checkbox-label">{{ form.is_active.label }}</label>
+                {% if form.is_active.errors %}<div class="field-error">{{ form.is_active.errors }}</div>{% endif %}
+                {% if form.is_active.help_text %}<div class="help-text">{{ form.is_active.help_text }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
     {% elif model_name == "User" %}
     <div class="form-stack">
         <div class="form-grid">
             <div class="form-group">
                 <label>{{ form.username.label }}</label>
-                {{ form.username }}
-                {% if form.username.errors %}<div class="field-error">{{ form.username.errors }}</div>{% endif %}
+                {{ form.username }}                {% if form.username.errors %}<div class="field-error">{{ form.username.errors }}</div>{% endif %}
                 {% if form.username.help_text %}<div class="help-text">{{ form.username.help_text|safe }}</div>{% endif %}
             </div>
             <div class="form-group">

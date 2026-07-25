@@ -11,7 +11,9 @@ from notifications.email_content import (
     display_name,
     format_datetime,
     render_notification_email,
+    resolve_email_copy,
     ticket_details,
+    ticket_placeholder_context,
     ticket_url,
     truncate_text,
 )
@@ -70,20 +72,32 @@ def send_new_ticket_email(ticket_id: int) -> bool:
         return False
 
     title = truncate_text(ticket.title, 80)
-    subject = f"[mlamehticket] New ticket #{ticket.ticket_number}: {title}"
+    dept_suffix = f" for {ticket.department.name}" if ticket.department_id else ""
+    ctx = ticket_placeholder_context(ticket, ticket.created_by)
+    copy = resolve_email_copy(
+        "new_ticket",
+        ctx,
+        defaults={
+            "subject": f"[mlamehticket] New ticket #{ticket.ticket_number}: {title}",
+            "headline": f"New ticket #{ticket.ticket_number}",
+            "intro": f"{display_name(ticket.created_by)} submitted a new request{dept_suffix}.",
+            "message_title": "Request",
+            "cta_label": "View ticket",
+        },
+    )
     return _send_rendered(
-        subject,
+        copy["subject"],
         recipients,
-        headline=f"New ticket #{ticket.ticket_number}",
-        intro=(
-            f"{display_name(ticket.created_by)} submitted a new request"
-            f"{f' for {ticket.department.name}' if ticket.department_id else ''}."
-        ),
+        headline=copy["headline"],
+        intro=copy["intro"],
         details=ticket_details(ticket),
-        message_title="Request",
+        message_title=copy["message_title"],
         message_body=truncate_text(ticket.description, 800) or ticket.title,
         cta_url=ticket_url(ticket),
-        cta_label="View ticket",
+        cta_label=copy["cta_label"],
+        brand_name=copy["brand_name"],
+        accent_color=copy["accent_color"],
+        footer_note=copy["footer_note"],
     )
 
 
@@ -108,17 +122,31 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
         return False
 
     status_label = format_status_label(ticket.status) or ticket.status
-    subject = f"[mlamehticket] Ticket #{ticket.ticket_number} picked up"
+    ctx = ticket_placeholder_context(ticket, actor, status=status_label)
+    copy = resolve_email_copy(
+        "ticket_picked",
+        ctx,
+        defaults={
+            "subject": f"[mlamehticket] Ticket #{ticket.ticket_number} picked up",
+            "headline": f"Ticket #{ticket.ticket_number} was picked up",
+            "intro": f"{display_name(actor)} is now handling this ticket. Status is {status_label}.",
+            "message_title": "Request",
+            "cta_label": "Open ticket",
+        },
+    )
     return _send_rendered(
-        subject,
+        copy["subject"],
         recipients,
-        headline=f"Ticket #{ticket.ticket_number} was picked up",
-        intro=f"{display_name(actor)} is now handling this ticket. Status is {status_label}.",
+        headline=copy["headline"],
+        intro=copy["intro"],
         details=ticket_details(ticket),
-        message_title="Request",
+        message_title=copy["message_title"],
         message_body=truncate_text(ticket.description, 500) or ticket.title,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
+        cta_label=copy["cta_label"],
+        brand_name=copy["brand_name"],
+        accent_color=copy["accent_color"],
+        footer_note=copy["footer_note"],
     )
 
 
@@ -153,11 +181,6 @@ def send_ticket_update_email(
         recipients = [recipient.email]
         message = TicketMessage.objects.filter(id=message_id).first()
         message_text = truncate_text(message.message, 1000) if message and message.message else ""
-        subject = f"[mlamehticket] New reply on #{ticket.ticket_number}"
-        headline = f"New reply on #{ticket.ticket_number}"
-        intro = f"{display_name(actor)} replied to the ticket."
-        message_title = "Message"
-        message_body = message_text
 
         from .models import InAppNotification
 
@@ -173,6 +196,21 @@ def send_ticket_update_email(
         recipients = [r for r in recipients if r not in read_emails]
         if not recipients:
             return False
+
+        ctx = ticket_placeholder_context(ticket, actor)
+        copy = resolve_email_copy(
+            "ticket_message",
+            ctx,
+            defaults={
+                "subject": f"[mlamehticket] New reply on #{ticket.ticket_number}",
+                "headline": f"New reply on #{ticket.ticket_number}",
+                "intro": f"{display_name(actor)} replied to the ticket.",
+                "message_title": "Message",
+                "cta_label": "Open ticket",
+            },
+        )
+        message_title = copy["message_title"]
+        message_body = message_text
     elif status_changed and new_status:
         if not is_email_event_enabled("notify_ticket_status"):
             return False
@@ -182,10 +220,19 @@ def send_ticket_update_email(
         if not recipients:
             return False
         status_label = format_status_label(new_status) or new_status
-        subject = f"[mlamehticket] Status update on #{ticket.ticket_number}: {status_label}"
-        headline = f"Status changed on #{ticket.ticket_number}"
-        intro = f"{display_name(actor)} updated the status to {status_label}."
-        message_title = "Request"
+        ctx = ticket_placeholder_context(ticket, actor, status=status_label)
+        copy = resolve_email_copy(
+            "ticket_status",
+            ctx,
+            defaults={
+                "subject": f"[mlamehticket] Status update on #{ticket.ticket_number}: {status_label}",
+                "headline": f"Status changed on #{ticket.ticket_number}",
+                "intro": f"{display_name(actor)} updated the status to {status_label}.",
+                "message_title": "Request",
+                "cta_label": "Open ticket",
+            },
+        )
+        message_title = copy["message_title"]
         message_body = truncate_text(ticket.description, 500) or ticket.title
     else:
         if not is_email_event_enabled("notify_ticket_update"):
@@ -196,22 +243,34 @@ def send_ticket_update_email(
         if not recipients:
             return False
         status_label = format_status_label(ticket.status) or ticket.status
-        subject = f"[mlamehticket] Update on ticket #{ticket.ticket_number}"
-        headline = f"Ticket #{ticket.ticket_number} was updated"
-        intro = f"{display_name(actor)} made an update to this ticket."
-        message_title = "Request"
+        ctx = ticket_placeholder_context(ticket, actor, status=status_label)
+        copy = resolve_email_copy(
+            "ticket_update",
+            ctx,
+            defaults={
+                "subject": f"[mlamehticket] Update on ticket #{ticket.ticket_number}",
+                "headline": f"Ticket #{ticket.ticket_number} was updated",
+                "intro": f"{display_name(actor)} made an update to this ticket.",
+                "message_title": "Request",
+                "cta_label": "Open ticket",
+            },
+        )
+        message_title = copy["message_title"]
         message_body = truncate_text(ticket.description, 500) or ticket.title
 
     return _send_rendered(
-        subject,
+        copy["subject"],
         recipients,
-        headline=headline,
-        intro=intro,
+        headline=copy["headline"],
+        intro=copy["intro"],
         details=ticket_details(ticket),
         message_title=message_title,
         message_body=message_body,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
+        cta_label=copy["cta_label"],
+        brand_name=copy["brand_name"],
+        accent_color=copy["accent_color"],
+        footer_note=copy["footer_note"],
     )
 
 
@@ -234,38 +293,56 @@ def send_transfer_event_email(ticket_id: int, actor_id: int, recipient_id: int, 
     if not recipient_user.email:
         return False
 
-    event_copy = {
+    event_map = {
         "requested": (
+            "transfer_requested",
             f"[mlamehticket] Transfer requested: #{ticket.ticket_number}",
             f"Transfer requested for #{ticket.ticket_number}",
             f"{display_name(actor)} wants to transfer this ticket to you.",
         ),
         "accepted": (
+            "transfer_accepted",
             f"[mlamehticket] Transfer accepted: #{ticket.ticket_number}",
             f"Transfer accepted for #{ticket.ticket_number}",
             f"{display_name(actor)} accepted the ticket transfer.",
         ),
         "denied": (
+            "transfer_denied",
             f"[mlamehticket] Transfer declined: #{ticket.ticket_number}",
             f"Transfer declined for #{ticket.ticket_number}",
             f"{display_name(actor)} declined the ticket transfer.",
         ),
     }
-    if event not in event_copy:
+    if event not in event_map:
         logger.warning("send_transfer_event_email: unknown event %s", event)
         return False
 
-    subject, headline, intro = event_copy[event]
+    event_type, default_subject, default_headline, default_intro = event_map[event]
+    ctx = ticket_placeholder_context(ticket, actor)
+    copy = resolve_email_copy(
+        event_type,
+        ctx,
+        defaults={
+            "subject": default_subject,
+            "headline": default_headline,
+            "intro": default_intro,
+            "message_title": "Request",
+            "cta_label": "Open ticket",
+        },
+    )
     return _send_rendered(
-        subject,
+        copy["subject"],
         [recipient_user.email],
-        headline=headline,
-        intro=intro,
+        headline=copy["headline"],
+        intro=copy["intro"],
         details=ticket_details(ticket),
-        message_title="Request",
+        message_title=copy["message_title"],
         message_body=truncate_text(ticket.description, 500) or ticket.title,
         cta_url=ticket_url(ticket),
-        cta_label="Open ticket",
+        cta_label=copy["cta_label"],
+        brand_name=copy["brand_name"],
+        accent_color=copy["accent_color"],
+        footer_note=copy["footer_note"],
     )
 
 
@@ -311,16 +388,32 @@ def send_announcement_email(announcement_id: int, actor_id: int | None = None) -
     details.append(("Posted", format_datetime(announcement.created_at)))
 
     title = truncate_text(announcement.title, 80)
-    subject = f"[mlamehticket] Announcement: {title}"
+    ctx = {
+        "announcement_title": title,
+        "actor_name": display_name(announcement.created_by),
+    }
+    copy = resolve_email_copy(
+        "announcement",
+        ctx,
+        defaults={
+            "subject": f"[mlamehticket] Announcement: {title}",
+            "headline": announcement.title,
+            "intro": "A new announcement has been posted in mlamehticket.",
+            "message_title": "Announcement",
+            "cta_label": "View announcements",
+        },
+    )
     return _send_rendered(
-        subject,
+        copy["subject"],
         recipients,
-        headline=announcement.title,
-        intro="A new announcement has been posted in mlamehticket.",
+        headline=copy["headline"],
+        intro=copy["intro"],
         details=details,
-        message_title="Announcement",
+        message_title=copy["message_title"],
         message_body=truncate_text(announcement.content, 1500) or announcement.title,
         cta_url=absolute_url("/tickets/"),
-        cta_label="View announcements",
-        footer_note="You’re receiving this because announcement email notifications are enabled.",
+        cta_label=copy["cta_label"],
+        brand_name=copy["brand_name"],
+        accent_color=copy["accent_color"],
+        footer_note=copy["footer_note"],
     )

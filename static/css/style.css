@@ -2502,7 +2502,75 @@ button.success:hover,
   }
 }
 
+.email-format-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
 
+.email-appearance-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.email-appearance-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.email-appearance-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.email-accent-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  flex-shrink: 0;
+}
+
+.email-appearance-footer {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.email-placeholder-help {
+  margin-bottom: 0.75rem;
+}
+
+.email-placeholder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.email-placeholder-list code {
+  font-size: 0.78rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .email-appearance-card {
+    flex-direction: column;
+  }
+}
 
 .checkbox-field {
   display: flex;

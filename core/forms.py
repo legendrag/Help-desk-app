@@ -1,5 +1,15 @@
-﻿from django import forms
-from .models import Branch, Department, Category, Role, EmailSetting
+﻿import re
+
+from django import forms
+from .models import (
+    Branch,
+    Department,
+    Category,
+    Role,
+    EmailAppearance,
+    EmailSetting,
+    EmailTemplate,
+)
 
 def _style_fields(form):
     for name, field in form.fields.items():
@@ -191,5 +201,86 @@ class EmailSettingForm(forms.ModelForm):
             'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
             'from_name': forms.TextInput(attrs={'placeholder': 'e.g., mlamehticket Support'}),
             'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
+        }
+
+
+class EmailAppearanceForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+    def clean_accent_color(self):
+        color = (self.cleaned_data.get("accent_color") or "").strip()
+        if not re.match(r"^#[0-9A-Fa-f]{6}$", color):
+            raise forms.ValidationError("Enter a valid hex color like #4f46e5.")
+        return color.lower()
+
+    def clean_brand_name(self):
+        name = (self.cleaned_data.get("brand_name") or "").strip()
+        if len(name) < 1:
+            raise forms.ValidationError("Brand name is required.")
+        return name
+
+    class Meta:
+        model = EmailAppearance
+        fields = ["brand_name", "accent_color", "footer_note"]
+        widgets = {
+            "brand_name": forms.TextInput(attrs={"placeholder": "e.g., mlamehticket"}),
+            "accent_color": forms.TextInput(attrs={"placeholder": "#4f46e5", "type": "text"}),
+            "footer_note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class EmailTemplateForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+    def _reject_template_tags(self, value: str, label: str) -> str:
+        if value and ("{%" in value or "%}" in value):
+            raise forms.ValidationError(
+                f"{label} may only use {{{{ variable }}}} placeholders, not template tags."
+            )
+        return value
+
+    def clean_subject(self):
+        subject = (self.cleaned_data.get("subject") or "").strip()
+        if not subject:
+            raise forms.ValidationError("Subject is required.")
+        return self._reject_template_tags(subject, "Subject")
+
+    def clean_headline(self):
+        headline = (self.cleaned_data.get("headline") or "").strip()
+        if not headline:
+            raise forms.ValidationError("Headline is required.")
+        return self._reject_template_tags(headline, "Headline")
+
+    def clean_intro(self):
+        return self._reject_template_tags(self.cleaned_data.get("intro") or "", "Intro")
+
+    def clean_message_title(self):
+        return self._reject_template_tags(
+            self.cleaned_data.get("message_title") or "", "Message title"
+        )
+
+    def clean_cta_label(self):
+        return self._reject_template_tags(self.cleaned_data.get("cta_label") or "", "CTA label")
+
+    class Meta:
+        model = EmailTemplate
+        fields = [
+            "subject",
+            "headline",
+            "intro",
+            "message_title",
+            "cta_label",
+            "is_active",
+        ]
+        widgets = {
+            "subject": forms.TextInput(attrs={"placeholder": "[{{ brand_name }}] New ticket #{{ ticket_number }}"}),
+            "headline": forms.TextInput(attrs={"placeholder": "New ticket #{{ ticket_number }}"}),
+            "intro": forms.Textarea(attrs={"rows": 3}),
+            "message_title": forms.TextInput(attrs={"placeholder": "Request"}),
+            "cta_label": forms.TextInput(attrs={"placeholder": "View ticket"}),
         }
 
