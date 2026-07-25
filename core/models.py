@@ -165,10 +165,16 @@ class EmailSetting(TimeStampedModel):
 class EmailBrand(TimeStampedModel):
     """Singleton branding for notification emails."""
 
-    class TableStyle(models.TextChoices):
-        PLAIN = "plain", "Plain"
-        STRIPED = "striped", "Striped rows"
-        FILLED = "filled", "Filled labels"
+    class TableLayout(models.TextChoices):
+        CLASSIC = "classic", "Classic"
+        COMPACT = "compact", "Compact"
+        MINIMAL = "minimal", "Minimal"
+        PILLS = "pills", "Pills"
+
+    class TableFillMode(models.TextChoices):
+        NONE = "none", "None"
+        STRIPED = "striped", "Striped"
+        LABELS = "labels", "Labels"
 
     brand_name = models.CharField(max_length=100, default="mlamehticket")
     accent_color = models.CharField(max_length=7, default="#4f46e5")
@@ -178,11 +184,22 @@ class EmailBrand(TimeStampedModel):
     table_border_color = models.CharField(max_length=7, default="#e2e8f0")
     text_color = models.CharField(max_length=7, default="#0f172a")
     muted_text_color = models.CharField(max_length=7, default="#64748b")
-    table_style = models.CharField(
+    table_layout = models.CharField(
         max_length=20,
-        choices=TableStyle.choices,
-        default=TableStyle.STRIPED,
+        choices=TableLayout.choices,
+        default=TableLayout.CLASSIC,
     )
+    table_fill_mode = models.CharField(
+        max_length=20,
+        choices=TableFillMode.choices,
+        default=TableFillMode.STRIPED,
+    )
+    table_radius = models.PositiveSmallIntegerField(default=12)
+    table_row_padding_y = models.PositiveSmallIntegerField(default=10)
+    table_row_padding_x = models.PositiveSmallIntegerField(default=14)
+    table_label_width = models.PositiveSmallIntegerField(default=38)
+    table_show_outer_border = models.BooleanField(default=True)
+    table_show_row_dividers = models.BooleanField(default=True)
     footer_note = models.TextField(
         default=(
             "You’re receiving this because email notifications are enabled "

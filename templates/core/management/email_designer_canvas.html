@@ -41,7 +41,10 @@
     <div class="email-canvas__stage"
          style="--email-page-bg: {{ brand.page_background }};">
         <div class="email-canvas__mail"
-             data-table-style="{{ brand.table_style }}"
+             data-table-layout="{{ brand.table_layout }}"
+             data-table-fill="{{ brand.table_fill_mode }}"
+             data-table-outer-border="{{ brand.table_show_outer_border|yesno:'true,false' }}"
+             data-table-row-dividers="{{ brand.table_show_row_dividers|yesno:'true,false' }}"
              style="
                 --email-accent: {{ brand.accent_color }};
                 --email-card-bg: {{ brand.card_background }};
@@ -49,6 +52,10 @@
                 --email-table-border: {{ brand.table_border_color }};
                 --email-text: {{ brand.text_color }};
                 --email-muted: {{ brand.muted_text_color }};
+                --email-table-radius: {{ brand.table_radius }}px;
+                --email-table-pad-y: {{ brand.table_row_padding_y }}px;
+                --email-table-pad-x: {{ brand.table_row_padding_x }}px;
+                --email-table-label-width: {{ brand.table_label_width }}%;
              ">
             <div class="email-canvas__subject-row">
                 <span class="email-canvas__subject-label">Subject</span>
@@ -86,6 +93,7 @@
                      role="textbox"
                      aria-label="Opening text">{{ region_html.opening|safe }}</div>
 
+                <div class="email-canvas__details-wrap" id="email-details-wrap">
                 {% if event_meta.group == "announcement" %}
                 <table class="email-canvas__details email-canvas__details--readonly" role="presentation">
                     <tr><th>Announcement</th><td>Office closed Friday</td></tr>
@@ -99,6 +107,7 @@
                     <tr><th>Department</th><td>IT Support</td></tr>
                 </table>
                 {% endif %}
+                </div>
                 <p class="email-canvas__readonly-tag">Example details — not editable</p>
 
                 <div class="email-canvas__message" data-brand-border>

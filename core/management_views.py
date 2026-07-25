@@ -379,6 +379,7 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
             'can_delete': can_manage,
             'can_edit_email_format': can_manage,
             'email_brand': get_email_brand(),
+            'email_table_layouts': EmailBrand.TableLayout.choices,
             'email_event_types': EVENT_META,
             'selected_email_type': selected,
             **_designer_canvas_context(selected, can_manage),

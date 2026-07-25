@@ -1832,19 +1832,41 @@
   border-color: rgba(148, 163, 184, 0.15);
 }
 
-[data-theme="dark"] .email-brand-surface {
+[data-theme="dark"] .email-brand-band {
   border-top-color: rgba(148, 163, 184, 0.18);
 }
 
-[data-theme="dark"] .email-preset-btn {
+[data-theme="dark"] .email-preset-btn,
+[data-theme="dark"] .email-layout-card,
+[data-theme="dark"] .email-segmented,
+[data-theme="dark"] .email-toggle {
   background: #1e293b;
   border-color: rgba(148, 163, 184, 0.2);
   color: #e2e8f0;
 }
 
-[data-theme="dark"] .email-preset-btn:hover {
+[data-theme="dark"] .email-preset-btn:hover,
+[data-theme="dark"] .email-layout-card:hover:not(:disabled) {
   border-color: #818cf8;
   color: #c7d2fe;
+}
+
+[data-theme="dark"] .email-layout-card.is-active {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
+}
+
+[data-theme="dark"] .email-layout-card__preview {
+  background: rgba(15, 23, 42, 0.55);
+}
+
+[data-theme="dark"] .email-segmented__btn.is-active {
+  background: rgba(129, 140, 248, 0.18);
+  color: #c7d2fe;
+}
+
+[data-theme="dark"] .email-toggle__ui {
+  background: rgba(148, 163, 184, 0.35);
 }
 
 [data-theme="dark"] .email-save-status.is-warn {

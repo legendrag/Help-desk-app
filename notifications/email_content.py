@@ -122,10 +122,15 @@ def render_notification_email(
     table_border_color: str = "",
     text_color: str = "",
     muted_text_color: str = "",
-    table_style: str = "",
+    table_layout: str = "",
+    table_fill_mode: str = "",
 ) -> tuple[str, str]:
     brand = get_email_brand()
     surface = brand_surface_context(brand)
+    if table_layout:
+        surface["table_layout"] = table_layout
+    if table_fill_mode:
+        surface["table_fill_mode"] = table_fill_mode
     context = {
         "brand_name": brand_name or brand.brand_name or DEFAULT_BRAND_NAME,
         "accent_color": accent_color or brand.accent_color or DEFAULT_ACCENT_COLOR,
@@ -143,7 +148,7 @@ def render_notification_email(
         "table_border_color": table_border_color or surface["table_border_color"],
         "text_color": text_color or surface["text_color"],
         "muted_text_color": muted_text_color or surface["muted_text_color"],
-        "table_style": table_style or surface["table_style"],
+        **{k: v for k, v in surface.items() if k.startswith("table_")},
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)

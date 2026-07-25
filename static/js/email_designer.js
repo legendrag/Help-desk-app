@@ -4,7 +4,7 @@
   var savedRange = null;
   var activeRegion = null;
 
-  var PRESETS = {
+  var COLOR_PRESETS = {
     light: {
       accent_color: "#4f46e5",
       page_background: "#f8fafc",
@@ -13,7 +13,6 @@
       table_border_color: "#e2e8f0",
       text_color: "#0f172a",
       muted_text_color: "#64748b",
-      table_style: "striped",
     },
     soft: {
       accent_color: "#0f766e",
@@ -23,7 +22,6 @@
       table_border_color: "#99f6e4",
       text_color: "#134e4a",
       muted_text_color: "#0f766e",
-      table_style: "filled",
     },
     dark: {
       accent_color: "#818cf8",
@@ -33,7 +31,45 @@
       table_border_color: "#334155",
       text_color: "#f1f5f9",
       muted_text_color: "#94a3b8",
-      table_style: "striped",
+    },
+  };
+
+  var LAYOUT_DEFAULTS = {
+    classic: {
+      table_radius: 12,
+      table_row_padding_y: 10,
+      table_row_padding_x: 14,
+      table_label_width: 38,
+      table_show_outer_border: true,
+      table_show_row_dividers: true,
+      table_fill_mode: "striped",
+    },
+    compact: {
+      table_radius: 8,
+      table_row_padding_y: 6,
+      table_row_padding_x: 10,
+      table_label_width: 34,
+      table_show_outer_border: true,
+      table_show_row_dividers: true,
+      table_fill_mode: "striped",
+    },
+    minimal: {
+      table_radius: 0,
+      table_row_padding_y: 8,
+      table_row_padding_x: 0,
+      table_label_width: 36,
+      table_show_outer_border: false,
+      table_show_row_dividers: true,
+      table_fill_mode: "none",
+    },
+    pills: {
+      table_radius: 18,
+      table_row_padding_y: 10,
+      table_row_padding_x: 14,
+      table_label_width: 38,
+      table_show_outer_border: false,
+      table_show_row_dividers: false,
+      table_fill_mode: "labels",
     },
   };
 
@@ -106,7 +142,13 @@
     return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
   }
 
-  function applyBrandPreview() {
+  function numVal(id, fallback) {
+    var el = document.getElementById(id);
+    var n = el ? parseInt(el.value, 10) : NaN;
+    return isNaN(n) ? fallback : n;
+  }
+
+  function applyBrandPreview(flashDetails) {
     var root = designerRoot();
     if (!root) return;
     var name = (document.getElementById("email-brand-name") || {}).value || "mlamehticket";
@@ -118,7 +160,17 @@
     var tableBorder = readHex("email-table-border", "#e2e8f0");
     var text = readHex("email-text-color", "#0f172a");
     var muted = readHex("email-muted-color", "#64748b");
-    var tableStyle = (document.getElementById("email-table-style") || {}).value || "striped";
+    var layout = (document.getElementById("email-table-layout") || {}).value || "classic";
+    var fill = (document.getElementById("email-table-fill") || {}).value || "striped";
+    var radius = numVal("email-table-radius", 12);
+    var padY = numVal("email-table-pad-y", 10);
+    var padX = numVal("email-table-pad-x", 14);
+    var labelW = numVal("email-table-label-width", 38);
+    var outer = !!(document.getElementById("email-table-outer-border") || {}).checked;
+    var dividers = !!(document.getElementById("email-table-row-dividers") || {}).checked;
+
+    var readout = document.getElementById("email-label-width-readout");
+    if (readout) readout.textContent = labelW + "%";
 
     root.querySelectorAll("[data-brand-name]").forEach(function (el) {
       el.textContent = name;
@@ -144,12 +196,64 @@
       mail.style.setProperty("--email-table-border", tableBorder);
       mail.style.setProperty("--email-text", text);
       mail.style.setProperty("--email-muted", muted);
-      mail.dataset.tableStyle = tableStyle;
+      mail.style.setProperty("--email-table-radius", radius + "px");
+      mail.style.setProperty("--email-table-pad-y", padY + "px");
+      mail.style.setProperty("--email-table-pad-x", padX + "px");
+      mail.style.setProperty("--email-table-label-width", labelW + "%");
+      mail.dataset.tableLayout = layout;
+      mail.dataset.tableFill = fill;
+      mail.dataset.tableOuterBorder = outer ? "true" : "false";
+      mail.dataset.tableRowDividers = dividers ? "true" : "false";
+    }
+
+    if (flashDetails) {
+      var wrap = document.getElementById("email-details-wrap");
+      if (wrap) {
+        wrap.classList.remove("is-flashing");
+        void wrap.offsetWidth;
+        wrap.classList.add("is-flashing");
+      }
     }
   }
 
-  function applyPreset(name) {
-    var preset = PRESETS[name];
+  function setFillMode(mode) {
+    var hidden = document.getElementById("email-table-fill");
+    if (hidden) hidden.value = mode;
+    document.querySelectorAll("[data-fill-mode]").forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.dataset.fillMode === mode);
+    });
+  }
+
+  function setLayout(layout, applyDefaults) {
+    var hidden = document.getElementById("email-table-layout");
+    if (hidden) hidden.value = layout;
+    document.querySelectorAll(".email-layout-card").forEach(function (card) {
+      var active = card.dataset.tableLayout === layout;
+      card.classList.toggle("is-active", active);
+      card.setAttribute("aria-checked", active ? "true" : "false");
+    });
+    if (applyDefaults && LAYOUT_DEFAULTS[layout]) {
+      var d = LAYOUT_DEFAULTS[layout];
+      var radius = document.getElementById("email-table-radius");
+      var padY = document.getElementById("email-table-pad-y");
+      var padX = document.getElementById("email-table-pad-x");
+      var labelW = document.getElementById("email-table-label-width");
+      var outer = document.getElementById("email-table-outer-border");
+      var dividers = document.getElementById("email-table-row-dividers");
+      if (radius) radius.value = d.table_radius;
+      if (padY) padY.value = d.table_row_padding_y;
+      if (padX) padX.value = d.table_row_padding_x;
+      if (labelW) labelW.value = d.table_label_width;
+      if (outer) outer.checked = d.table_show_outer_border;
+      if (dividers) dividers.checked = d.table_show_row_dividers;
+      setFillMode(d.table_fill_mode);
+    }
+    applyBrandPreview(true);
+    markBrandDirty(true);
+  }
+
+  function applyColorPreset(name) {
+    var preset = COLOR_PRESETS[name];
     if (!preset) return;
     Object.keys(FIELD_IDS).forEach(function (key) {
       var input = document.getElementById(FIELD_IDS[key]);
@@ -159,9 +263,7 @@
       var picker = pickerId ? document.getElementById(pickerId) : null;
       if (picker) picker.value = preset[key];
     });
-    var style = document.getElementById("email-table-style");
-    if (style) style.value = preset.table_style;
-    applyBrandPreview();
+    applyBrandPreview(false);
     markBrandDirty(true);
   }
 
@@ -170,7 +272,7 @@
       picker.addEventListener("input", function () {
         var hex = document.getElementById(picker.getAttribute("data-sync-hex"));
         if (hex) hex.value = picker.value;
-        applyBrandPreview();
+        applyBrandPreview(false);
         markBrandDirty(true);
       });
     });
@@ -180,7 +282,7 @@
           var picker = document.getElementById(hex.getAttribute("data-sync-picker"));
           if (picker) picker.value = hex.value;
         }
-        applyBrandPreview();
+        applyBrandPreview(false);
         markBrandDirty(true);
       });
     });
@@ -340,23 +442,48 @@
 
     var nameInput = document.getElementById("email-brand-name");
     var footerInput = document.getElementById("email-brand-footer");
-    var tableStyle = document.getElementById("email-table-style");
     var brandForm = document.getElementById("email-brand-form");
 
     bindColorPairs(root);
 
     function onBrandChange() {
-      applyBrandPreview();
+      applyBrandPreview(false);
       markBrandDirty(true);
     }
 
     if (nameInput) nameInput.addEventListener("input", onBrandChange);
     if (footerInput) footerInput.addEventListener("input", onBrandChange);
-    if (tableStyle) tableStyle.addEventListener("change", onBrandChange);
+
+    ["email-table-radius", "email-table-pad-y", "email-table-pad-x", "email-table-label-width"].forEach(
+      function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", onBrandChange);
+      }
+    );
+    ["email-table-outer-border", "email-table-row-dividers"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener("change", onBrandChange);
+    });
 
     root.querySelectorAll("[data-preset]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        applyPreset(btn.dataset.preset);
+        applyColorPreset(btn.dataset.preset);
+      });
+    });
+
+    root.querySelectorAll(".email-layout-card").forEach(function (card) {
+      card.addEventListener("click", function () {
+        if (card.disabled) return;
+        setLayout(card.dataset.tableLayout, true);
+      });
+    });
+
+    root.querySelectorAll("[data-fill-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (btn.disabled) return;
+        setFillMode(btn.dataset.fillMode);
+        applyBrandPreview(false);
+        markBrandDirty(true);
       });
     });
 
@@ -383,7 +510,7 @@
             setTimeout(function () {
               setStatus(document.getElementById("email-brand-status"), "", "");
             }, 1600);
-            applyBrandPreview();
+            applyBrandPreview(false);
           })
           .catch(function () {
             markBrandDirty(true);
@@ -437,7 +564,7 @@
     }
 
     bindCanvas(document.getElementById("email-canvas"));
-    applyBrandPreview();
+    applyBrandPreview(false);
   }
 
   function boot() {
@@ -460,7 +587,7 @@
       savedRange = null;
       activeRegion = null;
       bindCanvas(document.getElementById("email-canvas"));
-      applyBrandPreview();
+      applyBrandPreview(false);
       updateInsertBar(null);
       var canvas = document.getElementById("email-canvas");
       if (canvas) {

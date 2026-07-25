@@ -218,12 +218,25 @@ class EmailBrandForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        for name in (
+            "table_show_outer_border",
+            "table_show_row_dividers",
+        ):
+            if name in self.fields:
+                self.fields[name].required = False
 
     def _clean_hex(self, field_name: str) -> str:
         color = (self.cleaned_data.get(field_name) or "").strip()
         if not re.match(r"^#[0-9A-Fa-f]{6}$", color):
             raise forms.ValidationError("Enter a valid hex color like #4f46e5.")
         return color.lower()
+
+    def _clean_int(self, field_name: str, minimum: int, maximum: int) -> int:
+        try:
+            value = int(self.cleaned_data.get(field_name))
+        except (TypeError, ValueError):
+            raise forms.ValidationError("Enter a whole number.")
+        return max(minimum, min(maximum, value))
 
     def clean_accent_color(self):
         return self._clean_hex("accent_color")
@@ -246,6 +259,24 @@ class EmailBrandForm(forms.ModelForm):
     def clean_muted_text_color(self):
         return self._clean_hex("muted_text_color")
 
+    def clean_table_radius(self):
+        return self._clean_int("table_radius", 0, 24)
+
+    def clean_table_row_padding_y(self):
+        return self._clean_int("table_row_padding_y", 4, 24)
+
+    def clean_table_row_padding_x(self):
+        return self._clean_int("table_row_padding_x", 6, 32)
+
+    def clean_table_label_width(self):
+        return self._clean_int("table_label_width", 20, 50)
+
+    def clean_table_show_outer_border(self):
+        return bool(self.cleaned_data.get("table_show_outer_border"))
+
+    def clean_table_show_row_dividers(self):
+        return bool(self.cleaned_data.get("table_show_row_dividers"))
+
     def clean_brand_name(self):
         name = (self.cleaned_data.get("brand_name") or "").strip()
         if not name:
@@ -263,7 +294,14 @@ class EmailBrandForm(forms.ModelForm):
             "table_border_color",
             "text_color",
             "muted_text_color",
-            "table_style",
+            "table_layout",
+            "table_fill_mode",
+            "table_radius",
+            "table_row_padding_y",
+            "table_row_padding_x",
+            "table_label_width",
+            "table_show_outer_border",
+            "table_show_row_dividers",
             "footer_note",
         ]
 

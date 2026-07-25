@@ -23,14 +23,31 @@
               {% endif %}
 
               {% if details %}
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px 0;border:1px solid {{ table_border_color }};border-radius:12px;overflow:hidden;">
+                {% if table_layout == "pills" %}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px 0;" data-table-layout="pills">
                 {% for label, value in details %}
                 <tr>
-                  <td style="width:38%;padding:10px 14px;background:{% if table_style == 'filled' %}{{ table_header_bg }}{% elif table_style == 'striped' and forloop.counter0|divisibleby:2 %}{{ table_header_bg }}{% else %}{{ card_background }}{% endif %};font-size:13px;font-weight:600;color:{{ muted_text_color }};border-bottom:1px solid {{ table_border_color }};vertical-align:top;">{{ label }}</td>
-                  <td style="padding:10px 14px;background:{% if table_style == 'striped' and forloop.counter0|divisibleby:2 %}{{ table_header_bg }}{% else %}{{ card_background }}{% endif %};font-size:13px;color:{{ text_color }};border-bottom:1px solid {{ table_border_color }};vertical-align:top;">{{ value }}</td>
+                  <td style="padding:0 0 {% if not forloop.last %}8px{% else %}0{% endif %} 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;background:{% if table_fill_mode == 'labels' or table_fill_mode == 'striped' %}{{ table_header_bg }}{% else %}{{ card_background }}{% endif %};border:1px solid {{ table_border_color }};border-radius:{{ table_pill_radius }};overflow:hidden;">
+                      <tr>
+                        <td style="width:{{ table_label_width }}%;padding:{{ table_row_padding_y }}px {{ table_row_padding_x }}px;font-size:{{ table_font_size }}px;font-weight:600;color:{{ muted_text_color }};vertical-align:top;{% if table_fill_mode == 'labels' %}background:{{ table_header_bg }};{% endif %}">{{ label }}</td>
+                        <td style="padding:{{ table_row_padding_y }}px {{ table_row_padding_x }}px;font-size:{{ table_font_size }}px;color:{{ text_color }};vertical-align:top;{% if table_fill_mode == 'labels' %}background:{{ card_background }};{% endif %}">{{ value }}</td>
+                      </tr>
+                    </table>
+                  </td>
                 </tr>
                 {% endfor %}
               </table>
+                {% else %}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" data-table-layout="{{ table_layout }}" style="margin:0 0 20px 0;border-collapse:separate;{% if table_show_outer_border %}border:1px solid {{ table_border_color }};{% else %}border:0;{% endif %}border-radius:{{ table_radius }}px;overflow:hidden;">
+                {% for label, value in details %}
+                <tr>
+                  <td style="width:{{ table_label_width }}%;padding:{{ table_row_padding_y }}px {{ table_row_padding_x }}px;background:{% if table_fill_mode == 'labels' %}{{ table_header_bg }}{% elif table_fill_mode == 'striped' and forloop.counter0|divisibleby:2 %}{{ table_header_bg }}{% else %}{{ card_background }}{% endif %};font-size:{{ table_font_size }}px;font-weight:600;color:{{ muted_text_color }};{% if table_show_row_dividers and not forloop.last %}border-bottom:1px solid {{ table_border_color }};{% else %}border-bottom:0;{% endif %}vertical-align:top;">{{ label }}</td>
+                  <td style="padding:{{ table_row_padding_y }}px {{ table_row_padding_x }}px;background:{% if table_fill_mode == 'striped' and forloop.counter0|divisibleby:2 %}{{ table_header_bg }}{% else %}{{ card_background }}{% endif %};font-size:{{ table_font_size }}px;color:{{ text_color }};{% if table_show_row_dividers and not forloop.last %}border-bottom:1px solid {{ table_border_color }};{% else %}border-bottom:0;{% endif %}vertical-align:top;">{{ value }}</td>
+                </tr>
+                {% endfor %}
+              </table>
+                {% endif %}
               {% endif %}
 
               {% if message_body %}

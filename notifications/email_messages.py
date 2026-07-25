@@ -20,11 +20,55 @@ DEFAULT_TABLE_HEADER_BG = "#f8fafc"
 DEFAULT_TABLE_BORDER_COLOR = "#e2e8f0"
 DEFAULT_TEXT_COLOR = "#0f172a"
 DEFAULT_MUTED_TEXT_COLOR = "#64748b"
-DEFAULT_TABLE_STYLE = "striped"
+DEFAULT_TABLE_LAYOUT = "classic"
+DEFAULT_TABLE_FILL_MODE = "striped"
+DEFAULT_TABLE_RADIUS = 12
+DEFAULT_TABLE_ROW_PADDING_Y = 10
+DEFAULT_TABLE_ROW_PADDING_X = 14
+DEFAULT_TABLE_LABEL_WIDTH = 38
 DEFAULT_FOOTER_NOTE = (
     "You’re receiving this because email notifications are enabled "
     "for your mlamehticket account."
 )
+
+TABLE_LAYOUT_DEFAULTS = {
+    "classic": {
+        "table_radius": 12,
+        "table_row_padding_y": 10,
+        "table_row_padding_x": 14,
+        "table_label_width": 38,
+        "table_show_outer_border": True,
+        "table_show_row_dividers": True,
+        "table_fill_mode": "striped",
+    },
+    "compact": {
+        "table_radius": 8,
+        "table_row_padding_y": 6,
+        "table_row_padding_x": 10,
+        "table_label_width": 34,
+        "table_show_outer_border": True,
+        "table_show_row_dividers": True,
+        "table_fill_mode": "striped",
+    },
+    "minimal": {
+        "table_radius": 0,
+        "table_row_padding_y": 8,
+        "table_row_padding_x": 0,
+        "table_label_width": 36,
+        "table_show_outer_border": False,
+        "table_show_row_dividers": True,
+        "table_fill_mode": "none",
+    },
+    "pills": {
+        "table_radius": 18,
+        "table_row_padding_y": 10,
+        "table_row_padding_x": 14,
+        "table_label_width": 38,
+        "table_show_outer_border": False,
+        "table_show_row_dividers": False,
+        "table_fill_mode": "labels",
+    },
+}
 
 BRAND_SURFACE_DEFAULTS = {
     "page_background": DEFAULT_PAGE_BACKGROUND,
@@ -33,7 +77,14 @@ BRAND_SURFACE_DEFAULTS = {
     "table_border_color": DEFAULT_TABLE_BORDER_COLOR,
     "text_color": DEFAULT_TEXT_COLOR,
     "muted_text_color": DEFAULT_MUTED_TEXT_COLOR,
-    "table_style": DEFAULT_TABLE_STYLE,
+    "table_layout": DEFAULT_TABLE_LAYOUT,
+    "table_fill_mode": DEFAULT_TABLE_FILL_MODE,
+    "table_radius": DEFAULT_TABLE_RADIUS,
+    "table_row_padding_y": DEFAULT_TABLE_ROW_PADDING_Y,
+    "table_row_padding_x": DEFAULT_TABLE_ROW_PADDING_X,
+    "table_label_width": DEFAULT_TABLE_LABEL_WIDTH,
+    "table_show_outer_border": True,
+    "table_show_row_dividers": True,
 }
 
 EVENT_META = [
@@ -237,6 +288,22 @@ def get_email_brand():
 
 def brand_surface_context(brand=None) -> dict:
     brand = brand or get_email_brand()
+    layout = getattr(brand, "table_layout", None) or DEFAULT_TABLE_LAYOUT
+    fill = getattr(brand, "table_fill_mode", None) or DEFAULT_TABLE_FILL_MODE
+    radius = getattr(brand, "table_radius", None)
+    pad_y = getattr(brand, "table_row_padding_y", None)
+    pad_x = getattr(brand, "table_row_padding_x", None)
+    label_w = getattr(brand, "table_label_width", None)
+    if radius is None:
+        radius = DEFAULT_TABLE_RADIUS
+    if pad_y is None:
+        pad_y = DEFAULT_TABLE_ROW_PADDING_Y
+    if pad_x is None:
+        pad_x = DEFAULT_TABLE_ROW_PADDING_X
+    if label_w is None:
+        label_w = DEFAULT_TABLE_LABEL_WIDTH
+    # Pills use a large radius; clamp display radius for classic/compact/minimal.
+    display_radius = 24 if layout == "pills" else min(int(radius), 24)
     return {
         "page_background": getattr(brand, "page_background", None) or DEFAULT_PAGE_BACKGROUND,
         "card_background": getattr(brand, "card_background", None) or DEFAULT_CARD_BACKGROUND,
@@ -245,7 +312,20 @@ def brand_surface_context(brand=None) -> dict:
         or DEFAULT_TABLE_BORDER_COLOR,
         "text_color": getattr(brand, "text_color", None) or DEFAULT_TEXT_COLOR,
         "muted_text_color": getattr(brand, "muted_text_color", None) or DEFAULT_MUTED_TEXT_COLOR,
-        "table_style": getattr(brand, "table_style", None) or DEFAULT_TABLE_STYLE,
+        "table_layout": layout,
+        "table_fill_mode": fill,
+        "table_radius": display_radius,
+        "table_row_padding_y": int(pad_y),
+        "table_row_padding_x": int(pad_x),
+        "table_label_width": int(label_w),
+        "table_show_outer_border": bool(
+            getattr(brand, "table_show_outer_border", True)
+        ),
+        "table_show_row_dividers": bool(
+            getattr(brand, "table_show_row_dividers", True)
+        ),
+        "table_font_size": 12 if layout == "compact" else 13,
+        "table_pill_radius": "999px" if layout == "pills" else f"{display_radius}px",
     }
 
 

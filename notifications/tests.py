@@ -279,7 +279,9 @@ class EmailDesignerSendTests(TestCase):
         brand.table_border_color = "#334155"
         brand.text_color = "#f1f5f9"
         brand.muted_text_color = "#94a3b8"
-        brand.table_style = "filled"
+        brand.table_layout = "minimal"
+        brand.table_fill_mode = "labels"
+        brand.table_show_outer_border = False
         brand.footer_note = "Custom footer."
         brand.save()
 
@@ -351,6 +353,8 @@ class EmailDesignerSendTests(TestCase):
         self.assertIn("#0d9488", html_body)
         self.assertIn("#0f172a", html_body)
         self.assertIn("#1e293b", html_body)
+        self.assertIn('data-table-layout="minimal"', html_body)
+        self.assertIn("border:0;", html_body)
         self.assertIn("AcmeDesk", html_body)
         self.assertIn("Custom footer.", html_body)
 
@@ -371,6 +375,42 @@ class EmailDesignerSendTests(TestCase):
         )
         self.assertEqual(copy["subject"], "FALLBACK")
         self.assertEqual(copy["brand_name"], "AcmeDesk")
+
+
+class EmailDesignerTableLayoutTests(TestCase):
+    def setUp(self):
+        ensure_email_designer_defaults()
+
+    def test_pills_layout_renders_spaced_row_blocks(self):
+        brand = EmailBrand.load()
+        brand.table_layout = "pills"
+        brand.table_fill_mode = "labels"
+        brand.save()
+        _text, html = render_notification_email(
+            headline="Hello",
+            intro="Intro",
+            details=[("Ticket", "TK-1"), ("Status", "Open")],
+            message_body="Body",
+            cta_url="https://example.com",
+            cta_label="Open",
+        )
+        self.assertIn('data-table-layout="pills"', html)
+        self.assertIn("padding:0 0 8px 0", html)
+        self.assertIn("border-radius:999px", html)
+        self.assertIn(brand.table_header_bg, html)
+
+    def test_labels_fill_uses_table_header_bg_on_label_cells(self):
+        brand = EmailBrand.load()
+        brand.table_layout = "classic"
+        brand.table_fill_mode = "labels"
+        brand.table_header_bg = "#abcdef"
+        brand.save()
+        _text, html = render_notification_email(
+            headline="Hello",
+            intro="",
+            details=[("Ticket", "TK-1")],
+        )
+        self.assertIn("background:#abcdef", html)
 
 
 class EmailDesignerPermissionTests(TestCase):
@@ -424,7 +464,12 @@ class EmailDesignerPermissionTests(TestCase):
                 "table_border_color": "#374151",
                 "text_color": "#f9fafb",
                 "muted_text_color": "#9ca3af",
-                "table_style": "plain",
+                "table_layout": "pills",
+                "table_fill_mode": "none",
+                "table_radius": "18",
+                "table_row_padding_y": "10",
+                "table_row_padding_x": "14",
+                "table_label_width": "40",
                 "footer_note": "Managed footer",
             },
             HTTP_HX_REQUEST="true",
@@ -434,7 +479,10 @@ class EmailDesignerPermissionTests(TestCase):
         self.assertEqual(brand.brand_name, "ManagedBrand")
         self.assertEqual(brand.accent_color, "#abcdef")
         self.assertEqual(brand.page_background, "#111827")
-        self.assertEqual(brand.table_style, "plain")
+        self.assertEqual(brand.table_layout, "pills")
+        self.assertEqual(brand.table_fill_mode, "none")
+        self.assertFalse(brand.table_show_outer_border)
+        self.assertFalse(brand.table_show_row_dividers)
 
     def test_viewer_cannot_save_message(self):
         self.client.force_login(self.viewer)
