@@ -366,12 +366,36 @@
             document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
             document.documentElement.classList.add('modal-open');
 
-            // Add a spinner to the modal content so it doesn't look like an empty box while loading
+            // Skeleton placeholder while HTMX fills the modal
             const content = document.getElementById('modal-content');
             if (content) {
                 const textWithoutComments = content.innerHTML.replace(new RegExp('<!--[\\\\s\\\\S]*?-->', 'g'), '').trim();
                 if (!textWithoutComments) {
-                    content.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; padding: 3rem;"><div class="spinner-large"></div></div>';
+                    content.innerHTML = [
+                        '<div class="skeleton-placeholder skeleton-list" aria-busy="true">',
+                        '  <div class="skeleton-list__row">',
+                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
+                        '    <div class="skeleton-list__lines">',
+                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
+                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
+                        '    </div>',
+                        '  </div>',
+                        '  <div class="skeleton-list__row">',
+                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
+                        '    <div class="skeleton-list__lines">',
+                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
+                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
+                        '    </div>',
+                        '  </div>',
+                        '  <div class="skeleton-list__row">',
+                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
+                        '    <div class="skeleton-list__lines">',
+                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
+                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
+                        '    </div>',
+                        '  </div>',
+                        '</div>'
+                    ].join('');
                 }
             }
 
@@ -850,13 +874,8 @@
         });
     </script>
 
-    <!-- Global Spinner Overlay for Navigation -->
-    <div id="global-spinner-overlay" class="global-spinner-overlay">
-        <div class="spinner-large"></div>
-    </div>
-
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=1"></script>
+    <script src="{% static 'js/loading.js' %}?v=2"></script>
 </body>
 
 </html>

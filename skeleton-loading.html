@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skeleton Loading</title>
+  <style>
+    :root {
+      --page-bg: #0f172a;
+      --card-bg: #1e293b;
+      --separator: rgba(255, 255, 255, 0.06);
+      --skeleton-base: #334155;
+      --skeleton-shimmer: rgba(255, 255, 255, 0.08);
+      --skeleton-speed: 1.8s;
+    }
+
+    [data-theme="light"] {
+      --page-bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --separator: rgba(15, 23, 42, 0.08);
+      --skeleton-base: #e2e8f0;
+      --skeleton-shimmer: rgba(255, 255, 255, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--page-bg);
+      color: #e2e8f0;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    [data-theme="light"] body,
+    body:has([data-theme="light"]) {
+      color: #0f172a;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+
+    .page-intro {
+      margin: 0 0 2rem;
+      opacity: 0.65;
+      font-size: 0.9rem;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
+      margin: 0 0 0.75rem;
+    }
+
+    .demo-section {
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Skeleton base ── */
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      background: var(--skeleton-base);
+      border-radius: 8px;
+      border: none;
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.04),
+        rgba(255, 255, 255, 0.08),
+        rgba(255, 255, 255, 0.04),
+        transparent
+      );
+      background-size: 200% 100%;
+      animation: skeleton-shimmer var(--skeleton-speed) ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes skeleton-shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    .skeleton--circle {
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .skeleton--text {
+      height: 14px;
+    }
+
+    .skeleton--text-sm {
+      height: 11px;
+    }
+
+    .skeleton--image {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton::after {
+        animation: none;
+      }
+    }
+
+    /* ── Profile header ── */
+    .skeleton-profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .skeleton-profile__avatar {
+      width: 56px;
+      height: 56px;
+    }
+
+    .skeleton-profile__lines {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Card grid ── */
+    .skeleton-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .skeleton-card-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .skeleton-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    [data-theme="light"] .skeleton-card {
+      border-color: rgba(15, 23, 42, 0.08);
+    }
+
+    .skeleton-card__lines {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Content list ── */
+    .skeleton-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .skeleton-list__row {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .skeleton-list__row:last-child {
+      border-bottom: none;
+    }
+
+    [data-theme="light"] .skeleton-list__row {
+      border-bottom-color: rgba(15, 23, 42, 0.08);
+    }
+
+    .skeleton-list__avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .skeleton-list__lines {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .w-40 { width: 40%; }
+    .w-50 { width: 50%; }
+    .w-55 { width: 55%; }
+    .w-65 { width: 65%; }
+    .w-80 { width: 80%; }
+    .w-100 { width: 100%; }
+    .w-35 { width: 35%; }
+  </style>
+</head>
+<body>
+  <h1>Skeleton Loading</h1>
+  <p class="page-intro">Pure CSS shimmer · dark theme default · switchable via custom properties</p>
+
+  <main class="skeleton-page" aria-busy="true">
+    <section class="demo-section" aria-label="Profile header skeleton">
+      <p class="section-label">Profile Header</p>
+      <div class="skeleton-profile">
+        <div class="skeleton skeleton--circle skeleton-profile__avatar" aria-hidden="true"></div>
+        <div class="skeleton-profile__lines">
+          <div class="skeleton skeleton--text w-40" aria-hidden="true"></div>
+          <div class="skeleton skeleton--text-sm w-65" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section" aria-label="Card grid skeleton">
+      <p class="section-label">Card Grid</p>
+      <div class="skeleton-card-grid">
+        <article class="skeleton-card">
+          <div class="skeleton skeleton--image" aria-hidden="true"></div>
+          <div class="skeleton-card__lines">
+            <div class="skeleton skeleton--text w-100" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-80" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-50" aria-hidden="true"></div>
+          </div>
+        </article>
+        <article class="skeleton-card">
+          <div class="skeleton skeleton--image" aria-hidden="true"></div>
+          <div class="skeleton-card__lines">
+            <div class="skeleton skeleton--text w-100" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-80" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-50" aria-hidden="true"></div>
+          </div>
+        </article>
+        <article class="skeleton-card">
+          <div class="skeleton skeleton--image" aria-hidden="true"></div>
+          <div class="skeleton-card__lines">
+            <div class="skeleton skeleton--text w-100" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-80" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text w-50" aria-hidden="true"></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="demo-section" aria-label="Content list skeleton">
+      <p class="section-label">Content List</p>
+      <div class="skeleton-list">
+        <div class="skeleton-list__row">
+          <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+          <div class="skeleton-list__lines">
+            <div class="skeleton skeleton--text w-55" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text-sm w-35" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="skeleton-list__row">
+          <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+          <div class="skeleton-list__lines">
+            <div class="skeleton skeleton--text w-55" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text-sm w-35" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="skeleton-list__row">
+          <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+          <div class="skeleton-list__lines">
+            <div class="skeleton skeleton--text w-55" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text-sm w-35" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="skeleton-list__row">
+          <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+          <div class="skeleton-list__lines">
+            <div class="skeleton skeleton--text w-55" aria-hidden="true"></div>
+            <div class="skeleton skeleton--text-sm w-35" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

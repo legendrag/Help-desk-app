@@ -13,6 +13,10 @@
   --radius: 16px;
   --shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
   --glass-border: 1px solid rgba(255, 255, 255, 0.9);
+  --skeleton-base: #e2e8f0;
+  --skeleton-shimmer: rgba(255, 255, 255, 0.7);
+  --skeleton-speed: 1.8s;
+  --skeleton-border: rgba(15, 23, 42, 0.08);
 }
 
 /* Premium Background */
@@ -158,35 +162,151 @@ button, .btn {
   box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
 }
 
-/* Centered Full-Screen Spinner Overlay for Navigation */
-.global-spinner-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(248, 250, 252, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 99999;
+/* ── Skeleton Loading System ── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--skeleton-base);
+  border-radius: 8px;
+  border: none;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.04),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer var(--skeleton-speed) ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton--circle {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton--text {
+  height: 14px;
+}
+
+.skeleton--text-sm {
+  height: 11px;
+}
+
+.skeleton--image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+.skeleton-profile {
   display: flex;
   align-items: center;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  gap: 1rem;
+  padding: 1.5rem 0;
 }
-.global-spinner-overlay.active {
-  opacity: 1;
-  visibility: visible;
+
+.skeleton-profile__avatar {
+  width: 56px;
+  height: 56px;
 }
-.spinner-large {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(79, 70, 229, 0.2);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spinner 0.8s linear infinite;
+
+.skeleton-profile__lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-@keyframes spinner {
-  to { transform: rotate(360deg); }
+
+.skeleton-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .skeleton-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skeleton-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--skeleton-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-card__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+}
+
+.skeleton-list__row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--skeleton-border);
+}
+
+.skeleton-list__row:last-child {
+  border-bottom: none;
+}
+
+.skeleton-list__avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.skeleton-list__lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-w-35 { width: 35%; }
+.skeleton-w-40 { width: 40%; }
+.skeleton-w-50 { width: 50%; }
+.skeleton-w-55 { width: 55%; }
+.skeleton-w-65 { width: 65%; }
+.skeleton-w-80 { width: 80%; }
+.skeleton-w-100 { width: 100%; }
+
+/* Compact modal / settings placeholder */
+.skeleton-placeholder {
+  padding: 1.5rem 1rem;
 }
 
 /* Dashboard Enhancements */
@@ -2524,19 +2644,6 @@ a.kb-article-card:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-@keyframes kb-spin {
-  to { transform: rotate(360deg); }
-}
-.kb-spinner {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: kb-spin 0.8s linear infinite;
-  margin-right: 0.5rem;
 }
 .kb-hero-actions {
   display: none;

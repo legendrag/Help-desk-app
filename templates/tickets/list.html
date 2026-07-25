@@ -100,7 +100,7 @@
         }
         var href = row.getAttribute("data-href");
         if (href) {
-            // Defer slightly to let loading.js render the global spinner and progress bar
+            // Defer slightly to let loading.js paint the progress bar
             setTimeout(() => {
                 window.location.href = href;
             }, 50);
