@@ -29,9 +29,9 @@
         content="mlameh ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.70">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.68">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.32">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.71">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.69">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.33">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -149,42 +149,161 @@
         <!-- Global Progress Bar -->
         <div id="global-progress-bar" class="global-progress-bar"></div>
 
-        <!-- Full-screen skeleton shown on card/nav navigation -->
+        <!-- Full-screen destination-aware skeletons (one variant shown per navigation) -->
         <div id="page-nav-overlay" class="page-nav-overlay" hidden aria-hidden="true" aria-busy="true">
-            <div class="page-nav-overlay__screen">
-                <div class="skeleton-profile">
-                    <div class="skeleton skeleton--circle skeleton-profile__avatar" aria-hidden="true"></div>
-                    <div class="skeleton-profile__lines">
-                        <div class="skeleton skeleton--text skeleton-w-40" aria-hidden="true"></div>
-                        <div class="skeleton skeleton--text-sm skeleton-w-65" aria-hidden="true"></div>
+
+            <!-- Ticket detail / chat -->
+            <div class="page-nav-overlay__screen skeleton-chat" data-skeleton="ticket-detail" hidden>
+                <div class="skeleton skeleton--text skeleton-w-35 skeleton-chat__back" aria-hidden="true"></div>
+                <div class="skeleton-chat__panel">
+                    <div class="skeleton-chat__header">
+                        <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+                        <div class="skeleton-list__lines">
+                            <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
+                            <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-chat__messages">
+                        <div class="skeleton skeleton-bubble" aria-hidden="true"></div>
+                        <div class="skeleton skeleton-bubble skeleton-bubble--mine" aria-hidden="true"></div>
+                        <div class="skeleton skeleton-bubble skeleton-bubble--short" aria-hidden="true"></div>
+                        <div class="skeleton skeleton-bubble skeleton-bubble--mine" aria-hidden="true"></div>
+                        <div class="skeleton skeleton-bubble" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-chat__composer">
+                        <div class="skeleton skeleton-chat__input" aria-hidden="true"></div>
+                        <div class="skeleton skeleton-chat__send" aria-hidden="true"></div>
                     </div>
                 </div>
-                <div class="skeleton-card-grid">
-                    <article class="skeleton-card">
-                        <div class="skeleton skeleton--image" aria-hidden="true"></div>
-                        <div class="skeleton-card__lines">
-                            <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div>
-                        </div>
-                    </article>
-                    <article class="skeleton-card">
-                        <div class="skeleton skeleton--image" aria-hidden="true"></div>
-                        <div class="skeleton-card__lines">
-                            <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div>
-                        </div>
-                    </article>
-                    <article class="skeleton-card">
-                        <div class="skeleton skeleton--image" aria-hidden="true"></div>
-                        <div class="skeleton-card__lines">
-                            <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div>
-                        </div>
-                    </article>
+            </div>
+
+            <!-- Tickets list -->
+            <div class="page-nav-overlay__screen" data-skeleton="ticket-list" hidden>
+                <div class="skeleton-toolbar">
+                    <div class="skeleton skeleton--text skeleton-w-40 skeleton-toolbar__title" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-35 skeleton-toolbar__cta" aria-hidden="true"></div>
                 </div>
+                <div class="skeleton-filters">
+                    <div class="skeleton skeleton--text skeleton-filter-chip" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-filter-chip" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-filter-chip" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-table">
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                </div>
+            </div>
+
+            <!-- News list -->
+            <div class="page-nav-overlay__screen" data-skeleton="news-list" hidden>
+                <div class="skeleton-toolbar">
+                    <div class="skeleton skeleton--text skeleton-w-40 skeleton-toolbar__title" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-35 skeleton-toolbar__cta" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-table">
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="page-nav-overlay__screen" data-skeleton="dashboard" hidden>
+                <div class="skeleton-filters">
+                    <div class="skeleton skeleton--text skeleton-filter-chip" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-filter-chip" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-stats">
+                    <div class="skeleton-stat-card"><div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80 skeleton-stat-card__value" aria-hidden="true"></div></div>
+                    <div class="skeleton-stat-card"><div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80 skeleton-stat-card__value" aria-hidden="true"></div></div>
+                    <div class="skeleton-stat-card"><div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80 skeleton-stat-card__value" aria-hidden="true"></div></div>
+                    <div class="skeleton-stat-card"><div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80 skeleton-stat-card__value" aria-hidden="true"></div></div>
+                </div>
+                <div class="skeleton-bento">
+                    <div class="skeleton-bento__panel"><div class="skeleton skeleton--image" aria-hidden="true"></div></div>
+                    <div class="skeleton-bento__panel"><div class="skeleton skeleton--image" aria-hidden="true"></div></div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="page-nav-overlay__screen" data-skeleton="settings" hidden>
+                <div class="skeleton-settings-hero">
+                    <div class="skeleton skeleton--text skeleton-w-50 skeleton-toolbar__title" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text-sm skeleton-w-80" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-tabs">
+                    <div class="skeleton skeleton--text skeleton-tab" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-tab" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-tab" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-tab" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-table">
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                    <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                </div>
+            </div>
+
+            <!-- KB list -->
+            <div class="page-nav-overlay__screen skeleton-kb-list" data-skeleton="kb-list" hidden>
+                <aside class="skeleton-kb-filters">
+                    <div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-100" aria-hidden="true"></div>
+                </aside>
+                <div class="skeleton-kb-results">
+                    <div class="skeleton skeleton--text skeleton-w-50 skeleton-toolbar__title" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-w-100 skeleton-kb-search" aria-hidden="true"></div>
+                    <div class="skeleton-card-grid skeleton-kb-tiles">
+                        <article class="skeleton-card"><div class="skeleton skeleton--image" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div></article>
+                        <article class="skeleton-card"><div class="skeleton skeleton--image" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div></article>
+                        <article class="skeleton-card"><div class="skeleton skeleton--image" aria-hidden="true"></div><div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div></article>
+                    </div>
+                </div>
+                <aside class="skeleton-kb-help">
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton--text skeleton-w-80" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-100" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-65" aria-hidden="true"></div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- KB detail -->
+            <div class="page-nav-overlay__screen skeleton-kb-detail" data-skeleton="kb-detail" hidden>
+                <div class="skeleton skeleton--text-sm skeleton-w-55" aria-hidden="true"></div>
+                <div class="skeleton skeleton--text skeleton-w-80 skeleton-toolbar__title" aria-hidden="true"></div>
+                <div class="skeleton skeleton--text-sm skeleton-w-40" aria-hidden="true"></div>
+                <div class="skeleton-kb-detail__layout">
+                    <div class="skeleton-kb-detail__main">
+                        <div class="skeleton skeleton--image skeleton-kb-detail__body" aria-hidden="true"></div>
+                    </div>
+                    <aside class="skeleton-kb-detail__side">
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div>
+                            <div class="skeleton skeleton--text-sm skeleton-w-80" aria-hidden="true"></div>
+                            <div class="skeleton skeleton--text skeleton-w-50" aria-hidden="true"></div>
+                            <div class="skeleton skeleton--text-sm skeleton-w-65" aria-hidden="true"></div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+
+            <!-- Default fallback -->
+            <div class="page-nav-overlay__screen" data-skeleton="default" hidden>
                 <div class="skeleton-list">
                     <div class="skeleton-list__row">
                         <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
@@ -945,7 +1064,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=7"></script>
+    <script src="{% static 'js/loading.js' %}?v=10"></script>
 </body>
 
 </html>

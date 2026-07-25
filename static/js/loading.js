@@ -14,11 +14,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const NAV_STALL_MS = 10000;      // unlock if full-page nav never leaves
     const DOWNLOAD_SAFETY_MS = 60000;
     const HTMX_STALL_MS = 30000;
+    // Hard cap so a missed cleanup can never leave the bar parked at 80%
+    const PROGRESS_MAX_MS = 8000;
+    const NAV_CANCEL_MS = 400;
 
     let activeRequests = 0;
     let progressTimer = null;
+    let progressMaxTimer = null;
+    let trickleTimer = null;
+    let progressValue = 0;
     let downloadWatchers = [];
     let navStallTimer = null;
+    let navCancelTimer = null;
     let htmxStallTimers = new WeakMap();
     let fullPageNavPending = false;
     // Track in-flight HTMX triggers so success/error/abort only clean up once
@@ -28,6 +35,136 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressTimer) {
             clearTimeout(progressTimer);
             progressTimer = null;
+        }
+    }
+
+    function clearProgressMaxTimer() {
+        if (progressMaxTimer) {
+            clearTimeout(progressMaxTimer);
+            progressMaxTimer = null;
+        }
+    }
+
+    function clearTrickleTimer() {
+        if (trickleTimer) {
+            clearTimeout(trickleTimer);
+            trickleTimer = null;
+        }
+    }
+
+    function clearNavCancelTimer() {
+        if (navCancelTimer) {
+            clearTimeout(navCancelTimer);
+            navCancelTimer = null;
+        }
+    }
+
+    function setProgressWidth(pct) {
+        progressValue = Math.max(0, Math.min(100, pct));
+        if (progressBar) {
+            progressBar.style.setProperty('--progress', progressValue + '%');
+        }
+    }
+
+    function armProgressMaxTimer() {
+        clearProgressMaxTimer();
+        progressMaxTimer = setTimeout(function() {
+            if (activeRequests > 0 || (progressBar && progressBar.classList.contains('loading'))) {
+                forceFinishProgress();
+            }
+        }, PROGRESS_MAX_MS);
+    }
+
+    /**
+     * NProgress-style trickle: quick early jumps, then slower crawl toward ~94%.
+     * Never reaches 100% until finish — that snap is the "done" signal.
+     */
+    function scheduleTrickle() {
+        clearTrickleTimer();
+        if (!progressBar || !progressBar.classList.contains('loading')) return;
+
+        let delay;
+        if (progressValue < 20) delay = 180 + Math.random() * 120;
+        else if (progressValue < 40) delay = 280 + Math.random() * 200;
+        else if (progressValue < 60) delay = 400 + Math.random() * 300;
+        else if (progressValue < 80) delay = 600 + Math.random() * 400;
+        else delay = 900 + Math.random() * 600;
+
+        trickleTimer = setTimeout(function() {
+            if (!progressBar || !progressBar.classList.contains('loading')) return;
+
+            let step;
+            if (progressValue < 20) step = 8 + Math.random() * 10;
+            else if (progressValue < 40) step = 4 + Math.random() * 6;
+            else if (progressValue < 60) step = 2 + Math.random() * 4;
+            else if (progressValue < 80) step = 1 + Math.random() * 2;
+            else step = 0.3 + Math.random() * 0.7;
+
+            // Asymptote just under 95% so finish still feels like a completion
+            const next = Math.min(94, progressValue + step);
+            if (next > progressValue) {
+                setProgressWidth(next);
+            }
+            if (progressValue < 94) {
+                scheduleTrickle();
+            }
+        }, delay);
+    }
+
+    function beginBar() {
+        if (!progressBar) return;
+        clearProgressTimer();
+        clearTrickleTimer();
+        progressBar.classList.remove('finished');
+        // Start at 0 without transition, then animate the first jump
+        progressBar.style.transition = 'none';
+        setProgressWidth(0);
+        progressBar.classList.add('loading');
+        // Force reflow so the 0% → first jump animates
+        void progressBar.offsetWidth;
+        progressBar.style.transition = '';
+        setProgressWidth(12 + Math.random() * 8);
+        scheduleTrickle();
+    }
+
+    function completeBar() {
+        if (!progressBar) return;
+        clearTrickleTimer();
+        clearProgressTimer();
+        clearProgressMaxTimer();
+        progressBar.classList.remove('loading');
+        setProgressWidth(100);
+        progressBar.classList.add('finished');
+        setTimeout(function() {
+            progressBar.classList.remove('finished');
+            progressBar.style.transition = 'none';
+            setProgressWidth(0);
+            void progressBar.offsetWidth;
+            progressBar.style.transition = '';
+        }, 420);
+    }
+
+    function hideBarQuietly() {
+        if (!progressBar) return;
+        clearTrickleTimer();
+        progressBar.classList.remove('loading', 'finished');
+        progressBar.style.transition = 'none';
+        setProgressWidth(0);
+        void progressBar.offsetWidth;
+        progressBar.style.transition = '';
+    }
+
+    /** Complete the bar to 100% and zero the counter (missed cleanup / hung assets). */
+    function forceFinishProgress() {
+        clearProgressTimer();
+        clearProgressMaxTimer();
+        clearTrickleTimer();
+        activeRequests = 0;
+        if (!progressBar) return;
+        if (progressBar.classList.contains('loading')) {
+            completeBar();
+        } else {
+            hideBarQuietly();
         }
     }
 
@@ -77,24 +214,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
 
-    function showProgressNow() {
-        if (!progressBar) return;
-        clearProgressTimer();
-        progressBar.classList.remove('finished');
-        progressBar.classList.add('loading');
-    }
-
     function startProgress(options) {
         const immediate = options && options.immediate;
         activeRequests++;
+        armProgressMaxTimer();
         if (activeRequests === 1 && progressBar) {
             if (immediate) {
-                showProgressNow();
+                beginBar();
             } else {
-                progressTimer = setTimeout(function() {
-                    progressBar.classList.remove('finished');
-                    progressBar.classList.add('loading');
-                }, 300);
+                progressTimer = setTimeout(beginBar, 300);
             }
         }
     }
@@ -103,16 +231,12 @@ document.addEventListener('DOMContentLoaded', function() {
         activeRequests = Math.max(0, activeRequests - 1);
         if (activeRequests === 0 && progressBar) {
             clearProgressTimer();
+            clearProgressMaxTimer();
 
             if (progressBar.classList.contains('loading')) {
-                progressBar.classList.remove('loading');
-                progressBar.classList.add('finished');
-
-                setTimeout(function() {
-                    progressBar.classList.remove('finished');
-                }, 400);
+                completeBar();
             } else {
-                progressBar.classList.remove('loading', 'finished');
+                hideBarQuietly();
             }
         }
     }
@@ -120,12 +244,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetProgress() {
         activeRequests = 0;
         clearProgressTimer();
+        clearProgressMaxTimer();
+        clearTrickleTimer();
         clearDownloadWatchers();
         clearNavStallTimer();
+        clearNavCancelTimer();
         fullPageNavPending = false;
-        if (progressBar) {
-            progressBar.classList.remove('loading', 'finished');
-        }
+        hideBarQuietly();
         if (window.navigationSpinnerTimer) {
             clearTimeout(window.navigationSpinnerTimer);
             window.navigationSpinnerTimer = null;
@@ -237,6 +362,59 @@ document.addEventListener('DOMContentLoaded', function() {
         return document.getElementById('page-nav-overlay');
     }
 
+    function normalizePathname(pathname) {
+        if (!pathname) return '/';
+        var path = pathname.split('?')[0].split('#')[0];
+        if (path.length > 1 && path.endsWith('/')) {
+            path = path.slice(0, -1);
+        }
+        return path || '/';
+    }
+
+    /**
+     * Map a destination URL to a skeleton variant id.
+     * Match order matters (dashboard/settings before ticket id, kb detail before list).
+     */
+    function classifyNavSkeleton(href) {
+        if (!href) return 'default';
+        var path;
+        try {
+            path = normalizePathname(new URL(href, window.location.origin).pathname);
+        } catch (e) {
+            return 'default';
+        }
+
+        if (path === '/tickets/dashboard') return 'dashboard';
+        if (path === '/tickets/settings') return 'settings';
+        if (/^\/tickets\/\d+$/.test(path)) return 'ticket-detail';
+        if (path === '/tickets') return 'ticket-list';
+        if (/^\/kb\/\d+$/.test(path)) return 'kb-detail';
+        if (path === '/kb' || path.indexOf('/kb/') === 0) return 'kb-list';
+        if (path === '/news' || path.indexOf('/news/') === 0) return 'news-list';
+        return 'default';
+    }
+
+    function showNavSkeleton(variantId) {
+        const overlay = getNavOverlay();
+        if (!overlay) return;
+        const id = variantId || 'default';
+        const screens = overlay.querySelectorAll('[data-skeleton]');
+        let matched = false;
+        screens.forEach(function(screen) {
+            const isMatch = screen.getAttribute('data-skeleton') === id;
+            screen.hidden = !isMatch;
+            screen.classList.toggle('is-active', isMatch);
+            if (isMatch) matched = true;
+        });
+        if (!matched) {
+            const fallback = overlay.querySelector('[data-skeleton="default"]');
+            if (fallback) {
+                fallback.hidden = false;
+                fallback.classList.add('is-active');
+            }
+        }
+    }
+
     function showNavOverlay() {
         const overlay = getNavOverlay();
         if (!overlay) return;
@@ -251,6 +429,10 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.classList.remove('is-visible');
         overlay.hidden = true;
         overlay.setAttribute('aria-hidden', 'true');
+        overlay.querySelectorAll('[data-skeleton]').forEach(function(screen) {
+            screen.hidden = true;
+            screen.classList.remove('is-active');
+        });
     }
 
     function setPageNavigating(on) {
@@ -269,11 +451,20 @@ document.addEventListener('DOMContentLoaded', function() {
         setPageNavigating(false);
     }
 
+    function resolveNavHref(target, href) {
+        if (href) return href;
+        if (!target) return '';
+        if (target.tagName === 'FORM' && target.getAttribute('action')) {
+            return target.getAttribute('action');
+        }
+        return target.getAttribute('href') || target.dataset.href || target.getAttribute('data-href') || '';
+    }
+
     /**
      * Start a full-page navigation loading state.
      * @returns {boolean} false if a nav is already pending (spam ignored)
      */
-    function beginFullPageNavigation(target) {
+    function beginFullPageNavigation(target, href) {
         // Anti-spam: ignore further card/link clicks while a nav is in flight.
         // Stall watchdog below unlocks after NAV_STALL_MS so the UI never freezes forever.
         if (fullPageNavPending) {
@@ -288,6 +479,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.closeSidebar();
             }
         }
+
+        const destination = resolveNavHref(target, href);
+        showNavSkeleton(classifyNavSkeleton(destination));
+
         // Paint press state + full-screen skeleton before any navigation work
         setPageNavigating(true);
         markFullPageLoading();
@@ -301,18 +496,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 setPageNavigating(false);
                 clearFullPageLoadingFlag();
                 clearAllButtonLoading();
-                activeRequests = 0;
-                clearProgressTimer();
-                if (progressBar) {
-                    progressBar.classList.remove('loading', 'finished');
-                }
+                forceFinishProgress();
             }
         }, NAV_STALL_MS);
         return true;
     }
 
     function reloadWithLoading() {
-        beginFullPageNavigation(null);
+        beginFullPageNavigation(null, window.location.href);
         window.location.reload();
     }
 
@@ -340,14 +531,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Arrival loading after sidebar nav / refresh ---
+    // Finish once the document is usable — do NOT wait for window.load.
+    // Slow images/analytics/fonts can delay load forever and park the bar at 80%
+    // even though the page is already interactive.
     if (consumeFullPageLoadingFlag() || isReloadNavigation()) {
         startProgress({ immediate: true });
-        if (document.readyState === 'complete') {
+        let arrivalFinished = false;
+        function completeArrivalProgress() {
+            if (arrivalFinished) return;
+            arrivalFinished = true;
             finishProgress();
+        }
+        if (document.readyState === 'complete') {
+            completeArrivalProgress();
         } else {
-            window.addEventListener('load', function() {
-                finishProgress();
-            }, { once: true });
+            // Two frames: let the loading class paint, then complete to 100%.
+            requestAnimationFrame(function() {
+                requestAnimationFrame(completeArrivalProgress);
+            });
+            // Fallback if rAF is delayed/throttled in background tabs
+            setTimeout(completeArrivalProgress, 1500);
         }
     }
 
@@ -423,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!isExcluded(form)) {
-            beginFullPageNavigation(form);
+            beginFullPageNavigation(form, form.getAttribute('action') || '');
             disableButton(form);
             watchForDownload(form);
         }
@@ -486,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        beginFullPageNavigation(target);
+        beginFullPageNavigation(target, href);
     }, true);
 
     // Keyboard refresh (F5 / Ctrl+R / Cmd+R)
@@ -495,7 +698,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isF5 = key === 'F5';
         const isSoftReload = (key === 'r' || key === 'R') && (evt.ctrlKey || evt.metaKey);
         if (!isF5 && !isSoftReload) return;
-        beginFullPageNavigation(null);
+        beginFullPageNavigation(null, window.location.href);
     });
 
     // If the document never unloads (stall) but tab becomes visible again, unlock
@@ -510,13 +713,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Leaving the page: keep the flag for the next document's arrival progress
+    // Leaving the page: keep the flag for the next document's arrival progress.
+    // pagehide also fires when a navigation is attempted then cancelled — in that
+    // case the stall timer was cleared and the bar would stay at 80% forever.
     window.addEventListener('pagehide', function(evt) {
         clearNavStallTimer();
+        const wasNavigating = fullPageNavPending;
         fullPageNavPending = false;
         if (evt.persisted) {
             // Going into bfcache — unlock so Back doesn't restore a frozen UI
             clearLoadingUI();
+            return;
+        }
+        if (wasNavigating) {
+            clearNavCancelTimer();
+            navCancelTimer = setTimeout(function() {
+                navCancelTimer = null;
+                // Still on this document → navigation cancelled / never completed
+                if (!document.hidden) {
+                    clearFullPageLoadingFlag();
+                    clearAllButtonLoading();
+                    setPageNavigating(false);
+                    forceFinishProgress();
+                }
+            }, NAV_CANCEL_MS);
         }
     });
 
@@ -527,6 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             clearProgressTimer();
             clearNavStallTimer();
+            clearNavCancelTimer();
             fullPageNavPending = false;
             if (window.navigationSpinnerTimer) {
                 clearTimeout(window.navigationSpinnerTimer);
