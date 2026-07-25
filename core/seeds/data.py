@@ -1,4 +1,4 @@
-"""Static definitions for demo seed data."""
+﻿"""Static definitions for demo seed data."""
 
 DEMO_PASSWORD = "demo1234"
 
@@ -15,7 +15,7 @@ DEMO_USERNAMES = (
 )
 DEMO_ROLE_NAMES = ("Team Lead", "KB Editor")
 DEMO_KB_CATEGORY_NAMES = ("Getting Started", "Troubleshooting", "Policies & Procedures")
-DEMO_EMAIL_HOST = "demo-smtp.deskplus.local"
+DEMO_EMAIL_HOST = "demo-smtp.mlamehticket.local"
 
 BRANCHES = (
     {"code": "MAIN", "name": "Main Office"},
@@ -125,8 +125,8 @@ KB_ARTICLES = (
 
 ANNOUNCEMENTS = (
     {
-        "title": "Welcome to DeskPlus",
-        "content": "The DeskPlus portal is now live. Use your branch account to submit and track tickets.",
+        "title": "Welcome to mlamehticket",
+        "content": "The mlamehticket portal is now live. Use your branch account to submit and track tickets.",
         "target_branch": None,
         "is_active": True,
     },

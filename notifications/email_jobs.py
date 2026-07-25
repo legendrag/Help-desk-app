@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from datetime import timedelta
 
 from django.db.models import Q
@@ -70,7 +70,7 @@ def send_new_ticket_email(ticket_id: int) -> bool:
         return False
 
     title = truncate_text(ticket.title, 80)
-    subject = f"[DeskPlus] New ticket #{ticket.ticket_number}: {title}"
+    subject = f"[mlamehticket] New ticket #{ticket.ticket_number}: {title}"
     return _send_rendered(
         subject,
         recipients,
@@ -108,7 +108,7 @@ def send_ticket_picked_email(ticket_id: int, actor_id: int) -> bool:
         return False
 
     status_label = format_status_label(ticket.status) or ticket.status
-    subject = f"[DeskPlus] Ticket #{ticket.ticket_number} picked up"
+    subject = f"[mlamehticket] Ticket #{ticket.ticket_number} picked up"
     return _send_rendered(
         subject,
         recipients,
@@ -153,7 +153,7 @@ def send_ticket_update_email(
         recipients = [recipient.email]
         message = TicketMessage.objects.filter(id=message_id).first()
         message_text = truncate_text(message.message, 1000) if message and message.message else ""
-        subject = f"[DeskPlus] New reply on #{ticket.ticket_number}"
+        subject = f"[mlamehticket] New reply on #{ticket.ticket_number}"
         headline = f"New reply on #{ticket.ticket_number}"
         intro = f"{display_name(actor)} replied to the ticket."
         message_title = "Message"
@@ -182,7 +182,7 @@ def send_ticket_update_email(
         if not recipients:
             return False
         status_label = format_status_label(new_status) or new_status
-        subject = f"[DeskPlus] Status update on #{ticket.ticket_number}: {status_label}"
+        subject = f"[mlamehticket] Status update on #{ticket.ticket_number}: {status_label}"
         headline = f"Status changed on #{ticket.ticket_number}"
         intro = f"{display_name(actor)} updated the status to {status_label}."
         message_title = "Request"
@@ -196,7 +196,7 @@ def send_ticket_update_email(
         if not recipients:
             return False
         status_label = format_status_label(ticket.status) or ticket.status
-        subject = f"[DeskPlus] Update on ticket #{ticket.ticket_number}"
+        subject = f"[mlamehticket] Update on ticket #{ticket.ticket_number}"
         headline = f"Ticket #{ticket.ticket_number} was updated"
         intro = f"{display_name(actor)} made an update to this ticket."
         message_title = "Request"
@@ -236,17 +236,17 @@ def send_transfer_event_email(ticket_id: int, actor_id: int, recipient_id: int, 
 
     event_copy = {
         "requested": (
-            f"[DeskPlus] Transfer requested: #{ticket.ticket_number}",
+            f"[mlamehticket] Transfer requested: #{ticket.ticket_number}",
             f"Transfer requested for #{ticket.ticket_number}",
             f"{display_name(actor)} wants to transfer this ticket to you.",
         ),
         "accepted": (
-            f"[DeskPlus] Transfer accepted: #{ticket.ticket_number}",
+            f"[mlamehticket] Transfer accepted: #{ticket.ticket_number}",
             f"Transfer accepted for #{ticket.ticket_number}",
             f"{display_name(actor)} accepted the ticket transfer.",
         ),
         "denied": (
-            f"[DeskPlus] Transfer declined: #{ticket.ticket_number}",
+            f"[mlamehticket] Transfer declined: #{ticket.ticket_number}",
             f"Transfer declined for #{ticket.ticket_number}",
             f"{display_name(actor)} declined the ticket transfer.",
         ),
@@ -311,12 +311,12 @@ def send_announcement_email(announcement_id: int, actor_id: int | None = None) -
     details.append(("Posted", format_datetime(announcement.created_at)))
 
     title = truncate_text(announcement.title, 80)
-    subject = f"[DeskPlus] Announcement: {title}"
+    subject = f"[mlamehticket] Announcement: {title}"
     return _send_rendered(
         subject,
         recipients,
         headline=announcement.title,
-        intro="A new announcement has been posted in DeskPlus.",
+        intro="A new announcement has been posted in mlamehticket.",
         details=details,
         message_title="Announcement",
         message_body=truncate_text(announcement.content, 1500) or announcement.title,

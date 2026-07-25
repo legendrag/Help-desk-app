@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 import os
 import sys
 
@@ -84,7 +84,7 @@ if _db_engine == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
-            "NAME": os.getenv("DB_NAME", "deskplus"),
+            "NAME": os.getenv("DB_NAME", "mlamehticket"),
             "USER": os.getenv("DB_USER", "root"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
@@ -140,7 +140,7 @@ CHANNEL_LAYERS = {
 
 # Default bootstrap super-admin credentials.
 DEFAULT_SUPERADMIN_USERNAME = os.getenv("DEFAULT_SUPERADMIN_USERNAME", "admin")
-DEFAULT_SUPERADMIN_EMAIL = os.getenv("DEFAULT_SUPERADMIN_EMAIL", "admin@deskplus.local")
+DEFAULT_SUPERADMIN_EMAIL = os.getenv("DEFAULT_SUPERADMIN_EMAIL", "admin@mlamehticket.local")
 DEFAULT_SUPERADMIN_PASSWORD = os.getenv("DEFAULT_SUPERADMIN_PASSWORD", "admin")
 
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
@@ -217,7 +217,7 @@ VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY = get_vapid_keys()
 WEBPUSH_SETTINGS = {
     "VAPID_PUBLIC_KEY": VAPID_PUBLIC_KEY,
     "VAPID_PRIVATE_KEY": VAPID_PRIVATE_KEY,
-    "VAPID_ADMIN_EMAIL": os.getenv("VAPID_ADMIN_EMAIL", "admin@deskplus.com")
+    "VAPID_ADMIN_EMAIL": os.getenv("VAPID_ADMIN_EMAIL", "admin@mlamehticket.com")
 }
 
 # Ticket Auto-Response Settings

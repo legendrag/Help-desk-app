@@ -1,5 +1,5 @@
-<# 
-    test-local.ps1 — Run DeskPlus locally with SQLite for development/testing.
+﻿<# 
+    test-local.ps1 — Run mlamehticket locally with SQLite for development/testing.
     Usage: .\test-local.ps1 [-InstallDeps] [-Fresh] [-NoBrowser]
 #>
 param(
@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "[DESKPLUS] $Message" -ForegroundColor Cyan
+    Write-Host "[mlamehticket] $Message" -ForegroundColor Cyan
 }
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path

@@ -1,4 +1,4 @@
-from django.conf import settings
+﻿from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -89,11 +89,11 @@ def render_notification_email(
     message_title: str = "",
     message_body: str = "",
     cta_url: str = "",
-    cta_label: str = "Open in DeskPlus",
-    footer_note: str = "You’re receiving this because email notifications are enabled for your DeskPlus account.",
+    cta_label: str = "Open in mlamehticket",
+    footer_note: str = "You’re receiving this because email notifications are enabled for your mlamehticket account.",
 ) -> tuple[str, str]:
     context = {
-        "brand_name": "DeskPlus",
+        "brand_name": "mlamehticket",
         "headline": headline,
         "intro": intro,
         "details": details or [],

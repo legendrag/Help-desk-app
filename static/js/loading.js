@@ -1,16 +1,26 @@
-/**
+﻿/**
  * Global Loading Indicators
  * Top progress bar + button spinners for HTMX, native forms, and navigation.
  * Every start path has a matching cleanup (success, error, abort, timeout, bfcache).
- * Also covers sidebar page selection and browser/programmatic refresh.
+ *
+ * Slow-network note: full-page navigations only show the progress bar and a soft
+ * "is-navigating" cue — they do NOT hard-disable the page. A short watchdog
+ * unlocks the UI if the document never unloads (hung request / cancelled nav).
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('global-progress-bar');
-    const PAGE_LOADING_KEY = 'deskplus-page-loading';
+    const PAGE_LOADING_KEY = 'mlamehticket-page-loading';
+    const NAV_STALL_MS = 10000;      // unlock if full-page nav never leaves
+    const DOWNLOAD_SAFETY_MS = 60000;
+    const HTMX_STALL_MS = 30000;
+
     let activeRequests = 0;
     let progressTimer = null;
     let downloadWatchers = [];
+    let navStallTimer = null;
+    let htmxStallTimers = new WeakMap();
+    let fullPageNavPending = false;
     // Track in-flight HTMX triggers so success/error/abort only clean up once
     const inFlight = new WeakSet();
 
@@ -29,9 +39,22 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadWatchers = [];
     }
 
+    function clearNavStallTimer() {
+        if (navStallTimer) {
+            clearTimeout(navStallTimer);
+            navStallTimer = null;
+        }
+    }
+
     function markFullPageLoading() {
         try {
             sessionStorage.setItem(PAGE_LOADING_KEY, '1');
+        } catch (e) { /* private mode */ }
+    }
+
+    function clearFullPageLoadingFlag() {
+        try {
+            sessionStorage.removeItem(PAGE_LOADING_KEY);
         } catch (e) { /* private mode */ }
     }
 
@@ -98,6 +121,8 @@ document.addEventListener('DOMContentLoaded', function() {
         activeRequests = 0;
         clearProgressTimer();
         clearDownloadWatchers();
+        clearNavStallTimer();
+        fullPageNavPending = false;
         if (progressBar) {
             progressBar.classList.remove('loading', 'finished');
         }
@@ -143,20 +168,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const targetBtn = resolveButton(btn);
         if (!targetBtn || isExcluded(targetBtn)) return;
 
-        if (isButtonLike(targetBtn)) {
-            if (targetBtn.classList.contains('btn-loading')) return;
-
-            targetBtn.style.minWidth = targetBtn.offsetWidth + 'px';
-            targetBtn.style.minHeight = targetBtn.offsetHeight + 'px';
-            targetBtn.classList.add('btn-loading');
-            targetBtn.disabled = true;
-            targetBtn.setAttribute('aria-busy', 'true');
-        } else {
-            if (targetBtn.style.pointerEvents === 'none') return;
-            targetBtn.dataset.originalOpacity = targetBtn.style.opacity || '';
-            targetBtn.style.opacity = '0.6';
-            targetBtn.style.pointerEvents = 'none';
+        // Only hard-disable real buttons/inputs — never lock links/rows
+        // (that freezes the UI on slow networks when the document never unloads).
+        if (!isButtonLike(targetBtn)) {
+            targetBtn.classList.add('is-navigating');
+            return;
         }
+
+        if (targetBtn.classList.contains('btn-loading')) return;
+
+        targetBtn.style.minWidth = targetBtn.offsetWidth + 'px';
+        targetBtn.style.minHeight = targetBtn.offsetHeight + 'px';
+        targetBtn.classList.add('btn-loading');
+        targetBtn.disabled = true;
+        targetBtn.setAttribute('aria-busy', 'true');
     }
 
     function enableButton(btn) {
@@ -165,16 +190,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const targetBtn = resolveButton(btn);
         if (!targetBtn) return;
 
+        targetBtn.classList.remove('is-navigating');
+
         if (isButtonLike(targetBtn)) {
             targetBtn.classList.remove('btn-loading');
             targetBtn.disabled = false;
             targetBtn.style.minWidth = '';
             targetBtn.style.minHeight = '';
             targetBtn.removeAttribute('aria-busy');
-        } else {
-            targetBtn.style.opacity = targetBtn.dataset.originalOpacity || '';
-            targetBtn.style.pointerEvents = '';
-            delete targetBtn.dataset.originalOpacity;
         }
     }
 
@@ -182,16 +205,25 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.btn-loading').forEach(function(el) {
             enableButton(el);
         });
-        document.querySelectorAll('[style*="pointer-events: none"], [style*="pointer-events:none"]').forEach(function(el) {
-            if (el.dataset.originalOpacity !== undefined) {
-                enableButton(el);
-            }
+        document.querySelectorAll('.is-navigating').forEach(function(el) {
+            el.classList.remove('is-navigating');
+        });
+        // Legacy cleanup if any old pointer-events locks remain
+        document.querySelectorAll('[data-original-opacity]').forEach(function(el) {
+            el.style.opacity = el.dataset.originalOpacity || '';
+            el.style.pointerEvents = '';
+            delete el.dataset.originalOpacity;
         });
     }
 
     function cleanupRequest(elt) {
         if (elt && inFlight.has(elt)) {
             inFlight.delete(elt);
+            const stall = htmxStallTimers.get(elt);
+            if (stall) {
+                clearTimeout(stall);
+                htmxStallTimers.delete(elt);
+            }
             finishProgress();
             enableButton(elt);
             return;
@@ -201,14 +233,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function setPageNavigating(on) {
+        document.body.classList.toggle('is-page-navigating', !!on);
+    }
+
     function clearLoadingUI() {
         resetProgress();
         clearAllButtonLoading();
+        clearFullPageLoadingFlag();
+        setPageNavigating(false);
+    }
+
+    /**
+     * Start a full-page navigation loading state.
+     * @returns {boolean} false if a nav is already pending (spam ignored)
+     */
+    function beginFullPageNavigation(target) {
+        // Anti-spam: ignore further card/link clicks while a nav is in flight.
+        // Stall watchdog below unlocks after NAV_STALL_MS so the UI never freezes forever.
+        if (fullPageNavPending) {
+            return false;
+        }
+
+        fullPageNavPending = true;
+        setPageNavigating(true);
+        markFullPageLoading();
+        startProgress({ immediate: true });
+        if (target) {
+            target.classList.add('is-navigating');
+        }
+
+        clearNavStallTimer();
+        navStallTimer = setTimeout(function() {
+            // Still on this document → navigation stalled or was cancelled
+            if (fullPageNavPending && !document.hidden) {
+                fullPageNavPending = false;
+                setPageNavigating(false);
+                clearFullPageLoadingFlag();
+                clearAllButtonLoading();
+                activeRequests = 0;
+                clearProgressTimer();
+                if (progressBar) {
+                    progressBar.classList.remove('loading', 'finished');
+                }
+            }
+        }, NAV_STALL_MS);
+        return true;
     }
 
     function reloadWithLoading() {
-        markFullPageLoading();
-        startProgress({ immediate: true });
+        beginFullPageNavigation(null);
         window.location.reload();
     }
 
@@ -217,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.finishProgress = finishProgress;
     window.clearLoadingUI = clearLoadingUI;
     window.reloadWithLoading = reloadWithLoading;
+    window.isPageNavigating = function() { return fullPageNavPending; };
 
     function shouldTrackElement(elt) {
         return !isExcluded(elt);
@@ -224,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function shouldDisableElement(elt) {
         if (!elt) return false;
+        // HTMX: only spinner-disable real buttons/forms, soft-cue links/rows
         return (
             elt.tagName === 'BUTTON' ||
             elt.tagName === 'FORM' ||
@@ -254,6 +330,16 @@ document.addEventListener('DOMContentLoaded', function() {
         startProgress();
         if (shouldDisableElement(elt)) {
             disableButton(elt);
+        }
+        // Absolute safety: unlock if HTMX never settles (bad network / hung XHR)
+        if (elt) {
+            const prev = htmxStallTimers.get(elt);
+            if (prev) clearTimeout(prev);
+            htmxStallTimers.set(elt, setTimeout(function() {
+                if (inFlight.has(elt)) {
+                    cleanupRequest(elt);
+                }
+            }, HTMX_STALL_MS));
         }
     });
 
@@ -290,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearInterval(checkCookie);
             finishProgress();
             if (btnEl) enableButton(btnEl);
-        }, 60000);
+        }, DOWNLOAD_SAFETY_MS);
         downloadWatchers.push(safety);
     }
 
@@ -307,15 +393,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!isExcluded(form)) {
-            // Full-page posts (including sidebar logout) should persist loading into next paint
-            markFullPageLoading();
-            startProgress({ immediate: true });
+            beginFullPageNavigation(form);
             disableButton(form);
             watchForDownload(form);
         }
     });
 
-    // --- Standard Navigation Hooks (including sidebar page selection) ---
+    // --- Standard Navigation Hooks (including sidebar / cards / back links) ---
+    // Capture phase so we can block spam before other handlers (e.g. row → location.href)
     document.addEventListener('click', function(evt) {
         const target = evt.target.closest('a[href], .clickable-row');
         if (!target) return;
@@ -351,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Same-page hash-only or identical path without query change: skip
+        // Same-page hash-only navigations: skip loading UI
         try {
             const url = new URL(href, window.location.origin);
             if (
@@ -362,23 +447,47 @@ document.addEventListener('DOMContentLoaded', function() {
             ) {
                 return;
             }
-        } catch (e) { /* relative parse issues — continue */ }
+        } catch (e) { /* continue */ }
 
-        // Full-page navigation: sidebar links, top links, clickable rows
-        markFullPageLoading();
-        startProgress({ immediate: true });
-        disableButton(target);
-        watchForDownload(target);
-    });
+        // Already navigating → swallow spam clicks (unlocks via stall watchdog if hung)
+        if (fullPageNavPending) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            return;
+        }
 
-    // Keyboard refresh (F5 / Ctrl+R / Cmd+R) — show bar before unload
+        beginFullPageNavigation(target);
+    }, true);
+
+    // Keyboard refresh (F5 / Ctrl+R / Cmd+R)
     document.addEventListener('keydown', function(evt) {
         const key = evt.key;
         const isF5 = key === 'F5';
         const isSoftReload = (key === 'r' || key === 'R') && (evt.ctrlKey || evt.metaKey);
         if (!isF5 && !isSoftReload) return;
-        markFullPageLoading();
-        startProgress({ immediate: true });
+        beginFullPageNavigation(null);
+    });
+
+    // If the document never unloads (stall) but tab becomes visible again, unlock
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && fullPageNavPending) {
+            // Give a moment in case unload is mid-flight, then unlock if still here
+            setTimeout(function() {
+                if (fullPageNavPending && !document.hidden) {
+                    clearLoadingUI();
+                }
+            }, 500);
+        }
+    });
+
+    // Leaving the page: keep the flag for the next document's arrival progress
+    window.addEventListener('pagehide', function(evt) {
+        clearNavStallTimer();
+        fullPageNavPending = false;
+        if (evt.persisted) {
+            // Going into bfcache — unlock so Back doesn't restore a frozen UI
+            clearLoadingUI();
+        }
     });
 
     // Reset sticky loading UI when returning via bfcache / back-forward
@@ -387,6 +496,8 @@ document.addEventListener('DOMContentLoaded', function() {
             clearLoadingUI();
         } else {
             clearProgressTimer();
+            clearNavStallTimer();
+            fullPageNavPending = false;
             if (window.navigationSpinnerTimer) {
                 clearTimeout(window.navigationSpinnerTimer);
                 window.navigationSpinnerTimer = null;

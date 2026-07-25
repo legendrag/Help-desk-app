@@ -1,4 +1,4 @@
-from unittest.mock import patch
+﻿from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
@@ -59,7 +59,7 @@ class AnnouncementNotificationTests(TestCase):
             smtp_email="noreply@test.local",
             smtp_password="secret",
             encryption="tls",
-            from_name="DeskPlus Test",
+            from_name="mlamehticket Test",
             from_email="noreply@test.local",
             is_active=True,
             notify_announcement=True,
@@ -205,7 +205,7 @@ class EmailContentTests(TestCase):
             smtp_email="noreply@test.local",
             smtp_password="secret",
             encryption="tls",
-            from_name="DeskPlus Test",
+            from_name="mlamehticket Test",
             from_email="noreply@test.local",
             is_active=True,
             notify_new_ticket=True,

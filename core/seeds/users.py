@@ -1,4 +1,4 @@
-from accounts.models import User
+﻿from accounts.models import User
 from core.seeds import data
 
 
@@ -6,7 +6,7 @@ def _upsert_user(username, password, role, user_type, branch=None, department=No
     user, created = User.objects.get_or_create(
         username=username,
         defaults={
-            "email": f"{username}@deskplus.local",
+            "email": f"{username}@mlamehticket.local",
             "user_type": user_type,
             "status": User.Status.ACTIVE,
             "role": role,

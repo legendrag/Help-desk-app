@@ -1,7 +1,7 @@
-<#
-    build.ps1 — Build DeskPlus installer (Monolithic version).
+﻿<#
+    build.ps1 — Build mlamehticket installer (Monolithic version).
     Prerequisites: Inno Setup 6 installed.
-    Output: installer\Output\DeskPlusSetup.exe
+    Output: installer\Output\mlamehticketSetup.exe
 #>
 
 $ErrorActionPreference = "Stop"
@@ -58,7 +58,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup compilation failed with exit code $LASTEXITCODE"
 }
 
-$outputExe = Join-Path $installerDir "Output\DeskPlusSetup.exe"
+$outputExe = Join-Path $installerDir "Output\mlamehticketSetup.exe"
 if (Test-Path $outputExe) {
     Write-Host ""
     Write-Host "============================================" -ForegroundColor Green

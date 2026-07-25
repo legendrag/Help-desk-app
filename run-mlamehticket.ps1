@@ -1,7 +1,7 @@
-<#
-    run-deskplus.ps1 — Production launcher for the monolithic DeskPlus system.
+﻿<#
+    run-mlamehticket.ps1 — Production launcher for the monolithic mlamehticket system.
     This script starts the Daphne ASGI server which supports both HTTP and WebSockets.
-    Usage: .\run-deskplus.ps1 [-NoBrowser]
+    Usage: .\run-mlamehticket.ps1 [-NoBrowser]
 #>
 param(
     [switch]$NoBrowser
@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "[DESKPLUS] $Message" -ForegroundColor Cyan
+    Write-Host "[mlamehticket] $Message" -ForegroundColor Cyan
 }
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -37,7 +37,7 @@ if (!(Test-Path $pythonPath)) {
 }
 
 # ── Start Server ──────────────────────────────────────────────────
-Write-Step "Starting DeskPlus Production Server (Daphne)..."
+Write-Step "Starting mlamehticket Production Server (Daphne)..."
 Write-Step "Address: http://0.0.0.0:8000"
 Write-Step "(Supports Real-time Chat & Notifications)"
 

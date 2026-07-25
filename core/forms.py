@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 from .models import Branch, Department, Category, Role, EmailSetting
 
 def _style_fields(form):
@@ -189,7 +189,7 @@ class EmailSettingForm(forms.ModelForm):
             'smtp_port': forms.NumberInput(attrs={'placeholder': 'e.g., 587'}),
             'smtp_email': forms.EmailInput(attrs={'placeholder': 'sender@example.com'}),
             'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
-            'from_name': forms.TextInput(attrs={'placeholder': 'e.g., DeskPlus Support'}),
+            'from_name': forms.TextInput(attrs={'placeholder': 'e.g., mlamehticket Support'}),
             'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
         }
 

@@ -50,10 +50,11 @@ self.addEventListener('push', event => {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // Suppress OS toast only when the recipient is visibly in that ticket chat.
-                // Everywhere else (list, other ticket, background, other app) → show toast.
+                // Suppress OS toast only when the recipient is visibly in that ticket chat
+                // (/tickets/<id>). List pages like /tickets/ (announcements) still toast.
                 const normTarget = String(targetUrl || "/").replace(/\/+$/, '') || "/";
-                const isInThatChat = windowClients.some(client => {
+                const isTicketDetail = /^\/tickets\/\d+$/.test(normTarget);
+                const isInThatChat = isTicketDetail && windowClients.some(client => {
                     if (client.visibilityState !== 'visible') return false;
                     try {
                         const path = new URL(client.url).pathname.replace(/\/+$/, '') || "/";

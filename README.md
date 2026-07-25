@@ -1,6 +1,6 @@
-# DeskPlus
+﻿# mlamehticket
 
-DeskPlus is a modern, high-performance ticket management platform built with **Django**, **HTMX**, and **Vanilla JavaScript**.
+mlamehticket is a modern, high-performance ticket management platform built with **Django**, **HTMX**, and **Vanilla JavaScript**.
 
 ## Core Architecture
 - **Backend:** Python + Django (Monolithic Server-Side Rendering)
@@ -60,7 +60,7 @@ python manage.py runserver
 | `DEBUG` | Enable/Disable debug mode | `1` |
 | `SECRET_KEY` | Django unique secret key | `change-me` |
 | `DB_ENGINE` | `sqlite` or `mysql` | `sqlite` |
-| `DB_NAME` | Database name | `deskplus` |
+| `DB_NAME` | Database name | `mlamehticket` |
 | `DB_HOST` | Database host | `localhost` |
 | `DB_PORT` | Database port | `3306` |
 | `DB_USER` | Database user | `root` |
@@ -78,14 +78,14 @@ SQLite is used by default for development. For production, switch to MySQL:
 
 Ensure the database uses **utf8mb4** charset:
 ```sql
-CREATE DATABASE deskplus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE mlamehticket CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ### 2) Configure `.env`
 ```env
 DB_ENGINE=mysql
-DB_NAME=deskplus
-DB_USER=deskplus_user
+DB_NAME=mlamehticket
+DB_USER=mlamehticket_user
 DB_PASSWORD=your-secure-password
 DB_HOST=localhost
 DB_PORT=3306

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Notification System
  * Real-time notifications via WebSocket with type-based icons,
  * relative timestamps, swipe-to-delete (mobile), and notification sound.
@@ -399,10 +399,12 @@ function initNotifications() {
         const data = JSON.parse(e.data);
         console.log("[Notifications WS] message:", data);
 
-        // Fix Bug 2: exact path matching for suppression
-        const currentPath = window.location.pathname.replace(/\/+$/, '');
-        const dataLink = data.link ? data.link.replace(/\/+$/, '') : null;
-        const isRelatedPage = dataLink && currentPath === dataLink;
+        // Suppress only when already viewing that ticket chat (/tickets/<id>).
+        // List pages like /tickets/ (announcements) must still toast.
+        const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const dataLink = data.link ? data.link.replace(/\/+$/, '') || '/' : null;
+        const isTicketDetail = dataLink && /^\/tickets\/\d+$/.test(dataLink);
+        const isRelatedPage = isTicketDetail && currentPath === dataLink;
         const isVisible = document.visibilityState === 'visible';
 
         if (isRelatedPage && isVisible) {
@@ -634,14 +636,14 @@ function initWebPush() {
             let subscription = await reg.pushManager.getSubscription();
 
             // Fallback cross-browser check: compare VAPID key using localStorage (essential for iOS Safari)
-            const savedVapidKey = localStorage.getItem("deskplus_vapid_key");
+            const savedVapidKey = localStorage.getItem("mlamehticket_vapid_key");
             if (savedVapidKey !== vapidKey) {
                 console.log("[WebPush] VAPID key change detected via localStorage. Resubscribing...");
                 if (subscription) {
                     await subscription.unsubscribe();
                     subscription = null;
                 }
-                localStorage.setItem("deskplus_vapid_key", vapidKey);
+                localStorage.setItem("mlamehticket_vapid_key", vapidKey);
             }
 
             if (subscription) {

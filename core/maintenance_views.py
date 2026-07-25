@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import shutil
 import tempfile
@@ -75,7 +75,7 @@ class ExportTicketsView(MaintenancePermissionMixin, View):
         try:
             lines = []
             lines.append("=" * 80)
-            lines.append("DESKPLUS — TICKETS & MESSAGES EXPORT")
+            lines.append("mlamehticket — TICKETS & MESSAGES EXPORT")
             lines.append(f"Exported on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
             lines.append(f"Exported by: {request.user.username}")
             lines.append("=" * 80)

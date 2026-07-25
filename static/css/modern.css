@@ -322,6 +322,22 @@ button, .btn {
   padding: 1.5rem 1rem;
 }
 
+/* Soft cue on the clicked control */
+a.is-navigating,
+.clickable-row.is-navigating,
+.kb-back-navigation.is-navigating,
+.kb-back-link.is-navigating {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+/* Anti-spam while a full-page nav is in flight (cleared after stall timeout / pagehide) */
+body.is-page-navigating a[href]:not([data-no-loading]):not([target="_blank"]),
+body.is-page-navigating .clickable-row {
+  pointer-events: none;
+  cursor: wait;
+}
+
 /* Dashboard Enhancements */
 .stat-card {
   border-radius: 16px;
@@ -2843,8 +2859,15 @@ a.kb-article-card:hover {
 
 @media (max-width: 768px) {
   /* ── Touch Targets & Spacing ── */
-  button, .btn, .btn-link, input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-control, .sidebar-action-btn {
+  button:not(.password-toggle), .btn, .btn-link, input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-control, .sidebar-action-btn {
     min-height: 48px !important;
+  }
+
+  .password-toggle {
+    min-height: 28px !important;
+    height: 28px !important;
+    width: 28px !important;
+    padding: 0.2rem !important;
   }
   .form-group label:not(.checkbox-label) {
     margin-bottom: 0.5rem;

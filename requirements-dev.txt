@@ -1,4 +1,4 @@
-# Dev / lint tooling (not required to run DeskPlus)
+﻿# Dev / lint tooling (not required to run mlamehticket)
 -r requirements.txt
 djlint==1.36.4
 cssbeautifier==2.0.3

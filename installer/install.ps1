@@ -1,5 +1,5 @@
-<#
-    install.ps1 — Post-installation script for DeskPlus.
+﻿<#
+    install.ps1 — Post-installation script for mlamehticket.
     Run automatically by Inno Setup after file extraction.
     Sets up Python venv, installs deps, configures DB, runs migrations.
 #>
@@ -14,7 +14,7 @@ function Write-Step {
     Write-Host "[INSTALL] $Message" -ForegroundColor Cyan
 }
 
-Write-Step "Starting DeskPlus post-install setup..."
+Write-Step "Starting mlamehticket post-install setup..."
 Write-Step "Install directory: $InstallDir"
 
 # ── Create .env from template ──────────────────────────────────────
@@ -66,7 +66,7 @@ Write-Step "Seeding initial data..."
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
-Write-Host "  DeskPlus installation completed!" -ForegroundColor Green
+Write-Host "  mlamehticket installation completed!" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "IMPORTANT: Before first run, edit .env file:"
