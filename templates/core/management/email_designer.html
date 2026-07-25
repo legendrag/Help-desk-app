@@ -5,17 +5,30 @@
     <div class="section-header mgmt-section-header">
         <div>
             <h2 class="mgmt-section-title">Email Format</h2>
-            <p class="mgmt-section-subtitle">Edit how notification emails look and what they say.</p>
+            <p class="mgmt-section-subtitle">Click the sample email to rewrite it. Changes apply to future notifications.</p>
         </div>
     </div>
 
     <form class="email-brand-strip" id="email-brand-form">
         {% csrf_token %}
+        <div class="email-brand-strip__head">
+            <div>
+                <p class="email-brand-strip__eyebrow">Brand look</p>
+                <p class="email-brand-strip__desc">Shared header color, name, and footer for every notification.</p>
+            </div>
+            <div class="email-brand-strip__actions">
+                <span class="email-save-status" id="email-brand-status" hidden></span>
+                {% if can_edit_email_format %}
+                <button type="submit" class="btn secondary small" id="email-brand-save-btn" disabled>Save look</button>
+                {% endif %}
+            </div>
+        </div>
         <div class="email-brand-strip__fields">
             <label class="email-brand-field">
                 <span>Brand name</span>
                 <input type="text" name="brand_name" id="email-brand-name" class="form-control"
                        value="{{ email_brand.brand_name }}"
+                       autocomplete="organization"
                        {% if not can_edit_email_format %}disabled{% endif %}>
             </label>
             <label class="email-brand-field email-brand-field--color">
@@ -26,6 +39,7 @@
                            {% if not can_edit_email_format %}disabled{% endif %}>
                     <input type="text" name="accent_color" id="email-brand-accent" class="form-control"
                            value="{{ email_brand.accent_color }}" spellcheck="false"
+                           inputmode="text" pattern="#[0-9A-Fa-f]{6}"
                            {% if not can_edit_email_format %}disabled{% endif %}>
                 </div>
             </label>
@@ -36,9 +50,6 @@
                        {% if not can_edit_email_format %}disabled{% endif %}>
             </label>
         </div>
-        {% if can_edit_email_format %}
-        <button type="submit" class="btn secondary small" id="email-brand-save-btn">Save look</button>
-        {% endif %}
     </form>
 
     <div class="email-designer__workspace">
@@ -53,19 +64,44 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <p class="email-type-list__heading">Tickets</p>
             <ul class="email-type-list__items">
                 {% for item in email_event_types %}
+                {% if item.group == "ticket" %}
                 <li>
                     <button type="button"
                             class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
                             data-event-type="{{ item.event_type }}"
                             hx-get="{% url 'email_designer_canvas' item.event_type %}"
                             hx-target="#email-canvas-host"
-                            hx-swap="innerHTML">
+                            hx-swap="innerHTML"
+                            hx-indicator="#email-canvas-host">
                         <span class="email-type-btn__label">{{ item.label }}</span>
                         <span class="email-type-btn__purpose">{{ item.purpose }}</span>
                     </button>
                 </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+
+            <p class="email-type-list__heading email-type-list__heading--spaced">News</p>
+            <ul class="email-type-list__items">
+                {% for item in email_event_types %}
+                {% if item.group == "announcement" %}
+                <li>
+                    <button type="button"
+                            class="email-type-btn{% if item.event_type == selected_email_type %} is-active{% endif %}"
+                            data-event-type="{{ item.event_type }}"
+                            hx-get="{% url 'email_designer_canvas' item.event_type %}"
+                            hx-target="#email-canvas-host"
+                            hx-swap="innerHTML"
+                            hx-indicator="#email-canvas-host">
+                        <span class="email-type-btn__label">{{ item.label }}</span>
+                        <span class="email-type-btn__purpose">{{ item.purpose }}</span>
+                    </button>
+                </li>
+                {% endif %}
                 {% endfor %}
             </ul>
         </aside>

@@ -1,72 +1,130 @@
 {% load static %}
 <div class="email-canvas" id="email-canvas"
      data-event-type="{{ event_type }}"
+     data-event-group="{{ event_meta.group }}"
      data-save-url="{% url 'email_message_save' event_type %}"
      data-can-edit="{{ can_edit_email_format|yesno:'true,false' }}">
-    <div class="email-canvas__toolbar">
-        <div class="email-insert-menu" id="email-insert-menu" hidden>
-            <span class="email-insert-menu__label">Insert</span>
+
+    <div class="email-canvas__chrome">
+        <div class="email-canvas__chrome-left">
+            <p class="email-canvas__type-label">{{ event_meta.label }}</p>
+            <p class="email-canvas__type-purpose">{{ event_meta.purpose }}</p>
+        </div>
+        <div class="email-canvas__chrome-right">
+            <span class="email-save-status" id="email-message-status" hidden></span>
+            {% if can_edit_email_format %}
+            <button type="button" class="btn primary small" id="email-message-save-btn" disabled>Save this email</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if can_edit_email_format %}
+    <div class="email-insert-bar" id="email-insert-menu" data-active="false">
+        <div class="email-insert-bar__meta">
+            <span class="email-insert-bar__label">Insert field</span>
+            <span class="email-insert-bar__hint" id="email-insert-hint">Click highlighted text below, then add a field</span>
+        </div>
+        <div class="email-insert-bar__chips" role="toolbar" aria-label="Insert merge fields">
             {% for field in merge_fields %}
-            <button type="button" class="email-merge-chip-btn" data-merge-key="{{ field.key }}" data-merge-label="{{ field.label }}">
-                + {{ field.label }}
+            <button type="button"
+                    class="email-merge-chip-btn"
+                    data-merge-key="{{ field.key }}"
+                    data-merge-label="{{ field.label }}"
+                    title="Insert {{ field.label }}">
+                {{ field.label }}
             </button>
             {% endfor %}
         </div>
-        {% if can_edit_email_format %}
-        <button type="button" class="btn primary small" id="email-message-save-btn">Save this email</button>
-        {% endif %}
     </div>
+    {% endif %}
 
-    <div class="email-canvas__mail" style="--email-accent: {{ brand.accent_color }};">
-        <div class="email-canvas__subject-row">
-            <span class="email-canvas__subject-label">Subject</span>
-            <div class="email-canvas__region{% if can_edit_email_format %} is-editable{% endif %}"
-                 data-region="subject"
-                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
-                 role="textbox"
-                 aria-label="Email subject">{{ region_html.subject|safe }}</div>
-        </div>
-        <div class="email-canvas__header" data-brand-accent>
-            <span data-brand-name>{{ brand.brand_name }}</span>
-        </div>
-        <div class="email-canvas__body">
-            <div class="email-canvas__region email-canvas__title{% if can_edit_email_format %} is-editable{% endif %}"
-                 data-region="title"
-                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
-                 role="textbox"
-                 aria-label="Email title">{{ region_html.title|safe }}</div>
-            <div class="email-canvas__region email-canvas__opening{% if can_edit_email_format %} is-editable{% endif %}"
-                 data-region="opening"
-                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
-                 role="textbox"
-                 aria-label="Opening text">{{ region_html.opening|safe }}</div>
-
-            <table class="email-canvas__details" role="presentation">
-                <tr><th>Ticket</th><td>TK-1042</td></tr>
-                <tr><th>Status</th><td>In Progress</td></tr>
-                <tr><th>Priority</th><td>High</td></tr>
-                <tr><th>Department</th><td>IT Support</td></tr>
-            </table>
-
-            <div class="email-canvas__message" data-brand-border>
-                <div class="email-canvas__region email-canvas__message-label{% if can_edit_email_format %} is-editable{% endif %}"
-                     data-region="message_label"
-                     {% if can_edit_email_format %}contenteditable="true"{% endif %}
+    <div class="email-canvas__stage">
+        <div class="email-canvas__mail" style="--email-accent: {{ brand.accent_color }};">
+            <div class="email-canvas__subject-row">
+                <span class="email-canvas__subject-label">Subject</span>
+                <div class="email-canvas__region{% if can_edit_email_format %} is-editable{% endif %}"
+                     data-region="subject"
+                     data-region-label="Subject line"
+                     {% if can_edit_email_format %}contenteditable="true" spellcheck="true"{% endif %}
                      role="textbox"
-                     aria-label="Message label">{{ region_html.message_label|safe }}</div>
-                <div class="email-canvas__message-body">Sample message body stays as an example.</div>
+                     aria-label="Email subject">{{ region_html.subject|safe }}</div>
             </div>
 
-            <div class="email-canvas__cta-wrap">
-                <div class="email-canvas__region email-canvas__cta{% if can_edit_email_format %} is-editable{% endif %}"
-                     data-region="button_label"
-                     data-brand-accent
-                     {% if can_edit_email_format %}contenteditable="true"{% endif %}
-                     role="textbox"
-                     aria-label="Button text">{{ region_html.button_label|safe }}</div>
+            <div class="email-canvas__meta-row" aria-hidden="true">
+                <span>From</span>
+                <strong data-brand-name>{{ brand.brand_name }}</strong>
+                <span class="email-canvas__meta-sep">·</span>
+                <span>To</span>
+                <strong>you@company.com</strong>
             </div>
+
+            <div class="email-canvas__header" data-brand-accent>
+                <span data-brand-name>{{ brand.brand_name }}</span>
+            </div>
+
+            <div class="email-canvas__body">
+                <div class="email-canvas__region email-canvas__title{% if can_edit_email_format %} is-editable{% endif %}"
+                     data-region="title"
+                     data-region-label="Title"
+                     {% if can_edit_email_format %}contenteditable="true" spellcheck="true"{% endif %}
+                     role="textbox"
+                     aria-label="Email title">{{ region_html.title|safe }}</div>
+                <div class="email-canvas__region email-canvas__opening{% if can_edit_email_format %} is-editable{% endif %}"
+                     data-region="opening"
+                     data-region-label="Opening text"
+                     {% if can_edit_email_format %}contenteditable="true" spellcheck="true"{% endif %}
+                     role="textbox"
+                     aria-label="Opening text">{{ region_html.opening|safe }}</div>
+
+                {% if event_meta.group == "announcement" %}
+                <table class="email-canvas__details email-canvas__details--readonly" role="presentation">
+                    <tr><th>Announcement</th><td>Office closed Friday</td></tr>
+                    <tr><th>Posted by</th><td>Sam Rivera</td></tr>
+                </table>
+                {% else %}
+                <table class="email-canvas__details email-canvas__details--readonly" role="presentation">
+                    <tr><th>Ticket</th><td>TK-1042</td></tr>
+                    <tr><th>Status</th><td>In Progress</td></tr>
+                    <tr><th>Priority</th><td>High</td></tr>
+                    <tr><th>Department</th><td>IT Support</td></tr>
+                </table>
+                {% endif %}
+                <p class="email-canvas__readonly-tag">Example details — not editable</p>
+
+                <div class="email-canvas__message" data-brand-border>
+                    <div class="email-canvas__region email-canvas__message-label{% if can_edit_email_format %} is-editable{% endif %}"
+                         data-region="message_label"
+                         data-region-label="Message label"
+                         {% if can_edit_email_format %}contenteditable="true" spellcheck="true"{% endif %}
+                         role="textbox"
+                         aria-label="Message label">{{ region_html.message_label|safe }}</div>
+                    <div class="email-canvas__message-body">
+                        {% if event_meta.group == "announcement" %}
+                        We will be closed Friday for maintenance. Sample body stays as an example.
+                        {% else %}
+                        The lobby printer is jammed again. Sample message body stays as an example.
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="email-canvas__cta-wrap">
+                    <div class="email-canvas__region email-canvas__cta{% if can_edit_email_format %} is-editable{% endif %}"
+                         data-region="button_label"
+                         data-region-label="Button text"
+                         data-brand-accent
+                         {% if can_edit_email_format %}contenteditable="true" spellcheck="true"{% endif %}
+                         role="textbox"
+                         aria-label="Button text">{{ region_html.button_label|safe }}</div>
+                </div>
+            </div>
+
+            <div class="email-canvas__footer" data-brand-footer>{{ brand.footer_note }}</div>
         </div>
-        <div class="email-canvas__footer" data-brand-footer>{{ brand.footer_note }}</div>
     </div>
-    <p class="email-canvas__hint">Click highlighted text to edit. Use Insert to add ticket details.</p>
+
+    {% if can_edit_email_format %}
+    <p class="email-canvas__hint">Editable areas highlight when you hover. Fields insert as chips — they fill in when the email is sent.</p>
+    {% else %}
+    <p class="email-canvas__hint">You can preview email format here. Editing requires Manage Email permission.</p>
+    {% endif %}
 </div>
