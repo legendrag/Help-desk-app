@@ -1,6 +1,5 @@
 ﻿from core.models import EmailSetting
 from core.seeds import data
-from notifications.email_messages import ensure_email_designer_defaults
 
 
 def seed_email(stdout=None):
@@ -26,11 +25,8 @@ def seed_email(stdout=None):
         setting.is_active = False
         setting.save(update_fields=["is_active"])
 
-    ensure_email_designer_defaults()
-
     if stdout:
         label = "created" if created else "updated"
         stdout.write(f"  Demo email setting ({label}, inactive)")
-        stdout.write("  Email designer defaults ensured")
 
     return setting

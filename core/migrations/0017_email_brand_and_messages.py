@@ -4,12 +4,72 @@ from django.db import migrations, models
 
 
 def seed_email_designer(apps, schema_editor):
-    from notifications.email_messages import (
-        DEFAULT_ACCENT_COLOR,
-        DEFAULT_BRAND_NAME,
-        DEFAULT_EMAIL_MESSAGES,
-        DEFAULT_FOOTER_NOTE,
-    )
+    # Inline defaults so this migration does not depend on app code removed later.
+    default_messages = {
+        "new_ticket": {
+            "subject": "[{{ brand_name }}] New ticket #{{ ticket_number }}: {{ ticket_title }}",
+            "title": "New ticket #{{ ticket_number }}",
+            "opening": "{{ actor_name }} submitted a new request{{ department_suffix }}.",
+            "message_label": "Request",
+            "button_label": "View ticket",
+        },
+        "ticket_picked": {
+            "subject": "[{{ brand_name }}] Ticket #{{ ticket_number }} picked up",
+            "title": "Ticket #{{ ticket_number }} was picked up",
+            "opening": "{{ actor_name }} is now handling this ticket. Status is {{ status }}.",
+            "message_label": "Request",
+            "button_label": "View ticket",
+        },
+        "ticket_message": {
+            "subject": "[{{ brand_name }}] New reply on #{{ ticket_number }}",
+            "title": "New reply on #{{ ticket_number }}",
+            "opening": "{{ actor_name }} replied to this ticket.",
+            "message_label": "Message",
+            "button_label": "View conversation",
+        },
+        "ticket_status": {
+            "subject": "[{{ brand_name }}] Status update on #{{ ticket_number }}: {{ status }}",
+            "title": "Status changed on #{{ ticket_number }}",
+            "opening": "{{ actor_name }} updated the status to {{ status }}.",
+            "message_label": "Request",
+            "button_label": "View ticket",
+        },
+        "ticket_update": {
+            "subject": "[{{ brand_name }}] Update on ticket #{{ ticket_number }}",
+            "title": "Ticket #{{ ticket_number }} was updated",
+            "opening": "{{ actor_name }} updated this ticket.",
+            "message_label": "Update",
+            "button_label": "View ticket",
+        },
+        "transfer_requested": {
+            "subject": "[{{ brand_name }}] Transfer requested: #{{ ticket_number }}",
+            "title": "Transfer requested for #{{ ticket_number }}",
+            "opening": "{{ actor_name }} requested a department transfer.",
+            "message_label": "Request",
+            "button_label": "Review transfer",
+        },
+        "transfer_accepted": {
+            "subject": "[{{ brand_name }}] Transfer accepted: #{{ ticket_number }}",
+            "title": "Transfer accepted for #{{ ticket_number }}",
+            "opening": "{{ actor_name }} accepted the transfer request.",
+            "message_label": "Request",
+            "button_label": "View ticket",
+        },
+        "transfer_denied": {
+            "subject": "[{{ brand_name }}] Transfer declined: #{{ ticket_number }}",
+            "title": "Transfer declined for #{{ ticket_number }}",
+            "opening": "{{ actor_name }} declined the transfer request.",
+            "message_label": "Request",
+            "button_label": "View ticket",
+        },
+        "announcement": {
+            "subject": "[{{ brand_name }}] Announcement: {{ announcement_title }}",
+            "title": "{{ announcement_title }}",
+            "opening": "A new announcement has been posted in {{ brand_name }}.",
+            "message_label": "Announcement",
+            "button_label": "View announcements",
+        },
+    }
 
     EmailBrand = apps.get_model("core", "EmailBrand")
     EmailMessage = apps.get_model("core", "EmailMessage")
@@ -17,12 +77,15 @@ def seed_email_designer(apps, schema_editor):
     if not EmailBrand.objects.filter(pk=1).exists():
         EmailBrand.objects.create(
             pk=1,
-            brand_name=DEFAULT_BRAND_NAME,
-            accent_color=DEFAULT_ACCENT_COLOR,
-            footer_note=DEFAULT_FOOTER_NOTE,
+            brand_name="mlamehticket",
+            accent_color="#4f46e5",
+            footer_note=(
+                "You’re receiving this because email notifications are enabled "
+                "for your mlamehticket account."
+            ),
         )
 
-    for event_type, fields in DEFAULT_EMAIL_MESSAGES.items():
+    for event_type, fields in default_messages.items():
         EmailMessage.objects.get_or_create(
             event_type=event_type,
             defaults={

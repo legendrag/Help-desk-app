@@ -4,8 +4,6 @@ from core.models import (
     Branch,
     Category,
     Department,
-    EmailBrand,
-    EmailMessage,
     EmailSetting,
     Role,
 )
@@ -15,5 +13,3 @@ admin.site.register(Department)
 admin.site.register(Category)
 admin.site.register(Role)
 admin.site.register(EmailSetting)
-admin.site.register(EmailBrand)
-admin.site.register(EmailMessage)
