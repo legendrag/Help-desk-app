@@ -182,7 +182,7 @@ class EmailSettingForm(forms.ModelForm):
             'smtp_host', 'smtp_port', 'smtp_email', 'smtp_password', 
             'encryption', 'from_name', 'from_email', 'is_active',
             'notify_new_ticket', 'notify_ticket_picked', 'notify_ticket_message',
-            'notify_ticket_status', 'notify_ticket_update'
+            'notify_ticket_status', 'notify_ticket_update', 'notify_announcement',
         ]
         widgets = {
             'smtp_host': forms.TextInput(attrs={'placeholder': 'e.g., smtp.gmail.com'}),

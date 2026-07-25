@@ -15,6 +15,7 @@ try:
 except ImportError:
     webpush = None
 from .email_jobs import (
+    send_announcement_email,
     send_new_ticket_email,
     send_ticket_picked_email,
     send_ticket_update_email,
@@ -254,3 +255,41 @@ def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
     message = f"{actor.username} denied the ticket transfer."
     _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "denied")
+
+
+def notify_announcement_created(announcement, actor=None):
+    """Push an in-app notification to users who can see this announcement."""
+    if not announcement.is_active or announcement.is_expired:
+        return
+
+    actor = actor or announcement.created_by
+    users_qs = User.objects.filter(status=User.Status.ACTIVE)
+
+    # Mirror ticket-list banner visibility:
+    # - no target branch → everyone active
+    # - target branch → that branch's users + superusers (support agents do not see it)
+    if announcement.target_branch_id:
+        users_qs = users_qs.filter(
+            Q(branch_id=announcement.target_branch_id) | Q(is_superuser=True)
+        )
+
+    content = (announcement.content or "").strip()
+    if len(content) > 160:
+        message = f"{content[:157]}..."
+    else:
+        message = content or "A new announcement has been posted."
+
+    _notify_users(
+        list(users_qs),
+        f"Announcement: {announcement.title}",
+        message,
+        "/tickets/",
+        notification_type="announcement",
+        exclude_user=actor,
+    )
+
+    _enqueue(
+        send_announcement_email,
+        announcement.id,
+        actor.id if actor else None,
+    )

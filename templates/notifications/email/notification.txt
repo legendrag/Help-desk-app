@@ -1,0 +1,14 @@
+{{ brand_name }}
+{{ headline }}
+
+{% if intro %}{{ intro }}
+
+{% endif %}{% if details %}{% for label, value in details %}{{ label }}: {{ value }}
+{% endfor %}
+{% endif %}{% if message_body %}{% if message_title %}{{ message_title }}
+{% endif %}{{ message_body }}
+
+{% endif %}{% if cta_url %}{{ cta_label }}:
+{{ cta_url }}
+
+{% endif %}{{ footer_note }}

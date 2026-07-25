@@ -145,11 +145,12 @@ class EmailSetting(TimeStampedModel):
     from_name = models.CharField(max_length=255)
     from_email = models.EmailField()
     is_active = models.BooleanField(default=True)
-    notify_new_ticket = models.BooleanField(default=True)
-    notify_ticket_picked = models.BooleanField(default=True)
-    notify_ticket_message = models.BooleanField(default=True)
-    notify_ticket_status = models.BooleanField(default=True)
-    notify_ticket_update = models.BooleanField(default=True)
+    notify_new_ticket = models.BooleanField(default=True, verbose_name="New tickets")
+    notify_ticket_picked = models.BooleanField(default=True, verbose_name="Ticket picked")
+    notify_ticket_message = models.BooleanField(default=True, verbose_name="Ticket messages")
+    notify_ticket_status = models.BooleanField(default=True, verbose_name="Status changes")
+    notify_ticket_update = models.BooleanField(default=True, verbose_name="Ticket updates")
+    notify_announcement = models.BooleanField(default=True, verbose_name="Announcements")
 
     class Meta:
         ordering = ["-updated_at"]

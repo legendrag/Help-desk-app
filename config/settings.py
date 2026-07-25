@@ -19,6 +19,8 @@ DEBUG = os.getenv("DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
+# Absolute site URL used in notification emails (e.g. https://helpdesk.example.com)
+SITE_URL = os.getenv("SITE_URL", "").rstrip("/")
 
 INSTALLED_APPS = [
     "daphne",

@@ -2,6 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
+from notifications.services import notify_announcement_created
 from .models import Announcement
 from .forms import AnnouncementForm
 
@@ -26,6 +27,7 @@ class NewsCreateView(LoginRequiredMixin, NewsPermissionMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         self.object = form.save()
+        notify_announcement_created(self.object, actor=self.request.user)
         if self.request.headers.get("HX-Request"):
             from django.http import HttpResponse
             resp = HttpResponse(status=204)

@@ -1,7 +1,7 @@
 import logging
 import time
 
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMessage, EmailMultiAlternatives, get_connection
 
 from core.models import EmailSetting
 
@@ -32,7 +32,15 @@ def _build_connection(setting: EmailSetting):
     )
 
 
-def send_with_retries(subject, body, recipients, retries=1, delay_seconds=2, setting: EmailSetting | None = None):
+def send_with_retries(
+    subject,
+    body,
+    recipients,
+    retries=1,
+    delay_seconds=2,
+    setting: EmailSetting | None = None,
+    html_body: str | None = None,
+):
     if not recipients:
         return False
 
@@ -42,18 +50,28 @@ def send_with_retries(subject, body, recipients, retries=1, delay_seconds=2, set
         return False
 
     connection = _build_connection(setting)
-
     from_email = f"{setting.from_name} <{setting.from_email}>"
+    unique_recipients = list(set(recipients))
 
     for attempt in range(1, retries + 1):
         try:
-            email = EmailMessage(
-                subject=subject,
-                body=body,
-                from_email=from_email,
-                to=list(set(recipients)),
-                connection=connection,
-            )
+            if html_body:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,
+                    from_email=from_email,
+                    to=unique_recipients,
+                    connection=connection,
+                )
+                email.attach_alternative(html_body, "text/html")
+            else:
+                email = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=from_email,
+                    to=unique_recipients,
+                    connection=connection,
+                )
             email.send(fail_silently=False)
             return True
         except Exception as exc:  # noqa: BLE001

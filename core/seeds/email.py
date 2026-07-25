@@ -18,6 +18,7 @@ def seed_email(stdout=None):
             "notify_ticket_message": True,
             "notify_ticket_status": True,
             "notify_ticket_update": True,
+            "notify_announcement": True,
         },
     )
     if not created:

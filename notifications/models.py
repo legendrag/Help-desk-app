@@ -10,6 +10,7 @@ class InAppNotification(models.Model):
         STATUS_CHANGE = "status_change", "Status Change"
         MESSAGE = "message", "Message"
         TRANSFER = "transfer", "Transfer"
+        ANNOUNCEMENT = "announcement", "Announcement"
         GENERAL = "general", "General"
 
     recipient = models.ForeignKey(

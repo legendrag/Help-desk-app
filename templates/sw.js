@@ -78,18 +78,47 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
     event.notification.close();
 
-    const urlToOpen = event.notification.data.url || "/";
+    const rawUrl = (event.notification.data && event.notification.data.url) || "/";
+    // Push payloads use relative paths ("/tickets/1/"); client.url is absolute.
+    const urlToOpen = new URL(rawUrl, self.location.origin).href;
+    const targetPath = new URL(urlToOpen).pathname.replace(/\/+$/, "") || "/";
 
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            for (let client of windowClients) {
-                if (client.url === urlToOpen && 'focus' in client) {
-                    return client.focus();
+    event.waitUntil((async () => {
+        const windowClients = await clients.matchAll({
+            type: "window",
+            includeUncontrolled: true,
+        });
+
+        // Reuse any already-open same-origin tab/window (installed PWA or browser),
+        // then navigate it to the notification target instead of spawning a duplicate.
+        for (const client of windowClients) {
+            let clientUrl;
+            try {
+                clientUrl = new URL(client.url);
+            } catch (e) {
+                continue;
+            }
+            if (clientUrl.origin !== self.location.origin) {
+                continue;
+            }
+
+            if ("focus" in client) {
+                await client.focus();
+            }
+
+            const clientPath = clientUrl.pathname.replace(/\/+$/, "") || "/";
+            if (clientPath !== targetPath && "navigate" in client) {
+                try {
+                    await client.navigate(urlToOpen);
+                } catch (e) {
+                    console.warn("[SW] Failed to navigate existing client:", e);
                 }
             }
-            if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
-            }
-        })
-    );
+            return;
+        }
+
+        if (clients.openWindow) {
+            await clients.openWindow(urlToOpen);
+        }
+    })());
 });

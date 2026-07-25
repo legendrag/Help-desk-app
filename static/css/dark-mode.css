@@ -632,6 +632,10 @@
   background: rgba(192, 132, 252, 0.15);
   color: #c084fc;
 }
+[data-theme="dark"] .notif-icon-announcement {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
 [data-theme="dark"] .notif-icon-general {
   background: rgba(148, 163, 184, 0.15);
   color: #cbd5e1;
