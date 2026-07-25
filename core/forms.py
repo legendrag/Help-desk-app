@@ -208,9 +208,9 @@ class EmailAppearanceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
-        self.fields["brand_name"].label = "Name shown at the top of emails"
+        self.fields["brand_name"].label = "Brand name"
         self.fields["accent_color"].label = "Accent color"
-        self.fields["footer_note"].label = "Footer text at the bottom"
+        self.fields["footer_note"].label = "Footer text"
 
     def clean_accent_color(self):
         color = (self.cleaned_data.get("accent_color") or "").strip()
@@ -249,15 +249,13 @@ class EmailTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
-        self.fields["subject"].label = "Email subject (inbox line)"
-        self.fields["headline"].label = "Big title inside the email"
-        self.fields["intro"].label = "Opening sentence"
-        self.fields["message_title"].label = "Label above the message"
+        self.fields["subject"].label = "Subject"
+        self.fields["headline"].label = "Title"
+        self.fields["intro"].label = "Opening text"
+        self.fields["message_title"].label = "Message label"
         self.fields["cta_label"].label = "Button text"
         self.fields["is_active"].label = "Use this custom wording"
-        self.fields["is_active"].help_text = (
-            "Turn off to fall back to the built-in default wording for this email."
-        )
+        self.fields["is_active"].help_text = ""
         for name in ("subject", "headline", "intro", "message_title", "cta_label"):
             self.fields[name].widget.attrs["data-email-field"] = name
             self.fields[name].widget.attrs["data-email-insert-target"] = "1"

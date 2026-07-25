@@ -1851,6 +1851,10 @@
   border-color: rgba(148, 163, 184, 0.15);
 }
 
+[data-theme="dark"] .email-editor__field > label {
+  color: #e2e8f0;
+}
+
 [data-theme="dark"] .email-insert-chip {
   background: #1e293b;
   border-color: rgba(148, 163, 184, 0.2);
