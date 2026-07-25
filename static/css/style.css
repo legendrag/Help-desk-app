@@ -933,14 +933,13 @@ textarea:hover:not(:disabled) {
 
 .password-field {
   position: relative;
-  position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
   width: 100%;
 }
 
 .password-field input {
-  padding-right: 2.75rem;
+  width: 100%;
+  padding-right: 3.5rem !important;
 }
 
 .password-toggle {
@@ -951,9 +950,13 @@ textarea:hover:not(:disabled) {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 0.2rem;
-  width: 28px;
-  height: 28px;
+  padding: 0.2rem !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
@@ -961,6 +964,7 @@ textarea:hover:not(:disabled) {
   cursor: pointer;
   z-index: 2;
   box-shadow: none !important;
+  flex-shrink: 0;
   transition: color 0.2s, background-color 0.2s;
 }
 
@@ -1699,7 +1703,7 @@ tr:hover td {
 .auth-form .form-group label {
   font-weight: 600;
   color: #334155;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2583,12 +2587,20 @@ button.success:hover,
   padding-top: 0.5rem;
 }
 
+.password-fields-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
 .checkbox-group-vertical {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   justify-content: flex-end;
   padding-bottom: 0.5rem;
+  grid-column: 1 / -1;
 }
 
 .checkbox-group-vertical .checkbox-field {
@@ -2844,6 +2856,10 @@ button.success:hover,
 
 @media (max-width: 900px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .password-fields-row {
     grid-template-columns: 1fr;
   }
 

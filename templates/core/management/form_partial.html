@@ -348,6 +348,23 @@
                 {% if form.role.errors %}<div class="field-error">{{ form.role.errors }}</div>{% endif %}
             </div>
 
+            {% if form.password1 %}
+            <div class="password-fields-row">
+                <div class="form-group">
+                    <label>{{ form.password1.label }}</label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}<div class="field-error">{{ form.password1.errors }}</div>{% endif %}
+                    {% if form.password1.help_text %}<div class="help-text">{{ form.password1.help_text|safe }}</div>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.password2.label }}</label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}<div class="field-error">{{ form.password2.errors }}</div>{% endif %}
+                    {% if form.password2.help_text %}<div class="help-text">{{ form.password2.help_text|safe }}</div>{% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="form-group checkbox-group-vertical">
                 <div class="checkbox-field">
                     {{ form.status }}
@@ -360,21 +377,6 @@
                     {% if form.requires_password_change.errors %}<div class="field-error">{{ form.requires_password_change.errors }}</div>{% endif %}
                 </div>
             </div>
-
-            {% if form.password1 %}
-            <div class="form-group">
-                <label>{{ form.password1.label }}</label>
-                {{ form.password1 }}
-                {% if form.password1.errors %}<div class="field-error">{{ form.password1.errors }}</div>{% endif %}
-                {% if form.password1.help_text %}<div class="help-text">{{ form.password1.help_text|safe }}</div>{% endif %}
-            </div>
-            <div class="form-group">
-                <label>{{ form.password2.label }}</label>
-                {{ form.password2 }}
-                {% if form.password2.errors %}<div class="field-error">{{ form.password2.errors }}</div>{% endif %}
-                {% if form.password2.help_text %}<div class="help-text">{{ form.password2.help_text|safe }}</div>{% endif %}
-            </div>
-            {% endif %}
         </div>
     </div>
     {% else %}

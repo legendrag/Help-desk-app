@@ -181,8 +181,8 @@ class CustomUserChangeForm(UserChangeForm):
             "last_name": "Last name",
             "email": "user@example.com",
             "phone": "e.g., +01020481863",
-            "password1": "New password (leave blank to keep current)",
-            "password2": "Repeat the new password",
+            "password1": "Leave blank to keep current",
+            "password2": "Repeat new password",
         }
         for fname, ph in _placeholders.items():
             if fname in self.fields:
