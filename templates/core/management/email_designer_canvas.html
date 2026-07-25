@@ -1,0 +1,72 @@
+{% load static %}
+<div class="email-canvas" id="email-canvas"
+     data-event-type="{{ event_type }}"
+     data-save-url="{% url 'email_message_save' event_type %}"
+     data-can-edit="{{ can_edit_email_format|yesno:'true,false' }}">
+    <div class="email-canvas__toolbar">
+        <div class="email-insert-menu" id="email-insert-menu" hidden>
+            <span class="email-insert-menu__label">Insert</span>
+            {% for field in merge_fields %}
+            <button type="button" class="email-merge-chip-btn" data-merge-key="{{ field.key }}" data-merge-label="{{ field.label }}">
+                + {{ field.label }}
+            </button>
+            {% endfor %}
+        </div>
+        {% if can_edit_email_format %}
+        <button type="button" class="btn primary small" id="email-message-save-btn">Save this email</button>
+        {% endif %}
+    </div>
+
+    <div class="email-canvas__mail" style="--email-accent: {{ brand.accent_color }};">
+        <div class="email-canvas__subject-row">
+            <span class="email-canvas__subject-label">Subject</span>
+            <div class="email-canvas__region{% if can_edit_email_format %} is-editable{% endif %}"
+                 data-region="subject"
+                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
+                 role="textbox"
+                 aria-label="Email subject">{{ region_html.subject|safe }}</div>
+        </div>
+        <div class="email-canvas__header" data-brand-accent>
+            <span data-brand-name>{{ brand.brand_name }}</span>
+        </div>
+        <div class="email-canvas__body">
+            <div class="email-canvas__region email-canvas__title{% if can_edit_email_format %} is-editable{% endif %}"
+                 data-region="title"
+                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
+                 role="textbox"
+                 aria-label="Email title">{{ region_html.title|safe }}</div>
+            <div class="email-canvas__region email-canvas__opening{% if can_edit_email_format %} is-editable{% endif %}"
+                 data-region="opening"
+                 {% if can_edit_email_format %}contenteditable="true"{% endif %}
+                 role="textbox"
+                 aria-label="Opening text">{{ region_html.opening|safe }}</div>
+
+            <table class="email-canvas__details" role="presentation">
+                <tr><th>Ticket</th><td>TK-1042</td></tr>
+                <tr><th>Status</th><td>In Progress</td></tr>
+                <tr><th>Priority</th><td>High</td></tr>
+                <tr><th>Department</th><td>IT Support</td></tr>
+            </table>
+
+            <div class="email-canvas__message" data-brand-border>
+                <div class="email-canvas__region email-canvas__message-label{% if can_edit_email_format %} is-editable{% endif %}"
+                     data-region="message_label"
+                     {% if can_edit_email_format %}contenteditable="true"{% endif %}
+                     role="textbox"
+                     aria-label="Message label">{{ region_html.message_label|safe }}</div>
+                <div class="email-canvas__message-body">Sample message body stays as an example.</div>
+            </div>
+
+            <div class="email-canvas__cta-wrap">
+                <div class="email-canvas__region email-canvas__cta{% if can_edit_email_format %} is-editable{% endif %}"
+                     data-region="button_label"
+                     data-brand-accent
+                     {% if can_edit_email_format %}contenteditable="true"{% endif %}
+                     role="textbox"
+                     aria-label="Button text">{{ region_html.button_label|safe }}</div>
+            </div>
+        </div>
+        <div class="email-canvas__footer" data-brand-footer>{{ brand.footer_note }}</div>
+    </div>
+    <p class="email-canvas__hint">Click highlighted text to edit. Use Insert to add ticket details.</p>
+</div>

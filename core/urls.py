@@ -5,6 +5,7 @@ from .management_views import (
     CategoryCreateView, CategoryUpdateView, CategoryDeleteView,
     RoleCreateView, RoleUpdateView, RoleDeleteView,
     EmailSettingCreateView, EmailSettingUpdateView, EmailSettingDeleteView,
+    EmailDesignerCanvasView, EmailBrandSaveView, EmailMessageSaveView,
     BranchListView, DepartmentListView, CategoryListView, RoleListView, EmailSettingListView
 )
 from .maintenance_views import (
@@ -28,6 +29,17 @@ urlpatterns = [
     
     path('email-settings/add/', EmailSettingCreateView.as_view(), name='email_setting_create'),
     path('email-settings/<int:pk>/edit/', EmailSettingUpdateView.as_view(), name='email_setting_update'),
+    path(
+        'email-designer/messages/<slug:event_type>/',
+        EmailDesignerCanvasView.as_view(),
+        name='email_designer_canvas',
+    ),
+    path('email-designer/brand/', EmailBrandSaveView.as_view(), name='email_brand_save'),
+    path(
+        'email-designer/messages/<slug:event_type>/save/',
+        EmailMessageSaveView.as_view(),
+        name='email_message_save',
+    ),
     path('branches/<int:pk>/delete/', BranchDeleteView.as_view(), name='branch_delete'),
     
     path('departments/<int:pk>/delete/', DepartmentDeleteView.as_view(), name='department_delete'),

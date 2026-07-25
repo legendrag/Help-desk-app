@@ -160,3 +160,62 @@ class EmailSetting(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"SMTP {self.smtp_host}:{self.smtp_port}"
+
+
+class EmailBrand(TimeStampedModel):
+    """Singleton branding for notification emails."""
+
+    brand_name = models.CharField(max_length=100, default="mlamehticket")
+    accent_color = models.CharField(max_length=7, default="#4f46e5")
+    footer_note = models.TextField(
+        default=(
+            "You’re receiving this because email notifications are enabled "
+            "for your mlamehticket account."
+        )
+    )
+
+    class Meta:
+        verbose_name = "Email Brand"
+        verbose_name_plural = "Email Brand"
+
+    def __str__(self) -> str:
+        return f"Email brand ({self.brand_name})"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        from notifications.email_messages import ensure_email_designer_defaults
+
+        ensure_email_designer_defaults()
+        return cls.objects.get(pk=1)
+
+
+class EmailMessage(TimeStampedModel):
+    class EventType(models.TextChoices):
+        NEW_TICKET = "new_ticket", "New ticket"
+        TICKET_PICKED = "ticket_picked", "Ticket picked"
+        TICKET_MESSAGE = "ticket_message", "Reply"
+        TICKET_STATUS = "ticket_status", "Status change"
+        TICKET_UPDATE = "ticket_update", "Ticket update"
+        TRANSFER_REQUESTED = "transfer_requested", "Transfer requested"
+        TRANSFER_ACCEPTED = "transfer_accepted", "Transfer accepted"
+        TRANSFER_DENIED = "transfer_denied", "Transfer declined"
+        ANNOUNCEMENT = "announcement", "Announcement"
+
+    event_type = models.CharField(max_length=40, choices=EventType.choices, unique=True)
+    subject = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    opening = models.TextField(blank=True)
+    message_label = models.CharField(max_length=100, blank=True)
+    button_label = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ["event_type"]
+        verbose_name = "Email Message"
+        verbose_name_plural = "Email Messages"
+
+    def __str__(self) -> str:
+        return self.get_event_type_display()

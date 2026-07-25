@@ -4,6 +4,12 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
 
+from notifications.email_messages import (
+    DEFAULT_ACCENT_COLOR,
+    DEFAULT_BRAND_NAME,
+    DEFAULT_FOOTER_NOTE,
+    get_email_brand,
+)
 from notifications.utils import format_status_label
 
 
@@ -81,6 +87,22 @@ def ticket_details(ticket) -> list[tuple[str, str]]:
     return rows
 
 
+def ticket_placeholder_context(ticket, actor=None, *, status: str | None = None) -> dict:
+    department = ticket.department.name if ticket.department_id else ""
+    status_label = status
+    if status_label is None:
+        status_label = format_status_label(ticket.status) or ticket.status
+    actor_user = actor if actor is not None else ticket.created_by
+    return {
+        "ticket_number": ticket.ticket_number,
+        "ticket_title": truncate_text(ticket.title, 80),
+        "actor_name": display_name(actor_user),
+        "status": status_label or "",
+        "department": department,
+        "department_suffix": f" for {department}" if department else "",
+    }
+
+
 def render_notification_email(
     *,
     headline: str,
@@ -90,10 +112,14 @@ def render_notification_email(
     message_body: str = "",
     cta_url: str = "",
     cta_label: str = "Open in mlamehticket",
-    footer_note: str = "You’re receiving this because email notifications are enabled for your mlamehticket account.",
+    footer_note: str = "",
+    brand_name: str = "",
+    accent_color: str = "",
 ) -> tuple[str, str]:
+    brand = get_email_brand()
     context = {
-        "brand_name": "mlamehticket",
+        "brand_name": brand_name or brand.brand_name or DEFAULT_BRAND_NAME,
+        "accent_color": accent_color or brand.accent_color or DEFAULT_ACCENT_COLOR,
         "headline": headline,
         "intro": intro,
         "details": details or [],
@@ -101,7 +127,7 @@ def render_notification_email(
         "message_body": message_body,
         "cta_url": cta_url,
         "cta_label": cta_label,
-        "footer_note": footer_note,
+        "footer_note": footer_note or brand.footer_note or DEFAULT_FOOTER_NOTE,
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)

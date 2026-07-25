@@ -1,5 +1,15 @@
-﻿from django import forms
-from .models import Branch, Department, Category, Role, EmailSetting
+﻿import re
+
+from django import forms
+from .models import (
+    Branch,
+    Department,
+    Category,
+    Role,
+    EmailBrand,
+    EmailMessage,
+    EmailSetting,
+)
 
 def _style_fields(form):
     for name, field in form.fields.items():
@@ -192,4 +202,63 @@ class EmailSettingForm(forms.ModelForm):
             'from_name': forms.TextInput(attrs={'placeholder': 'e.g., mlamehticket Support'}),
             'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
         }
+
+
+class EmailBrandForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+    def clean_accent_color(self):
+        color = (self.cleaned_data.get("accent_color") or "").strip()
+        if not re.match(r"^#[0-9A-Fa-f]{6}$", color):
+            raise forms.ValidationError("Enter a valid hex color like #4f46e5.")
+        return color.lower()
+
+    def clean_brand_name(self):
+        name = (self.cleaned_data.get("brand_name") or "").strip()
+        if not name:
+            raise forms.ValidationError("Brand name is required.")
+        return name
+
+    class Meta:
+        model = EmailBrand
+        fields = ["brand_name", "accent_color", "footer_note"]
+
+
+class EmailMessageForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+    def _reject_tags(self, value: str, label: str) -> str:
+        value = (value or "").strip()
+        if "{%" in value or "%}" in value:
+            raise forms.ValidationError(f"{label} contains unsupported template tags.")
+        return value
+
+    def clean_subject(self):
+        subject = self._reject_tags(self.cleaned_data.get("subject"), "Subject")
+        if not subject:
+            raise forms.ValidationError("Subject is required.")
+        return subject
+
+    def clean_title(self):
+        title = self._reject_tags(self.cleaned_data.get("title"), "Title")
+        if not title:
+            raise forms.ValidationError("Title is required.")
+        return title
+
+    def clean_opening(self):
+        return self._reject_tags(self.cleaned_data.get("opening"), "Opening text")
+
+    def clean_message_label(self):
+        return self._reject_tags(self.cleaned_data.get("message_label"), "Message label")
+
+    def clean_button_label(self):
+        return self._reject_tags(self.cleaned_data.get("button_label"), "Button text")
+
+    class Meta:
+        model = EmailMessage
+        fields = ["subject", "title", "opening", "message_label", "button_label"]
 

@@ -1,9 +1,29 @@
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
-from django.http import HttpResponse
-from .models import Branch, Department, Category, Role, EmailSetting
-from .forms import BranchForm, DepartmentForm, CategoryForm, RoleForm, EmailSettingForm
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
+
+from notifications.email_messages import (
+    EVENT_META,
+    chips_html_to_tokens,
+    ensure_email_designer_defaults,
+    get_email_brand,
+    merge_fields_for_event,
+    render_token_string,
+    sample_context_for_event,
+    tokens_to_chips_html,
+)
+from .models import Branch, Department, Category, Role, EmailBrand, EmailMessage, EmailSetting
+from .forms import (
+    BranchForm,
+    DepartmentForm,
+    CategoryForm,
+    RoleForm,
+    EmailBrandForm,
+    EmailMessageForm,
+    EmailSettingForm,
+)
 
 class BaseSettingsRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -291,6 +311,48 @@ class RoleListView(RolePermissionMixin, LoginRequiredMixin, ListView):
         return context
 
 
+def _can_manage_email(user) -> bool:
+    return bool(
+        user.is_superuser or (user.role and user.role.can_manage_email)
+    )
+
+
+def _designer_canvas_context(event_type: str, can_edit: bool) -> dict:
+    ensure_email_designer_defaults()
+    brand = get_email_brand()
+    message = get_object_or_404(EmailMessage, event_type=event_type)
+    meta = next((m for m in EVENT_META if m["event_type"] == event_type), None)
+    if not meta:
+        raise Http404("Unknown email type")
+    sample = sample_context_for_event(event_type, brand.brand_name)
+    return {
+        "brand": brand,
+        "message": message,
+        "event_meta": meta,
+        "event_type": event_type,
+        "merge_fields": merge_fields_for_event(event_type),
+        "can_edit_email_format": can_edit,
+        "region_html": {
+            "subject": tokens_to_chips_html(message.subject, event_type),
+            "title": tokens_to_chips_html(message.title, event_type),
+            "opening": tokens_to_chips_html(message.opening, event_type),
+            "message_label": tokens_to_chips_html(message.message_label, event_type),
+            "button_label": tokens_to_chips_html(message.button_label, event_type),
+        },
+        "sample_preview": {
+            "subject": render_token_string(message.subject, sample, fallback=message.subject),
+            "title": render_token_string(message.title, sample, fallback=message.title),
+            "opening": render_token_string(message.opening, sample, fallback=message.opening),
+            "message_label": render_token_string(
+                message.message_label, sample, fallback=message.message_label or "Request"
+            ),
+            "button_label": render_token_string(
+                message.button_label, sample, fallback=message.button_label or "Open"
+            ),
+        },
+    }
+
+
 class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
     model = EmailSetting
     template_name = "core/management/email_settings_list.html"
@@ -303,12 +365,69 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        can_manage = _can_manage_email(self.request.user)
+        ensure_email_designer_defaults()
+        selected = self.request.GET.get("email_type") or "new_ticket"
+        if not any(m["event_type"] == selected for m in EVENT_META):
+            selected = "new_ticket"
         context.update({
             'model_name': 'Email Settings',
             'create_url': reverse_lazy('email_setting_create'),
             'edit_url_prefix': '/core/email-settings/',
-            'can_add': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
-            'can_edit': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
-            'can_delete': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_manage_email),
+            'can_add': can_manage,
+            'can_edit': can_manage,
+            'can_delete': can_manage,
+            'can_edit_email_format': can_manage,
+            'email_brand': get_email_brand(),
+            'email_event_types': EVENT_META,
+            'selected_email_type': selected,
+            **_designer_canvas_context(selected, can_manage),
         })
         return context
+
+
+class EmailDesignerCanvasView(EmailPermissionMixin, LoginRequiredMixin, View):
+    def get(self, request, event_type):
+        can_manage = _can_manage_email(request.user)
+        context = _designer_canvas_context(event_type, can_manage)
+        context["email_brand"] = context["brand"]
+        return render(request, "core/management/email_designer_canvas.html", context)
+
+
+class EmailBrandSaveView(EmailPermissionMixin, LoginRequiredMixin, View):
+    def post(self, request):
+        brand = EmailBrand.load()
+        form = EmailBrandForm(request.POST, instance=brand)
+        if not form.is_valid():
+            return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+        form.save()
+        if request.headers.get("HX-Request"):
+            resp = HttpResponse(status=204)
+            resp["HX-Trigger"] = "emailDesignerSaved"
+            return resp
+        return JsonResponse({"ok": True})
+
+
+class EmailMessageSaveView(EmailPermissionMixin, LoginRequiredMixin, View):
+    def post(self, request, event_type):
+        message = get_object_or_404(EmailMessage, event_type=event_type)
+        data = {
+            "subject": chips_html_to_tokens(request.POST.get("subject_html", "")),
+            "title": chips_html_to_tokens(request.POST.get("title_html", "")),
+            "opening": chips_html_to_tokens(request.POST.get("opening_html", "")),
+            "message_label": chips_html_to_tokens(request.POST.get("message_label_html", "")),
+            "button_label": chips_html_to_tokens(request.POST.get("button_label_html", "")),
+        }
+        # Also accept plain token fields if posted directly.
+        for key in ("subject", "title", "opening", "message_label", "button_label"):
+            if request.POST.get(key) is not None and not request.POST.get(f"{key}_html"):
+                data[key] = request.POST.get(key, "")
+        form = EmailMessageForm(data, instance=message)
+        if not form.is_valid():
+            return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+        form.save()
+        if request.headers.get("HX-Request"):
+            resp = HttpResponse(status=204)
+            resp["HX-Trigger"] = "emailDesignerSaved"
+            return resp
+        return JsonResponse({"ok": True})

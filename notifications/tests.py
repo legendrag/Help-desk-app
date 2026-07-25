@@ -1,12 +1,20 @@
 ﻿from unittest.mock import patch
 
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 
 from accounts.models import User
-from core.models import Branch, Category, Department, EmailSetting
+from core.models import Branch, Category, Department, EmailBrand, EmailMessage, EmailSetting, Role
 from news.models import Announcement
 from notifications.email_content import render_notification_email
 from notifications.email_jobs import send_announcement_email, send_new_ticket_email
+from notifications.email_messages import (
+    chips_html_to_tokens,
+    ensure_email_designer_defaults,
+    render_token_string,
+    resolve_message_copy,
+    tokens_to_chips_html,
+)
 from notifications.models import InAppNotification
 from notifications.services import notify_announcement_created
 from tickets.models import Ticket
@@ -235,3 +243,217 @@ class EmailContentTests(TestCase):
         self.assertIn("https://helpdesk.example.com/tickets/", body)
         self.assertIn("View ticket", html_body)
         self.assertIn("High", body)
+
+
+class EmailDesignerHelperTests(TestCase):
+    def test_chip_token_round_trip(self):
+        original = "[{{ brand_name }}] New ticket #{{ ticket_number }}"
+        html = tokens_to_chips_html(original, "new_ticket")
+        self.assertIn('data-merge-key="brand_name"', html)
+        self.assertIn("App name", html)
+        restored = chips_html_to_tokens(html)
+        self.assertIn("{{ brand_name }}", restored)
+        self.assertIn("{{ ticket_number }}", restored)
+
+    def test_render_token_string_fallback(self):
+        self.assertEqual(render_token_string("", {}, fallback="x"), "x")
+        self.assertEqual(
+            render_token_string("{{ name|missing }}", {"name": "a"}, fallback="fallback"),
+            "fallback",
+        )
+        self.assertEqual(
+            render_token_string("{% if x %}y{% endif %}", {}, fallback="fallback"),
+            "fallback",
+        )
+
+
+class EmailDesignerSendTests(TestCase):
+    def setUp(self):
+        ensure_email_designer_defaults()
+        brand = EmailBrand.load()
+        brand.brand_name = "AcmeDesk"
+        brand.accent_color = "#0d9488"
+        brand.footer_note = "Custom footer."
+        brand.save()
+
+        msg = EmailMessage.objects.get(event_type="new_ticket")
+        msg.subject = "[{{ brand_name }}] OPEN #{{ ticket_number }}"
+        msg.title = "Opened #{{ ticket_number }}"
+        msg.opening = "{{ actor_name }} filed {{ ticket_title }}."
+        msg.button_label = "Inspect ticket"
+        msg.save()
+
+        self.branch = Branch.objects.create(code="ED", name="Designer Branch")
+        self.department = Department.objects.create(name="Designer Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Designer Cat",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.creator = User.objects.create_user(
+            username="designer_creator",
+            email="designer_creator@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+            first_name="Sam",
+            last_name="Requester",
+        )
+        User.objects.create_user(
+            username="designer_support",
+            email="designer_support@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+        EmailSetting.objects.create(
+            smtp_host="smtp.test.local",
+            smtp_port=587,
+            smtp_email="noreply@test.local",
+            smtp_password="secret",
+            encryption="tls",
+            from_name="Test",
+            from_email="noreply@test.local",
+            is_active=True,
+            notify_new_ticket=True,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-DESIGN-1",
+            title="VPN down",
+            description="Cannot connect.",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.creator,
+            priority=Ticket.Priority.MEDIUM,
+            client_name="Client",
+            client_phone="555",
+        )
+
+    @patch("notifications.email_jobs.send_with_retries")
+    def test_custom_message_and_brand_used(self, send_with_retries):
+        send_with_retries.return_value = True
+        sent = send_new_ticket_email(self.ticket.id)
+        self.assertTrue(sent)
+        subject, body, _recipients = send_with_retries.call_args.args[:3]
+        html_body = send_with_retries.call_args.kwargs["html_body"]
+        self.assertEqual(subject, "[AcmeDesk] OPEN #TK-DESIGN-1")
+        self.assertIn("Opened #TK-DESIGN-1", body)
+        self.assertIn("Sam Requester filed VPN down.", body)
+        self.assertIn("Inspect ticket", html_body)
+        self.assertIn("#0d9488", html_body)
+        self.assertIn("AcmeDesk", html_body)
+        self.assertIn("Custom footer.", html_body)
+
+    def test_broken_message_falls_back(self):
+        msg = EmailMessage.objects.get(event_type="new_ticket")
+        msg.subject = "{{ ticket_number|missing_filter }}"
+        msg.save(update_fields=["subject"])
+        copy = resolve_message_copy(
+            "new_ticket",
+            {"ticket_number": "1", "ticket_title": "t", "actor_name": "A", "department_suffix": ""},
+            defaults={
+                "subject": "FALLBACK",
+                "title": "t",
+                "opening": "o",
+                "message_label": "m",
+                "button_label": "b",
+            },
+        )
+        self.assertEqual(copy["subject"], "FALLBACK")
+        self.assertEqual(copy["brand_name"], "AcmeDesk")
+
+
+class EmailDesignerPermissionTests(TestCase):
+    def setUp(self):
+        ensure_email_designer_defaults()
+        self.client = Client()
+        self.viewer_role = Role.objects.create(
+            name="Settings Viewer",
+            can_access_settings=True,
+            can_manage_email=False,
+        )
+        self.manager_role = Role.objects.create(
+            name="Email Manager",
+            can_access_settings=True,
+            can_manage_email=True,
+        )
+        self.viewer = User.objects.create_user(
+            username="ed_viewer",
+            email="ed_viewer@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            role=self.viewer_role,
+        )
+        self.manager = User.objects.create_user(
+            username="ed_manager",
+            email="ed_manager@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            role=self.manager_role,
+        )
+
+    def test_viewer_cannot_save_brand(self):
+        self.client.force_login(self.viewer)
+        response = self.client.post(
+            reverse("email_brand_save"),
+            {"brand_name": "Hacked", "accent_color": "#111111", "footer_note": "nope"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertNotEqual(EmailBrand.load().brand_name, "Hacked")
+
+    def test_manager_can_save_brand(self):
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            reverse("email_brand_save"),
+            {
+                "brand_name": "ManagedBrand",
+                "accent_color": "#abcdef",
+                "footer_note": "Managed footer",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        brand = EmailBrand.load()
+        self.assertEqual(brand.brand_name, "ManagedBrand")
+        self.assertEqual(brand.accent_color, "#abcdef")
+
+    def test_viewer_cannot_save_message(self):
+        self.client.force_login(self.viewer)
+        response = self.client.post(
+            reverse("email_message_save", kwargs={"event_type": "new_ticket"}),
+            {
+                "subject_html": "Hacked subject",
+                "title_html": "Hacked title",
+                "opening_html": "intro",
+                "message_label_html": "Request",
+                "button_label_html": "Go",
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+        msg = EmailMessage.objects.get(event_type="new_ticket")
+        self.assertNotEqual(msg.subject, "Hacked subject")
+
+    def test_manager_can_save_message_from_chips_html(self):
+        self.client.force_login(self.manager)
+        chip_html = tokens_to_chips_html(
+            "[{{ brand_name }}] Hello #{{ ticket_number }}", "new_ticket"
+        )
+        response = self.client.post(
+            reverse("email_message_save", kwargs={"event_type": "new_ticket"}),
+            {
+                "subject_html": chip_html,
+                "title_html": "Title {{ ticket_number }}".replace(
+                    "{{ ticket_number }}",
+                    '<span class="email-merge-chip" data-merge-key="ticket_number" contenteditable="false">Ticket number</span>',
+                ),
+                "opening_html": "Opening text",
+                "message_label_html": "Request",
+                "button_label_html": "View",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        msg = EmailMessage.objects.get(event_type="new_ticket")
+        self.assertIn("{{ brand_name }}", msg.subject)
+        self.assertIn("{{ ticket_number }}", msg.subject)
