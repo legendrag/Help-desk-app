@@ -2,7 +2,10 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
-from notifications.email_defaults import ANNOUNCEMENT_PLACEHOLDERS, TICKET_PLACEHOLDERS
+from notifications.email_defaults import (
+    ANNOUNCEMENT_INSERT_FIELDS,
+    TICKET_INSERT_FIELDS,
+)
 from .models import (
     Branch,
     Department,
@@ -188,6 +191,7 @@ class EmailAppearanceUpdateView(EmailPermissionMixin, LoginRequiredMixin, BaseMa
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["model_name"] = "Email Appearance"
+        context["email_editor"] = "appearance"
         return context
 
 
@@ -203,11 +207,28 @@ class EmailTemplateUpdateView(EmailPermissionMixin, LoginRequiredMixin, BaseMana
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["model_name"] = "Email Template"
+        context["email_editor"] = "template"
+        appearance = EmailAppearance.load()
         event_type = self.object.event_type if self.object else ""
-        if event_type == EmailTemplate.EventType.ANNOUNCEMENT:
-            context["placeholder_help"] = ANNOUNCEMENT_PLACEHOLDERS
-        else:
-            context["placeholder_help"] = TICKET_PLACEHOLDERS
+        source = (
+            ANNOUNCEMENT_INSERT_FIELDS
+            if event_type == EmailTemplate.EventType.ANNOUNCEMENT
+            else TICKET_INSERT_FIELDS
+        )
+        context["insert_fields"] = [
+            {
+                **field,
+                "sample": (
+                    (appearance.brand_name or field["sample"])
+                    if field["key"] == "brand_name"
+                    else field["sample"]
+                ),
+            }
+            for field in source
+        ]
+        context["preview_brand_name"] = appearance.brand_name
+        context["preview_accent_color"] = appearance.accent_color
+        context["preview_footer_note"] = appearance.footer_note
         return context
 
 

@@ -208,6 +208,9 @@ class EmailAppearanceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        self.fields["brand_name"].label = "Name shown at the top of emails"
+        self.fields["accent_color"].label = "Accent color"
+        self.fields["footer_note"].label = "Footer text at the bottom"
 
     def clean_accent_color(self):
         color = (self.cleaned_data.get("accent_color") or "").strip()
@@ -225,9 +228,20 @@ class EmailAppearanceForm(forms.ModelForm):
         model = EmailAppearance
         fields = ["brand_name", "accent_color", "footer_note"]
         widgets = {
-            "brand_name": forms.TextInput(attrs={"placeholder": "e.g., mlamehticket"}),
-            "accent_color": forms.TextInput(attrs={"placeholder": "#4f46e5", "type": "text"}),
-            "footer_note": forms.Textarea(attrs={"rows": 3}),
+            "brand_name": forms.TextInput(
+                attrs={"placeholder": "e.g., mlamehticket", "data-email-preview": "brand"}
+            ),
+            "accent_color": forms.TextInput(
+                attrs={
+                    "placeholder": "#4f46e5",
+                    "type": "text",
+                    "data-email-preview": "accent",
+                    "spellcheck": "false",
+                }
+            ),
+            "footer_note": forms.Textarea(
+                attrs={"rows": 3, "data-email-preview": "footer"}
+            ),
         }
 
 
@@ -235,11 +249,24 @@ class EmailTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        self.fields["subject"].label = "Email subject (inbox line)"
+        self.fields["headline"].label = "Big title inside the email"
+        self.fields["intro"].label = "Opening sentence"
+        self.fields["message_title"].label = "Label above the message"
+        self.fields["cta_label"].label = "Button text"
+        self.fields["is_active"].label = "Use this custom wording"
+        self.fields["is_active"].help_text = (
+            "Turn off to fall back to the built-in default wording for this email."
+        )
+        for name in ("subject", "headline", "intro", "message_title", "cta_label"):
+            self.fields[name].widget.attrs["data-email-field"] = name
+            self.fields[name].widget.attrs["data-email-insert-target"] = "1"
 
     def _reject_template_tags(self, value: str, label: str) -> str:
         if value and ("{%" in value or "%}" in value):
             raise forms.ValidationError(
-                f"{label} may only use {{{{ variable }}}} placeholders, not template tags."
+                f"{label} can include dynamic fields via the buttons above, "
+                "but not advanced template tags."
             )
         return value
 
@@ -277,9 +304,16 @@ class EmailTemplateForm(forms.ModelForm):
             "is_active",
         ]
         widgets = {
-            "subject": forms.TextInput(attrs={"placeholder": "[{{ brand_name }}] New ticket #{{ ticket_number }}"}),
-            "headline": forms.TextInput(attrs={"placeholder": "New ticket #{{ ticket_number }}"}),
-            "intro": forms.Textarea(attrs={"rows": 3}),
+            "subject": forms.TextInput(
+                attrs={"placeholder": "New ticket #TK-1042: Printer offline"}
+            ),
+            "headline": forms.TextInput(attrs={"placeholder": "New ticket #TK-1042"}),
+            "intro": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Sam Rivera submitted a new request for IT Support.",
+                }
+            ),
             "message_title": forms.TextInput(attrs={"placeholder": "Request"}),
             "cta_label": forms.TextInput(attrs={"placeholder": "View ticket"}),
         }

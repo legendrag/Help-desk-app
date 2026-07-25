@@ -74,21 +74,26 @@ DEFAULT_EMAIL_TEMPLATES = {
     },
 }
 
-TICKET_PLACEHOLDERS = [
-    "{{ brand_name }}",
-    "{{ ticket_number }}",
-    "{{ ticket_title }}",
-    "{{ actor_name }}",
-    "{{ status }}",
-    "{{ department }}",
-    "{{ department_suffix }}",
+# Friendly insert chips for the Settings editor (label shown to users).
+TICKET_INSERT_FIELDS = [
+    {"key": "brand_name", "label": "App name", "sample": "mlamehticket"},
+    {"key": "ticket_number", "label": "Ticket number", "sample": "TK-1042"},
+    {"key": "ticket_title", "label": "Ticket title", "sample": "Printer offline"},
+    {"key": "actor_name", "label": "Person's name", "sample": "Sam Rivera"},
+    {"key": "status", "label": "Status", "sample": "In Progress"},
+    {"key": "department", "label": "Department", "sample": "IT Support"},
+    {"key": "department_suffix", "label": "for Department", "sample": " for IT Support"},
 ]
 
-ANNOUNCEMENT_PLACEHOLDERS = [
-    "{{ brand_name }}",
-    "{{ announcement_title }}",
-    "{{ actor_name }}",
+ANNOUNCEMENT_INSERT_FIELDS = [
+    {"key": "brand_name", "label": "App name", "sample": "mlamehticket"},
+    {"key": "announcement_title", "label": "Announcement title", "sample": "Office closed Friday"},
+    {"key": "actor_name", "label": "Person's name", "sample": "Sam Rivera"},
 ]
+
+# Kept for any older imports / docs.
+TICKET_PLACEHOLDERS = [f"{{{{ {f['key']} }}}}" for f in TICKET_INSERT_FIELDS]
+ANNOUNCEMENT_PLACEHOLDERS = [f"{{{{ {f['key']} }}}}" for f in ANNOUNCEMENT_INSERT_FIELDS]
 
 
 def ensure_email_format_defaults():
