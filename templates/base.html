@@ -29,9 +29,9 @@
         content="mlameh ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.68">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.66">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.30">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.69">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.67">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.31">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -148,6 +148,34 @@
 
         <!-- Global Progress Bar -->
         <div id="global-progress-bar" class="global-progress-bar"></div>
+
+        <!-- Shown immediately on card/link navigation so the click always feels registered -->
+        <div id="page-nav-overlay" class="page-nav-overlay" hidden aria-hidden="true">
+            <div class="page-nav-overlay__panel skeleton-placeholder skeleton-list" aria-busy="true">
+                <p class="page-nav-overlay__label">Opening…</p>
+                <div class="skeleton-list__row">
+                    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+                    <div class="skeleton-list__lines">
+                        <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                    </div>
+                </div>
+                <div class="skeleton-list__row">
+                    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+                    <div class="skeleton-list__lines">
+                        <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                    </div>
+                </div>
+                <div class="skeleton-list__row">
+                    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
+                    <div class="skeleton-list__lines">
+                        <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <main class="content">
             {% block content %}{% endblock content %}
@@ -874,7 +902,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=5"></script>
+    <script src="{% static 'js/loading.js' %}?v=6"></script>
 </body>
 
 </html>

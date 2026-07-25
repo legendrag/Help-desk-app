@@ -322,13 +322,17 @@ button, .btn {
   padding: 1.5rem 1rem;
 }
 
-/* Soft cue on the clicked control */
+/* Immediate press feedback on the clicked control */
 a.is-navigating,
 .clickable-row.is-navigating,
-.kb-back-navigation.is-navigating,
+.kb-result-item.is-navigating,
+.kb-recent-item.is-navigating,
+.kb-category-tile.is-navigating,
 .kb-back-link.is-navigating {
-  opacity: 0.55;
-  transition: opacity 0.15s ease;
+  opacity: 1;
+  background: rgba(79, 70, 229, 0.12) !important;
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.35);
+  transition: background 0.1s ease, box-shadow 0.1s ease;
 }
 
 /* Anti-spam while a full-page nav is in flight (cleared after stall timeout / pagehide) */
@@ -336,6 +340,42 @@ body.is-page-navigating a[href]:not([data-no-loading]):not([target="_blank"]),
 body.is-page-navigating .clickable-row {
   pointer-events: none;
   cursor: wait;
+}
+
+/* Full-page nav overlay — unmistakable click feedback even on slow networks / mobile */
+.page-nav-overlay {
+  position: fixed;
+  inset: 0;
+  top: 60px;
+  z-index: 9000;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(248, 250, 252, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.page-nav-overlay.is-visible {
+  display: flex;
+}
+
+.page-nav-overlay__panel {
+  width: min(520px, 100%);
+  margin-top: 1.5rem;
+  background: var(--panel-bg, #fff);
+  border: 1px solid var(--skeleton-border, rgba(15, 23, 42, 0.08));
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.page-nav-overlay__label {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
 /* Dashboard Enhancements */

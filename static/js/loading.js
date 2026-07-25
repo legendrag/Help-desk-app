@@ -233,8 +233,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function getNavOverlay() {
+        return document.getElementById('page-nav-overlay');
+    }
+
+    function showNavOverlay() {
+        const overlay = getNavOverlay();
+        if (!overlay) return;
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.classList.add('is-visible');
+    }
+
+    function hideNavOverlay() {
+        const overlay = getNavOverlay();
+        if (!overlay) return;
+        overlay.classList.remove('is-visible');
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
     function setPageNavigating(on) {
         document.body.classList.toggle('is-page-navigating', !!on);
+        if (on) {
+            showNavOverlay();
+        } else {
+            hideNavOverlay();
+        }
     }
 
     function clearLoadingUI() {
@@ -256,12 +281,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         fullPageNavPending = true;
-        setPageNavigating(true);
-        markFullPageLoading();
-        startProgress({ immediate: true });
         if (target) {
             target.classList.add('is-navigating');
         }
+        // Paint press state + overlay before any navigation work
+        setPageNavigating(true);
+        markFullPageLoading();
+        startProgress({ immediate: true });
 
         clearNavStallTimer();
         navStallTimer = setTimeout(function() {

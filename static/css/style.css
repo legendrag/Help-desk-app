@@ -5083,11 +5083,7 @@ html.modal-open body {
   border-top-color: var(--text-main);
 }
 
-@media (max-width: 768px) {
-  .global-progress-bar {
-    display: none !important;
-  }
-}
+/* Keep progress bar visible on mobile — card/nav clicks need immediate feedback */
 
 .pagination a {
   padding: 0.5rem 1rem;

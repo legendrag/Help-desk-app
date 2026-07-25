@@ -99,19 +99,17 @@
             return;
         }
         var href = row.getAttribute("data-href");
-        if (href) {
-            // Ignore spam while a full-page navigation is already pending
-            if (typeof window.isPageNavigating === "function" && window.isPageNavigating()) {
-                return;
-            }
-            // Defer slightly to let loading.js paint the progress bar
-            setTimeout(function () {
-                if (typeof window.isPageNavigating === "function" && !window.isPageNavigating()) {
-                    return;
-                }
-                window.location.href = href;
-            }, 50);
+        if (!href) return;
+
+        // Another card already started navigating — ignore spam
+        if (document.body.classList.contains("is-page-navigating") && !row.classList.contains("is-navigating")) {
+            return;
         }
+
+        // Next frame so press highlight + "Opening…" overlay can paint first
+        requestAnimationFrame(function () {
+            window.location.href = href;
+        });
     });
 
     // WebSocket connection for real-time ticket list updates

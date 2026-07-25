@@ -1836,6 +1836,20 @@
   border-top-color: #e2e8f0;
 }
 
+[data-theme="dark"] .page-nav-overlay {
+  background: rgba(15, 23, 42, 0.72);
+}
+
+[data-theme="dark"] a.is-navigating,
+[data-theme="dark"] .clickable-row.is-navigating,
+[data-theme="dark"] .kb-result-item.is-navigating,
+[data-theme="dark"] .kb-recent-item.is-navigating,
+[data-theme="dark"] .kb-category-tile.is-navigating,
+[data-theme="dark"] .kb-back-link.is-navigating {
+  background: rgba(129, 140, 248, 0.18) !important;
+  box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.45);
+}
+
 /* Knowledge Base list page */
 [data-theme="dark"] .kb-hero-section::before {
   background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(129, 140, 248, 0.15), transparent 70%);
