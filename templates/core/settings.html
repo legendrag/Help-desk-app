@@ -76,7 +76,7 @@
         </div>
     </div>
 
-    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load" hx-get="{% url 'branch_list' %}">
+    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load" hx-get="{% url 'branch_list' %}" data-no-progress>
         <div class="skeleton-placeholder skeleton-list" aria-busy="true">
             <div class="skeleton-list__row">
                 <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
@@ -128,7 +128,8 @@ document.body.addEventListener('refreshSettings', function() {
     if (!target) return;
     const url = target.dataset.currentUrl || target.getAttribute('hx-get');
     if (url && window.htmx) {
-        window.htmx.ajax('GET', url, { target: '#settings-content' });
+        // source keeps data-no-progress so the top bar stays off for silent refresh
+        window.htmx.ajax('GET', url, { target: '#settings-content', source: target });
     }
 });
 </script>

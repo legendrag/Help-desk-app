@@ -268,6 +268,45 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
 
+    /**
+     * Background / automatic HTMX (polling, hx-trigger=load, silent refreshes).
+     * These should not drive the top progress bar or disable controls.
+     */
+    function isAutomaticHtmxRequest(elt, evt) {
+        if (!elt) return false;
+        if (elt.hasAttribute('data-no-progress')) return true;
+
+        const detail = evt && evt.detail ? evt.detail : {};
+        const triggeringEvent = (detail.requestConfig && detail.requestConfig.triggeringEvent)
+            || detail.triggeringEvent
+            || null;
+        const eventType = triggeringEvent && triggeringEvent.type ? triggeringEvent.type : '';
+
+        // App-driven silent refreshes (ticket poll refresh, settings refresh after save)
+        if (eventType === 'refreshTickets' || eventType === 'refreshSettings') {
+            return true;
+        }
+
+        const trigger = elt.getAttribute('hx-trigger') || '';
+
+        // Interval polling: hx-trigger="every 20s ..."
+        if (/\bevery\b/i.test(trigger)) {
+            // Treat as automatic unless a clear user gesture started it
+            if (!triggeringEvent || !/^(click|submit|change|keydown|keyup|input|search)$/i.test(eventType)) {
+                return true;
+            }
+        }
+
+        // Initial page auto-fetch: hx-trigger="load"
+        if (/(^|,\s*)load(\s*,|$)/i.test(trigger) || trigger.trim() === 'load') {
+            if (!triggeringEvent || eventType === 'load' || eventType === '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function resolveButton(btn) {
         if (!btn) return null;
         if (btn.tagName === 'FORM') {
@@ -558,6 +597,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
         const elt = evt.detail.elt;
         if (!shouldTrackElement(elt)) return;
+        // Polling / hx-load / silent refresh: no top bar, no button lock
+        if (isAutomaticHtmxRequest(elt, evt)) return;
         if (elt && inFlight.has(elt)) return;
         if (elt) inFlight.add(elt);
         startProgress();
@@ -579,6 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function onHtmxSettled(evt) {
         const elt = evt.detail.elt;
         if (!shouldTrackElement(elt)) return;
+        if (isAutomaticHtmxRequest(elt, evt)) return;
         cleanupRequest(elt);
     }
 

@@ -29,7 +29,7 @@
         content="mlameh ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.71">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.72">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.69">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.33">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
@@ -901,9 +901,15 @@
         });
 
         document.body.addEventListener('refreshTickets', function () {
-            const list = document.getElementById('ticket-list');
+            const list = document.getElementById('tickets-live') || document.getElementById('ticket-list');
             if (list && window.htmx) {
-                window.htmx.ajax('GET', window.location.href, { target: '#ticket-list' });
+                // Prefer the live partial's own hx-trigger; this ajax is a fallback.
+                // source + data-no-progress keeps the top progress bar off.
+                window.htmx.ajax('GET', window.location.href, {
+                    target: '#' + list.id,
+                    source: list,
+                    swap: 'outerHTML'
+                });
             }
         });
 
@@ -1064,7 +1070,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=10"></script>
+    <script src="{% static 'js/loading.js' %}?v=11"></script>
 </body>
 
 </html>

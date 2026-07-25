@@ -1081,13 +1081,14 @@ tr:hover td {
 
 .ticket-offcanvas {
   position: fixed;
-  top: 0;
+  /* Sit below the fixed topbar (same as .sidebar) so title/close aren't clipped */
+  top: 60px;
   bottom: 0;
   left: -600px;
   width: 600px;
   max-width: 95vw;
   height: auto;
-  max-height: 100dvh;
+  max-height: calc(100dvh - 60px);
   background: var(--offcanvas-bg, var(--panel-bg, #ffffff));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1109,7 +1110,6 @@ tr:hover td {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
