@@ -29,9 +29,9 @@
         content="mlameh ticket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.61">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.63">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.26">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.64">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.64">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.28">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -63,7 +63,7 @@
             }
         });
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.16" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.17" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -85,7 +85,7 @@
 
                 <div class="notification-bell-container">
                     <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications"
-                        data-no-loading>
+                        aria-expanded="false" aria-controls="notification-dropdown" data-no-loading>
                         <span id="notification-count" class="notification-badge">0</span>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -134,13 +134,13 @@
                         </div>
                     </div>
                 </div>
-                <button type="button" class="menu-btn-universal" onclick="openSidebar()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
+                <button type="button" class="menu-btn-universal" id="menu-btn" onclick="toggleSidebar()"
+                    aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+                    <span class="menu-icon" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
                 </button>
                 {% endif %}
             </div>
@@ -214,8 +214,7 @@
             </div>
         </div>
 
-        <div id="overlay" class="sidebar-overlay"
-            onclick="document.getElementById('sidebar').classList.remove('open'); this.classList.remove('open');"></div>
+        <div id="overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
@@ -224,8 +223,7 @@
                 {% else %}
                 <span class="brand">Menu</span>
                 {% endif %}
-                <button type="button" class="close-btn"
-                    onclick="document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open');">
+                <button type="button" class="close-btn" onclick="closeSidebar()" aria-label="Close menu">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -303,13 +301,42 @@
                 localStorage.setItem('theme', 'dark');
             }
         }
+        function setMenuButtonOpen(isOpen) {
+            const menuBtn = document.getElementById('menu-btn') || document.querySelector('.menu-btn-universal');
+            if (!menuBtn) return;
+            menuBtn.classList.toggle('is-open', isOpen);
+            menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            menuBtn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+        }
+
         function openSidebar() {
-            document.getElementById('sidebar').classList.add('open');
-            document.getElementById('overlay').classList.add('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (!sidebar || !overlay) return;
+            sidebar.classList.add('open');
+            overlay.classList.add('open');
+            setMenuButtonOpen(true);
             setTimeout(() => {
                 const closeBtn = document.querySelector('#sidebar .close-btn');
                 if (closeBtn) closeBtn.focus();
             }, 50);
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (sidebar) sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('open');
+            setMenuButtonOpen(false);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
         }
 
         document.getElementById('sidebar').addEventListener('keydown', function (e) {
@@ -609,11 +636,9 @@
                 closeModal();
 
                 const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('overlay');
                 if (sidebar && sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                    if (overlay) overlay.classList.remove('open');
-                    const menuBtn = document.querySelector('.menu-btn-universal');
+                    closeSidebar();
+                    const menuBtn = document.getElementById('menu-btn') || document.querySelector('.menu-btn-universal');
                     if (menuBtn) menuBtn.focus();
                 }
 

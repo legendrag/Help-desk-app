@@ -112,6 +112,9 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ctx["current_status"] = status_filter
         ctx["current_sort"] = sort
         ctx["can_manage_kb"] = can_manage
+        ctx["can_access_settings"] = request.user.is_superuser or (
+            request.user.role and getattr(request.user.role, "can_access_settings", False)
+        )
         ctx["can_create_ticket"] = request.user.is_superuser or (
             request.user.role and getattr(request.user.role, "can_create_ticket", False)
         )

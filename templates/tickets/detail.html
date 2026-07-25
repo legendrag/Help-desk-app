@@ -424,6 +424,7 @@
 
 <script>
     window.currentTicketId = "{{ ticket.id }}";
+    window.ticketStatus = "{{ ticket.status|escapejs }}";
     window.chatUrlTemplates = {
         deleteMessage: "{% url 'delete_message' 0 %}",
         editMessage: "{% url 'edit_message' 0 %}"
@@ -566,21 +567,71 @@
     });
 
     /* ── Action Bar: Split-Button Logic ── */
+    /* Menu is portaled to <body> while open so chat-panel overflow/transform cannot clip it. */
+    function positionActionMenu() {
+        const menu = document.getElementById('action-bar-menu');
+        const group = document.querySelector('.action-bar-group');
+        if (!menu || !group) return;
+
+        const rect = group.getBoundingClientRect();
+        const padding = 12;
+        const menuWidth = Math.min(
+            Math.max(rect.width, 160),
+            window.innerWidth - padding * 2
+        );
+        let left = rect.left;
+        if (left + menuWidth > window.innerWidth - padding) {
+            left = window.innerWidth - padding - menuWidth;
+        }
+        if (left < padding) left = padding;
+
+        menu.style.width = menuWidth + 'px';
+        menu.style.left = left + 'px';
+        menu.style.right = 'auto';
+        menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        menu.style.top = 'auto';
+    }
+
     function toggleActionMenu() {
         const menu = document.getElementById('action-bar-menu');
         const toggle = document.getElementById('action-bar-toggle');
-        if (!menu || !toggle) return;
+        const group = document.querySelector('.action-bar-group');
+        if (!menu || !toggle || !group) return;
         const isOpen = menu.classList.contains('open');
-        menu.classList.toggle('open', !isOpen);
-        toggle.classList.toggle('open', !isOpen);
+        if (!isOpen) {
+            document.body.appendChild(menu);
+            positionActionMenu();
+            menu.classList.add('open');
+            toggle.classList.add('open');
+        } else {
+            closeActionMenu();
+        }
     }
 
     function closeActionMenu() {
         const menu = document.getElementById('action-bar-menu');
         const toggle = document.getElementById('action-bar-toggle');
-        if (menu) menu.classList.remove('open');
+        const group = document.querySelector('.action-bar-group');
+        if (menu) {
+            menu.classList.remove('open');
+            menu.style.width = '';
+            menu.style.left = '';
+            menu.style.right = '';
+            menu.style.bottom = '';
+            menu.style.top = '';
+            if (group && menu.parentElement === document.body) {
+                group.appendChild(menu);
+            }
+        }
         if (toggle) toggle.classList.remove('open');
     }
+
+    window.addEventListener('resize', function () {
+        const menu = document.getElementById('action-bar-menu');
+        if (menu && menu.classList.contains('open')) {
+            positionActionMenu();
+        }
+    });
 
     function selectAction(itemEl) {
         const action = itemEl.dataset.action;
@@ -635,9 +686,9 @@
         form.submit();
     }
 
-    // Close dropdown on outside click
+    // Close dropdown on outside click (menu may be portaled to <body>)
     document.addEventListener('click', function (e) {
-        if (!e.target.closest('.action-bar-group')) {
+        if (!e.target.closest('.action-bar-group') && !e.target.closest('#action-bar-menu')) {
             closeActionMenu();
         }
     });
@@ -795,5 +846,5 @@
     window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
     window.currentUsername = "{{ user.username|escapejs }}{% if user.user_type == 'branch' and user.branch_id == ticket.branch_id and ticket.client_name %} - {{ ticket.client_name|escapejs }}{% endif %}";
 </script>
-<script src="{% static 'js/chat.js' %}?v=12" defer></script>
+<script src="{% static 'js/chat.js' %}?v=13" defer></script>
 {% endblock content %}

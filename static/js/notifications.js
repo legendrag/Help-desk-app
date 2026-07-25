@@ -359,13 +359,18 @@ function clearReadNotifications() {
 // ── Dropdown Toggle (CSS class-based for animation) ──
 function toggleDropdown(forceClose = false) {
     const dropdown = document.getElementById("notification-dropdown");
+    const button = document.getElementById("notification-btn");
     if (!dropdown) return;
     const isOpen = dropdown.classList.contains("open");
+    const willOpen = !(forceClose || isOpen);
 
-    if (forceClose || isOpen) {
-        dropdown.classList.remove("open");
-    } else {
-        dropdown.classList.add("open");
+    dropdown.classList.toggle("open", willOpen);
+    if (button) {
+        button.classList.toggle("is-open", willOpen);
+        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    }
+
+    if (willOpen) {
         fetchNotifications();
     }
 }

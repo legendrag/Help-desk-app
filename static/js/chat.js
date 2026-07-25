@@ -173,41 +173,66 @@ function initChat(ticketId) {
         }
     }
 
-    function updateTicketStatus(payload) {
-        const newStatus = payload.status || payload.new_status;
-        const isCurrentlyClosed = document.querySelector('.action-bar-closed-badge') !== null;
-        
-        // If transitioning to or from a closed/merged state, reload to update the action bar UI
-        if ((newStatus === 'closed' || newStatus === 'merged') !== isCurrentlyClosed) {
-            window.location.reload();
-            return;
+    function lockComposerForClosedTicket() {
+        const chatForm = document.getElementById('chat-message-form') || document.querySelector('.chat-form');
+        if (chatForm) {
+            chatForm.querySelectorAll('textarea, input, button, select').forEach((el) => {
+                el.disabled = true;
+            });
+            chatForm.remove();
         }
 
-        // Update status badge
+        const typing = document.getElementById('typing-indicator');
+        if (typing) typing.remove();
+
+        // Remove any leftover action bars outside the form (e.g. accept-only row)
+        document.querySelectorAll('.chat-actions:not(.chat-actions-closed)').forEach((el) => el.remove());
+
+        // Stop typing signals while waiting for reload
+        Object.keys(activeTypers).forEach((key) => {
+            clearTimeout(activeTypers[key].timeout);
+            delete activeTypers[key];
+        });
+    }
+
+    function updateTicketStatus(payload) {
+        const newStatus = payload.status || payload.new_status;
+        if (!newStatus) return;
+
+        const previousStatus = window.ticketStatus || '';
+        const wasClosed = previousStatus === 'closed' || previousStatus === 'merged';
+        const isNowClosed = newStatus === 'closed' || newStatus === 'merged';
+        window.ticketStatus = newStatus;
+
+        // Update status badge immediately
         const statusPill = document.querySelector('.ticket-status-pill');
         if (statusPill) {
-            statusPill.className = `badge badge-${payload.status} ticket-status-pill`;
-            statusPill.textContent = payload.status_display || payload.new_status_display;
+            statusPill.className = `badge badge-${newStatus} ticket-status-pill`;
+            statusPill.textContent = payload.status_display || payload.new_status_display || newStatus;
         }
 
         // Update status select dropdown
         const statusSelect = document.querySelector('.status-update-form select[name="status"]');
         if (statusSelect) {
-            statusSelect.value = payload.status;
-        }
-
-        // Show/hide closed/merged ticket UI
-        if (payload.status === 'closed' || payload.status === 'merged') {
-            // Hide chat form
-            const chatForm = document.querySelector('.chat-form');
-            if (chatForm) chatForm.style.display = 'none';
-        } else {
-            const chatForm = document.querySelector('.chat-form');
-            if (chatForm) chatForm.style.display = '';
+            statusSelect.value = newStatus;
         }
 
         // Add timeline entry
-        addTimelineEntry(payload.status, payload.status_display || payload.new_status_display, payload.changed_by);
+        addTimelineEntry(newStatus, payload.status_display || payload.new_status_display, payload.changed_by);
+
+        // Closed/merged: hide composer instantly, then reload for reopen / closed UI
+        if (isNowClosed) {
+            lockComposerForClosedTicket();
+            if (!wasClosed) {
+                window.location.reload();
+            }
+            return;
+        }
+
+        // Reopened (or left closed/merged): reload so composer/actions return correctly
+        if (wasClosed && !isNowClosed) {
+            window.location.reload();
+        }
     }
 
     function updateTicketPicked(payload) {
@@ -339,6 +364,16 @@ function initChat(ticketId) {
             `;
             chatBox.appendChild(row);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Fallback: system close/merge messages can arrive before (or without) status event
+            const msg = (payload.message || '').toLowerCase();
+            if (msg.startsWith('ticket closed') || msg.startsWith('ticket merged')) {
+                updateTicketStatus({
+                    status: msg.startsWith('ticket merged') ? 'merged' : 'closed',
+                    status_display: msg.startsWith('ticket merged') ? 'Merged' : 'Closed',
+                    changed_by: payload.sender_username,
+                });
+            }
             return;
         }
 
