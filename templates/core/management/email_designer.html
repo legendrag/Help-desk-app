@@ -5,240 +5,11 @@
     <div class="section-header mgmt-section-header">
         <div>
             <h2 class="mgmt-section-title">Email Format</h2>
-            <p class="mgmt-section-subtitle">Click the sample email to rewrite it. Changes apply to future notifications.</p>
+            <p class="mgmt-section-subtitle">Edit on the left — the sample email updates live on the right.</p>
         </div>
     </div>
 
-    <form class="email-brand-strip" id="email-brand-form">
-        {% csrf_token %}
-        <input type="hidden" name="table_layout" id="email-table-layout" value="{{ email_brand.table_layout }}">
-        <input type="hidden" name="table_fill_mode" id="email-table-fill" value="{{ email_brand.table_fill_mode }}">
-
-        <div class="email-brand-strip__head">
-            <div>
-                <p class="email-brand-strip__eyebrow">Brand look</p>
-                <p class="email-brand-strip__desc">Colors, table layout, and footer shared by every notification email.</p>
-            </div>
-            <div class="email-brand-strip__actions">
-                <span class="email-save-status" id="email-brand-status" hidden></span>
-                {% if can_edit_email_format %}
-                <button type="submit" class="btn secondary small" id="email-brand-save-btn" disabled>Save look</button>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="email-brand-band">
-            <p class="email-brand-band__title">Identity</p>
-            {% if can_edit_email_format %}
-            <div class="email-brand-presets" role="group" aria-label="Color presets">
-                <span class="email-brand-presets__label">Quick look</span>
-                <button type="button" class="email-preset-btn" data-preset="light">Light</button>
-                <button type="button" class="email-preset-btn" data-preset="soft">Soft</button>
-                <button type="button" class="email-preset-btn" data-preset="dark">Dark</button>
-            </div>
-            {% endif %}
-            <div class="email-brand-strip__fields">
-                <label class="email-brand-field">
-                    <span>Brand name</span>
-                    <input type="text" name="brand_name" id="email-brand-name" class="form-control"
-                           value="{{ email_brand.brand_name }}"
-                           autocomplete="organization"
-                           {% if not can_edit_email_format %}disabled{% endif %}>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Accent</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-brand-color-picker" value="{{ email_brand.accent_color }}"
-                               data-sync-hex="email-brand-accent"
-                               aria-label="Pick accent color"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="accent_color" id="email-brand-accent" class="form-control"
-                               value="{{ email_brand.accent_color }}" spellcheck="false"
-                               data-sync-picker="email-brand-color-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--footer">
-                    <span>Footer text</span>
-                    <input type="text" name="footer_note" id="email-brand-footer" class="form-control"
-                           value="{{ email_brand.footer_note }}"
-                           {% if not can_edit_email_format %}disabled{% endif %}>
-                </label>
-            </div>
-        </div>
-
-        <div class="email-brand-band">
-            <p class="email-brand-band__title">Surfaces</p>
-            <div class="email-brand-surface">
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Page background</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-page-bg-picker" value="{{ email_brand.page_background }}"
-                               data-sync-hex="email-page-bg" aria-label="Page background"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="page_background" id="email-page-bg" class="form-control"
-                               value="{{ email_brand.page_background }}" spellcheck="false"
-                               data-sync-picker="email-page-bg-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Card background</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-card-bg-picker" value="{{ email_brand.card_background }}"
-                               data-sync-hex="email-card-bg" aria-label="Card background"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="card_background" id="email-card-bg" class="form-control"
-                               value="{{ email_brand.card_background }}" spellcheck="false"
-                               data-sync-picker="email-card-bg-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Table fill</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-table-bg-picker" value="{{ email_brand.table_header_bg }}"
-                               data-sync-hex="email-table-bg" aria-label="Table fill"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="table_header_bg" id="email-table-bg" class="form-control"
-                               value="{{ email_brand.table_header_bg }}" spellcheck="false"
-                               data-sync-picker="email-table-bg-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Table border</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-table-border-picker" value="{{ email_brand.table_border_color }}"
-                               data-sync-hex="email-table-border" aria-label="Table border"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="table_border_color" id="email-table-border" class="form-control"
-                               value="{{ email_brand.table_border_color }}" spellcheck="false"
-                               data-sync-picker="email-table-border-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Text</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-text-picker" value="{{ email_brand.text_color }}"
-                               data-sync-hex="email-text-color" aria-label="Text color"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="text_color" id="email-text-color" class="form-control"
-                               value="{{ email_brand.text_color }}" spellcheck="false"
-                               data-sync-picker="email-text-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-                <label class="email-brand-field email-brand-field--color">
-                    <span>Muted text</span>
-                    <div class="email-brand-color-row">
-                        <input type="color" id="email-muted-picker" value="{{ email_brand.muted_text_color }}"
-                               data-sync-hex="email-muted-color" aria-label="Muted text color"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <input type="text" name="muted_text_color" id="email-muted-color" class="form-control"
-                               value="{{ email_brand.muted_text_color }}" spellcheck="false"
-                               data-sync-picker="email-muted-picker"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </div>
-                </label>
-            </div>
-        </div>
-
-        <div class="email-brand-band">
-            <p class="email-brand-band__title">Table layout</p>
-            <div class="email-layout-picker" role="radiogroup" aria-label="Table layout">
-                {% for key, label in email_table_layouts %}
-                <button type="button"
-                        class="email-layout-card{% if email_brand.table_layout == key %} is-active{% endif %}"
-                        data-table-layout="{{ key }}"
-                        role="radio"
-                        aria-checked="{% if email_brand.table_layout == key %}true{% else %}false{% endif %}"
-                        {% if not can_edit_email_format %}disabled{% endif %}>
-                    <span class="email-layout-card__preview email-layout-preview--{{ key }}" aria-hidden="true">
-                        <span></span><span></span><span></span>
-                    </span>
-                    <span class="email-layout-card__label">{{ label }}</span>
-                </button>
-                {% endfor %}
-            </div>
-            <p class="email-brand-band__hint">Starts from this layout — tweak details below.</p>
-        </div>
-
-        <div class="email-brand-band email-brand-band--quiet">
-            <p class="email-brand-band__title">Table details</p>
-            <p class="email-brand-band__hint">Optional. Adjust after picking a layout.</p>
-
-            <div class="email-table-details">
-                <div class="email-table-details__row">
-                    <span class="email-table-details__label">Fill</span>
-                    <div class="email-segmented" role="group" aria-label="Table fill mode">
-                        <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'none' %} is-active{% endif %}"
-                                data-fill-mode="none" {% if not can_edit_email_format %}disabled{% endif %}>None</button>
-                        <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'striped' %} is-active{% endif %}"
-                                data-fill-mode="striped" {% if not can_edit_email_format %}disabled{% endif %}>Striped</button>
-                        <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'labels' %} is-active{% endif %}"
-                                data-fill-mode="labels" {% if not can_edit_email_format %}disabled{% endif %}>Labels</button>
-                    </div>
-                </div>
-
-                <div class="email-table-details__metrics">
-                    <label class="email-metric">
-                        <span>Radius</span>
-                        <span class="email-metric__control">
-                            <input type="number" name="table_radius" id="email-table-radius" class="form-control"
-                                   min="0" max="24" value="{{ email_brand.table_radius }}"
-                                   {% if not can_edit_email_format %}disabled{% endif %}>
-                            <span class="email-metric__unit">px</span>
-                        </span>
-                    </label>
-                    <label class="email-metric">
-                        <span>Pad Y</span>
-                        <span class="email-metric__control">
-                            <input type="number" name="table_row_padding_y" id="email-table-pad-y" class="form-control"
-                                   min="4" max="24" value="{{ email_brand.table_row_padding_y }}"
-                                   {% if not can_edit_email_format %}disabled{% endif %}>
-                            <span class="email-metric__unit">px</span>
-                        </span>
-                    </label>
-                    <label class="email-metric">
-                        <span>Pad X</span>
-                        <span class="email-metric__control">
-                            <input type="number" name="table_row_padding_x" id="email-table-pad-x" class="form-control"
-                                   min="6" max="32" value="{{ email_brand.table_row_padding_x }}"
-                                   {% if not can_edit_email_format %}disabled{% endif %}>
-                            <span class="email-metric__unit">px</span>
-                        </span>
-                    </label>
-                    <label class="email-metric email-metric--slider">
-                        <span>Label width <strong id="email-label-width-readout">{{ email_brand.table_label_width }}%</strong></span>
-                        <input type="range" name="table_label_width" id="email-table-label-width" class="email-range"
-                               min="20" max="50" value="{{ email_brand.table_label_width }}"
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                    </label>
-                </div>
-
-                <div class="email-table-details__toggles">
-                    <label class="email-toggle">
-                        <input type="checkbox" name="table_show_outer_border" id="email-table-outer-border" value="on"
-                               {% if email_brand.table_show_outer_border %}checked{% endif %}
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <span class="email-toggle__ui" aria-hidden="true"></span>
-                        <span class="email-toggle__text">Outer border</span>
-                    </label>
-                    <label class="email-toggle">
-                        <input type="checkbox" name="table_show_row_dividers" id="email-table-row-dividers" value="on"
-                               {% if email_brand.table_show_row_dividers %}checked{% endif %}
-                               {% if not can_edit_email_format %}disabled{% endif %}>
-                        <span class="email-toggle__ui" aria-hidden="true"></span>
-                        <span class="email-toggle__text">Row dividers</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-    </form>
-
-    <div class="email-designer__workspace">
+    <div class="email-designer__shell">
         <aside class="email-type-list" aria-label="Email types">
             <div class="email-type-list__panel">
                 <div class="email-type-list__mobile">
@@ -294,8 +65,244 @@
             </div>
         </aside>
 
-        <div class="email-designer__canvas-host" id="email-canvas-host">
-            {% include "core/management/email_designer_canvas.html" %}
+        <form class="email-brand-panel" id="email-brand-form">
+            {% csrf_token %}
+            <input type="hidden" name="table_layout" id="email-table-layout" value="{{ email_brand.table_layout }}">
+            <input type="hidden" name="table_fill_mode" id="email-table-fill" value="{{ email_brand.table_fill_mode }}">
+
+            <div class="email-brand-panel__head">
+                <div>
+                    <p class="email-brand-strip__eyebrow">Brand look</p>
+                    <p class="email-brand-strip__desc">Tweaks update the preview beside this panel.</p>
+                </div>
+            </div>
+
+            <div class="email-brand-band">
+                <p class="email-brand-band__title">Table layout</p>
+                <div class="email-layout-picker" role="radiogroup" aria-label="Table layout">
+                    {% for key, label in email_table_layouts %}
+                    <button type="button"
+                            class="email-layout-card{% if email_brand.table_layout == key %} is-active{% endif %}"
+                            data-table-layout="{{ key }}"
+                            role="radio"
+                            aria-checked="{% if email_brand.table_layout == key %}true{% else %}false{% endif %}"
+                            {% if not can_edit_email_format %}disabled{% endif %}>
+                        <span class="email-layout-card__preview email-layout-preview--{{ key }}" aria-hidden="true">
+                            <span></span><span></span><span></span>
+                        </span>
+                        <span class="email-layout-card__label">{{ label }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="email-brand-band email-brand-band--quiet">
+                <p class="email-brand-band__title">Table details</p>
+                <div class="email-table-details">
+                    <div class="email-table-details__row">
+                        <span class="email-table-details__label">Fill</span>
+                        <div class="email-segmented" role="group" aria-label="Table fill mode">
+                            <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'none' %} is-active{% endif %}"
+                                    data-fill-mode="none" {% if not can_edit_email_format %}disabled{% endif %}>None</button>
+                            <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'striped' %} is-active{% endif %}"
+                                    data-fill-mode="striped" {% if not can_edit_email_format %}disabled{% endif %}>Striped</button>
+                            <button type="button" class="email-segmented__btn{% if email_brand.table_fill_mode == 'labels' %} is-active{% endif %}"
+                                    data-fill-mode="labels" {% if not can_edit_email_format %}disabled{% endif %}>Labels</button>
+                        </div>
+                    </div>
+
+                    <div class="email-table-details__metrics">
+                        <label class="email-metric">
+                            <span>Radius</span>
+                            <span class="email-metric__control">
+                                <input type="number" name="table_radius" id="email-table-radius" class="form-control"
+                                       min="0" max="24" value="{{ email_brand.table_radius }}"
+                                       {% if not can_edit_email_format %}disabled{% endif %}>
+                                <span class="email-metric__unit">px</span>
+                            </span>
+                        </label>
+                        <label class="email-metric">
+                            <span>Pad Y</span>
+                            <span class="email-metric__control">
+                                <input type="number" name="table_row_padding_y" id="email-table-pad-y" class="form-control"
+                                       min="4" max="24" value="{{ email_brand.table_row_padding_y }}"
+                                       {% if not can_edit_email_format %}disabled{% endif %}>
+                                <span class="email-metric__unit">px</span>
+                            </span>
+                        </label>
+                        <label class="email-metric">
+                            <span>Pad X</span>
+                            <span class="email-metric__control">
+                                <input type="number" name="table_row_padding_x" id="email-table-pad-x" class="form-control"
+                                       min="6" max="32" value="{{ email_brand.table_row_padding_x }}"
+                                       {% if not can_edit_email_format %}disabled{% endif %}>
+                                <span class="email-metric__unit">px</span>
+                            </span>
+                        </label>
+                        <label class="email-metric email-metric--slider">
+                            <span>Label width <strong id="email-label-width-readout">{{ email_brand.table_label_width }}%</strong></span>
+                            <input type="range" name="table_label_width" id="email-table-label-width" class="email-range"
+                                   min="20" max="50" value="{{ email_brand.table_label_width }}"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </label>
+                    </div>
+
+                    <div class="email-table-details__toggles">
+                        <label class="email-toggle">
+                            <input type="checkbox" name="table_show_outer_border" id="email-table-outer-border" value="on"
+                                   {% if email_brand.table_show_outer_border %}checked{% endif %}
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <span class="email-toggle__ui" aria-hidden="true"></span>
+                            <span class="email-toggle__text">Outer border</span>
+                        </label>
+                        <label class="email-toggle">
+                            <input type="checkbox" name="table_show_row_dividers" id="email-table-row-dividers" value="on"
+                                   {% if email_brand.table_show_row_dividers %}checked{% endif %}
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <span class="email-toggle__ui" aria-hidden="true"></span>
+                            <span class="email-toggle__text">Row dividers</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <details class="email-brand-band email-brand-disclosure">
+                <summary class="email-brand-disclosure__summary">
+                    <span class="email-brand-band__title">Identity &amp; colors</span>
+                    <span class="email-brand-disclosure__hint">Name, accent, surfaces</span>
+                </summary>
+
+                {% if can_edit_email_format %}
+                <div class="email-brand-presets" role="group" aria-label="Color presets">
+                    <span class="email-brand-presets__label">Quick look</span>
+                    <button type="button" class="email-preset-btn" data-preset="light">Light</button>
+                    <button type="button" class="email-preset-btn" data-preset="soft">Soft</button>
+                    <button type="button" class="email-preset-btn" data-preset="dark">Dark</button>
+                </div>
+                {% endif %}
+
+                <div class="email-brand-strip__fields">
+                    <label class="email-brand-field">
+                        <span>Brand name</span>
+                        <input type="text" name="brand_name" id="email-brand-name" class="form-control"
+                               value="{{ email_brand.brand_name }}"
+                               autocomplete="organization"
+                               {% if not can_edit_email_format %}disabled{% endif %}>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Accent</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-brand-color-picker" value="{{ email_brand.accent_color }}"
+                                   data-sync-hex="email-brand-accent"
+                                   aria-label="Pick accent color"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="accent_color" id="email-brand-accent" class="form-control"
+                                   value="{{ email_brand.accent_color }}" spellcheck="false"
+                                   data-sync-picker="email-brand-color-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--footer">
+                        <span>Footer text</span>
+                        <input type="text" name="footer_note" id="email-brand-footer" class="form-control"
+                               value="{{ email_brand.footer_note }}"
+                               {% if not can_edit_email_format %}disabled{% endif %}>
+                    </label>
+                </div>
+
+                <div class="email-brand-surface">
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Page background</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-page-bg-picker" value="{{ email_brand.page_background }}"
+                                   data-sync-hex="email-page-bg" aria-label="Page background"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="page_background" id="email-page-bg" class="form-control"
+                                   value="{{ email_brand.page_background }}" spellcheck="false"
+                                   data-sync-picker="email-page-bg-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Card background</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-card-bg-picker" value="{{ email_brand.card_background }}"
+                                   data-sync-hex="email-card-bg" aria-label="Card background"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="card_background" id="email-card-bg" class="form-control"
+                                   value="{{ email_brand.card_background }}" spellcheck="false"
+                                   data-sync-picker="email-card-bg-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Table fill</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-table-bg-picker" value="{{ email_brand.table_header_bg }}"
+                                   data-sync-hex="email-table-bg" aria-label="Table fill"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="table_header_bg" id="email-table-bg" class="form-control"
+                                   value="{{ email_brand.table_header_bg }}" spellcheck="false"
+                                   data-sync-picker="email-table-bg-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Table border</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-table-border-picker" value="{{ email_brand.table_border_color }}"
+                                   data-sync-hex="email-table-border" aria-label="Table border"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="table_border_color" id="email-table-border" class="form-control"
+                                   value="{{ email_brand.table_border_color }}" spellcheck="false"
+                                   data-sync-picker="email-table-border-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Text</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-text-picker" value="{{ email_brand.text_color }}"
+                                   data-sync-hex="email-text-color" aria-label="Text color"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="text_color" id="email-text-color" class="form-control"
+                                   value="{{ email_brand.text_color }}" spellcheck="false"
+                                   data-sync-picker="email-text-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                    <label class="email-brand-field email-brand-field--color">
+                        <span>Muted text</span>
+                        <div class="email-brand-color-row">
+                            <input type="color" id="email-muted-picker" value="{{ email_brand.muted_text_color }}"
+                                   data-sync-hex="email-muted-color" aria-label="Muted text color"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                            <input type="text" name="muted_text_color" id="email-muted-color" class="form-control"
+                                   value="{{ email_brand.muted_text_color }}" spellcheck="false"
+                                   data-sync-picker="email-muted-picker"
+                                   {% if not can_edit_email_format %}disabled{% endif %}>
+                        </div>
+                    </label>
+                </div>
+            </details>
+        </form>
+
+        <div class="email-designer__preview" id="email-designer-preview">
+            <div class="email-designer__preview-bar">
+                <div>
+                    <p class="email-designer__preview-label">Live preview</p>
+                    <p class="email-designer__preview-sub">Stays in view while you edit</p>
+                </div>
+                <div class="email-designer__preview-actions">
+                    <span class="email-save-status" id="email-brand-status" hidden></span>
+                    {% if can_edit_email_format %}
+                    <button type="submit" form="email-brand-form" class="btn secondary small" id="email-brand-save-btn" disabled>Save look</button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="email-designer__canvas-host" id="email-canvas-host">
+                {% include "core/management/email_designer_canvas.html" %}
+            </div>
         </div>
     </div>
 </section>

@@ -212,6 +212,14 @@
         wrap.classList.remove("is-flashing");
         void wrap.offsetWidth;
         wrap.classList.add("is-flashing");
+        var host = document.getElementById("email-canvas-host");
+        if (host) {
+          var delta = wrap.getBoundingClientRect().top - host.getBoundingClientRect().top;
+          host.scrollTo({
+            top: Math.max(0, host.scrollTop + delta - 16),
+            behavior: "smooth",
+          });
+        }
       }
     }
   }
