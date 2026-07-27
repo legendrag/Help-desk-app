@@ -6,7 +6,7 @@ from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 
-from notifications.email_content import render_notification_email
+from notifications.email_content import brand_asset_urls, render_notification_email
 from notifications.email_service import send_with_retries
 from notifications.email_templates import (
     EVENT_META,
@@ -358,6 +358,7 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
             "cta_label": defaults.get("cta_label") or "Open",
             "cta_url": cta_url_for_event(event_type, sample) or "#",
             "footer_note": footer_note,
+            **brand_asset_urls(),
         },
     }
 

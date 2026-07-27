@@ -21,6 +21,22 @@ def absolute_url(path: str) -> str:
     return f"{base.rstrip('/')}{path}"
 
 
+def static_absolute_url(path: str) -> str:
+    """Absolute URL for a static asset path like 'images/logo.png'."""
+    from django.templatetags.static import static
+
+    return absolute_url(static(path))
+
+
+def brand_asset_urls() -> dict[str, str]:
+    """Icon + wordmark used in the email header (matches login branding)."""
+    return {
+        "brand_icon_url": static_absolute_url("images/mlameh-icon-fg.png"),
+        # Dark-background wordmark (white lockup) for the indigo header.
+        "brand_logo_url": static_absolute_url("images/mlameh-ticket-logo-dark.png"),
+    }
+
+
 def display_name(user) -> str:
     if not user:
         return "Someone"
@@ -99,6 +115,7 @@ def render_notification_email(
         "cta_url": cta_url,
         "cta_label": cta_label,
         "footer_note": footer_note,
+        **brand_asset_urls(),
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)

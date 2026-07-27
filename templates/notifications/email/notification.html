@@ -11,8 +11,34 @@
       <td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
           <tr>
-            <td style="background:#4f46e5;padding:18px 24px;">
-              <div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">{{ brand_name }}</div>
+            <td style="background:#4f46e5;padding:16px 24px;">
+              <table role="presentation" cellspacing="0" cellpadding="0">
+                <tr>
+                  {% if brand_icon_url %}
+                  <td style="vertical-align:middle;padding-right:10px;">
+                    <img
+                      src="{{ brand_icon_url }}"
+                      alt=""
+                      width="32"
+                      height="32"
+                      style="display:block;border:0;outline:none;text-decoration:none;"
+                    >
+                  </td>
+                  {% endif %}
+                  <td style="vertical-align:middle;">
+                    {% if brand_logo_url %}
+                    <img
+                      src="{{ brand_logo_url }}"
+                      alt="{{ brand_name }}"
+                      height="28"
+                      style="display:block;border:0;outline:none;text-decoration:none;height:28px;width:auto;max-height:28px;"
+                    >
+                    {% else %}
+                    <div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">{{ brand_name }}</div>
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>

@@ -78,6 +78,8 @@
 
   function buildEmailDocument(meta, bodyText) {
     var brand = escapeHtml(meta.brand_name || "mlamehticket");
+    var brandIcon = escapeHtml(meta.brand_icon_url || "");
+    var brandLogo = escapeHtml(meta.brand_logo_url || "");
     var ctaLabel = escapeHtml(meta.cta_label || "Open");
     var ctaUrl = escapeHtml(meta.cta_url || "#");
     var footer = escapeHtml(
@@ -108,6 +110,27 @@
       "</a>" +
       "</p>";
 
+    var iconCell = brandIcon
+      ? '<td style="vertical-align:middle;padding-right:10px;">' +
+        '<img src="' +
+        brandIcon +
+        '" alt="" width="32" height="32" style="display:block;border:0;outline:none;text-decoration:none;">' +
+        "</td>"
+      : "";
+    var logoCell = brandLogo
+      ? '<td style="vertical-align:middle;">' +
+        '<img src="' +
+        brandLogo +
+        '" alt="' +
+        brand +
+        '" height="28" style="display:block;border:0;outline:none;text-decoration:none;height:28px;width:auto;max-height:28px;">' +
+        "</td>"
+      : '<td style="vertical-align:middle;">' +
+        '<div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">' +
+        brand +
+        "</div>" +
+        "</td>";
+
     return (
       "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -119,10 +142,11 @@
       "<tr><td align=\"center\">" +
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">' +
       "<tr>" +
-      '<td style="background:#4f46e5;padding:18px 24px;">' +
-      '<div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">' +
-      brand +
-      "</div>" +
+      '<td style="background:#4f46e5;padding:16px 24px;">' +
+      '<table role="presentation" cellspacing="0" cellpadding="0"><tr>' +
+      iconCell +
+      logoCell +
+      "</tr></table>" +
       "</td>" +
       "</tr>" +
       "<tr>" +
