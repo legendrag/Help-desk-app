@@ -5905,6 +5905,13 @@ body.ticket-detail-page .chat-actions-closed {
   border-top: 1px solid var(--border, #e2e8f0);
 }
 
+.email-templates-panel__card {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--panel-bg, #ffffff);
+  padding: 1.25rem 1.35rem 1.4rem;
+}
+
 .email-templates-panel__header {
   display: flex;
   align-items: flex-start;
@@ -5939,34 +5946,23 @@ body.ticket-detail-page .chat-actions-closed {
   color: var(--danger, #b91c1c);
 }
 
-.email-type-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0 0 1.25rem 0;
+.email-templates-toolbar {
+  margin-bottom: 1.15rem;
 }
 
-.email-type-chip {
-  border: 1px solid var(--border, #e2e8f0);
-  background: var(--surface, #f8fafc);
-  color: inherit;
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1.2;
+.email-templates-toolbar__field {
+  max-width: 360px;
 }
 
-.email-type-chip:hover {
-  border-color: var(--primary, #4f46e5);
-  color: var(--primary, #4f46e5);
+.email-templates-panel__select {
+  width: 100%;
 }
 
-.email-type-chip.is-active {
-  background: var(--primary, #4f46e5);
-  border-color: var(--primary, #4f46e5);
-  color: #fff;
+.email-template-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .email-template-form__label {
@@ -5976,15 +5972,23 @@ body.ticket-detail-page .chat-actions-closed {
   font-weight: 600;
 }
 
+.email-template-form__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .email-template-form__field {
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
 }
 
 .email-template-form__body {
-  min-height: 180px;
+  min-height: 220px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9rem;
   line-height: 1.5;
+  resize: vertical;
 }
 
 .email-template-fields {
@@ -5992,7 +5996,11 @@ body.ticket-detail-page .chat-actions-closed {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: 0.55rem;
+  margin: 0.15rem 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px dashed var(--border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--surface, #f8fafc);
 }
 
 .email-template-fields__hint {
@@ -6003,10 +6011,10 @@ body.ticket-detail-page .chat-actions-closed {
 
 .email-template-field-btn {
   border: 1px solid var(--border, #e2e8f0);
-  background: var(--surface, #f8fafc);
+  background: #fff;
   color: inherit;
-  border-radius: 6px;
-  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
   font-size: 0.78rem;
   cursor: pointer;
 }
@@ -6022,28 +6030,40 @@ body.ticket-detail-page .chat-actions-closed {
 }
 
 .email-template-preview {
-  margin: 0 0 1.25rem 0;
-  padding: 0.9rem 1rem;
+  position: sticky;
+  top: 1rem;
+  padding: 1rem 1.05rem;
   border: 1px solid var(--border, #e2e8f0);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface, #f8fafc);
+  min-height: 280px;
+}
+
+.email-template-preview__header {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
 }
 
 .email-template-preview__title {
-  margin: 0 0 0.25rem 0;
-  font-size: 0.9rem;
+  margin: 0 0 0.2rem 0;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 
 .email-template-preview__hint {
-  margin: 0 0 0.75rem 0;
+  margin: 0;
   font-size: 0.8rem;
   color: var(--muted, #64748b);
 }
 
+.email-template-preview__block + .email-template-preview__block {
+  margin-top: 0.85rem;
+}
+
 .email-template-preview__label {
-  margin: 0 0 0.2rem 0;
-  font-size: 0.75rem;
+  margin: 0 0 0.3rem 0;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -6051,7 +6071,7 @@ body.ticket-detail-page .chat-actions-closed {
 }
 
 .email-template-preview__subject {
-  margin: 0 0 0.75rem 0;
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.4;
@@ -6064,7 +6084,7 @@ body.ticket-detail-page .chat-actions-closed {
   word-break: break-word;
   font-family: inherit;
   font-size: 0.9rem;
-  line-height: 1.5;
+  line-height: 1.55;
   color: inherit;
 }
 
@@ -6072,10 +6092,21 @@ body.ticket-detail-page .chat-actions-closed {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
 }
 
 .email-template-form__help {
-  margin-top: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+@media (max-width: 980px) {
+  .email-template-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .email-template-preview {
+    position: static;
+    min-height: 0;
+  }
 }

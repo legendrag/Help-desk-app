@@ -1,6 +1,7 @@
 (function () {
   var lastFocusedId = "id_email_body";
   var baseline = { subject: "", body: "" };
+  var selectSyncing = false;
 
   function $(id) {
     return document.getElementById(id);
@@ -73,22 +74,21 @@
     bodyEl.textContent = resolveTokens(values.body, sample) || "—";
   }
 
-  function setActiveChip(eventType) {
-    var chips = document.querySelectorAll(".email-type-chip");
-    chips.forEach(function (chip) {
-      var active = chip.getAttribute("data-email-type") === eventType;
-      chip.classList.toggle("is-active", active);
-      chip.setAttribute("aria-selected", active ? "true" : "false");
-    });
+  function syncSelect(eventType) {
+    var select = $("email-type-select");
+    if (!select || !eventType) return;
+    selectSyncing = true;
+    select.value = eventType;
+    selectSyncing = false;
   }
 
   function loadType(eventType) {
-    var chips = $("email-type-chips");
-    if (!chips || !window.htmx) return;
-    var baseUrl = chips.getAttribute("data-form-url");
+    var select = $("email-type-select");
+    if (!select || !window.htmx) return;
+    var baseUrl = select.getAttribute("data-form-url");
     if (!baseUrl) return;
     var url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + "email_type=" + encodeURIComponent(eventType);
-    setActiveChip(eventType);
+    syncSelect(eventType);
     window.htmx.ajax("GET", url, {
       target: "#email-template-form-slot",
       swap: "innerHTML",
@@ -112,22 +112,22 @@
     }
   }
 
-  function onClick(event) {
-    var chip = event.target.closest(".email-type-chip");
-    if (chip) {
-      event.preventDefault();
-      var nextType = chip.getAttribute("data-email-type");
-      if (!nextType) return;
-      var form = $("email-template-editor");
-      var currentType = form ? form.getAttribute("data-event-type") : null;
-      if (currentType && nextType === currentType) return;
-      if (isDirty() && !window.confirm("You have unsaved changes. Switch notification type and discard them?")) {
-        return;
-      }
-      loadType(nextType);
+  function onTypeChange(event) {
+    var select = event.target;
+    if (!select || select.id !== "email-type-select" || selectSyncing) return;
+    var nextType = select.value;
+    if (!nextType) return;
+    var form = $("email-template-editor");
+    var currentType = form ? form.getAttribute("data-event-type") : null;
+    if (currentType && nextType === currentType) return;
+    if (isDirty() && !window.confirm("You have unsaved changes. Switch notification type and discard them?")) {
+      syncSelect(currentType);
       return;
     }
+    loadType(nextType);
+  }
 
+  function onClick(event) {
     var resetBtn = event.target.closest(".email-template-reset-btn");
     if (resetBtn) {
       event.preventDefault();
@@ -173,13 +173,17 @@
     captureBaseline();
     updatePreview();
     var form = $("email-template-editor");
-    if (form) setActiveChip(form.getAttribute("data-event-type"));
+    if (form) syncSelect(form.getAttribute("data-event-type"));
   }
 
   function onAfterSwap(event) {
     var target = event.target;
     if (!target) return;
-    if (target.id === "email-template-form-slot" || target.id === "settings-content" || target.querySelector && target.querySelector("#email-template-editor")) {
+    if (
+      target.id === "email-template-form-slot" ||
+      target.id === "settings-content" ||
+      (target.querySelector && target.querySelector("#email-template-editor"))
+    ) {
       initForm();
     }
   }
@@ -201,6 +205,7 @@
   if (!window.__emailTemplatesUxBound) {
     window.__emailTemplatesUxBound = true;
     document.addEventListener("click", onClick);
+    document.addEventListener("change", onTypeChange);
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("input", onInput);
     document.body.addEventListener("htmx:afterSwap", onAfterSwap);

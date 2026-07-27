@@ -70,37 +70,38 @@
     </div>
 
     <section class="email-templates-panel" aria-labelledby="email-templates-heading">
-        <div class="email-templates-panel__header">
-            <div>
-                <h3 id="email-templates-heading" class="email-templates-panel__title">Email templates</h3>
-                <p class="email-templates-panel__subtitle">
-                    Edit the subject and body for each notification. Insert fields where you need ticket values.
-                </p>
+        <div class="email-templates-panel__card">
+            <div class="email-templates-panel__header">
+                <div>
+                    <h3 id="email-templates-heading" class="email-templates-panel__title">Email templates</h3>
+                    <p class="email-templates-panel__subtitle">
+                        Choose a notification, edit subject and body, and insert fields as needed.
+                    </p>
+                </div>
+                <p id="email-template-status" class="email-templates-panel__status" hidden>Saved.</p>
             </div>
-            <p id="email-template-status" class="email-templates-panel__status" hidden>Saved.</p>
-        </div>
 
-        <p class="email-template-form__label" id="email-type-chips-label">Notification type</p>
-        <div
-            class="email-type-chips"
-            id="email-type-chips"
-            role="tablist"
-            aria-labelledby="email-type-chips-label"
-            data-form-url="{% url 'email_template_form' %}"
-        >
-            {% for item in email_event_types %}
-            <button
-                type="button"
-                class="email-type-chip{% if item.event_type == selected_email_type %} is-active{% endif %}"
-                role="tab"
-                aria-selected="{% if item.event_type == selected_email_type %}true{% else %}false{% endif %}"
-                data-email-type="{{ item.event_type }}"
-            >{{ item.label }}</button>
-            {% endfor %}
-        </div>
+            <div class="email-templates-toolbar">
+                <div class="email-templates-toolbar__field">
+                    <label class="email-template-form__label" for="email-type-select">Notification type</label>
+                    <select
+                        id="email-type-select"
+                        class="form-control email-templates-panel__select"
+                        name="email_type"
+                        data-form-url="{% url 'email_template_form' %}"
+                    >
+                        {% for item in email_event_types %}
+                        <option value="{{ item.event_type }}" {% if item.event_type == selected_email_type %}selected{% endif %}>
+                            {{ item.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-        <div id="email-template-form-slot" class="email-templates-panel__form">
-            {% include "core/management/email_template_form.html" %}
+            <div id="email-template-form-slot" class="email-templates-panel__form">
+                {% include "core/management/email_template_form.html" %}
+            </div>
         </div>
     </section>
 </div>
