@@ -30,8 +30,8 @@
     <meta name="keywords" content="mlameh, mlameh ticket, support, ticketing, customer service">
     <title>{% block title %}mlameh ticket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.72">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.69">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.33">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.70">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.34">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -299,6 +299,24 @@
                             <div class="skeleton skeleton--text-sm skeleton-w-65" aria-hidden="true"></div>
                         </div>
                     </aside>
+                </div>
+            </div>
+
+            <!-- Login / auth -->
+            <div class="page-nav-overlay__screen skeleton-auth" data-skeleton="login" hidden>
+                <div class="skeleton-auth__card">
+                    <div class="skeleton-auth__brand">
+                        <div class="skeleton skeleton--circle skeleton-auth__mark" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-65 skeleton-auth__logo" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton skeleton--text-sm skeleton-w-50 skeleton-auth__subtitle" aria-hidden="true"></div>
+                    <div class="skeleton-auth__fields">
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__input" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__button" aria-hidden="true"></div>
                 </div>
             </div>
 
@@ -1070,7 +1088,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=11"></script>
+    <script src="{% static 'js/loading.js' %}?v=14"></script>
 </body>
 
 </html>

@@ -423,14 +423,62 @@ document.addEventListener('DOMContentLoaded', function() {
             return 'default';
         }
 
+        // App home redirects to the tickets list
+        if (path === '/' || path === '') return 'ticket-list';
+
+        if (path === '/accounts/login') return 'login';
         if (path === '/tickets/dashboard') return 'dashboard';
-        if (path === '/tickets/settings') return 'settings';
-        if (/^\/tickets\/\d+$/.test(path)) return 'ticket-detail';
+        if (path === '/tickets/settings' || path.indexOf('/tickets/settings') === 0) return 'settings';
+        // Ticket detail and any in-ticket action (status, merge, transfer, …)
+        if (/^\/tickets\/\d+/.test(path)) return 'ticket-detail';
         if (path === '/tickets') return 'ticket-list';
-        if (/^\/kb\/\d+$/.test(path)) return 'kb-detail';
+        // KB article view / edit / delete land back on article or list chrome
+        if (/^\/kb\/\d+/.test(path)) return 'kb-detail';
+        if (path === '/kb/create' || path.indexOf('/kb/create') === 0) return 'kb-detail';
         if (path === '/kb' || path.indexOf('/kb/') === 0) return 'kb-list';
         if (path === '/news' || path.indexOf('/news/') === 0) return 'news-list';
         return 'default';
+    }
+
+    /**
+     * Resolve the URL that should drive the skeleton.
+     * Auth forms use their landing page; saves use the screen you are currently on.
+     */
+    function resolveSkeletonHref(target, href) {
+        const resolved = resolveNavHref(target, href);
+
+        if (target && target.tagName === 'FORM') {
+            var actionPath = '';
+            try {
+                actionPath = normalizePathname(
+                    new URL(target.getAttribute('action') || resolved || window.location.href, window.location.origin).pathname
+                );
+            } catch (e) {
+                actionPath = '';
+            }
+
+            // Login POST → tickets list (or ?next= / hidden next field)
+            if (actionPath === '/accounts/login' || actionPath.indexOf('/accounts/login') === 0) {
+                var nextInput = target.querySelector('input[name="next"]');
+                if (nextInput && nextInput.value) return nextInput.value;
+                try {
+                    var nextParam = new URL(window.location.href).searchParams.get('next');
+                    if (nextParam) return nextParam;
+                } catch (e2) { /* ignore */ }
+                return '/tickets/';
+            }
+
+            // Logout → login screen skeleton
+            if (actionPath === '/accounts/logout' || actionPath.indexOf('/accounts/logout') === 0) {
+                return '/accounts/login/';
+            }
+
+            // Saves / status / merge / KB edits etc. reload or redirect back —
+            // always mirror the screen the user is on, not the form action URL.
+            return window.location.href;
+        }
+
+        return resolved || window.location.href;
     }
 
     function showNavSkeleton(variantId) {
@@ -519,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        const destination = resolveNavHref(target, href);
+        const destination = resolveSkeletonHref(target, href);
         showNavSkeleton(classifyNavSkeleton(destination));
 
         // Paint press state + full-screen skeleton before any navigation work

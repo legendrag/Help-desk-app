@@ -1843,6 +1843,12 @@
     radial-gradient(circle at 85% 30%, rgba(52, 211, 153, 0.05), transparent 35%);
 }
 
+[data-theme="dark"] .skeleton-auth__card {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
 [data-theme="dark"] a.is-navigating,
 [data-theme="dark"] .clickable-row.is-navigating,
 [data-theme="dark"] .kb-result-item.is-navigating,
