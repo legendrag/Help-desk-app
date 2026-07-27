@@ -93,7 +93,7 @@
     var ctaBlock =
       '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px 0;">' +
       "<tr>" +
-      '<td style="border-radius:10px;background:#0f172a;">' +
+      '<td style="border-radius:10px;background:#3730a3;">' +
       '<a href="' +
       ctaUrl +
       '" style="display:inline-block;padding:12px 18px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">' +
@@ -105,28 +105,28 @@
       '<p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#94a3b8;word-break:break-all;">' +
       'Or open: <a href="' +
       ctaUrl +
-      '" style="color:#0f172a;text-decoration:underline;">' +
+      '" style="color:#3730a3;text-decoration:underline;">' +
       ctaUrl +
       "</a>" +
       "</p>";
 
     var iconCell = brandIcon
-      ? '<td style="vertical-align:middle;padding-right:10px;">' +
+      ? '<td style="vertical-align:top;padding-right:8px;">' +
         '<img src="' +
         brandIcon +
-        '" alt="" width="32" height="32" style="display:block;border:0;outline:none;text-decoration:none;">' +
+        '" alt="" height="26" style="display:block;border:0;outline:none;text-decoration:none;height:26px;width:auto;margin-top:-1px;">' +
         "</td>"
       : "";
     var logoCell = brandLogo
-      ? '<td style="vertical-align:middle;">' +
+      ? '<td style="vertical-align:top;">' +
         '<img src="' +
         brandLogo +
         '" alt="' +
         brand +
-        '" height="28" style="display:block;border:0;outline:none;text-decoration:none;height:28px;width:auto;max-height:28px;">' +
+        '" height="36" style="display:block;border:0;outline:none;text-decoration:none;height:36px;width:auto;max-height:36px;">' +
         "</td>"
-      : '<td style="vertical-align:middle;">' +
-        '<div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">' +
+      : '<td style="vertical-align:top;">' +
+        '<div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;line-height:36px;">' +
         brand +
         "</div>" +
         "</td>";
@@ -142,7 +142,7 @@
       "<tr><td align=\"center\">" +
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">' +
       "<tr>" +
-      '<td style="background:#0f172a;padding:16px 24px;">' +
+      '<td style="background:#3730a3;padding:16px 24px;">' +
       '<table role="presentation" cellspacing="0" cellpadding="0"><tr>' +
       iconCell +
       logoCell +
