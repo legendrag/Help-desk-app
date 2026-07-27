@@ -35,7 +35,7 @@ def is_image(filename):
     if hasattr(filename, 'name'):
         filename = filename.name
     
-    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'}
+    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
     import os
     _, ext = os.path.splitext(filename.lower())
     return ext in image_extensions

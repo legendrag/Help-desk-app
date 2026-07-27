@@ -1,5 +1,9 @@
 from django import forms
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from .models import Article, ArticleAttachment, Category
+import os
+
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -15,6 +19,23 @@ class MultipleFileField(forms.FileField):
             result = [single_file_clean(d, initial) for d in data]
         else:
             result = [single_file_clean(data, initial)]
+        for f in result:
+            if not f:
+                continue
+            name = getattr(f, "name", "") or ""
+            _, ext = os.path.splitext(name.lower())
+            allowed = [e.lower() for e in getattr(settings, "ALLOWED_ATTACHMENT_EXTENSIONS", [])]
+            if allowed and ext not in allowed:
+                raise ValidationError(
+                    f"Attachment type '{ext or '(none)'}' is not allowed. "
+                    f"Allowed: {', '.join(allowed)}"
+                )
+            max_size = getattr(settings, "MAX_ATTACHMENT_SIZE", None)
+            size = getattr(f, "size", None)
+            if max_size and size is not None and size > max_size:
+                raise ValidationError(
+                    f"Attachment is too large ({size} bytes). Maximum is {max_size} bytes."
+                )
         return result
 
 class ArticleForm(forms.ModelForm):
@@ -23,7 +44,7 @@ class ArticleForm(forms.ModelForm):
         help_text="Select one or more pictures or files to attach.",
         widget=MultipleFileInput(attrs={
             'class': 'form-control',
-            'accept': 'image/*,application/pdf,.doc,.docx',
+            'accept': '.pdf,.docx,.xlsx,.jpg,.jpeg,.png,image/*,application/pdf',
             'multiple': True
         })
     )

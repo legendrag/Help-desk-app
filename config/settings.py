@@ -139,9 +139,19 @@ CHANNEL_LAYERS = {
 }
 
 # Default bootstrap super-admin credentials.
+# Password must be set via env. Empty/weak passwords never auto-create an admin.
+_WEAK_SUPERADMIN_PASSWORDS = frozenset({"", "admin", "password", "changeme", "12345678"})
 DEFAULT_SUPERADMIN_USERNAME = os.getenv("DEFAULT_SUPERADMIN_USERNAME", "admin")
 DEFAULT_SUPERADMIN_EMAIL = os.getenv("DEFAULT_SUPERADMIN_EMAIL", "admin@mlamehticket.local")
-DEFAULT_SUPERADMIN_PASSWORD = os.getenv("DEFAULT_SUPERADMIN_PASSWORD", "admin")
+DEFAULT_SUPERADMIN_PASSWORD = os.getenv("DEFAULT_SUPERADMIN_PASSWORD", "").strip()
+
+if not DEBUG and DEFAULT_SUPERADMIN_PASSWORD.lower() in _WEAK_SUPERADMIN_PASSWORDS:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "DEFAULT_SUPERADMIN_PASSWORD must be set to a strong value when DEBUG is false. "
+        "Do not use empty, 'admin', 'password', or 'changeme'."
+    )
 
 MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
 ALLOWED_ATTACHMENT_EXTENSIONS = [".pdf", ".docx", ".xlsx", ".jpg", ".jpeg", ".png"]

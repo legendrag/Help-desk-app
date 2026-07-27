@@ -118,7 +118,7 @@
                                 <div class="reply-quote-text">{{ message.reply_to.message }}</div>
                             </div>
                             {% endif %}
-                            <div class="chat-bubble-text">{{ message.message|safe }}</div>
+                            <div class="chat-bubble-text">{{ message.message }}</div>
                             {% if message.attachment %}
                             <div class="chat-bubble-attachment-wrap">
                                 {% if message.attachment.name|is_image %}
@@ -345,6 +345,7 @@
                 <div class="chat-actions-right">
                     <div class="chat-attach-container">
                         <input type="file" name="attachment" id="file-upload" class="file-preview-hidden"
+                            accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
                             onchange="showFilePreview(this)" form="chat-message-form">
                         <label for="file-upload" id="file-label" class="chat-attach-icon-btn" title="Attach File">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"

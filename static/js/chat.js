@@ -428,7 +428,7 @@ function initChat(ticketId) {
             <div class="chat-row">
                 <div class="chat-bubble">
                     <header>
-                        <strong>${payload.sender_username}</strong>
+                        <strong>${escapeHtml(payload.sender_username || '')}</strong>
                         </header>
                     <div id="msg-display-${payload.id}">
                         ${reply ? `
@@ -439,16 +439,16 @@ function initChat(ticketId) {
                                 <div class="reply-quote-text">${escapeHtml(reply.message || '')}</div>
                             </div>
                         ` : ''}
-                        <div class="chat-bubble-text">${payload.message}</div>
+                        <div class="chat-bubble-text">${escapeHtml(payload.message || '')}</div>
                         ${payload.attachment_url ? (
-                            payload.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)($|\?)/i) ? `
+                            payload.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|bmp)($|\?)/i) ? `
                             <div style="margin-top: 0.5rem;">
-                                <img src="${payload.attachment_url}" alt="Attachment" class="chat-image-preview" onclick="openLightbox(this.src)">
+                                <img src="${escapeHtml(payload.attachment_url)}" alt="Attachment" class="chat-image-preview" onclick="openLightbox(this.src)">
                             </div>
                             ` : `
                             <div style="margin-top: 0.5rem;">
-                                <a href="${payload.attachment_url}" target="_blank" download style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
-                                    📎 ${payload.attachment_name || 'View Attachment'}
+                                <a href="${escapeHtml(payload.attachment_url)}" target="_blank" download style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
+                                    📎 ${escapeHtml(payload.attachment_name || 'View Attachment')}
                                 </a>
                             </div>
                             `
@@ -471,13 +471,13 @@ function initChat(ticketId) {
                 </div>
             </div>
             <div class="message-details" id="message-details-${payload.id}">
-                <span>Sender: ${payload.sender_username}</span>
+                <span>Sender: ${escapeHtml(payload.sender_username || '')}</span>
                 <span>Time: ${fullDateStr}</span>
             </div>
             ${canEdit ? `
             <form id="msg-edit-${payload.id}" action="${getEditUrl(payload.id)}" method="post" class="msg-edit-form" style="display: none;">
                 <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
-                <textarea name="message" rows="2" class="chat-textarea-no-resize">${payload.message}</textarea>
+                <textarea name="message" rows="2" class="chat-textarea-no-resize">${escapeHtml(payload.message || '')}</textarea>
                 <div class="msg-edit-actions">
                     <button type="button" class="btn-edit-cancel" onclick="toggleEdit(${payload.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

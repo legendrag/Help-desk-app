@@ -58,7 +58,7 @@ def seed_roles(stdout=None):
 
     username = getattr(settings, "DEFAULT_SUPERADMIN_USERNAME", "admin")
     email = getattr(settings, "DEFAULT_SUPERADMIN_EMAIL", "admin@example.com")
-    password = getattr(settings, "DEFAULT_SUPERADMIN_PASSWORD", "admin")
+    password = getattr(settings, "DEFAULT_SUPERADMIN_PASSWORD", "") or "demo-admin-change-me"
 
     superadmin, created = User.objects.get_or_create(
         username=username,
@@ -75,7 +75,8 @@ def seed_roles(stdout=None):
     superadmin.is_superuser = True
     superadmin.is_staff = True
     superadmin.status = User.Status.ACTIVE
-    superadmin.set_password(password)
+    if password:
+        superadmin.set_password(password)
     superadmin.save()
 
     if stdout:

@@ -417,3 +417,220 @@ class TicketListSearchTests(TestCase):
         self.assertTrue(response.context["is_htmx"])
         self.assertContains(response, self.by_title.ticket_number)
 
+
+from django.core.exceptions import ValidationError, PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from django.test import override_settings
+from core.models import Role
+from kb.models import Article
+from tickets.access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
+
+
+class SecurityXSSAndUploadTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="XSS", name="XSS Branch")
+        self.department = Department.objects.create(name="XSS Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="XSS Cat", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.role = Role.objects.create(name="XSS Branch Role", can_send_message=True)
+        self.user = User.objects.create_user(
+            username="xss_branch",
+            email="xss@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+            role=self.role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-XSS-1",
+            title="XSS ticket",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.user,
+            client_name="Client",
+            client_phone="123",
+        )
+
+    def test_message_html_escaped_in_detail(self):
+        TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.user,
+            message='<img src=x onerror=alert(1)>',
+        )
+        self.client.login(username="xss_branch", password="password123")
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "<img src=x onerror=alert(1)>")
+        self.assertContains(response, "&lt;img src=x onerror=alert(1)&gt;")
+
+    def test_reject_html_attachment(self):
+        bad = SimpleUploadedFile("evil.html", b"<script>alert(1)</script>", content_type="text/html")
+        with self.assertRaises(ValidationError):
+            TicketMessage.objects.create(
+                ticket=self.ticket,
+                sender=self.user,
+                message="",
+                attachment=bad,
+            )
+
+    def test_reject_svg_attachment(self):
+        bad = SimpleUploadedFile("evil.svg", b"<svg onload=alert(1)></svg>", content_type="image/svg+xml")
+        with self.assertRaises(ValidationError):
+            TicketMessage.objects.create(
+                ticket=self.ticket,
+                sender=self.user,
+                message="",
+                attachment=bad,
+            )
+
+    def test_accept_png_attachment(self):
+        # Minimal 1x1 PNG
+        png = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N"
+            b"\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        good = SimpleUploadedFile("ok.png", png, content_type="image/png")
+        msg = TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.user,
+            message="with image",
+            attachment=good,
+        )
+        self.assertTrue(msg.attachment.name.endswith(".png"))
+
+
+class SecurityTenancyTests(TestCase):
+    def setUp(self):
+        self.branch_a = Branch.objects.create(code="BA", name="Branch A")
+        self.branch_b = Branch.objects.create(code="BB", name="Branch B")
+        self.dept_a = Department.objects.create(name="Dept A")
+        self.dept_b = Department.objects.create(name="Dept B")
+        self.cat_a = Category.objects.create(
+            department=self.dept_a, name="Cat A", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.role_kb = Role.objects.create(
+            name="KB Viewer", can_access_kb=True, can_pick_ticket=True, can_send_message=True
+        )
+        self.role_no_kb = Role.objects.create(
+            name="No KB", can_access_kb=False, can_pick_ticket=True, can_send_message=True
+        )
+        self.branch_user_b_kb = User.objects.create_user(
+            username="branch_b_kb",
+            email="bbkb@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_b,
+            role=self.role_kb,
+        )
+        self.branch_user_b_nokk = User.objects.create_user(
+            username="branch_b_nokb",
+            email="bbnokb@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_b,
+            role=self.role_no_kb,
+        )
+        self.support_a = User.objects.create_user(
+            username="support_a_pick",
+            email="sa@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_a,
+            role=self.role_kb,
+        )
+        self.support_b = User.objects.create_user(
+            username="support_b_pick",
+            email="sb@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_b,
+            role=self.role_kb,
+        )
+        self.creator = User.objects.create_user(
+            username="creator_a",
+            email="ca@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_a,
+            role=self.role_no_kb,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-TEN-1",
+            title="Tenancy ticket",
+            description="desc",
+            branch=self.branch_a,
+            department=self.dept_a,
+            category=self.cat_a,
+            created_by=self.creator,
+            status=Ticket.Status.OPEN,
+            client_name="Client",
+            client_phone="123",
+        )
+        self.article = Article.objects.create(
+            title="Related article",
+            content="<p>help</p>",
+            is_published=True,
+            related_ticket=self.ticket,
+            created_by=self.support_a,
+        )
+
+    def test_kb_bypass_requires_can_access_kb(self):
+        self.assertTrue(user_can_view_ticket(self.branch_user_b_kb, self.ticket))
+        self.assertFalse(user_can_view_ticket(self.branch_user_b_nokk, self.ticket))
+
+    def test_kb_bypass_http_allows_kb_user(self):
+        self.client.login(username="branch_b_kb", password="password123")
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+
+    def test_kb_bypass_http_denies_non_kb_user(self):
+        self.client.login(username="branch_b_nokb", password="password123")
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 403)
+
+    def test_cross_dept_cannot_pick(self):
+        self.assertFalse(user_can_pick_ticket(self.support_b, self.ticket))
+        self.client.login(username="support_b_pick", password="password123")
+        response = self.client.post(reverse("pick_ticket", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 403)
+        self.ticket.refresh_from_db()
+        self.assertIsNone(self.ticket.assigned_to_id)
+
+    def test_same_dept_can_pick(self):
+        self.assertTrue(user_can_pick_ticket(self.support_a, self.ticket))
+        self.client.login(username="support_a_pick", password="password123")
+        response = self.client.post(reverse("pick_ticket", kwargs={"ticket_id": self.ticket.id}))
+        self.assertIn(response.status_code, (200, 204, 302))
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.assigned_to_id, self.support_a.id)
+
+    def test_cross_dept_cannot_reopen(self):
+        self.ticket.status = Ticket.Status.CLOSED
+        self.ticket.assigned_to = self.support_a
+        self.ticket.save()
+        self.assertFalse(user_can_reopen_ticket(self.support_b, self.ticket))
+        self.client.login(username="support_b_pick", password="password123")
+        response = self.client.post(
+            reverse("update_status", kwargs={"ticket_id": self.ticket.id}),
+            {"status": Ticket.Status.IN_PROGRESS},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_same_dept_can_reopen(self):
+        self.ticket.status = Ticket.Status.CLOSED
+        self.ticket.assigned_to = self.support_a
+        self.ticket.save()
+        self.assertTrue(user_can_reopen_ticket(self.support_a, self.ticket))
+        self.client.login(username="support_a_pick", password="password123")
+        response = self.client.post(
+            reverse("update_status", kwargs={"ticket_id": self.ticket.id}),
+            {"status": Ticket.Status.IN_PROGRESS},
+        )
+        self.assertIn(response.status_code, (200, 204, 302))
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)

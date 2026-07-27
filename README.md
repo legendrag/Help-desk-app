@@ -51,7 +51,7 @@ python manage.py runserver
 
 ### 3) Initial Access
 - **URL:** `http://localhost:8000`
-- **Default Admin:** `admin` / `admin`
+- **Bootstrap admin:** set `DEFAULT_SUPERADMIN_PASSWORD` in `.env` to a strong value before `migrate`. Auto-create is skipped if the password is empty or weak (`admin`, `password`, `changeme`). New bootstrap admins must change their password on first login.
 
 ## Environment Variables (`.env`)
 
@@ -67,6 +67,8 @@ python manage.py runserver
 | `DB_PASSWORD` | Database password | *(empty)* |
 | `DB_CONN_MAX_AGE` | Persistent connection lifetime (seconds) | `600` |
 | `ALLOWED_HOSTS` | Server hostnames | `*` |
+| `DEFAULT_SUPERADMIN_USERNAME` | Bootstrap superuser username | `admin` |
+| `DEFAULT_SUPERADMIN_PASSWORD` | Bootstrap superuser password (required when `DEBUG=0`) | *(empty — skips auto-create)* |
 | `BACKUP_DIR` | Backup storage directory | `./backups` |
 | `BACKUP_KEEP` | Number of backups to retain | `7` |
 

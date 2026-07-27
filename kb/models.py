@@ -3,7 +3,10 @@ from django.conf import settings
 from core.models import TimeStampedModel
 
 def kb_attachment_path(instance, filename):
-    return f"kb/{instance.article_id}/{filename}"
+    from django.utils.text import get_valid_filename
+    import os
+    name = get_valid_filename(os.path.basename(filename or "attachment"))
+    return f"kb/{instance.article_id}/{name}"
 
 ICON_CHOICES = [
     ("document", "Document (Default)"),

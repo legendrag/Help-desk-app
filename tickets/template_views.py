@@ -14,6 +14,7 @@ from django.urls import reverse_lazy
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg
 # TruncDate, TruncMonth, TruncWeek, TruncYear removed because DB-side timezone conversion crashes SQLite with USE_TZ=True
 from .models import Ticket, TicketMessage, TicketStatusHistory
+from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
@@ -860,22 +861,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
     def get_object(self, queryset=None):
         ticket = super().get_object(queryset)
-        user = self.request.user
-
-        if user.is_superuser:
-            return ticket
-
-        has_kb_access = ticket.kb_articles.filter(is_published=True).exists()
-
-        if user.user_type == "branch":
-            if not (ticket.branch_id == user.branch_id or has_kb_access):
-                raise PermissionDenied("You do not have permission to view this ticket.")
-        elif user.user_type == "support":
-            if not (ticket.department_id == user.department_id or has_kb_access):
-                raise PermissionDenied("You do not have permission to view this ticket.")
-        else:
+        if not user_can_view_ticket(self.request.user, ticket):
             raise PermissionDenied("You do not have permission to view this ticket.")
-
         return ticket
 
     def get_context_data(self, **kwargs):
@@ -929,22 +916,8 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
 
     def get_object(self, queryset=None):
         ticket = super().get_object(queryset)
-        user = self.request.user
-
-        if user.is_superuser:
-            return ticket
-
-        has_kb_access = ticket.kb_articles.filter(is_published=True).exists()
-
-        if user.user_type == "branch":
-            if not (ticket.branch_id == user.branch_id or has_kb_access):
-                raise PermissionDenied("You do not have permission to view this ticket.")
-        elif user.user_type == "support":
-            if not (ticket.department_id == user.department_id or has_kb_access):
-                raise PermissionDenied("You do not have permission to view this ticket.")
-        else:
+        if not user_can_view_ticket(self.request.user, ticket):
             raise PermissionDenied("You do not have permission to view this ticket.")
-
         return ticket
 
     def get_context_data(self, **kwargs):
@@ -985,6 +958,7 @@ def ticket_category_options(request):
     return render(request, "tickets/category_options.html", {"categories": categories})
 
 
+@login_required
 def post_message(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     
@@ -1030,6 +1004,7 @@ def post_message(request, ticket_id):
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 
+@login_required
 def delete_message(request, message_id):
     message = get_object_or_404(TicketMessage, pk=message_id)
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_delete_message and message.sender == request.user)):
@@ -1059,6 +1034,7 @@ def delete_message(request, message_id):
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 
+@login_required
 def edit_message(request, message_id):
     message = get_object_or_404(TicketMessage, pk=message_id)
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_edit_message and message.sender == request.user)):
@@ -1140,6 +1116,7 @@ def _broadcast_ticket_update(ticket, event_name, extra_payload=None):
         )
 
 
+@login_required
 def update_ticket_status(request, ticket_id):
     if request.method == "POST":
         ticket = get_object_or_404(Ticket, pk=ticket_id)
@@ -1148,7 +1125,7 @@ def update_ticket_status(request, ticket_id):
             if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
                 raise PermissionDenied("You can only update the status of tickets assigned to you.")
         else:
-            if not (request.user.is_superuser or request.user.user_type == 'support' or (request.user.role and request.user.role.can_update_closed_ticket)):
+            if not user_can_reopen_ticket(request.user, ticket):
                 raise PermissionDenied("You do not have permission to update a closed ticket.")
 
         new_status = request.POST.get("status")
@@ -1203,38 +1180,40 @@ def update_ticket_status(request, ticket_id):
                 django_messages.error(request, f"Failed to update status: {str(e)}")
     return redirect("ticket_detail", ticket_id=ticket_id)
 
+@login_required
 def pick_ticket(request, ticket_id):
-    if not (request.user.is_superuser or (request.user.role and request.user.role.can_pick_ticket)):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not user_can_pick_ticket(request.user, ticket):
         raise PermissionDenied("You do not have permission to pick tickets.")
 
     if request.method == "POST":
-        ticket = get_object_or_404(Ticket, pk=ticket_id)
-        if not ticket.assigned_to:
-            if ticket.status == Ticket.Status.MERGED:
-                django_messages.error(request, "Cannot pick a merged ticket.")
-            else:
-                try:
-                    ticket.assigned_to = request.user
-                    ticket.status = Ticket.Status.IN_PROGRESS
-                    ticket.save()
-                    TicketStatusHistory.objects.create(
-                        ticket=ticket,
-                        status=Ticket.Status.IN_PROGRESS,
-                        changed_by=request.user,
-                    )
-                    django_messages.success(request, "Ticket assigned to you.")
-                    notify_ticket_picked(ticket, request.user)
+        if ticket.assigned_to:
+            pass
+        elif ticket.status == Ticket.Status.MERGED:
+            django_messages.error(request, "Cannot pick a merged ticket.")
+        else:
+            try:
+                ticket.assigned_to = request.user
+                ticket.status = Ticket.Status.IN_PROGRESS
+                ticket.save()
+                TicketStatusHistory.objects.create(
+                    ticket=ticket,
+                    status=Ticket.Status.IN_PROGRESS,
+                    changed_by=request.user,
+                )
+                django_messages.success(request, "Ticket assigned to you.")
+                notify_ticket_picked(ticket, request.user)
 
-                    # Broadcast pick event via WebSocket
-                    _broadcast_ticket_update(ticket, "ticket_picked", {
-                        "picked_by": request.user.username,
-                    })
+                # Broadcast pick event via WebSocket
+                _broadcast_ticket_update(ticket, "ticket_picked", {
+                    "picked_by": request.user.username,
+                })
 
-                except ValidationError as e:
-                    for message in e.messages:
-                        django_messages.error(request, message)
-                except Exception as e:
-                    django_messages.error(request, f"Failed to pick ticket: {str(e)}")
+            except ValidationError as e:
+                for message in e.messages:
+                    django_messages.error(request, message)
+            except Exception as e:
+                django_messages.error(request, f"Failed to pick ticket: {str(e)}")
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse
@@ -1244,6 +1223,7 @@ def pick_ticket(request, ticket_id):
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 
+@login_required
 def transfer_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if not (request.user.is_superuser or ticket.assigned_to_id == request.user.id):
@@ -1501,6 +1481,7 @@ def ticket_merge_preview(request, ticket_id):
         "msg_count": msg_count,
     })
 
+@login_required
 def merge_ticket(request, ticket_id):
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
         raise PermissionDenied("You do not have permission to merge tickets.")

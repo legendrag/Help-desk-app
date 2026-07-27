@@ -1,6 +1,7 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from tickets.access import user_in_ticket_org
 from tickets.models import Ticket, TicketMessage
 
 
@@ -17,8 +18,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
 
-        # Removed granular ticket_messages_read check because it causes typing indicator issues
-
+        # Strict org scope for live chat — no KB bypass (view-only cross-org via HTTP).
         allowed_ticket = await self._user_can_access_ticket(user.id, self.ticket_id)
         if not allowed_ticket:
             print(f"[WS-DEBUG] Connection rejected: User {user.id} cannot access ticket {self.ticket_id}")
@@ -99,13 +99,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         except (User.DoesNotExist, Ticket.DoesNotExist):
             return False
 
-        if user.is_superuser:
-            return True
-        if user.user_type == "branch":
-            return bool(user.branch_id) and ticket.branch_id == user.branch_id
-        if user.user_type == "support":
-            return bool(user.department_id) and ticket.department_id == user.department_id
-        return False
+        return user_in_ticket_org(user, ticket)
 
     @database_sync_to_async
     def _create_message(self, ticket_id, user_id, message_text, reply_to_id=None):
@@ -117,17 +111,9 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         except (Ticket.DoesNotExist, User.DoesNotExist):
             return None
 
-        if user.is_superuser:
-            pass
-        elif user.user_type == "branch":
-            if not user.branch_id or ticket.branch_id != user.branch_id:
-                return None
-        elif user.user_type == "support":
-            if not user.department_id or ticket.department_id != user.department_id:
-                return None
-            if ticket.assigned_to_id != user.id:
-                return None
-        else:
+        if not user_in_ticket_org(user, ticket):
+            return None
+        if user.user_type == "support" and not user.is_superuser and ticket.assigned_to_id != user.id:
             return None
 
         if ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:

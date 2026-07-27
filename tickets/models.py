@@ -1,13 +1,35 @@
-from uuid import uuid4
+import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.text import get_valid_filename
 
 
 def ticket_attachment_path(instance, filename):
-    return f"tickets/{instance.ticket_id}/{filename}"
+    name = get_valid_filename(os.path.basename(filename or "attachment"))
+    return f"tickets/{instance.ticket_id}/{name}"
+
+
+def validate_ticket_attachment(attachment):
+    """Enforce ALLOWED_ATTACHMENT_EXTENSIONS and MAX_ATTACHMENT_SIZE."""
+    if not attachment:
+        return
+    name = getattr(attachment, "name", "") or ""
+    _, ext = os.path.splitext(name.lower())
+    allowed = [e.lower() for e in getattr(settings, "ALLOWED_ATTACHMENT_EXTENSIONS", [])]
+    if allowed and ext not in allowed:
+        raise ValidationError(
+            f"Attachment type '{ext or '(none)'}' is not allowed. "
+            f"Allowed: {', '.join(allowed)}"
+        )
+    max_size = getattr(settings, "MAX_ATTACHMENT_SIZE", None)
+    size = getattr(attachment, "size", None)
+    if max_size and size is not None and size > max_size:
+        raise ValidationError(
+            f"Attachment is too large ({size} bytes). Maximum is {max_size} bytes."
+        )
 
 
 class Ticket(models.Model):
@@ -218,6 +240,8 @@ class TicketMessage(models.Model):
             raise ValidationError(f"Cannot send message on a {self.ticket.status} ticket.")
         if not self.message and not self.attachment:
             raise ValidationError("Message or attachment is required.")
+        if self.attachment:
+            validate_ticket_attachment(self.attachment)
 
     def save(self, *args, **kwargs):
         self.full_clean()
