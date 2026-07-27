@@ -65,7 +65,8 @@
   color: var(--text-main);
 }
 
-[data-theme="dark"] body.sidebar-open .topbar {
+[data-theme="dark"] body.sidebar-open .topbar,
+[data-theme="dark"] body:has(.ticket-offcanvas.open) .topbar {
   box-shadow: none;
 }
 

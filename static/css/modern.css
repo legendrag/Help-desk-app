@@ -41,7 +41,8 @@ body {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
-body.sidebar-open .topbar {
+body.sidebar-open .topbar,
+body:has(.ticket-offcanvas.open) .topbar {
   box-shadow: none;
 }
 
