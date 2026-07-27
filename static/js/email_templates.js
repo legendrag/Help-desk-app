@@ -93,7 +93,7 @@
     var ctaBlock =
       '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px 0;">' +
       "<tr>" +
-      '<td style="border-radius:10px;background:#818cf8;">' +
+      '<td style="border-radius:10px;background:#0f172a;">' +
       '<a href="' +
       ctaUrl +
       '" style="display:inline-block;padding:12px 18px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">' +
@@ -105,7 +105,7 @@
       '<p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#94a3b8;word-break:break-all;">' +
       'Or open: <a href="' +
       ctaUrl +
-      '" style="color:#6366f1;text-decoration:underline;">' +
+      '" style="color:#0f172a;text-decoration:underline;">' +
       ctaUrl +
       "</a>" +
       "</p>";
@@ -142,7 +142,7 @@
       "<tr><td align=\"center\">" +
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">' +
       "<tr>" +
-      '<td style="background:#818cf8;padding:16px 24px;">' +
+      '<td style="background:#0f172a;padding:16px 24px;">' +
       '<table role="presentation" cellspacing="0" cellpadding="0"><tr>' +
       iconCell +
       logoCell +
