@@ -327,6 +327,16 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
     if form is None:
         form = EmailTemplateForm(instance=template)
     defaults = get_template_defaults(event_type)
+    sample = sample_context_for_event(event_type)
+    if event_type == "announcement":
+        footer_note = (
+            "You’re receiving this because announcement email notifications are enabled."
+        )
+    else:
+        footer_note = (
+            "You’re receiving this because email notifications are enabled "
+            "for your mlamehticket account."
+        )
     return {
         "email_template": template,
         "email_template_form": form,
@@ -334,16 +344,20 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
         "email_event_types": EVENT_META,
         "merge_fields": merge_fields_for_event(event_type),
         "can_edit_email_templates": can_edit,
-        "sample_context": sample_context_for_event(event_type),
+        "sample_context": sample,
         "default_subject": defaults["subject"],
         "default_body": defaults["body"],
         "email_template_meta": {
             "event_type": event_type,
-            "sample": sample_context_for_event(event_type),
+            "sample": sample,
             "defaults": {
                 "subject": defaults["subject"],
                 "body": defaults["body"],
             },
+            "brand_name": sample.get("brand_name") or "mlamehticket",
+            "cta_label": defaults.get("cta_label") or "Open",
+            "cta_url": cta_url_for_event(event_type, sample) or "#",
+            "footer_note": footer_note,
         },
     }
 

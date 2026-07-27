@@ -91,16 +91,20 @@
 
         <aside class="email-template-preview" aria-live="polite">
             <div class="email-template-preview__header">
-                <p class="email-template-preview__title">Sample preview</p>
-                <p class="email-template-preview__hint">Live preview with sample ticket values</p>
+                <p class="email-template-preview__title">Email preview</p>
+                <p class="email-template-preview__hint">Looks like the message that will be sent</p>
             </div>
-            <div class="email-template-preview__block">
-                <p class="email-template-preview__label">Subject</p>
-                <p class="email-template-preview__subject" id="email-template-preview-subject"></p>
-            </div>
-            <div class="email-template-preview__block">
-                <p class="email-template-preview__label">Body</p>
-                <pre class="email-template-preview__body" id="email-template-preview-body"></pre>
+            <div class="email-template-preview__mail">
+                <div class="email-template-preview__subject-row">
+                    <span class="email-template-preview__subject-label">Subject</span>
+                    <span class="email-template-preview__subject" id="email-template-preview-subject"></span>
+                </div>
+                <iframe
+                    id="email-template-preview-frame"
+                    class="email-template-preview__frame"
+                    title="Email body preview"
+                    sandbox=""
+                ></iframe>
             </div>
         </aside>
     </div>

@@ -63,15 +63,98 @@
     });
   }
 
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function bodyToHtml(body) {
+    return escapeHtml(body).replace(/\r\n/g, "\n").replace(/\n/g, "<br>\n");
+  }
+
+  function buildEmailDocument(meta, bodyText) {
+    var brand = escapeHtml(meta.brand_name || "mlamehticket");
+    var ctaLabel = escapeHtml(meta.cta_label || "Open");
+    var ctaUrl = escapeHtml(meta.cta_url || "#");
+    var footer = escapeHtml(
+      meta.footer_note ||
+        "You’re receiving this because email notifications are enabled for your mlamehticket account."
+    );
+    var bodyHtml = bodyToHtml(bodyText);
+    var bodyBlock = bodyHtml
+      ? '<div style="margin:0 0 22px 0;font-size:15px;line-height:1.55;color:#1e293b;">' + bodyHtml + "</div>"
+      : "";
+    var ctaBlock =
+      '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px 0;">' +
+      "<tr>" +
+      '<td style="border-radius:10px;background:#4f46e5;">' +
+      '<a href="' +
+      ctaUrl +
+      '" style="display:inline-block;padding:12px 18px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">' +
+      ctaLabel +
+      "</a>" +
+      "</td>" +
+      "</tr>" +
+      "</table>" +
+      '<p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#94a3b8;word-break:break-all;">' +
+      'Or open: <a href="' +
+      ctaUrl +
+      '" style="color:#4338ca;text-decoration:underline;">' +
+      ctaUrl +
+      "</a>" +
+      "</p>";
+
+    return (
+      "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      "<title>" +
+      brand +
+      "</title></head>" +
+      '<body style="margin:0;padding:0;background:#f8fafc;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">' +
+      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:24px 12px;">' +
+      "<tr><td align=\"center\">" +
+      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">' +
+      "<tr>" +
+      '<td style="background:#4f46e5;padding:18px 24px;">' +
+      '<div style="font-size:18px;font-weight:700;letter-spacing:0.02em;color:#ffffff;">' +
+      brand +
+      "</div>" +
+      "</td>" +
+      "</tr>" +
+      "<tr>" +
+      '<td style="padding:28px 24px 8px 24px;">' +
+      bodyBlock +
+      ctaBlock +
+      "</td>" +
+      "</tr>" +
+      "<tr>" +
+      '<td style="padding:18px 24px 24px 24px;border-top:1px solid #e2e8f0;">' +
+      '<p style="margin:0;font-size:12px;line-height:1.5;color:#94a3b8;">' +
+      footer +
+      "</p>" +
+      "</td>" +
+      "</tr>" +
+      "</table>" +
+      "</td></tr></table>" +
+      "</body></html>"
+    );
+  }
+
   function updatePreview() {
     var subjectEl = $("email-template-preview-subject");
-    var bodyEl = $("email-template-preview-body");
-    if (!subjectEl || !bodyEl) return;
+    var frame = $("email-template-preview-frame");
+    if (!subjectEl || !frame) return;
     var meta = readMeta();
     var values = currentValues();
     var sample = meta.sample || {};
-    subjectEl.textContent = resolveTokens(values.subject, sample) || "—";
-    bodyEl.textContent = resolveTokens(values.body, sample) || "—";
+    var subject = resolveTokens(values.subject, sample).trim();
+    var body = resolveTokens(values.body, sample).trim();
+    subjectEl.textContent = subject || "—";
+    frame.srcdoc = buildEmailDocument(meta, body);
   }
 
   function syncSelect(eventType) {

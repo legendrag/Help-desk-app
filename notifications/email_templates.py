@@ -15,7 +15,7 @@ from notifications.email_content import (
 )
 from notifications.utils import format_status_label
 
-BRAND_NAME = "mlamehticket"
+BRAND_NAME = "MlamehTicket"
 
 TOKEN_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 
