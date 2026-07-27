@@ -4,16 +4,31 @@
     hx-post="{% url 'email_template_save' selected_email_type %}"
     hx-target="#email-template-form-slot"
     hx-swap="innerHTML"
+    data-event-type="{{ selected_email_type }}"
     {% if not can_edit_email_templates %}aria-disabled="true"{% endif %}
 >
     {% csrf_token %}
+    {{ email_template_meta|json_script:"email-template-meta" }}
+
     <div class="email-template-form__field">
         <label class="email-template-form__label" for="id_email_subject">Subject</label>
+        <div class="email-template-fields email-template-fields--subject" aria-label="Insert merge fields into subject">
+            <span class="email-template-fields__hint">Insert into focused field:</span>
+            {% for key, label in merge_fields %}
+            <button
+                type="button"
+                class="email-template-field-btn"
+                data-insert="{{ key }}"
+                title="Insert {{ '{' }}{{ '{' }} {{ key }} {{ '}' }}{{ '}' }}"
+                {% if not can_edit_email_templates %}disabled{% endif %}
+            >{{ label }}</button>
+            {% endfor %}
+        </div>
         <input
             type="text"
             name="subject"
             id="id_email_subject"
-            class="form-control"
+            class="form-control email-template-input"
             value="{{ email_template_form.subject.value|default_if_none:'' }}"
             maxlength="255"
             {% if not can_edit_email_templates %}readonly{% endif %}
@@ -26,22 +41,10 @@
 
     <div class="email-template-form__field">
         <label class="email-template-form__label" for="id_email_body">Body</label>
-        <div class="email-template-fields" aria-label="Insert merge fields">
-            <span class="email-template-fields__hint">Insert field:</span>
-            {% for key, label in merge_fields %}
-            <button
-                type="button"
-                class="email-template-field-btn"
-                data-insert="{{ key }}"
-                data-target="id_email_body"
-                {% if not can_edit_email_templates %}disabled{% endif %}
-            >{{ label }}</button>
-            {% endfor %}
-        </div>
         <textarea
             name="body"
             id="id_email_body"
-            class="form-control email-template-form__body"
+            class="form-control email-template-form__body email-template-input"
             rows="10"
             {% if not can_edit_email_templates %}readonly{% endif %}
             required
@@ -50,8 +53,17 @@
         <p class="mgmt-error-msg">{{ email_template_form.body.errors|join:", " }}</p>
         {% endif %}
         <p class="email-template-form__help">
-            Plain text only. A View/Open button is added automatically under the body.
+            Plain text only. Click a field button to insert at the cursor in subject or body. A View/Open button is added automatically under the body.
         </p>
+    </div>
+
+    <div class="email-template-preview" aria-live="polite">
+        <p class="email-template-preview__title">Sample preview</p>
+        <p class="email-template-preview__hint">Uses sample ticket values so you can see how fields resolve.</p>
+        <p class="email-template-preview__label">Subject</p>
+        <p class="email-template-preview__subject" id="email-template-preview-subject"></p>
+        <p class="email-template-preview__label">Body</p>
+        <pre class="email-template-preview__body" id="email-template-preview-body"></pre>
     </div>
 
     {% if can_edit_email_templates %}
@@ -66,9 +78,12 @@
         >
             Send test email
         </button>
+        <button type="button" class="secondary email-template-reset-btn">
+            Reset to default
+        </button>
     </div>
     <p class="email-template-form__help">
-        Test email uses the subject/body above (even if unsaved) with sample field values, and is sent to your account email.
+        Test email uses the subject/body above (even if unsaved) with sample field values, and is sent to the active SMTP from-address.
     </p>
     {% else %}
     <p class="email-template-form__help">You can view templates but need Manage Email Settings permission to edit them.</p>

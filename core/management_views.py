@@ -12,6 +12,7 @@ from notifications.email_templates import (
     EVENT_META,
     cta_url_for_event,
     ensure_email_templates,
+    get_template_defaults,
     merge_fields_for_event,
     render_subject_body,
     sample_context_for_event,
@@ -318,12 +319,14 @@ def _can_manage_email(user) -> bool:
     )
 
 
-def _email_template_form_context(event_type: str, can_edit: bool) -> dict:
+def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> dict:
     if not any(m["event_type"] == event_type for m in EVENT_META):
         raise Http404("Unknown email type")
     ensure_email_templates()
     template = get_object_or_404(EmailTemplate, event_type=event_type)
-    form = EmailTemplateForm(instance=template)
+    if form is None:
+        form = EmailTemplateForm(instance=template)
+    defaults = get_template_defaults(event_type)
     return {
         "email_template": template,
         "email_template_form": form,
@@ -331,6 +334,17 @@ def _email_template_form_context(event_type: str, can_edit: bool) -> dict:
         "email_event_types": EVENT_META,
         "merge_fields": merge_fields_for_event(event_type),
         "can_edit_email_templates": can_edit,
+        "sample_context": sample_context_for_event(event_type),
+        "default_subject": defaults["subject"],
+        "default_body": defaults["body"],
+        "email_template_meta": {
+            "event_type": event_type,
+            "sample": sample_context_for_event(event_type),
+            "defaults": {
+                "subject": defaults["subject"],
+                "body": defaults["body"],
+            },
+        },
     }
 
 
@@ -385,14 +399,7 @@ class EmailTemplateSaveView(EmailPermissionMixin, LoginRequiredMixin, View):
             response = render(request, "core/management/email_template_form.html", context)
             response["HX-Trigger"] = "emailTemplateSaved"
             return response
-        context = {
-            "email_template": template,
-            "email_template_form": form,
-            "selected_email_type": event_type,
-            "email_event_types": EVENT_META,
-            "merge_fields": merge_fields_for_event(event_type),
-            "can_edit_email_templates": True,
-        }
+        context = _email_template_form_context(event_type, True, form=form)
         return render(request, "core/management/email_template_form.html", context)
 
 

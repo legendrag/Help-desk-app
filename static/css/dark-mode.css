@@ -2007,8 +2007,20 @@
   border-top-color: rgba(148, 163, 184, 0.2);
 }
 
-[data-theme="dark"] .email-template-field-btn {
+[data-theme="dark"] .email-template-field-btn,
+[data-theme="dark"] .email-type-chip {
   background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+[data-theme="dark"] .email-type-chip.is-active {
+  background: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+  color: #fff;
+}
+
+[data-theme="dark"] .email-template-preview {
+  background: rgba(15, 23, 42, 0.55);
   border-color: rgba(148, 163, 184, 0.25);
 }
 

@@ -1,5 +1,3 @@
-{% load static %}
-
 <div class="management-section">
     <div class="section-header mgmt-section-header">
         <div>
@@ -82,27 +80,27 @@
             <p id="email-template-status" class="email-templates-panel__status" hidden>Saved.</p>
         </div>
 
-        <label class="email-template-form__label" for="email-type-select">Notification type</label>
-        <select
-            id="email-type-select"
-            class="form-control email-templates-panel__select"
-            name="email_type"
-            hx-get="{% url 'email_template_form' %}"
-            hx-target="#email-template-form-slot"
-            hx-include="this"
-            hx-trigger="change"
+        <p class="email-template-form__label" id="email-type-chips-label">Notification type</p>
+        <div
+            class="email-type-chips"
+            id="email-type-chips"
+            role="tablist"
+            aria-labelledby="email-type-chips-label"
+            data-form-url="{% url 'email_template_form' %}"
         >
             {% for item in email_event_types %}
-            <option value="{{ item.event_type }}" {% if item.event_type == selected_email_type %}selected{% endif %}>
-                {{ item.label }}
-            </option>
+            <button
+                type="button"
+                class="email-type-chip{% if item.event_type == selected_email_type %} is-active{% endif %}"
+                role="tab"
+                aria-selected="{% if item.event_type == selected_email_type %}true{% else %}false{% endif %}"
+                data-email-type="{{ item.event_type }}"
+            >{{ item.label }}</button>
             {% endfor %}
-        </select>
+        </div>
 
         <div id="email-template-form-slot" class="email-templates-panel__form">
             {% include "core/management/email_template_form.html" %}
         </div>
     </section>
 </div>
-
-<script src="{% static 'js/email_templates.js' %}?v=2"></script>

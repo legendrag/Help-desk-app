@@ -5939,9 +5939,34 @@ body.ticket-detail-page .chat-actions-closed {
   color: var(--danger, #b91c1c);
 }
 
-.email-templates-panel__select {
-  max-width: 320px;
-  margin-bottom: 1.25rem;
+.email-type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 1.25rem 0;
+}
+
+.email-type-chip {
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #f8fafc);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.email-type-chip:hover {
+  border-color: var(--primary, #4f46e5);
+  color: var(--primary, #4f46e5);
+}
+
+.email-type-chip.is-active {
+  background: var(--primary, #4f46e5);
+  border-color: var(--primary, #4f46e5);
+  color: #fff;
 }
 
 .email-template-form__label {
@@ -5994,6 +6019,53 @@ body.ticket-detail-page .chat-actions-closed {
 .email-template-field-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.email-template-preview {
+  margin: 0 0 1.25rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--surface, #f8fafc);
+}
+
+.email-template-preview__title {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.email-template-preview__hint {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8rem;
+  color: var(--muted, #64748b);
+}
+
+.email-template-preview__label {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted, #64748b);
+}
+
+.email-template-preview__subject {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.email-template-preview__body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: inherit;
 }
 
 .email-template-form__actions {
