@@ -1,7 +1,7 @@
-{
-  "name": "mlameh ticket",
-  "short_name": "mlameh ticket",
-  "description": "mlameh ticket help desk application",
+﻿{
+  "name": "MlamehTicket",
+  "short_name": "MlamehTicket",
+  "description": "MlamehTicket help desk application",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0818",

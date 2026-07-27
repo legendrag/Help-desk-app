@@ -1,4 +1,4 @@
-self.addEventListener('install', event => {
+﻿self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
@@ -8,7 +8,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('push', event => {
     let payload = {
-        title: "mlameh ticket Notification",
+        title: "MlamehTicket Notification",
         body: "You have a new notification",
         icon: "/static/images/mlameh-icon-fg.png",
         data: { url: "/" }
@@ -34,7 +34,7 @@ self.addEventListener('push', event => {
         console.warn("[SW] Received push event with no data.");
     }
 
-    const displayTitle = payload.title || payload.head || "mlameh ticket Notification";
+    const displayTitle = payload.title || payload.head || "MlamehTicket Notification";
     const targetUrl = (payload.data && payload.data.url) ? payload.data.url : "/";
     const options = {
         body: payload.body || payload.message || "You have a new notification",

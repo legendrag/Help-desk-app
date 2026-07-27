@@ -58,7 +58,7 @@ def _send_template(
         "body": body,
         "cta_url": cta_url,
         "cta_label": cta_label,
-        "brand_name": context.get("brand_name") or "mlamehticket",
+        "brand_name": context.get("brand_name") or "MlamehTicket",
     }
     if footer_note is not None:
         kwargs["footer_note"] = footer_note

@@ -4,7 +4,7 @@ from core.seeds.runner import clear_seed, run_seed
 
 
 class Command(BaseCommand):
-    help = "Seed the full mlamehticket system with demo roles, users, tickets, KB, news, and notifications."
+    help = "Seed the full MlamehTicket system with demo roles, users, tickets, KB, news, and notifications."
 
     def add_arguments(self, parser):
         parser.add_argument(

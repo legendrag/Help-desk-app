@@ -196,7 +196,7 @@ class EmailSettingForm(forms.ModelForm):
             'smtp_port': forms.NumberInput(attrs={'placeholder': 'e.g., 587'}),
             'smtp_email': forms.EmailInput(attrs={'placeholder': 'sender@example.com'}),
             'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
-            'from_name': forms.TextInput(attrs={'placeholder': 'e.g., mlamehticket Support'}),
+            'from_name': forms.TextInput(attrs={'placeholder': 'e.g., MlamehTicket Support'}),
             'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
         }
 

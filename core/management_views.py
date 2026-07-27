@@ -335,7 +335,7 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
     else:
         footer_note = (
             "You’re receiving this because email notifications are enabled "
-            "for your mlamehticket account."
+            "for your MlamehTicket account."
         )
     return {
         "email_template": template,
@@ -354,7 +354,7 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
                 "subject": defaults["subject"],
                 "body": defaults["body"],
             },
-            "brand_name": sample.get("brand_name") or "mlamehticket",
+            "brand_name": sample.get("brand_name") or "MlamehTicket",
             "cta_label": defaults.get("cta_label") or "Open",
             "cta_url": cta_url_for_event(event_type, sample) or "#",
             "footer_note": footer_note,
@@ -455,7 +455,7 @@ class EmailTemplateTestSendView(EmailPermissionMixin, LoginRequiredMixin, View):
             body=body,
             cta_url=cta_url_for_event(event_type, sample),
             cta_label=cta_label,
-            brand_name=sample.get("brand_name") or "mlamehticket",
+            brand_name=sample.get("brand_name") or "MlamehTicket",
             footer_note="This is a test email from Email Settings. Sample field values were used.",
         )
         sent = send_with_retries(

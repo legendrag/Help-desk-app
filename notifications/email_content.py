@@ -102,9 +102,9 @@ def render_notification_email(
     *,
     body: str,
     cta_url: str = "",
-    cta_label: str = "Open in mlamehticket",
-    footer_note: str = "You’re receiving this because email notifications are enabled for your mlamehticket account.",
-    brand_name: str = "mlamehticket",
+    cta_label: str = "Open in MlamehTicket",
+    footer_note: str = "You’re receiving this because email notifications are enabled for your MlamehTicket account.",
+    brand_name: str = "MlamehTicket",
 ) -> tuple[str, str]:
     from notifications.email_templates import body_to_html
 

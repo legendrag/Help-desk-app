@@ -77,14 +77,14 @@
   }
 
   function buildEmailDocument(meta, bodyText) {
-    var brand = escapeHtml(meta.brand_name || "mlamehticket");
+    var brand = escapeHtml(meta.brand_name || "MlamehTicket");
     var brandIcon = escapeHtml(meta.brand_icon_url || "");
     var brandLogo = escapeHtml(meta.brand_logo_url || "");
     var ctaLabel = escapeHtml(meta.cta_label || "Open");
     var ctaUrl = escapeHtml(meta.cta_url || "#");
     var footer = escapeHtml(
       meta.footer_note ||
-        "You’re receiving this because email notifications are enabled for your mlamehticket account."
+        "You’re receiving this because email notifications are enabled for your MlamehTicket account."
     );
     var bodyHtml = bodyToHtml(bodyText);
     var bodyBlock = bodyHtml

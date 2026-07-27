@@ -125,8 +125,8 @@ KB_ARTICLES = (
 
 ANNOUNCEMENTS = (
     {
-        "title": "Welcome to mlamehticket",
-        "content": "The mlamehticket portal is now live. Use your branch account to submit and track tickets.",
+        "title": "Welcome to MlamehTicket",
+        "content": "The MlamehTicket portal is now live. Use your branch account to submit and track tickets.",
         "target_branch": None,
         "is_active": True,
     },

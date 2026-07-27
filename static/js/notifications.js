@@ -467,7 +467,7 @@ function updatePushPermissionPrompt() {
         text.textContent = "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
         enableBtn.style.display = "none";
     } else {
-        text.textContent = "Enable browser notifications to get alerts when mlameh ticket is in the background.";
+        text.textContent = "Enable browser notifications to get alerts when MlamehTicket is in the background.";
         enableBtn.style.display = "";
     }
 }

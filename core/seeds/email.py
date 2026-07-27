@@ -12,7 +12,7 @@ def seed_email(stdout=None):
             "smtp_email": "noreply@mlamehticket.local",
             "smtp_password": "demo-not-for-production",
             "encryption": "tls",
-            "from_name": "mlamehticket Demo",
+            "from_name": "MlamehTicket Demo",
             "from_email": "noreply@mlamehticket.local",
             "is_active": False,
             "notify_new_ticket": True,
