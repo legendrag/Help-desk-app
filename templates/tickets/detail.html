@@ -46,7 +46,8 @@
                 <path d="M8 12h8"></path>
                 <path d="M12 8v8"></path>
             </svg>
-            <span>{% blocktrans with ticket_number=ticket.merged_into.ticket_number ticket_url=ticket.merged_into.id %}This ticket has been merged into <a href="{% url 'ticket_detail' ticket_url %}"
+            {% url 'ticket_detail' ticket.merged_into.id as merged_ticket_url %}
+            <span>{% blocktrans with ticket_number=ticket.merged_into.ticket_number ticket_url=merged_ticket_url %}This ticket has been merged into <a href="{{ ticket_url }}"
                     class="merged-link">#{{ ticket_number }}</a>.{% endblocktrans %}</span>
         </div>
         {% endif %}

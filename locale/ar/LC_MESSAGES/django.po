@@ -347,9 +347,11 @@ msgstr[5] "%(count)s رسالة"
 #: templates/tickets/detail.html
 #, python-format
 msgid ""
-"This ticket has been merged into <a href=\"{% url 'ticket_detail' ticket_url"
-" %}\""
-msgstr "دُمجت هذه التذكرة في <a href=\"{% url 'ticket_detail' ticket_url %}\""
+"This ticket has been merged into <a href=\"%(ticket_url)s\" "
+"class=\"merged-link\">#%(ticket_number)s</a>."
+msgstr ""
+"دُمجت هذه التذكرة في <a href=\"%(ticket_url)s\" "
+"class=\"merged-link\">#%(ticket_number)s</a>."
 
 #: templates/tickets/detail.html
 #, python-format
