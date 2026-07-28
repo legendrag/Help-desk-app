@@ -11,7 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg
 # TruncDate, TruncMonth, TruncWeek, TruncYear removed because DB-side timezone conversion crashes SQLite with USE_TZ=True
 from .models import Ticket, TicketMessage, TicketStatusHistory
@@ -1187,6 +1187,7 @@ def pick_ticket(request, ticket_id):
     if not user_can_pick_ticket(request.user, ticket):
         raise PermissionDenied(_("You do not have permission to pick tickets."))
 
+    picked = False
     if request.method == "POST":
         if ticket.assigned_to:
             pass
@@ -1209,6 +1210,7 @@ def pick_ticket(request, ticket_id):
                 _broadcast_ticket_update(ticket, "ticket_picked", {
                     "picked_by": request.user.username,
                 })
+                picked = True
 
             except ValidationError as e:
                 for message in e.messages:
@@ -1216,13 +1218,18 @@ def pick_ticket(request, ticket_id):
             except Exception as e:
                 django_messages.error(request, _("Failed to pick ticket: {}").format(str(e)))
 
+    detail_url = reverse("ticket_detail", kwargs={"ticket_id": ticket_id}) + "#chat-box"
+
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse
         resp = HttpResponse(status=204)
-        resp['HX-Trigger'] = 'reloadPage,refreshTickets'
+        if picked:
+            resp['HX-Redirect'] = detail_url
+        else:
+            resp['HX-Trigger'] = 'reloadPage,refreshTickets'
         return resp
 
-    return redirect("ticket_detail", ticket_id=ticket_id)
+    return redirect(detail_url)
 
 @login_required
 def transfer_ticket(request, ticket_id):
