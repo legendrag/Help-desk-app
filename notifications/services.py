@@ -4,12 +4,14 @@ from datetime import timedelta
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models import Q
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext_noop
 
 from accounts.models import User
 from tickets.models import Ticket, TicketMessage
-from .utils import format_status_label, get_branch_users, get_department_users
+from .utils import get_branch_users, get_department_users
 from .models import InAppNotification
+from .rendering import interpolate
 try:
     import webpush
 except ImportError:
@@ -32,10 +34,15 @@ def _broadcast_notification(notification: InAppNotification):
         logger.warning("No channel layer configured; skipping notification broadcast.")
         return
     group_name = f"user_{notification.recipient.id}_notifications"
+    # The msgid travels with the payload so the consumer can render it in the
+    # recipient's language on delivery; title/message are the English fallback.
     payload = {
         "id": notification.id,
         "title": notification.title,
         "message": notification.message,
+        "title_key": notification.title_key,
+        "message_key": notification.message_key,
+        "params": notification.params,
         "link": notification.link,
         "notification_type": notification.notification_type,
         "is_read": notification.is_read,
@@ -85,8 +92,29 @@ def _unique_users(*querysets, extra_users=None):
     return users
 
 
-def _notify_users(users, title, message, link, notification_type="general", exclude_user=None):
-    """Create and broadcast in-app notifications with deduplication."""
+def _notify_users(
+    users,
+    link,
+    title_key,
+    message_key="",
+    message_text="",
+    params=None,
+    notification_type="general",
+    exclude_user=None,
+):
+    """Create and broadcast in-app notifications with deduplication.
+
+    `title_key` and `message_key` are msgids rendered per reader. Pass
+    `message_text` instead for author-written content such as an announcement
+    body, which is data and must never go through the catalog.
+    """
+    params = params or {}
+    # Deduplication and web push both need a concrete string, and neither has a
+    # reader locale available, so store an English rendering beside the msgid.
+    with translation.override("en"):
+        title = interpolate(title_key, params)
+        message = message_text or interpolate(message_key, params)
+
     dedup_window = timezone.now() - timedelta(seconds=60)
     exclude_id = getattr(exclude_user, "id", None) if exclude_user is not None else None
     for user in users:
@@ -104,6 +132,9 @@ def _notify_users(users, title, message, link, notification_type="general", excl
             recipient=user,
             title=title,
             message=message,
+            title_key=title_key,
+            message_key=message_key,
+            params=params,
             link=link,
             notification_type=notification_type,
         )
@@ -141,13 +172,16 @@ def notify_new_ticket(ticket: Ticket):
     admin_users = _get_admin_users()
     users = _unique_users(branch_users, dept_users, extra_users=admin_users)
 
-    title = f"New Ticket #{ticket.ticket_number}"
-    message = f"A new ticket has been created for {ticket.department.name}: {ticket.title}"
     _notify_users(
         users,
-        title,
-        message,
-        f"/tickets/{ticket.id}/",
+        link=f"/tickets/{ticket.id}/",
+        title_key=gettext_noop("New Ticket #%(number)s"),
+        message_key=gettext_noop("A new ticket has been created for %(department)s: %(title)s"),
+        params={
+            "number": ticket.ticket_number,
+            "department": ticket.department.name,
+            "title": ticket.title,
+        },
         notification_type="new_ticket",
         exclude_user=ticket.created_by,
     )
@@ -162,10 +196,20 @@ def notify_ticket_picked(ticket: Ticket, actor: User):
     admin_users = _get_admin_users()
     users = _unique_users(branch_users, dept_users, extra_users=admin_users)
 
-    status_label = format_status_label(ticket.status) or ticket.status
-    title = f"Ticket Picked: #{ticket.ticket_number}"
-    message = f"{actor.username} picked this ticket. Status is now {status_label}."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="ticket_picked", exclude_user=actor)
+    _notify_users(
+        users,
+        link=f"/tickets/{ticket.id}/",
+        title_key=gettext_noop("Ticket Picked: #%(number)s"),
+        message_key=gettext_noop("%(actor)s picked this ticket. Status is now %(status)s."),
+        # The raw status key is stored so its label resolves per reader.
+        params={
+            "number": ticket.ticket_number,
+            "actor": actor.username,
+            "status": ticket.status,
+        },
+        notification_type="ticket_picked",
+        exclude_user=actor,
+    )
 
     # Email (async background queue)
     _enqueue(send_ticket_picked_email, ticket.id, actor.id)
@@ -196,31 +240,45 @@ def notify_ticket_update(
             else:
                 extra = [creator_user] if creator_user else []
                 users = _unique_users(_get_admin_users(), extra_users=extra)
-        title = f"New Reply: #{ticket.ticket_number}"
-        message_text = f"{actor.username} replied to the ticket."
+        title_key = gettext_noop("New Reply: #%(number)s")
+        message_key = gettext_noop("%(actor)s replied to the ticket.")
+        params = {"number": ticket.ticket_number, "actor": actor.username}
         n_type = "message"
     elif status_changed and new_status:
         branch_users = get_branch_users(ticket)
         dept_users = get_department_users(ticket)
         admin_users = _get_admin_users()
         users = _unique_users(branch_users, dept_users, extra_users=admin_users)
-        status_label = format_status_label(new_status) or new_status
-        title = f"Status Changed: #{ticket.ticket_number}"
-        message_text = f"{actor.username} updated the status to {status_label}."
+        title_key = gettext_noop("Status Changed: #%(number)s")
+        message_key = gettext_noop("%(actor)s updated the status to %(status)s.")
+        params = {
+            "number": ticket.ticket_number,
+            "actor": actor.username,
+            "status": new_status,
+        }
         n_type = "status_change"
     else:
         branch_users = get_branch_users(ticket)
         dept_users = get_department_users(ticket)
         admin_users = _get_admin_users()
         users = _unique_users(branch_users, dept_users, extra_users=admin_users)
-        title = f"Ticket Updated: #{ticket.ticket_number}"
-        message_text = f"{actor.username} updated the ticket."
+        title_key = gettext_noop("Ticket Updated: #%(number)s")
+        message_key = gettext_noop("%(actor)s updated the ticket.")
+        params = {"number": ticket.ticket_number, "actor": actor.username}
         n_type = "general"
 
     if not users:
         return
 
-    _notify_users(users, title, message_text, f"/tickets/{ticket.id}/", notification_type=n_type, exclude_user=actor)
+    _notify_users(
+        users,
+        link=f"/tickets/{ticket.id}/",
+        title_key=title_key,
+        message_key=message_key,
+        params=params,
+        notification_type=n_type,
+        exclude_user=actor,
+    )
 
     _enqueue(
         send_ticket_update_email,
@@ -235,25 +293,43 @@ def notify_ticket_update(
 
 def notify_transfer_requested(ticket: Ticket, actor: User, new_assignee: User):
     users = _unique_users([new_assignee])
-    title = f"Transfer Requested: #{ticket.ticket_number}"
-    message = f"{actor.username} has requested to transfer this ticket to you."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _notify_users(
+        users,
+        link=f"/tickets/{ticket.id}/",
+        title_key=gettext_noop("Transfer Requested: #%(number)s"),
+        message_key=gettext_noop("%(actor)s has requested to transfer this ticket to you."),
+        params={"number": ticket.ticket_number, "actor": actor.username},
+        notification_type="transfer",
+        exclude_user=actor,
+    )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, new_assignee.id, "requested")
 
 
 def notify_transfer_accepted(ticket: Ticket, actor: User, requester: User):
     users = _unique_users([requester])
-    title = f"Transfer Accepted: #{ticket.ticket_number}"
-    message = f"{actor.username} accepted the ticket transfer."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _notify_users(
+        users,
+        link=f"/tickets/{ticket.id}/",
+        title_key=gettext_noop("Transfer Accepted: #%(number)s"),
+        message_key=gettext_noop("%(actor)s accepted the ticket transfer."),
+        params={"number": ticket.ticket_number, "actor": actor.username},
+        notification_type="transfer",
+        exclude_user=actor,
+    )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "accepted")
 
 
 def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
     users = _unique_users([requester])
-    title = f"Transfer Denied: #{ticket.ticket_number}"
-    message = f"{actor.username} denied the ticket transfer."
-    _notify_users(users, title, message, f"/tickets/{ticket.id}/", notification_type="transfer", exclude_user=actor)
+    _notify_users(
+        users,
+        link=f"/tickets/{ticket.id}/",
+        title_key=gettext_noop("Transfer Denied: #%(number)s"),
+        message_key=gettext_noop("%(actor)s denied the ticket transfer."),
+        params={"number": ticket.ticket_number, "actor": actor.username},
+        notification_type="transfer",
+        exclude_user=actor,
+    )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "denied")
 
 
@@ -275,15 +351,17 @@ def notify_announcement_created(announcement, actor=None):
 
     content = (announcement.content or "").strip()
     if len(content) > 160:
-        message = f"{content[:157]}..."
-    else:
-        message = content or "A new announcement has been posted."
+        content = f"{content[:157]}..."
 
     _notify_users(
         list(users_qs),
-        f"Announcement: {announcement.title}",
-        message,
-        "/tickets/",
+        link="/tickets/",
+        title_key=gettext_noop("Announcement: %(title)s"),
+        # The body is author-written content, so it is stored verbatim; only the
+        # stand-in for an empty announcement is translatable.
+        message_text=content,
+        message_key="" if content else gettext_noop("A new announcement has been posted."),
+        params={"title": announcement.title},
         notification_type="announcement",
         exclude_user=actor,
     )

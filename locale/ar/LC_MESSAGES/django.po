@@ -17,27 +17,27 @@ msgstr ""
 "Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
 
 # Base template - Sidebar navigation
-#: templates/base.html:491 templates/core/management/form_partial.html:50
+#: templates/base.html:492 templates/core/management/form_partial.html:50
 #: templates/tickets/list.html:4
 msgid "Tickets"
 msgstr "التذاكر"
 
-#: templates/base.html:493
+#: templates/base.html:494
 msgid "News"
 msgstr "الأخبار"
 
-#: templates/base.html:496 templates/kb/detail.html:4
+#: templates/base.html:497 templates/kb/detail.html:4
 #: templates/kb/detail.html:11 templates/kb/form.html:4
 #: templates/kb/form.html:11 templates/kb/list.html:4
 #: templates/kb/list.html:102
 msgid "Knowledge Base"
 msgstr "قاعدة المعرفة"
 
-#: templates/base.html:499 templates/tickets/dashboard.html:6
+#: templates/base.html:500 templates/tickets/dashboard.html:6
 msgid "Dashboard"
 msgstr "لوحة التحكم"
 
-#: templates/base.html:502
+#: templates/base.html:503
 msgid "Settings Hub"
 msgstr "مركز الإعدادات"
 
@@ -48,89 +48,89 @@ msgstr "الإعدادات"
 #: templates/accounts/password_change.html:4
 #: templates/accounts/password_change.html:10
 #: templates/accounts/password_change_partial.html:10
-#: templates/accounts/password_change_partial.html:49 templates/base.html:506
+#: templates/accounts/password_change_partial.html:49 templates/base.html:507
 msgid "Change Password"
 msgstr "تغيير كلمة السر"
 
-#: templates/accounts/password_change.html:37 templates/base.html:510
+#: templates/accounts/password_change.html:37 templates/base.html:511
 msgid "Logout"
 msgstr "تسجيل الخروج"
 
-#: templates/base.html:515
+#: templates/base.html:516
 msgid "Theme"
 msgstr "المظهر"
 
-#: templates/base.html:545
+#: templates/base.html:546
 msgid "Language"
 msgstr "اللغة"
 
-#: templates/base.html:513
+#: templates/base.html:514
 msgid "Preferences"
 msgstr "التفضيلات"
 
-#: templates/base.html:487
+#: templates/base.html:488
 msgid "Menu"
 msgstr "القائمة"
 
-#: templates/base.html:485
+#: templates/base.html:486
 #, python-format
 msgid "Hi, %(name)s"
 msgstr "مرحباً %(name)s"
 
-#: templates/base.html:80 templates/base.html:195
+#: templates/base.html:81 templates/base.html:196
 msgid "Open menu"
 msgstr "فتح القائمة"
 
-#: templates/base.html:81
+#: templates/base.html:82
 msgid "Close menu"
 msgstr "إغلاق القائمة"
 
-#: templates/base.html:517
+#: templates/base.html:518
 msgid "Toggle dark mode"
 msgstr "تبديل الوضع الداكن"
 
-#: templates/base.html:559 templates/base.html:560
+#: templates/base.html:560 templates/base.html:561
 msgid "Switch to English"
 msgstr "التبديل للإنجليزية"
 
-#: templates/base.html:559 templates/base.html:560
+#: templates/base.html:560 templates/base.html:561
 msgid "Switch to Arabic"
 msgstr "التبديل للعربية"
 
 # Notifications
-#: templates/base.html:144 templates/base.html:155
+#: templates/base.html:145 templates/base.html:156
 msgid "Notifications"
 msgstr "الإشعارات"
 
-#: templates/base.html:159
+#: templates/base.html:160
 msgid "Mark all as read"
 msgstr "تعليم الكل كمقروء"
 
-#: templates/base.html:166
+#: templates/base.html:167
 msgid "Clear read notifications"
 msgstr "مسح الإشعارات المقروءة"
 
-#: templates/base.html:185
+#: templates/base.html:186
 msgid "No notifications yet"
 msgstr "لا إشعارات بعد"
 
-#: templates/base.html:72 templates/base.html:190
+#: templates/base.html:73 templates/base.html:191
 msgid "Enable"
 msgstr "تفعيل"
 
-#: templates/base.html:73
+#: templates/base.html:74
 msgid "Enable push notifications to stay updated."
 msgstr "فعّل إشعارات الدفع للبقاء على اطلاع."
 
-#: templates/base.html:74
+#: templates/base.html:75
 msgid "Notifications are blocked in browser settings."
 msgstr "الإشعارات محظورة في إعدادات المتصفح."
 
-#: templates/base.html:70
+#: templates/base.html:71
 msgid "Notification"
 msgstr "إشعار"
 
-#: templates/base.html:71
+#: templates/base.html:72
 msgid "Delete notification"
 msgstr "حذف الإشعار"
 
@@ -238,8 +238,8 @@ msgstr "عاجلة"
 # Common buttons
 #: templates/accounts/management/form_partial.html:98
 #: templates/accounts/password_change.html:39
-#: templates/accounts/password_change_partial.html:48 templates/base.html:446
-#: templates/base.html:473 templates/core/management/delete_confirm.html:19
+#: templates/accounts/password_change_partial.html:48 templates/base.html:447
+#: templates/base.html:474 templates/core/management/delete_confirm.html:19
 #: templates/core/management/delete_confirm_partial.html:20
 #: templates/core/management/form_partial.html:418 templates/kb/form.html:135
 #: templates/news/form_partial.html:61 templates/tickets/create.html:71
@@ -279,7 +279,7 @@ msgstr "تعديل"
 msgid "Delete"
 msgstr "حذف"
 
-#: templates/base.html:460 templates/tickets/detail.html:308
+#: templates/base.html:461 templates/tickets/detail.html:308
 #: templates/tickets/detail.html:318
 msgid "Close"
 msgstr "إغلاق"
@@ -739,7 +739,7 @@ msgstr "هل أنت متأكد من حذف هذا الإعلان؟"
 msgid "Delete Announcement"
 msgstr "حذف الإعلان"
 
-#: templates/base.html:475 templates/core/management/delete_confirm.html:18
+#: templates/base.html:476 templates/core/management/delete_confirm.html:18
 #: templates/core/management/delete_confirm_partial.html:19
 #: templates/news/form_partial.html:59
 msgid "Yes, Delete"
@@ -1323,27 +1323,27 @@ msgid "Reopened"
 msgstr "أعيد فتحها"
 
 # Confirm modals
-#: templates/base.html:458
+#: templates/base.html:459
 msgid "Confirm Action"
 msgstr "تأكيد الإجراء"
 
-#: templates/base.html:469
+#: templates/base.html:470
 msgid "Are you sure you want to proceed?"
 msgstr "هل أنت متأكد من المتابعة؟"
 
-#: templates/base.html:448
+#: templates/base.html:449
 msgid "Yes, Discard"
 msgstr "نعم، تجاهل"
 
-#: templates/base.html:442
+#: templates/base.html:443
 msgid "You have unsaved changes. Are you sure you want to discard them?"
 msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من تجاهلها؟"
 
-#: templates/base.html:82
+#: templates/base.html:83
 msgid "You have unsaved changes. Are you sure you want to leave?"
 msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من المغادرة؟"
 
-#: templates/base.html:83
+#: templates/base.html:84
 msgid "Reset this template to defaults?"
 msgstr "إعادة هذا القالب للإعدادات الافتراضية؟"
 
@@ -1364,23 +1364,23 @@ msgid "Insert %(key)s"
 msgstr "إدراج %(key)s"
 
 # Additional UI strings
-#: templates/base.html:75 templates/tickets/partials/details_drawer.html:47
+#: templates/base.html:76 templates/tickets/partials/details_drawer.html:47
 msgid "Pending Support Agent"
 msgstr "في انتظار وكيل الدعم"
 
-#: templates/base.html:76
+#: templates/base.html:77
 msgid "View Attachment"
 msgstr "عرض المرفق"
 
-#: templates/base.html:77
+#: templates/base.html:78
 msgid "Sent"
 msgstr "أُرسل"
 
-#: templates/base.html:78
+#: templates/base.html:79
 msgid "and others"
 msgstr "وآخرون"
 
-#: templates/base.html:79
+#: templates/base.html:80
 msgid "typing…"
 msgstr "يكتب…"
 
@@ -1390,7 +1390,7 @@ msgstr "يكتب…"
 msgid "Status breakdown for %(label)s"
 msgstr "تفصيل الحالة لـ %(label)s"
 
-#: templates/base.html:431
+#: templates/base.html:432
 msgid "Unsaved Changes"
 msgstr "تغييرات غير محفوظة"
 
@@ -2520,6 +2520,118 @@ msgstr "تم دمج التذكرة {} في هذه التذكرة بنجاح."
 #: tickets/template_views.py:1527
 msgid "Failed to merge ticket: {}"
 msgstr "فشل دمج التذكرة: {}"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:178
+#, python-format
+msgid "New Ticket #%(number)s"
+msgstr "تذكرة جديدة #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:179
+#, python-format
+msgid "A new ticket has been created for %(department)s: %(title)s"
+msgstr "تم إنشاء تذكرة جديدة لقسم %(department)s: %(title)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:202
+#, python-format
+msgid "Ticket Picked: #%(number)s"
+msgstr "تم استلام التذكرة: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:203
+#, python-format
+msgid "%(actor)s picked this ticket. Status is now %(status)s."
+msgstr "استلم %(actor)s هذه التذكرة. الحالة الآن %(status)s."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:243
+#, python-format
+msgid "New Reply: #%(number)s"
+msgstr "رد جديد: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:244
+#, python-format
+msgid "%(actor)s replied to the ticket."
+msgstr "رد %(actor)s على التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:252
+#, python-format
+msgid "Status Changed: #%(number)s"
+msgstr "تغيّرت الحالة: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:253
+#, python-format
+msgid "%(actor)s updated the status to %(status)s."
+msgstr "حدّث %(actor)s الحالة إلى %(status)s."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:265
+#, python-format
+msgid "Ticket Updated: #%(number)s"
+msgstr "تم تحديث التذكرة: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:266
+#, python-format
+msgid "%(actor)s updated the ticket."
+msgstr "حدّث %(actor)s التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:299
+#, python-format
+msgid "Transfer Requested: #%(number)s"
+msgstr "طلب نقل: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:300
+#, python-format
+msgid "%(actor)s has requested to transfer this ticket to you."
+msgstr "طلب %(actor)s نقل هذه التذكرة إليك."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:313
+#, python-format
+msgid "Transfer Accepted: #%(number)s"
+msgstr "تم قبول النقل: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:314
+#, python-format
+msgid "%(actor)s accepted the ticket transfer."
+msgstr "قبل %(actor)s نقل التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:327
+#, python-format
+msgid "Transfer Denied: #%(number)s"
+msgstr "تم رفض النقل: #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:328
+#, python-format
+msgid "%(actor)s denied the ticket transfer."
+msgstr "رفض %(actor)s نقل التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:359
+#, python-format
+msgid "Announcement: %(title)s"
+msgstr "إعلان: %(title)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: notifications/services.py:363
+msgid "A new announcement has been posted."
+msgstr "تم نشر إعلان جديد."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/base.html:70
+msgid "d ago"
+msgstr "ي"
 
 #~ msgid "English"
 #~ msgstr "الإنجليزية"

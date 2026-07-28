@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import InAppNotification
+from .rendering import render_notification
 try:
     from webpush import send_user_notification
 except ImportError:
@@ -17,18 +18,22 @@ def notifications_list(request):
         InAppNotification.objects.filter(recipient=request.user)
         .order_by("-created_at")
     )
-    notifications = [
-        {
-            "id": n.id,
-            "title": n.title,
-            "message": n.message,
-            "link": n.link,
-            "notification_type": n.notification_type,
-            "is_read": n.is_read,
-            "created_at": n.created_at.isoformat() if n.created_at else None,
-        }
-        for n in qs[:limit]
-    ]
+    # LocaleMiddleware has already activated the reader's language, so the
+    # stored msgids render in the language they are being read in.
+    notifications = []
+    for n in qs[:limit]:
+        title, message = render_notification(n)
+        notifications.append(
+            {
+                "id": n.id,
+                "title": title,
+                "message": message,
+                "link": n.link,
+                "notification_type": n.notification_type,
+                "is_read": n.is_read,
+                "created_at": n.created_at.isoformat() if n.created_at else None,
+            }
+        )
     unread_count = InAppNotification.objects.filter(
         recipient=request.user,
         is_read=False,

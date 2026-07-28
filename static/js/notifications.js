@@ -57,7 +57,7 @@ function formatRelativeTime(isoString) {
     if (diffMin < 60) return `${diffMin}${(window.I18N && window.I18N.minutesAgo) || "m ago"}`;
     if (diffHr < 24) return `${diffHr}${(window.I18N && window.I18N.hoursAgo) || "h ago"}`;
     if (diffDay === 1) return (window.I18N && window.I18N.yesterday) || "Yesterday";
-    if (diffDay < 7) return `${diffDay}d ago`;
+    if (diffDay < 7) return `${diffDay}${(window.I18N && window.I18N.daysAgo) || "d ago"}`;
     // Older than a week — show short date
     const locale = window.LANGUAGE_CODE === "ar" ? "ar" : undefined;
     return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
