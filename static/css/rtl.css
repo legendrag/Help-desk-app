@@ -35,9 +35,22 @@ html[dir="rtl"] .auth-brand-mark {
   transform: none;
 }
 
+/*
+ * The topbar keeps its visual order in RTL (.topbar is row-reverse inside an
+ * rtl context), so the bell stays at the right edge of the screen. Keep the
+ * dropdown anchored to the bell's right edge like LTR — flipping it to
+ * left: 0 made it open off-screen to the right and get clipped.
+ */
 html[dir="rtl"] .notification-dropdown {
-  right: auto;
-  left: 0;
+  right: -0.5rem;
+  left: auto;
+}
+
+@media (max-width: 768px) {
+  html[dir="rtl"] .notification-dropdown {
+    right: 1rem;
+    left: 1rem;
+  }
 }
 
 html[dir="rtl"] .field-error,

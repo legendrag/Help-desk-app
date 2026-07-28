@@ -48,15 +48,15 @@ class Ticket(models.Model):
         URGENT = "urgent", _("Urgent")
 
     ticket_number = models.CharField(max_length=30, unique=True, db_index=True)
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    branch = models.ForeignKey("core.Branch", on_delete=models.PROTECT, related_name="tickets")
-    department = models.ForeignKey("core.Department", on_delete=models.PROTECT, related_name="tickets")
-    category = models.ForeignKey("core.Category", on_delete=models.PROTECT, related_name="tickets")
+    title = models.CharField(_("Title"), max_length=255)
+    description = models.TextField(_("Description"))
+    branch = models.ForeignKey("core.Branch", on_delete=models.PROTECT, related_name="tickets", verbose_name=_("Branch"))
+    department = models.ForeignKey("core.Department", on_delete=models.PROTECT, related_name="tickets", verbose_name=_("Department"))
+    category = models.ForeignKey("core.Category", on_delete=models.PROTECT, related_name="tickets", verbose_name=_("Category"))
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.OPEN)
-    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
-    client_name = models.CharField(max_length=255, default="")
-    client_phone = models.CharField(max_length=50, default="")
+    priority = models.CharField(_("Priority"), max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    client_name = models.CharField(_("Name"), max_length=255, default="")
+    client_phone = models.CharField(_("Phone Number"), max_length=50, default="")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

@@ -36,6 +36,12 @@ class TicketCreateForm(forms.ModelForm):
             }),
         }
         labels = {
+            "title": _("Title"),
+            "description": _("Description"),
+            "branch": _("Branch"),
+            "department": _("Department"),
+            "category": _("Category"),
+            "priority": _("Priority"),
             "client_name": _("Name"),
             "client_phone": _("Phone Number"),
         }
