@@ -342,8 +342,7 @@ html[dir="rtl"] .filters-row {
 }
 
 /*
- * Tickets list: RTL column order (Ticket ID on the right, Action on the left).
- * Same table + mobile card layout; direction mirrors the English layout.
+ * Tickets list desktop: RTL column order (Ticket ID on the right).
  * News/mgmt/leaderboard stay LTR so their column hooks stay stable.
  */
 html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) table {
@@ -382,10 +381,37 @@ html[dir="rtl"] .ticket-action-wrapper {
   justify-content: flex-end;
 }
 
-/* Mobile cards: tickets follow RTL; other tables keep LTR label/value rows */
+/*
+ * Mobile stacked rows (900px): label on the right, value beside it (not far left).
+ */
+@media (max-width: 900px) {
+  html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) td {
+    direction: rtl;
+    justify-content: flex-start;
+    text-align: right;
+  }
+
+  html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) td::before {
+    text-align: right;
+  }
+
+  html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) td > * {
+    text-align: right;
+  }
+
+  html[dir="rtl"] .tickets-table .action-cell,
+  html[dir="rtl"] .tickets-table .ticket-action-wrapper {
+    justify-content: flex-start;
+  }
+}
+
+/*
+ * Premium mobile cards (768px): keep LTR grid math, mirror slots explicitly
+ * so the card format stays the same (no scrambled labels).
+ */
 @media (max-width: 768px) {
   html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) tr {
-    direction: rtl;
+    direction: ltr;
   }
 
   html[dir="rtl"] .news-table tr,
@@ -393,11 +419,62 @@ html[dir="rtl"] .ticket-action-wrapper {
     direction: ltr;
   }
 
-  /* Keep ticket numbers / times readable as LTR inside RTL cards */
-  html[dir="rtl"] .tickets-table td[data-col="ticket-id"],
-  html[dir="rtl"] .tickets-table td[data-col="date"] {
+  html[dir="rtl"] .tickets-table td[data-col="ticket-id"] {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    text-align: right !important;
     direction: ltr;
     unicode-bidi: plaintext;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="status"] {
+    grid-column: 1 / 2 !important;
+    justify-self: start !important;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="title"] {
+    text-align: right !important;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="branch"] {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    direction: rtl;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="department"] {
+    grid-column: 1 / 2 !important;
+    justify-self: start !important;
+    direction: rtl;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="assigned"] {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    direction: rtl;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="priority"] {
+    grid-column: 1 / 2 !important;
+    justify-self: start !important;
+    direction: rtl;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="date"] {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    direction: ltr;
+    unicode-bidi: plaintext;
+  }
+
+  html[dir="rtl"] .tickets-table td[data-col="action"] {
+    grid-column: 1 / 2 !important;
+    justify-self: start !important;
+  }
+
+  html[dir="rtl"] .tickets-table .action-cell,
+  html[dir="rtl"] .tickets-table .ticket-action-wrapper {
+    justify-content: flex-start !important;
   }
 }
 
