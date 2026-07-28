@@ -2558,6 +2558,11 @@ button.success:hover,
 }
 
 /* Role Permissions */
+.form-group label:not(.checkbox-label) {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
 .form-stack {
   display: flex;
   flex-direction: column;

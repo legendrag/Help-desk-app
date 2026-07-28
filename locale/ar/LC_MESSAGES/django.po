@@ -284,7 +284,7 @@ msgid "Phone Number"
 msgstr "رقم الهاتف"
 
 msgid "e.g., +01020481863"
-msgstr "مثال: +01020481863"
+msgstr "مثال: ‎+٠١٠٢٠٤٨١٨٦٣"
 
 # Ticket validation messages
 msgid "Name must be at least 2 characters long."
@@ -294,7 +294,7 @@ msgid "Phone number is required."
 msgstr "رقم الهاتف مطلوب."
 
 msgid "Enter a valid phone number (e.g. +01020481863)."
-msgstr "أدخل رقم هاتف صحيح (مثال: +01020481863)."
+msgstr "أدخل رقم هاتف صحيح (مثال: ‎+٠١٠٢٠٤٨١٨٦٣)."
 
 msgid "Title must be at least 4 characters long."
 msgstr "العنوان يجب أن يكون 4 أحرف على الأقل."

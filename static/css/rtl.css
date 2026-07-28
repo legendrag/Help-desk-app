@@ -113,9 +113,16 @@ html[dir="rtl"] .ts-dropdown .option {
 html[dir="rtl"] input[type="tel"],
 html[dir="rtl"] input[inputmode="tel"],
 html[dir="rtl"] input[data-normalize-digits="1"] {
-  text-align: left;
+  text-align: right;
   direction: ltr;
   unicode-bidi: plaintext;
+}
+
+html[dir="rtl"] input[type="tel"]::placeholder,
+html[dir="rtl"] input[inputmode="tel"]::placeholder,
+html[dir="rtl"] input[data-normalize-digits="1"]::placeholder {
+  text-align: right;
+  direction: rtl;
 }
 
 html[dir="rtl"] .auth-lang-switch {
