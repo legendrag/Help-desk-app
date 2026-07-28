@@ -763,6 +763,91 @@ async function syncSubscription(subscription, saveUrl) {
     await sendSubscriptionToServer(subscription, "subscribe", saveUrl);
 }
 
+/**
+ * Remove this browser's push subscription from the server and PushManager.
+ * Runs before logout so the OS stops showing toasts for this device.
+ * LogoutView also clears all server-side push rows for the account as a fallback.
+ */
+async function unsubscribeWebPush() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        return;
+    }
+
+    const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
+    const saveUrl = saveUrlMeta ? saveUrlMeta.content : null;
+
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg || !reg.pushManager) {
+            return;
+        }
+
+        const subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+            return;
+        }
+
+        if (saveUrl) {
+            await sendSubscriptionToServer(subscription, "unsubscribe", saveUrl);
+        }
+
+        await subscription.unsubscribe();
+        console.log("[WebPush] Unsubscribed (session ending).");
+    } catch (err) {
+        console.warn("[WebPush] Unsubscribe on logout failed:", err);
+    }
+}
+
+function formActionPath(form) {
+    try {
+        const action = form.getAttribute("action") || "";
+        return new URL(action, window.location.origin).pathname;
+    } catch (e) {
+        return form.getAttribute("action") || "";
+    }
+}
+
+function isLogoutForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+        return false;
+    }
+    const path = formActionPath(form).replace(/\/+$/, "") || "/";
+    return path === "/accounts/logout";
+}
+
+/**
+ * Before logout, unsubscribe this browser from web push, then submit the form.
+ */
+function bindWebPushLogoutCleanup() {
+    document.addEventListener(
+        "submit",
+        async (event) => {
+            const form = event.target;
+            if (!isLogoutForm(form)) {
+                return;
+            }
+            if (form.dataset.webpushUnsubscribed === "1") {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            try {
+                await unsubscribeWebPush();
+            } catch (e) {
+                /* still log out even if push cleanup fails */
+            }
+
+            form.dataset.webpushUnsubscribed = "1";
+            HTMLFormElement.prototype.submit.call(form);
+        },
+        true
+    );
+}
+
+window.unsubscribeWebPush = unsubscribeWebPush;
+
 // ── Bootstrap ──
 if (window.Notification && Notification.permission === "default") {
     // Browsers block requestPermission on page load without a user gesture.
@@ -780,6 +865,7 @@ if (window.Notification && Notification.permission === "default") {
 
 if (window.userIsAuthenticated) {
     initNotifications();
+    bindWebPushLogoutCleanup();
 
     document.addEventListener("DOMContentLoaded", initNotificationUI);
 }
