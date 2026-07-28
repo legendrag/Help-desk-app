@@ -18,14 +18,9 @@ class InAppNotification(models.Model):
         on_delete=models.CASCADE,
         related_name="notifications"
     )
-    # A notification is written in the actor's request but read in the
-    # recipient's, and language lives in the reader's cookie, so the text
-    # cannot be translated at creation time. Store the msgid and its
-    # parameters instead and render them when the notification is read.
-    # title/message hold the English rendering, which is what web push and
-    # deduplication use since neither has a reader locale to work with.
     title = models.CharField(max_length=255)
     message = models.TextField()
+    # Optional structured fields (reserved; in-app text uses title/message).
     title_key = models.CharField(max_length=255, blank=True, default="")
     message_key = models.TextField(blank=True, default="")
     params = models.JSONField(default=dict, blank=True)

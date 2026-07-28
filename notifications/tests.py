@@ -9,7 +9,7 @@ from notifications.email_content import render_notification_email
 from notifications.email_jobs import send_announcement_email, send_new_ticket_email
 from notifications.email_templates import ensure_email_templates, render_tokens, resolve_template
 from notifications.models import InAppNotification
-from notifications.services import notify_announcement_created
+from notifications.services import notify_announcement_created, notify_new_ticket
 from tickets.models import Ticket
 
 
@@ -390,3 +390,66 @@ class EmailTemplateTestSendTests(TestCase):
         self.assertEqual(response.status_code, 200)
         trigger = response.headers.get("HX-Trigger", "")
         self.assertIn("Could not send", trigger)
+
+
+class NewTicketInAppNotificationTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="NT-BR", name="Notify Branch")
+        self.department = Department.objects.create(name="Notify Dept")
+        self.category = Category.objects.create(name="Notify Cat", department=self.department)
+        self.creator = User.objects.create_user(
+            username="ticket_creator",
+            email="ticket_creator@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+        self.agent = User.objects.create_user(
+            username="ticket_agent",
+            email="ticket_agent@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+        self.admin = User.objects.create_user(
+            username="ticket_admin",
+            email="ticket_admin@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            is_superuser=True,
+            is_staff=True,
+        )
+
+    @patch("notifications.services._enqueue")
+    @patch("notifications.services._broadcast_notification")
+    def test_new_ticket_excludes_creator_and_lists_for_agent(self, _broadcast, _enqueue):
+        ticket = Ticket.objects.create(
+            title="Printer down",
+            description="Cannot print",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.creator,
+            client_name="Client",
+            client_phone="0500000000",
+        )
+        InAppNotification.objects.filter(link=f"/tickets/{ticket.id}/").delete()
+
+        notify_new_ticket(ticket)
+
+        recipients = set(
+            InAppNotification.objects.filter(link=f"/tickets/{ticket.id}/").values_list(
+                "recipient_id", flat=True
+            )
+        )
+        self.assertNotIn(self.creator.id, recipients)
+        self.assertIn(self.agent.id, recipients)
+        self.assertIn(self.admin.id, recipients)
+
+        self.client.force_login(self.agent)
+        response = self.client.get("/notifications/api/?limit=20")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        titles = [n["title"] for n in payload["notifications"]]
+        self.assertTrue(any(t.startswith("New Ticket #") for t in titles))
+        self.assertGreaterEqual(payload["unread_count"], 1)
