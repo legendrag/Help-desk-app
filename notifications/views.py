@@ -22,6 +22,8 @@ def notifications_list(request):
             "id": n.id,
             "title": n.title,
             "message": n.message,
+            "title_ar": n.title_ar or "",
+            "message_ar": n.message_ar or "",
             "link": n.link,
             "notification_type": n.notification_type,
             "is_read": n.is_read,

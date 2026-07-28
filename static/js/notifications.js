@@ -76,6 +76,16 @@ function updateBadge(count) {
     }
 }
 
+// ── Localized title/message (English always present as fallback) ──
+function resolveNotifCopy(item) {
+    const useAr = window.LANGUAGE_CODE === "ar";
+    const title = (useAr && item.title_ar) ? item.title_ar
+        : (item.title || (window.I18N && window.I18N.notification) || "Notification");
+    const message = (useAr && item.message_ar) ? item.message_ar
+        : (item.message || "");
+    return { title, message };
+}
+
 // ── Build Notification Item ──
 function buildNotificationItem(item) {
     const wrapper = document.createElement("div");
@@ -94,11 +104,13 @@ function buildNotificationItem(item) {
     const content = document.createElement("div");
     content.className = "notification-content";
 
+    const copy = resolveNotifCopy(item);
+
     const title = document.createElement("strong");
-    title.textContent = item.title || (window.I18N && window.I18N.notification) || "Notification";
+    title.textContent = copy.title;
 
     const message = document.createElement("p");
-    message.textContent = item.message || "";
+    message.textContent = copy.message;
 
     const time = document.createElement("span");
     time.className = "notification-time";

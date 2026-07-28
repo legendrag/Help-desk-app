@@ -446,10 +446,18 @@ class NewTicketInAppNotificationTests(TestCase):
         self.assertIn(self.agent.id, recipients)
         self.assertIn(self.admin.id, recipients)
 
+        row = InAppNotification.objects.filter(
+            link=f"/tickets/{ticket.id}/", recipient=self.agent
+        ).get()
+        self.assertTrue(row.title.startswith("New Ticket #"))
+        self.assertTrue(row.title_ar)  # Arabic parallel filled at create
+        self.assertNotEqual(row.title, row.title_ar)
+
         self.client.force_login(self.agent)
         response = self.client.get("/notifications/api/?limit=20")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        titles = [n["title"] for n in payload["notifications"]]
-        self.assertTrue(any(t.startswith("New Ticket #") for t in titles))
+        match = next(n for n in payload["notifications"] if n["id"] == row.id)
+        self.assertEqual(match["title"], row.title)
+        self.assertEqual(match["title_ar"], row.title_ar)
         self.assertGreaterEqual(payload["unread_count"], 1)

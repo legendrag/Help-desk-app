@@ -20,7 +20,10 @@ class InAppNotification(models.Model):
     )
     title = models.CharField(max_length=255)
     message = models.TextField()
-    # Optional structured fields (reserved; in-app text uses title/message).
+    # Arabic parallel of title/message, filled at creation. Empty = use English.
+    title_ar = models.CharField(max_length=255, blank=True, default="")
+    message_ar = models.TextField(blank=True, default="")
+    # Legacy unused columns (kept so existing DBs need no destructive migration).
     title_key = models.CharField(max_length=255, blank=True, default="")
     message_key = models.TextField(blank=True, default="")
     params = models.JSONField(default=dict, blank=True)
