@@ -342,19 +342,25 @@ html[dir="rtl"] .filters-row {
 }
 
 /*
- * Keep data tables LTR so column order/layout matches English.
- * Mobile card CSS also keys off stable data-col hooks; translated
- * data-label is only used for visible ::before text.
+ * Tickets list: RTL column order (Ticket ID on the right, Action on the left).
+ * Same table + mobile card layout; direction mirrors the English layout.
+ * News/mgmt/leaderboard stay LTR so their column hooks stay stable.
  */
-html[dir="rtl"] .tickets-table table,
+html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) table {
+  direction: rtl;
+}
+
+html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) th,
+html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) td {
+  text-align: right;
+}
+
 html[dir="rtl"] .news-table,
 html[dir="rtl"] .mgmt-table,
 html[dir="rtl"] table.leaderboard-table {
   direction: ltr;
 }
 
-html[dir="rtl"] .tickets-table th,
-html[dir="rtl"] .tickets-table td,
 html[dir="rtl"] .news-table th,
 html[dir="rtl"] .news-table td,
 html[dir="rtl"] .mgmt-table th,
@@ -376,12 +382,22 @@ html[dir="rtl"] .ticket-action-wrapper {
   justify-content: flex-end;
 }
 
-/* Mobile stacked cards: keep label-then-value row like English */
+/* Mobile cards: tickets follow RTL; other tables keep LTR label/value rows */
 @media (max-width: 768px) {
-  html[dir="rtl"] .tickets-table tr,
+  html[dir="rtl"] .tickets-table:not(:has(.leaderboard-table)) tr {
+    direction: rtl;
+  }
+
   html[dir="rtl"] .news-table tr,
   html[dir="rtl"] .mgmt-table tr {
     direction: ltr;
+  }
+
+  /* Keep ticket numbers / times readable as LTR inside RTL cards */
+  html[dir="rtl"] .tickets-table td[data-col="ticket-id"],
+  html[dir="rtl"] .tickets-table td[data-col="date"] {
+    direction: ltr;
+    unicode-bidi: plaintext;
   }
 }
 
