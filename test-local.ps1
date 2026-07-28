@@ -1,11 +1,12 @@
 ﻿<# 
     test-local.ps1 — Run mlamehticket locally with SQLite for development/testing.
-    Usage: .\test-local.ps1 [-InstallDeps] [-Fresh] [-NoBrowser]
+    Usage: .\test-local.ps1 [-InstallDeps] [-Fresh] [-NoBrowser] [-SkipI18nCheck]
 #>
 param(
     [switch]$InstallDeps,
     [switch]$Fresh,
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$SkipI18nCheck
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,6 +42,45 @@ if (!(Test-Path $pythonPath)) {
 if ($InstallDeps -or !(Test-Path (Join-Path $repoRoot ".venv\Lib\site-packages\django"))) {
     Write-Step "Installing dependencies from requirements.txt"
     & $pythonPath -m pip install -r requirements.txt
+}
+
+# ── Translation catalog ───────────────────────────────────────────
+# gettext has no concept of a missing translation, so drift renders English
+# silently. This gate makes it fail loudly instead.
+if (-not $SkipI18nCheck) {
+    $poFile = Join-Path $repoRoot "locale\ar\LC_MESSAGES\django.po"
+    $moFile = Join-Path $repoRoot "locale\ar\LC_MESSAGES\django.mo"
+
+    $hasPolib = & $pythonPath -c "import importlib.util; print('yes' if importlib.util.find_spec('polib') else 'no')"
+
+    if ($hasPolib.Trim() -ne "yes") {
+        Write-Host "[mlamehticket] Skipping translation check - polib not installed." -ForegroundColor Yellow
+        Write-Host "[mlamehticket] Enable it with: .venv\Scripts\python.exe -m pip install -r requirements-dev.txt" -ForegroundColor DarkGray
+    }
+    else {
+        # Recompile only when the catalog actually changed, so the tracked .mo
+        # does not churn on every run.
+        if (!(Test-Path $moFile) -or ((Get-Item $poFile).LastWriteTime -gt (Get-Item $moFile).LastWriteTime)) {
+            Write-Step "Catalog changed since last compile - rebuilding django.mo"
+            & $pythonPath scripts\i18n.py compile
+        }
+
+        Write-Step "Verifying translation coverage"
+        $prevPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & $pythonPath scripts\i18n.py check
+        $i18nExit = $LASTEXITCODE
+        $ErrorActionPreference = $prevPreference
+
+        if ($i18nExit -ne 0) {
+            Write-Host ""
+            Write-Host "[mlamehticket] Translation check FAILED - those strings would render in English." -ForegroundColor Red
+            Write-Host "[mlamehticket] Fix:    python scripts\i18n.py update   (translate the new entries, then 'compile')" -ForegroundColor Red
+            Write-Host "[mlamehticket] Detail: python scripts\i18n.py check --verbose" -ForegroundColor DarkGray
+            Write-Host "[mlamehticket] Bypass: .\test-local.ps1 -SkipI18nCheck" -ForegroundColor DarkGray
+            exit 1
+        }
+    }
 }
 
 # ── Database Setup ────────────────────────────────────────────────

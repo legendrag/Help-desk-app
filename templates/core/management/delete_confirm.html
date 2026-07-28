@@ -8,7 +8,7 @@
     <div class="panel" style="max-width: 480px; margin: 2rem auto; text-align: center; padding: 2rem;">
         <h2 style="color: var(--danger); margin-bottom: 1rem;">{% trans "Confirm Deletion" %}</h2>
         <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">
-            {% blocktrans with object=object|lower %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}
+            {% blocktrans trimmed with object=object|lower %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}
         </p>
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
             {% trans "This action cannot be undone." %}

@@ -3,7 +3,7 @@
     <div class="section-header mgmt-section-header">
         <div>
             <h2 class="mgmt-section-title">{{ model_name|default:_("Email Settings")|gettext }}</h2>
-            <p class="mgmt-section-subtitle">{% blocktrans with count=object_list|length %}Total: {{ count }} entries{% endblocktrans %}</p>
+            <p class="mgmt-section-subtitle">{% blocktrans trimmed with count=object_list|length %}Total: {{ count }} entries{% endblocktrans %}</p>
         </div>
         {% if can_add %}
         <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary mgmt-create-btn">

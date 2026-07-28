@@ -56,7 +56,7 @@
                     type="button"
                     class="email-template-field-btn"
                     data-insert="{{ key }}"
-                    title="{% blocktrans %}Insert {{ key }}{% endblocktrans %}"
+                    title="{% blocktrans trimmed %}Insert {{ key }}{% endblocktrans %}"
                     {% if not can_edit_email_templates %}disabled{% endif %}
                 >{{ label }}</button>
                 {% endfor %}

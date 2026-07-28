@@ -47,7 +47,7 @@
                 <path d="M12 8v8"></path>
             </svg>
             {% url 'ticket_detail' ticket.merged_into.id as merged_ticket_url %}
-            <span>{% blocktrans with ticket_number=ticket.merged_into.ticket_number ticket_url=merged_ticket_url %}This ticket has been merged into <a href="{{ ticket_url }}"
+            <span>{% blocktrans trimmed with ticket_number=ticket.merged_into.ticket_number ticket_url=merged_ticket_url %}This ticket has been merged into <a href="{{ ticket_url }}"
                     class="merged-link">#{{ ticket_number }}</a>.{% endblocktrans %}</span>
         </div>
         {% endif %}
@@ -63,11 +63,11 @@
                     <path d="M14 10L7 3 0 10"></path>
                 </svg>
                 {% if user == ticket.pending_transfer_to %}
-                <span>{% blocktrans with username=ticket.pending_transfer_by.username %}<strong>{{ username }}</strong> has requested to transfer this ticket to you.{% endblocktrans %}</span>
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_by.username %}<strong>{{ username }}</strong> has requested to transfer this ticket to you.{% endblocktrans %}</span>
                 {% elif user == ticket.pending_transfer_by %}
-                <span>{% blocktrans with username=ticket.pending_transfer_to.username %}Waiting for <strong>{{ username }}</strong> to accept the transfer.{% endblocktrans %}</span>
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_to.username %}Waiting for <strong>{{ username }}</strong> to accept the transfer.{% endblocktrans %}</span>
                 {% else %}
-                <span>{% blocktrans with username=ticket.pending_transfer_to.username %}Transfer to <strong>{{ username }}</strong> is pending.{% endblocktrans %}</span>
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_to.username %}Transfer to <strong>{{ username }}</strong> is pending.{% endblocktrans %}</span>
                 {% endif %}
             </div>
             <div class="transfer-banner-actions">

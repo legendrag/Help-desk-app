@@ -68,7 +68,7 @@
                                     form="kb-status-form"
                                     {% if current_status == 'draft' %}checked{% endif %}
                                     onchange="document.getElementById('kb-status-form').submit()">
-                                <span>{% blocktrans with count=draft_count|default:"0" %}Drafts ({{ count }}){% endblocktrans %}</span>
+                                <span>{% blocktrans trimmed with count=draft_count|default:"0" %}Drafts ({{ count }}){% endblocktrans %}</span>
                             </label>
                         </li>
                     </ul>
@@ -174,7 +174,7 @@
                                 {% if c.description %}
                                 <p class="kb-category-tile-desc">{{ c.description|truncatechars:90 }}</p>
                                 {% endif %}
-                                <span class="kb-category-tile-count">{% blocktrans count counter=c.article_count %}{{ counter }} article{% plural %}{{ counter }} articles{% endblocktrans %}</span>
+                                <span class="kb-category-tile-count">{% blocktrans trimmed count count=c.article_count %}{{ count }} article{% plural %}{{ count }} articles{% endblocktrans %}</span>
                             </div>
                         </a>
                         {% empty %}
@@ -213,17 +213,17 @@
             <div class="kb-results-toolbar">
                 <p class="kb-results-summary">
                     {% if search_query %}
-                    {% blocktrans count counter=article_count %}
-                    <strong>{{ counter }}</strong> result
+                    {% blocktrans trimmed count count=article_count %}
+                    <strong>{{ count }}</strong> result
                     {% plural %}
-                    <strong>{{ counter }}</strong> results
+                    <strong>{{ count }}</strong> results
                     {% endblocktrans %}
                     {% trans "for" %} &ldquo;{{ search_query|truncatechars:40 }}&rdquo;
                     {% else %}
-                    {% blocktrans count counter=article_count %}
-                    <strong>{{ counter }}</strong> article
+                    {% blocktrans trimmed count count=article_count %}
+                    <strong>{{ count }}</strong> article
                     {% plural %}
-                    <strong>{{ counter }}</strong> articles
+                    <strong>{{ count }}</strong> articles
                     {% endblocktrans %}
                     {% endif %}
                 </p>

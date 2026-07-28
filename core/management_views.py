@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils.translation import gettext_noop
 
 from notifications.email_content import brand_asset_urls, render_notification_email
 from notifications.email_service import send_with_retries
@@ -101,15 +102,17 @@ class BaseManagementView:
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if hasattr(self, 'model'):
-            # Keep English keys for template comparisons; translate on display via |gettext.
+            # Keep English keys for template comparisons; translate on display via
+            # |gettext. gettext_noop leaves the value untouched but makes it
+            # visible to scripts/i18n.py extraction.
             _names = {
-                "Branch": "Branch",
-                "Department": "Department",
-                "Category": "Category",
-                "Role": "Role",
-                "EmailSetting": "Email Setting",
-                "User": "User",
-                "EmailTemplate": "Email Template",
+                "Branch": gettext_noop("Branch"),
+                "Department": gettext_noop("Department"),
+                "Category": gettext_noop("Category"),
+                "Role": gettext_noop("Role"),
+                "EmailSetting": gettext_noop("Email Setting"),
+                "User": gettext_noop("User"),
+                "EmailTemplate": gettext_noop("Email Template"),
             }
             context["model_name"] = _names.get(self.model.__name__, self.model.__name__)
         return context
@@ -242,7 +245,7 @@ class BranchListView(BranchPermissionMixin, LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            'model_name': 'Branches',
+            'model_name': gettext_noop('Branches'),
             'create_url': reverse_lazy('branch_create'),
             'edit_url_prefix': '/core/branches/',
             'has_code': True,
@@ -266,7 +269,7 @@ class DepartmentListView(DepartmentPermissionMixin, LoginRequiredMixin, ListView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            'model_name': 'Departments',
+            'model_name': gettext_noop('Departments'),
             'create_url': reverse_lazy('department_create'),
             'edit_url_prefix': '/core/departments/',
             'can_add': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_create_department),
@@ -289,7 +292,7 @@ class CategoryListView(CategoryPermissionMixin, LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            'model_name': 'Categories',
+            'model_name': gettext_noop('Categories'),
             'create_url': reverse_lazy('category_create'),
             'edit_url_prefix': '/core/categories/',
             'has_dept': True,
@@ -313,7 +316,7 @@ class RoleListView(RolePermissionMixin, LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            'model_name': 'Roles',
+            'model_name': gettext_noop('Roles'),
             'create_url': reverse_lazy('role_create'),
             'edit_url_prefix': '/core/roles/',
             'can_add': self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_create_role),
@@ -390,7 +393,7 @@ class EmailSettingListView(EmailPermissionMixin, LoginRequiredMixin, ListView):
         if not any(m["event_type"] == selected for m in EVENT_META):
             selected = "new_ticket"
         context.update({
-            'model_name': 'Email Settings',
+            'model_name': gettext_noop('Email Settings'),
             'create_url': reverse_lazy('email_setting_create'),
             'edit_url_prefix': '/core/email-settings/',
             'can_add': can_manage,

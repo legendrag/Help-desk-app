@@ -22,7 +22,7 @@ Requires:
                 <div class="status-stack-total">{{ item.count }}</div>
             </div>
             {% if item.statuses %}
-            <div class="status-stack-bar" role="img" aria-label="{% blocktrans with label=item.label %}Status breakdown for {{ label }}{% endblocktrans %}">
+            <div class="status-stack-bar" role="img" aria-label="{% blocktrans trimmed with label=item.label %}Status breakdown for {{ label }}{% endblocktrans %}">
                 {% for status in item.statuses %}
                 <button
                     type="button"

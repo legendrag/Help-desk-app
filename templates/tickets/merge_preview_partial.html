@@ -29,7 +29,7 @@
         </div>
         <div class="merge-meta-item">
             <span class="label">{% trans "Messages" %}</span>
-            <span class="val">{% blocktrans count count=msg_count %}{{ count }} message{% plural %}{{ count }} messages{% endblocktrans %}</span>
+            <span class="val">{% blocktrans trimmed count count=msg_count %}{{ count }} message{% plural %}{{ count }} messages{% endblocktrans %}</span>
         </div>
     </div>
     
@@ -39,6 +39,6 @@
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        <span>{% blocktrans with ticket_num=ticket.ticket_number %}This action is irreversible. All messages will be moved into this ticket, and ticket #{{ ticket_num }} will be marked as Merged.{% endblocktrans %}</span>
+        <span>{% blocktrans trimmed with ticket_num=ticket.ticket_number %}This action is irreversible. All messages will be moved into this ticket, and ticket #{{ ticket_num }} will be marked as Merged.{% endblocktrans %}</span>
     </div>
 </div>

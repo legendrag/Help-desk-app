@@ -2,6 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
+from django.utils.translation import gettext_noop
 from .models import User
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
@@ -49,9 +50,11 @@ class BaseManagementView:
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if hasattr(self, 'model'):
-            # Keep English keys for template comparisons; translate on display via |gettext.
+            # Keep English keys for template comparisons; translate on display via
+            # |gettext. gettext_noop leaves the value untouched but makes it
+            # visible to scripts/i18n.py extraction.
             _names = {
-                "User": "User",
+                "User": gettext_noop("User"),
             }
             context["model_name"] = _names.get(self.model.__name__, self.model.__name__)
         return context
@@ -97,7 +100,7 @@ class UserListView(UserPermissionMixin, LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['model_name'] = "Users"
+        context['model_name'] = gettext_noop("Users")
         context['create_url'] = reverse_lazy('user_create')
         context['edit_url_prefix'] = "/accounts/users/" # Matching the URL structure
         context['can_add'] = self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_create_user)

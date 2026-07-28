@@ -4,7 +4,7 @@
     <div class="section-header mgmt-section-header">
         <div>
             <h2 class="mgmt-section-title">{{ model_name|default:_("Entries")|gettext }}</h2>
-            <p class="mgmt-section-subtitle">{% blocktrans with count=object_list|length %}Total: {{ count }} entries{% endblocktrans %}</p>
+            <p class="mgmt-section-subtitle">{% blocktrans trimmed with count=object_list|length %}Total: {{ count }} entries{% endblocktrans %}</p>
         </div>
         {% if can_add %}
         <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary mgmt-create-btn">
@@ -82,7 +82,7 @@
             <tr>
                 <td colspan="{% if model_name == 'Users' %}5{% else %}4{% endif %}" class="mgmt-empty-cell">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mgmt-empty-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <p class="mgmt-empty-text">{% blocktrans with model=model_name|gettext %}No {{ model }} items found yet.{% endblocktrans %}</p>
+                    <p class="mgmt-empty-text">{% blocktrans trimmed with model=model_name|gettext %}No {{ model }} items found yet.{% endblocktrans %}</p>
                 </td>
             </tr>
             {% endfor %}

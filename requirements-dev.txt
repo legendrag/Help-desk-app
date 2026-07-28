@@ -1,5 +1,6 @@
 # Dev / lint tooling (not required to run mlamehticket)
 -r requirements.txt
+polib==1.2.0
 djlint==1.36.4
 cssbeautifier==2.0.3
 jsbeautifier==2.0.3

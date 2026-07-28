@@ -219,7 +219,9 @@ class EmailTemplateForm(forms.ModelForm):
     def _reject_tags(self, value: str, label: str) -> str:
         value = (value or "").strip()
         if "{%" in value or "%}" in value:
-            raise forms.ValidationError(_("{} contains unsupported template tags.").format(label))
+            raise forms.ValidationError(
+                _("%(label)s contains unsupported template tags.") % {"label": label}
+            )
         return value
 
     def clean_subject(self):

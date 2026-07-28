@@ -28,15 +28,15 @@ class MultipleFileField(forms.FileField):
             allowed = [e.lower() for e in getattr(settings, "ALLOWED_ATTACHMENT_EXTENSIONS", [])]
             if allowed and ext not in allowed:
                 raise ValidationError(
-                    _("Attachment type '{}' is not allowed. Allowed: {}").format(
-                        ext or _('(none)'), ', '.join(allowed)
-                    )
+                    _("Attachment type '%(ext)s' is not allowed. Allowed: %(allowed)s")
+                    % {"ext": ext or _("(none)"), "allowed": ", ".join(allowed)}
                 )
             max_size = getattr(settings, "MAX_ATTACHMENT_SIZE", None)
             size = getattr(f, "size", None)
             if max_size and size is not None and size > max_size:
                 raise ValidationError(
-                    _("Attachment is too large ({} bytes). Maximum is {} bytes.").format(size, max_size)
+                    _("Attachment is too large (%(size)s bytes). Maximum is %(max_size)s bytes.")
+                    % {"size": size, "max_size": max_size}
                 )
         return result
 

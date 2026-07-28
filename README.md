@@ -132,6 +132,40 @@ python manage.py cleanup_notifications --read-days 14 --all-days 60
 | Database backup | Daily at 2:00 AM | `python manage.py backup_db` |
 | Notification cleanup | Daily at 3:00 AM | `python manage.py cleanup_notifications` |
 
+## Translations (i18n)
+
+The app ships English (`en`) and Arabic (`ar`). Language is chosen per-user via a
+cookie (`django_language`) and applied by `LocaleMiddleware`; there are no `/ar/`
+URL prefixes, so HTMX endpoints need no special handling.
+
+`scripts/i18n.py` replaces `makemessages`/`compilemessages` and is pure Python, so
+the **GNU gettext binaries are not required**:
+
+```bash
+# Requires the dev extras (polib)
+pip install -r requirements-dev.txt
+
+# 1. See what is translatable
+python scripts/i18n.py extract
+
+# 2. Merge new strings into locale/ar/LC_MESSAGES/django.po (never drops a msgstr)
+python scripts/i18n.py update
+
+# 3. Translate the new empty msgstr entries, then compile
+python scripts/i18n.py compile
+
+# 4. Verify nothing falls back to English (exits 1 on failure)
+python scripts/i18n.py check --verbose
+```
+
+`check` runs as part of `test-local.ps1`. **Run `update` + `compile` whenever you
+add or reword a `{% trans %}` / `_()` string** — gettext has no concept of a
+missing translation, so drift otherwise fails silently and renders English.
+
+> When editing a `{% blocktrans %}`, always include `trimmed`. Without it the
+> surrounding newlines and indentation become part of the msgid, which silently
+> breaks the lookup.
+
 ## Documentation
 - [Gmail Setup](docs/GMAIL_APP_PASSWORD.md)
 - [Deployment Guide](docs/deployment_guide.md)

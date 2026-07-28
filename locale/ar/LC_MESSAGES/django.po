@@ -17,332 +17,516 @@ msgstr ""
 "Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
 
 # Base template - Sidebar navigation
+#: templates/base.html:491 templates/core/management/form_partial.html:50
+#: templates/tickets/list.html:4
 msgid "Tickets"
 msgstr "التذاكر"
 
+#: templates/base.html:493
 msgid "News"
 msgstr "الأخبار"
 
+#: templates/base.html:496 templates/kb/detail.html:4
+#: templates/kb/detail.html:11 templates/kb/form.html:4
+#: templates/kb/form.html:11 templates/kb/list.html:4
+#: templates/kb/list.html:102
 msgid "Knowledge Base"
 msgstr "قاعدة المعرفة"
 
+#: templates/base.html:499 templates/tickets/dashboard.html:6
 msgid "Dashboard"
 msgstr "لوحة التحكم"
 
+#: templates/base.html:502
 msgid "Settings Hub"
 msgstr "مركز الإعدادات"
 
+#: templates/core/settings.html:5
 msgid "Settings"
 msgstr "الإعدادات"
 
+#: templates/accounts/password_change.html:4
+#: templates/accounts/password_change.html:10
+#: templates/accounts/password_change_partial.html:10
+#: templates/accounts/password_change_partial.html:49 templates/base.html:506
 msgid "Change Password"
 msgstr "تغيير كلمة السر"
 
+#: templates/accounts/password_change.html:37 templates/base.html:510
 msgid "Logout"
 msgstr "تسجيل الخروج"
 
+#: templates/base.html:515
 msgid "Theme"
 msgstr "المظهر"
 
+#: templates/base.html:545
 msgid "Language"
 msgstr "اللغة"
 
+#: templates/base.html:513
 msgid "Preferences"
 msgstr "التفضيلات"
 
-msgid "English"
-msgstr "الإنجليزية"
-
-msgid "Arabic"
-msgstr "العربية"
-
+#: templates/base.html:487
 msgid "Menu"
 msgstr "القائمة"
 
-#: templates/base.html
+#: templates/base.html:485
 #, python-format
 msgid "Hi, %(name)s"
 msgstr "مرحباً %(name)s"
 
+#: templates/base.html:80 templates/base.html:195
 msgid "Open menu"
 msgstr "فتح القائمة"
 
+#: templates/base.html:81
 msgid "Close menu"
 msgstr "إغلاق القائمة"
 
+#: templates/base.html:517
 msgid "Toggle dark mode"
 msgstr "تبديل الوضع الداكن"
 
+#: templates/base.html:559 templates/base.html:560
 msgid "Switch to English"
 msgstr "التبديل للإنجليزية"
 
+#: templates/base.html:559 templates/base.html:560
 msgid "Switch to Arabic"
 msgstr "التبديل للعربية"
 
 # Notifications
+#: templates/base.html:144 templates/base.html:155
 msgid "Notifications"
 msgstr "الإشعارات"
 
+#: templates/base.html:159
 msgid "Mark all as read"
 msgstr "تعليم الكل كمقروء"
 
+#: templates/base.html:166
 msgid "Clear read notifications"
 msgstr "مسح الإشعارات المقروءة"
 
+#: templates/base.html:185
 msgid "No notifications yet"
 msgstr "لا إشعارات بعد"
 
+#: templates/base.html:72 templates/base.html:190
 msgid "Enable"
 msgstr "تفعيل"
 
+#: templates/base.html:73
 msgid "Enable push notifications to stay updated."
 msgstr "فعّل إشعارات الدفع للبقاء على اطلاع."
 
+#: templates/base.html:74
 msgid "Notifications are blocked in browser settings."
 msgstr "الإشعارات محظورة في إعدادات المتصفح."
 
+#: templates/base.html:70
 msgid "Notification"
 msgstr "إشعار"
 
+#: templates/base.html:71
 msgid "Delete notification"
 msgstr "حذف الإشعار"
 
 # Time formatting
+#: templates/base.html:66
 msgid "Just now"
 msgstr "الآن"
 
+#: templates/base.html:67
 msgid "Yesterday"
 msgstr "أمس"
 
+#: templates/base.html:68
 msgid "m ago"
 msgstr "د"
 
+#: templates/base.html:69
 msgid "h ago"
 msgstr "س"
 
 # Login page
+#: templates/accounts/login.html:5 templates/accounts/login.html:46
 msgid "Login"
 msgstr "تسجيل الدخول"
 
+#: templates/accounts/login.html:19
 msgid "Login to your account"
 msgstr "سجل دخول لحسابك"
 
+#: templates/accounts/login.html:37 templates/accounts/management/list.html:18
+#: templates/core/management/list_partial_v2.html:22
+#: templates/core/management/list_partial_v2.html:50
 msgid "Username"
 msgstr "اسم المستخدم"
 
+#: templates/accounts/login.html:42
 msgid "Password"
 msgstr "كلمة السر"
 
+#: templates/accounts/login.html:29
 msgid "Your username and password didn't match. Please try again."
 msgstr "اسم المستخدم أو كلمة السر غير صحيحة. حاول مرة أخرى."
 
+#: accounts/forms.py:22
 msgid "Incorrect username or password. Please try again."
 msgstr "اسم المستخدم أو كلمة السر غير صحيحة. حاول مرة أخرى."
 
+#: accounts/forms.py:23
 msgid "This account is inactive."
 msgstr "هذا الحساب غير نشط."
 
+#: accounts/forms.py:39
 msgid "Too many failed login attempts. Please try again in 5 minutes."
 msgstr "محاولات تسجيل دخول فاشلة كثيرة. حاول مجدداً بعد 5 دقائق."
 
 # Password change
+#: templates/accounts/password_change.html:11
 msgid "Please enter your old and new password below."
 msgstr "أدخل كلمة السر القديمة والجديدة أدناه."
 
+#: templates/accounts/password_change.html:41
 msgid "Update"
 msgstr "تحديث"
 
 # Ticket statuses
+#: tickets/models.py:38
 msgid "Open"
 msgstr "مفتوحة"
 
+#: templates/tickets/detail.html:325 tickets/models.py:39
 msgid "In Progress"
 msgstr "جارية"
 
+#: tickets/models.py:40
 msgid "Waiting"
 msgstr "انتظار"
 
+#: templates/tickets/list_append.html:40
+#: templates/tickets/list_live_partial.html:61 tickets/models.py:41
 msgid "Closed"
 msgstr "مغلقة"
 
+#: templates/tickets/list_append.html:38
+#: templates/tickets/list_live_partial.html:59 tickets/models.py:42
 msgid "Merged"
 msgstr "مدمجة"
 
 # Ticket priorities
+#: core/models.py:42 tickets/models.py:45
 msgid "Low"
 msgstr "منخفضة"
 
+#: core/models.py:43 tickets/models.py:46
 msgid "Medium"
 msgstr "متوسطة"
 
+#: core/models.py:44 tickets/models.py:47
 msgid "High"
 msgstr "عالية"
 
+#: core/models.py:45 tickets/models.py:48
 msgid "Urgent"
 msgstr "عاجلة"
 
 # Common buttons
+#: templates/accounts/management/form_partial.html:98
+#: templates/accounts/password_change.html:39
+#: templates/accounts/password_change_partial.html:48 templates/base.html:446
+#: templates/base.html:473 templates/core/management/delete_confirm.html:19
+#: templates/core/management/delete_confirm_partial.html:20
+#: templates/core/management/form_partial.html:418 templates/kb/form.html:135
+#: templates/news/form_partial.html:61 templates/tickets/create.html:71
+#: templates/tickets/create_partial.html:69 templates/tickets/detail.html:212
+#: templates/tickets/detail.html:729 templates/tickets/detail.html:773
+#: templates/tickets/detail.html:813 templates/tickets/edit.html:74
+#: templates/tickets/edit_partial.html:73
 msgid "Cancel"
 msgstr "إلغاء"
 
+#: templates/accounts/management/form_partial.html:99
+#: templates/core/management/form_partial.html:419
+#: templates/news/form_partial.html:62 templates/tickets/edit.html:73
+#: templates/tickets/edit_partial.html:74
 msgid "Save Changes"
 msgstr "حفظ التغييرات"
 
+#: core/models.py:72 templates/tickets/create.html:72
+#: templates/tickets/create_partial.html:70
 msgid "Create Ticket"
 msgstr "إنشاء تذكرة"
 
+#: templates/accounts/management/form_partial.html:3
+#: templates/accounts/management/list.html:38
+#: templates/core/management/email_settings_list.html:49
+#: templates/core/management/form_partial.html:3
+#: templates/core/management/list_partial_v2.html:68
+#: templates/kb/detail.html:129 templates/kb/form.html:16
+#: templates/news/list.html:72 templates/tickets/detail.html:165
 msgid "Edit"
 msgstr "تعديل"
 
+#: templates/core/management/email_settings_list.html:54
+#: templates/core/management/list_partial_v2.html:73
+#: templates/kb/detail.html:130 templates/news/form_partial.html:59
+#: templates/tickets/detail.html:178
 msgid "Delete"
 msgstr "حذف"
 
+#: templates/base.html:460 templates/tickets/detail.html:308
+#: templates/tickets/detail.html:318
 msgid "Close"
 msgstr "إغلاق"
 
+#: templates/tickets/branch_dashboard.html:33 templates/tickets/list.html:66
 msgid "Apply"
 msgstr "تطبيق"
 
+#: templates/kb/form.html:132 templates/tickets/detail.html:219
 msgid "Save"
 msgstr "حفظ"
 
+#: templates/kb/list.html:152
 msgid "Search"
 msgstr "بحث"
 
+#: templates/tickets/dashboard.html:45
 msgid "Clear"
 msgstr "مسح"
 
 # Tickets list page
+#: templates/tickets/list.html:12
 msgid "Support Tickets"
 msgstr "تذاكر الدعم"
 
+#: templates/tickets/list.html:19
 msgid "+ New Ticket"
 msgstr "+ تذكرة جديدة"
 
+#: templates/tickets/list.html:37
 msgid "Search ID, title, client, phone, branch…"
 msgstr "ابحث عن رقم، عنوان، عميل، هاتف، فرع…"
 
+#: templates/tickets/list.html:39
 msgid "Search tickets"
 msgstr "بحث عن التذاكر"
 
+#: templates/tickets/dashboard.html:29 templates/tickets/list.html:44
 msgid "All Branches"
 msgstr "كل الفروع"
 
+#: templates/tickets/list.html:52
 msgid "All Statuses"
 msgstr "كل الحالات"
 
+#: templates/tickets/list.html:59
 msgid "All Assignments"
 msgstr "كل التكليفات"
 
+#: templates/tickets/dashboard.html:37 templates/tickets/list.html:60
+#: templates/tickets/list_append.html:18
+#: templates/tickets/list_live_partial.html:39
 msgid "Unassigned"
 msgstr "غير مكلفة"
 
+#: templates/tickets/branch_dashboard.html:27
+#: templates/tickets/dashboard.html:22
 msgid "All Departments"
 msgstr "كل الأقسام"
 
+#: templates/tickets/dashboard.html:36
 msgid "All Users"
 msgstr "كل المستخدمين"
 
+#: templates/tickets/load_more_button.html:9
 msgid "Load Older Tickets"
 msgstr "تحميل تذاكر أقدم"
 
 # Ticket creation
+#: templates/tickets/create.html:4
 msgid "New Ticket"
 msgstr "تذكرة جديدة"
 
+#: templates/tickets/create.html:9 templates/tickets/create_partial.html:3
 msgid "Create New Ticket"
 msgstr "إنشاء تذكرة جديدة"
 
+#: templates/kb/form.html:49 templates/news/form_partial.html:20
+#: templates/news/list.html:25 templates/news/list.html:37
+#: templates/tickets/create.html:24 templates/tickets/edit.html:24
+#: templates/tickets/list_append.html:5
+#: templates/tickets/list_live_partial.html:12
+#: templates/tickets/list_live_partial.html:26 tickets/forms.py:39
+#: tickets/models.py:51
 msgid "Title"
 msgstr "العنوان"
 
+#: templates/tickets/list_append.html:4
+#: templates/tickets/list_live_partial.html:11
+#: templates/tickets/list_live_partial.html:25
 msgid "Ticket ID"
 msgstr "رقم التذكرة"
 
+#: templates/news/list.html:30 templates/news/list.html:65
+#: templates/tickets/list_append.html:21
+#: templates/tickets/list_live_partial.html:18
+#: templates/tickets/list_live_partial.html:42
 msgid "Date"
 msgstr "التاريخ"
 
+#: templates/tickets/list_append.html:27
+#: templates/tickets/list_live_partial.html:19
+#: templates/tickets/list_live_partial.html:48
 msgid "Action"
 msgstr "إجراء"
 
+#: accounts/models.py:54 core/management_views.py:109 core/models.py:21
+#: templates/accounts/management/list.html:21 templates/tickets/create.html:31
+#: templates/tickets/edit.html:30 templates/tickets/list_append.html:6
+#: templates/tickets/list_live_partial.html:13
+#: templates/tickets/list_live_partial.html:27
+#: templates/tickets/merge_preview_partial.html:27
+#: templates/tickets/partials/details_drawer.html:33 tickets/forms.py:41
+#: tickets/models.py:53
 msgid "Branch"
 msgstr "الفرع"
 
+#: accounts/models.py:62 core/management_views.py:110 core/models.py:33
+#: core/models.py:48 templates/core/management/list_partial_v2.html:31
+#: templates/core/management/list_partial_v2.html:58
+#: templates/tickets/branch_dashboard.html:25 templates/tickets/create.html:37
+#: templates/tickets/edit.html:36 templates/tickets/list_append.html:7
+#: templates/tickets/list_live_partial.html:14
+#: templates/tickets/list_live_partial.html:28
+#: templates/tickets/merge_preview_partial.html:23
+#: templates/tickets/partials/details_drawer.html:38 tickets/forms.py:42
+#: tickets/models.py:54
 msgid "Department"
 msgstr "القسم"
 
+#: core/management_views.py:111 core/models.py:57 templates/kb/detail.html:75
+#: templates/kb/form.html:70 templates/tickets/create.html:43
+#: templates/tickets/edit.html:42
+#: templates/tickets/partials/details_drawer.html:42 tickets/forms.py:43
+#: tickets/models.py:55
 msgid "Category"
 msgstr "الفئة"
 
+#: core/models.py:69 templates/tickets/create.html:64
+#: templates/tickets/edit.html:67
+#: templates/tickets/partials/details_drawer.html:26 tickets/forms.py:40
+#: tickets/models.py:52
 msgid "Description"
 msgstr "الوصف"
 
+#: tickets/forms.py:27
 msgid "Brief summary of the issue"
 msgstr "ملخص موجز للمشكلة"
 
+#: tickets/forms.py:28
 msgid "Describe the issue in detail..."
 msgstr "اشرح المشكلة بالتفصيل…"
 
+#: tickets/forms.py:29
 msgid "Full name"
 msgstr "الاسم الكامل"
 
+#: core/models.py:16 core/models.py:29 core/models.py:50 core/models.py:68
+#: templates/core/management/list_partial_v2.html:27
+#: templates/core/management/list_partial_v2.html:55
+#: templates/tickets/create.html:51 templates/tickets/edit.html:54
+#: templates/tickets/partials/details_drawer.html:62 tickets/forms.py:45
+#: tickets/models.py:58
 msgid "Name"
 msgstr "الاسم"
 
+#: templates/tickets/create.html:57 templates/tickets/edit.html:60
+#: templates/tickets/partials/details_drawer.html:68 tickets/forms.py:46
+#: tickets/models.py:59
 msgid "Phone Number"
 msgstr "رقم الهاتف"
 
+#: accounts/forms.py:82 accounts/forms.py:193 tickets/forms.py:34
 msgid "e.g., +01020481863"
 msgstr "مثال: ‎+٠١٠٢٠٤٨١٨٦٣"
 
 # Ticket validation messages
+#: tickets/forms.py:97
 msgid "Name must be at least 2 characters long."
 msgstr "الاسم يجب أن يكون حرفين على الأقل."
 
+#: tickets/forms.py:104
 msgid "Phone number is required."
 msgstr "رقم الهاتف مطلوب."
 
+#: tickets/forms.py:108
 msgid "Enter a valid phone number (e.g. +01020481863)."
 msgstr "أدخل رقم هاتف صحيح (مثال: ‎+٠١٠٢٠٤٨١٨٦٣)."
 
+#: tickets/forms.py:114
 msgid "Title must be at least 4 characters long."
 msgstr "العنوان يجب أن يكون 4 أحرف على الأقل."
 
+#: tickets/forms.py:120
 msgid "Description must be at least 5 characters long."
 msgstr "الوصف يجب أن يكون 5 أحرف على الأقل."
 
 # Ticket detail page
+#: core/models.py:73 templates/tickets/edit.html:4
+#: templates/tickets/edit.html:9 templates/tickets/edit_partial.html:3
+#: templates/tickets/partials/details_drawer.html:77
 msgid "Edit Ticket"
 msgstr "تعديل التذكرة"
 
+#: templates/tickets/partials/details_drawer.html:10
 msgid "Ticket Details"
 msgstr "تفاصيل التذكرة"
 
+#: templates/tickets/partials/details_drawer.html:11
 msgid "Close details"
 msgstr "إغلاق التفاصيل"
 
+#: templates/tickets/partials/details_drawer.html:46
 msgid "Assigned To"
 msgstr "مكلفة إلى"
 
+#: templates/tickets/edit.html:48 templates/tickets/list_append.html:13
+#: templates/tickets/list_live_partial.html:16
+#: templates/tickets/list_live_partial.html:34
+#: templates/tickets/partials/details_drawer.html:50 tickets/forms.py:44
+#: tickets/models.py:57
 msgid "Priority"
 msgstr "الأولوية"
 
+#: templates/tickets/partials/details_drawer.html:57
 msgid "Created At"
 msgstr "أنشئت في"
 
+#: templates/tickets/partials/details_drawer.html:82
 msgid "Merged Tickets"
 msgstr "التذاكر المدمجة"
 
+#: templates/tickets/partials/details_drawer.html:98
 msgid "Related Knowledge Base Articles"
 msgstr "مقالات قاعدة المعرفة ذات الصلة"
 
+#: templates/news/list.html:29 templates/news/list.html:64
+#: templates/tickets/merge_preview_partial.html:19
 msgid "Created By"
 msgstr "أنشأها"
 
+#: templates/core/management/form_partial.html:61
+#: templates/tickets/merge_preview_partial.html:31
 msgid "Messages"
 msgstr "الرسائل"
 
-#: templates/tickets/merge_preview_partial.html
+#: templates/tickets/merge_preview_partial.html:32
 #, python-format
 msgid "%(count)s message"
 msgid_plural "%(count)s messages"
@@ -353,32 +537,32 @@ msgstr[3] "%(count)s رسائل"
 msgstr[4] "%(count)s رسالة"
 msgstr[5] "%(count)s رسالة"
 
-#: templates/tickets/detail.html
+#: templates/tickets/detail.html:50
 #, python-format
 msgid ""
-"This ticket has been merged into <a href=\"%(ticket_url)s\" "
-"class=\"merged-link\">#%(ticket_number)s</a>."
+"This ticket has been merged into <a href=\"%(ticket_url)s\" class=\"merged-"
+"link\">#%(ticket_number)s</a>."
 msgstr ""
-"دُمجت هذه التذكرة في <a href=\"%(ticket_url)s\" "
-"class=\"merged-link\">#%(ticket_number)s</a>."
+"دُمجت هذه التذكرة في <a href=\"%(ticket_url)s\" class=\"merged-"
+"link\">#%(ticket_number)s</a>."
 
-#: templates/tickets/detail.html
+#: templates/tickets/detail.html:66
 #, python-format
 msgid ""
 "<strong>%(username)s</strong> has requested to transfer this ticket to you."
 msgstr "طلب <strong>%(username)s</strong> نقل هذه التذكرة إليك."
 
-#: templates/tickets/detail.html
+#: templates/tickets/detail.html:68
 #, python-format
 msgid "Waiting for <strong>%(username)s</strong> to accept the transfer."
 msgstr "في انتظار <strong>%(username)s</strong> لقبول النقل."
 
-#: templates/tickets/detail.html
+#: templates/tickets/detail.html:70
 #, python-format
 msgid "Transfer to <strong>%(username)s</strong> is pending."
 msgstr "النقل إلى <strong>%(username)s</strong> معلق."
 
-#: templates/tickets/merge_preview_partial.html
+#: templates/tickets/merge_preview_partial.html:42
 #, python-format
 msgid ""
 "This action is irreversible. All messages will be moved into this ticket, "
@@ -388,196 +572,279 @@ msgstr ""
 "التذكرة #%(ticket_num)s كمدمجة."
 
 # Dashboard
+#: templates/tickets/branch_dashboard.html:12
+#: templates/tickets/dashboard.html:13
 msgid "Filters"
 msgstr "الفلاتر"
 
+#: templates/tickets/dashboard.html:17
 msgid "to"
 msgstr "إلى"
 
+#: templates/tickets/dashboard.html:46
 msgid "Export Excel"
 msgstr "تصدير Excel"
 
+#: templates/tickets/dashboard.html:60
 msgid "Total Tickets"
 msgstr "إجمالي التذاكر"
 
+#: templates/tickets/dashboard.html:74
 msgid "Total Users"
 msgstr "إجمالي المستخدمين"
 
+#: core/management_views.py:248 core/models.py:22
+#: templates/core/management/form_partial.html:92
+#: templates/core/settings.html:27 templates/tickets/dashboard.html:87
 msgid "Branches"
 msgstr "الفروع"
 
+#: core/management_views.py:272 core/models.py:34
+#: templates/core/management/form_partial.html:101
+#: templates/core/settings.html:34 templates/tickets/dashboard.html:100
 msgid "Departments"
 msgstr "الأقسام"
 
+#: templates/tickets/dashboard.html:110
 msgid "Ticket Volume Trend"
 msgstr "اتجاه حجم التذاكر"
 
+#: templates/tickets/branch_dashboard.html:124
+#: templates/tickets/dashboard.html:112
 msgid "View"
 msgstr "عرض"
 
+#: templates/tickets/dashboard.html:115 templates/tickets/dashboard.html:117
 msgid "Zoom Out"
 msgstr "تصغير"
 
+#: templates/tickets/dashboard.html:120 templates/tickets/dashboard.html:122
 msgid "Zoom In"
 msgstr "تكبير"
 
+#: templates/tickets/dashboard.html:129
 msgid "Ticket volume trend chart"
 msgstr "مخطط اتجاه حجم التذاكر"
 
+#: templates/tickets/branch_dashboard.html:87
+#: templates/tickets/branch_dashboard.html:113
+#: templates/tickets/branch_dashboard.html:145
+#: templates/tickets/dashboard.html:133 templates/tickets/dashboard.html:155
+#: templates/tickets/dashboard.html:193
+#: templates/tickets/partials/status_stack_list.html:46
 msgid "No data available."
 msgstr "لا بيانات متاحة."
 
+#: templates/tickets/dashboard.html:140
 msgid "Status Breakdown"
 msgstr "تفصيل الحالات"
 
+#: templates/tickets/dashboard.html:164
 msgid "Agent Performance"
 msgstr "أداء الوكلاء"
 
+#: templates/tickets/dashboard.html:170 templates/tickets/dashboard.html:181
 msgid "Agent"
 msgstr "الوكيل"
 
+#: templates/tickets/dashboard.html:171 templates/tickets/dashboard.html:182
 msgid "Resolved"
 msgstr "محلولة"
 
+#: templates/tickets/dashboard.html:172 templates/tickets/dashboard.html:183
 msgid "Response Time"
 msgstr "وقت الاستجابة"
 
+#: templates/tickets/dashboard.html:173 templates/tickets/dashboard.html:184
 msgid "Resolution Time"
 msgstr "وقت الحل"
 
+#: templates/tickets/dashboard.html:174 templates/tickets/dashboard.html:185
 msgid "Working Time"
 msgstr "وقت العمل"
 
+#: templates/tickets/dashboard.html:175 templates/tickets/dashboard.html:186
 msgid "Grade"
 msgstr "الدرجة"
 
 # News/Announcements
+#: core/models.py:192 notifications/email_templates.py:203
 msgid "Announcement"
 msgstr "إعلان"
 
+#: templates/news/form_partial.html:3
 msgid "New Announcement"
 msgstr "إعلان جديد"
 
+#: templates/news/form_partial.html:3
 msgid "Edit Announcement"
 msgstr "تعديل إعلان"
 
+#: templates/news/form_partial.html:62
 msgid "Create Announcement"
 msgstr "إنشاء إعلان"
 
+#: templates/kb/form.html:55 templates/news/form_partial.html:26
 msgid "Content"
 msgstr "المحتوى"
 
+#: news/forms.py:46
 msgid "Announcement Title"
 msgstr "عنوان الإعلان"
 
+#: news/forms.py:47
 msgid "Message content..."
 msgstr "محتوى الرسالة…"
 
+#: templates/news/form_partial.html:32
 msgid "Target Branch"
 msgstr "الفرع المستهدف"
 
+#: templates/news/form_partial.html:34
 msgid "Leave blank to show to all branches."
 msgstr "اتركه فارغاً للعرض على كل الفروع."
 
+#: templates/news/form_partial.html:40
 msgid "Expires At (Optional)"
 msgstr "ينتهي في (اختياري)"
 
+#: templates/news/form_partial.html:45
 msgid ""
 "Date required if you set a time. Time defaults to 11:59 PM when omitted."
 msgstr ""
 "التاريخ مطلوب إذا حددت وقتاً. الوقت الافتراضي 11:59 مساءً إن لم تحدده."
 
+#: accounts/forms.py:59 accounts/forms.py:162
+#: templates/news/form_partial.html:52
 msgid "Is Active"
 msgstr "نشط"
 
+#: news/forms.py:16
 msgid "Expires on"
 msgstr "ينتهي في"
 
+#: news/forms.py:29
 msgid "Expires at"
 msgstr "ينتهي الساعة"
 
+#: news/forms.py:66
 msgid "Enter a date when setting an expiration time."
 msgstr "أدخل تاريخاً عند تحديد وقت انتهاء."
 
+#: templates/news/form_partial.html:59
 msgid "Are you sure you want to delete this announcement?"
 msgstr "هل أنت متأكد من حذف هذا الإعلان؟"
 
+#: templates/news/form_partial.html:59
 msgid "Delete Announcement"
 msgstr "حذف الإعلان"
 
+#: templates/base.html:475 templates/core/management/delete_confirm.html:18
+#: templates/core/management/delete_confirm_partial.html:19
+#: templates/news/form_partial.html:59
 msgid "Yes, Delete"
 msgstr "نعم، احذف"
 
 # Knowledge Base
+#: templates/kb/list.html:15
 msgid "Filter results"
 msgstr "فلترة النتائج"
 
+#: templates/kb/list.html:16
 msgid "Filter Results"
 msgstr "فلترة النتائج"
 
+#: core/management_views.py:295 core/models.py:58
+#: templates/core/management/form_partial.html:110
+#: templates/core/settings.html:41 templates/kb/list.html:30
 msgid "Categories"
 msgstr "الفئات"
 
+#: templates/kb/list.html:46 templates/kb/list.html:182
 msgid "No categories yet"
 msgstr "لا فئات بعد"
 
+#: accounts/models.py:65 templates/accounts/management/list.html:20
+#: templates/kb/list.html:54 templates/news/list.html:26
+#: templates/news/list.html:38 templates/tickets/list_append.html:8
+#: templates/tickets/list_live_partial.html:15
+#: templates/tickets/list_live_partial.html:29
 msgid "Status"
 msgstr "الحالة"
 
+#: templates/kb/list.html:62
 msgid "Published"
 msgstr "منشورة"
 
+#: templates/kb/list.html:103
 msgid "Internal reference library for the team"
 msgstr "مكتبة مرجعية داخلية للفريق"
 
+#: templates/kb/list.html:136
 msgid "Search articles…"
 msgstr "بحث في المقالات…"
 
+#: templates/kb/list.html:137
 msgid "Search knowledge base"
 msgstr "البحث في قاعدة المعرفة"
 
+#: templates/kb/list.html:144
 msgid "Clear search"
 msgstr "مسح البحث"
 
+#: templates/kb/list.html:165
 msgid "Browse knowledge base"
 msgstr "تصفح قاعدة المعرفة"
 
+#: templates/kb/list.html:167
 msgid "Browse by category"
 msgstr "تصفح حسب الفئة"
 
+#: templates/kb/list.html:183
 msgid "Add categories in Settings to organize articles."
 msgstr "أضف فئات في الإعدادات لتنظيم المقالات."
 
+#: templates/kb/list.html:191
 msgid "Recently updated"
 msgstr "المحدثة مؤخراً"
 
+#: templates/kb/list.html:221
 msgid "for"
 msgstr "عن"
 
+#: templates/kb/list.html:240
 msgid "Sort by:"
 msgstr "ترتيب حسب:"
 
+#: templates/kb/list.html:243
 msgid "Relevance"
 msgstr "الصلة"
 
+#: templates/kb/list.html:245
 msgid "Newest"
 msgstr "الأحدث"
 
+#: templates/kb/list.html:246
 msgid "Oldest"
 msgstr "الأقدم"
 
+#: templates/kb/list.html:263
 msgid "No matching articles"
 msgstr "لا مقالات مطابقة"
 
+#: templates/kb/list.html:264
 msgid "Try adjusting your search or filters to find what you need."
 msgstr "جرب تعديل البحث أو الفلاتر للعثور على ما تحتاج."
 
+#: templates/kb/list.html:265 templates/tickets/branch_dashboard.html:13
 msgid "Clear Filters"
 msgstr "مسح الفلاتر"
 
+#: templates/kb/list.html:274 templates/kb/list.html:276
 msgid "Team actions"
 msgstr "إجراءات الفريق"
 
+#: templates/kb/list.html:312
 msgid ""
 "Drafts stay private until published. Use the Status filter to review "
 "unpublished articles."
@@ -585,471 +852,24 @@ msgstr ""
 "المسودات تبقى خاصة حتى النشر. استخدم فلتر الحالة لمراجعة المقالات غير "
 "المنشورة."
 
+#: templates/kb/list.html:314
 msgid ""
 "Search or open a category to find procedures and troubleshooting notes."
 msgstr "ابحث أو افتح فئة للعثور على إجراءات ملاحظات حل المشاكل."
 
+#: templates/kb/list.html:326
 msgid "No exact matches?"
 msgstr "لا نتائج مطابقة؟"
 
+#: templates/kb/list.html:327
 msgid "Try different keywords or remove some filters to broaden your search."
 msgstr "جرب كلمات مفتاحية مختلفة أو أزل بعض الفلاتر لتوسيع البحث."
 
+#: templates/kb/partials/load_more.html:10
 msgid "Load more results"
 msgstr "تحميل المزيد من النتائج"
 
-#: templates/kb/list.html
-#, python-format
-msgid "<strong>%(count)s</strong> result"
-msgid_plural "<strong>%(count)s</strong> results"
-msgstr[0] "<strong>لا</strong> نتائج"
-msgstr[1] "نتيجة <strong>واحدة</strong>"
-msgstr[2] "نتيجتان"
-msgstr[3] "<strong>%(count)s</strong> نتائج"
-msgstr[4] "<strong>%(count)s</strong> نتيجة"
-msgstr[5] "<strong>%(count)s</strong> نتيجة"
-
-#: templates/kb/list.html
-#, python-format
-msgid "%(count)s article"
-msgid_plural "%(count)s articles"
-msgstr[0] "لا مقالات"
-msgstr[1] "مقالة واحدة"
-msgstr[2] "مقالتان"
-msgstr[3] "%(count)s مقالات"
-msgstr[4] "%(count)s مقالة"
-msgstr[5] "%(count)s مقالة"
-
-#: templates/kb/list.html
-#, python-format
-msgid "Drafts (%(count)s)"
-msgstr "مسودات (%(count)s)"
-
-# KB Detail page
-msgid "Breadcrumb"
-msgstr "التنقل"
-
-msgid "Updated"
-msgstr "حُدثت"
-
-msgid "More in this category"
-msgstr "المزيد في هذه الفئة"
-
-msgid "Draft"
-msgstr "مسودة"
-
-msgid "Article details"
-msgstr "تفاصيل المقالة"
-
-msgid "Uncategorized"
-msgstr "غير مصنفة"
-
-msgid "Related ticket"
-msgstr "تذكرة ذات صلة"
-
-msgid "Attachments"
-msgstr "المرفقات"
-
-msgid "Delete article"
-msgstr "حذف المقالة"
-
-msgid ""
-"This permanently removes the article and its attachments. This cannot be "
-"undone."
-msgstr "يحذف هذا المقالة ومرفقاتها نهائياً. لا يمكن التراجع عن هذا الإجراء."
-
-msgid "Attachment preview"
-msgstr "معاينة المرفق"
-
-msgid "Close preview"
-msgstr "إغلاق المعاينة"
-
-# KB Forms
-msgid "e.g. How to reset a branch password"
-msgstr "مثال: كيفية إعادة تعيين كلمة سر فرع"
-
-msgid "No Category"
-msgstr "لا فئة"
-
-msgid "Select one or more pictures or files to attach."
-msgstr "اختر صورة أو ملفات واحد أو أكثر للإرفاق."
-
-#: kb/forms.py
-#, python-format
-msgid "Attachment type '%s' is not allowed. Allowed: %s"
-msgstr "نوع المرفق '%s' غير مسموح. المسموح: %s"
-
-msgid "(none)"
-msgstr "(لا شيء)"
-
-#: kb/forms.py
-#, python-format
-msgid "Attachment is too large (%s bytes). Maximum is %s bytes."
-msgstr "المرفق كبير جداً (%s بايت). الحد الأقصى %s بايت."
-
-# Account forms
-msgid "First name"
-msgstr "الاسم الأول"
-
-msgid "Last name"
-msgstr "اسم العائلة"
-
-msgid "user@example.com"
-msgstr "user@example.com"
-
-msgid "Choose a strong password"
-msgstr "اختر كلمة سر قوية"
-
-msgid "Repeat the password"
-msgstr "كرر كلمة السر"
-
-msgid "e.g., john.doe"
-msgstr "مثال: john.doe"
-
-msgid "A user with that username already exists."
-msgstr "يوجد مستخدم بهذا الاسم بالفعل."
-
-msgid "Branch is required for this user type."
-msgstr "الفرع مطلوب لهذا النوع من المستخدمين."
-
-msgid "Department is required for this user type."
-msgstr "القسم مطلوب لهذا النوع من المستخدمين."
-
-msgid "New password"
-msgstr "كلمة السر الجديدة"
-
-msgid "Confirm password"
-msgstr "تأكيد كلمة السر"
-
-msgid "Leave blank to keep current"
-msgstr "اتركه فارغاً للإبقاء على الحالي"
-
-msgid "Repeat new password"
-msgstr "كرر كلمة السر الجديدة"
-
-msgid "Enter the same password as before, for verification."
-msgstr "أدخل نفس كلمة السر للتأكيد."
-
-msgid "Passwords do not match."
-msgstr "كلمات السر غير متطابقة."
-
-# Settings page
-msgid "Administrative Settings"
-msgstr "الإعدادات الإدارية"
-
-msgid "Configure and manage system entities from a unified interface."
-msgstr "إعداد وإدارة كيانات النظام من واجهة موحدة."
-
-msgid "KB Categories"
-msgstr "فئات قاعدة المعرفة"
-
-msgid "Roles"
-msgstr "الصلاحيات"
-
-msgid "Users"
-msgstr "المستخدمون"
-
-msgid "Email Settings"
-msgstr "إعدادات البريد"
-
-msgid "Maintenance"
-msgstr "الصيانة"
-
-# Management forms - Branch
-msgid "e.g., Main Branch"
-msgstr "مثال: الفرع الرئيسي"
-
-msgid "e.g., MBR"
-msgstr "مثال: MBR"
-
-msgid "Branch name must be at least 2 characters long."
-msgstr "اسم الفرع يجب أن يكون حرفين على الأقل."
-
-msgid "Branch code is required."
-msgstr "رمز الفرع مطلوب."
-
-msgid "Code may only contain letters, numbers, hyphens, and underscores."
-msgstr "الرمز يمكن أن يحتوي على حروف وأرقام وشرطات وشرطات سفلية فقط."
-
-# Management forms - Department
-msgid "e.g., IT Support"
-msgstr "مثال: الدعم التقني"
-
-msgid "Department name must be at least 2 characters long."
-msgstr "اسم القسم يجب أن يكون حرفين على الأقل."
-
-msgid "A department with this name already exists."
-msgstr "يوجد قسم بهذا الاسم بالفعل."
-
-# Management forms - Category
-msgid "e.g., Hardware Issue"
-msgstr "مثال: مشكلة عتاد"
-
-msgid "Category name must be at least 2 characters long."
-msgstr "اسم الفئة يجب أن يكون حرفين على الأقل."
-
-# Management forms - Role
-msgid "e.g., Support Agent"
-msgstr "مثال: وكيل دعم"
-
-msgid "Role name must be at least 2 characters long."
-msgstr "اسم الصلاحية يجب أن يكون حرفين على الأقل."
-
-# Email settings
-msgid ""
-"Another email setting is already active. Disable it before activating this "
-"one."
-msgstr "إعداد بريد آخر نشط بالفعل. عطّله قبل تفعيل هذا."
-
-msgid "e.g., smtp.gmail.com"
-msgstr "مثال: smtp.gmail.com"
-
-msgid "e.g., 587"
-msgstr "مثال: 587"
-
-msgid "sender@example.com"
-msgstr "sender@example.com"
-
-msgid "e.g., MlamehTicket Support"
-msgstr "مثال: MlamehTicket Support"
-
-msgid "noreply@example.com"
-msgstr "noreply@example.com"
-
-# Email templates
-msgid "Subject"
-msgstr "الموضوع"
-
-msgid "Body"
-msgstr "المحتوى"
-
-msgid "Insert merge fields"
-msgstr "إدراج حقول الدمج"
-
-msgid "Insert field into focused box:"
-msgstr "إدراج حقل في المربع المحدد:"
-
-msgid ""
-"Plain text only. A View/Open button is added automatically under the body "
-"when the email is sent."
-msgstr "نص عادي فقط. يُضاف زر عرض/فتح تلقائياً أسفل المحتوى عند إرسال البريد."
-
-msgid "Save template"
-msgstr "حفظ القالب"
-
-msgid "Send test email"
-msgstr "إرسال بريد تجريبي"
-
-msgid "Reset to default"
-msgstr "إعادة للافتراضي"
-
-msgid ""
-"Test email uses the text above (even if unsaved) and is sent to the active "
-"SMTP from-address."
-msgstr ""
-"البريد التجريبي يستخدم النص أعلاه (حتى لو غير محفوظ) ويُرسل إلى عنوان SMTP "
-"النشط."
-
-msgid ""
-"You can view templates but need Manage Email Settings permission to edit "
-"them."
-msgstr "يمكنك عرض القوالب لكن تحتاج صلاحية إدارة إعدادات البريد لتعديلها."
-
-msgid "Email preview"
-msgstr "معاينة البريد"
-
-msgid "Looks like the message that will be sent"
-msgstr "تبدو مثل الرسالة التي ستُرسل"
-
-msgid "Email body preview"
-msgstr "معاينة محتوى البريد"
-
-#: notifications/email_templates.py
-#, python-format
-msgid "[%(brand_name)s] New ticket #%(ticket_number)s: %(title)s"
-msgstr "[%(brand_name)s] تذكرة جديدة #%(ticket_number)s: %(title)s"
-
-msgid "[{{ brand_name }}] New ticket #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] تذكرة جديدة #{{ ticket_number }}"
-
-msgid "Write the email body. Use Insert field buttons for merge values."
-msgstr "اكتب محتوى البريد. استخدم أزرار إدراج الحقول لقيم الدمج."
-
-#: core/forms.py
-#, python-format
-msgid "%s contains unsupported template tags."
-msgstr "%s يحتوي على وسوم قوالب غير مدعومة."
-
-msgid "Subject is required."
-msgstr "الموضوع مطلوب."
-
-msgid "Body is required."
-msgstr "المحتوى مطلوب."
-
-# Email template subjects/bodies
-msgid "[{{ brand_name }}] New ticket #{{ ticket_number }}: {{ title }}"
-msgstr "[{{ brand_name }}] تذكرة جديدة #{{ ticket_number }}: {{ title }}"
-
-msgid "[{{ brand_name }}] Ticket #{{ ticket_number }} picked up"
-msgstr "[{{ brand_name }}] تم استلام التذكرة #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] New reply on #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] رد جديد على #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] Status update on #{{ ticket_number }}: {{ status }}"
-msgstr "[{{ brand_name }}] تحديث حالة على #{{ ticket_number }}: {{ status }}"
-
-msgid "[{{ brand_name }}] Update on ticket #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] تحديث على التذكرة #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] Transfer requested: #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] طُلب نقل: #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] Transfer accepted: #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] قُبل النقل: #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] Transfer declined: #{{ ticket_number }}"
-msgstr "[{{ brand_name }}] رُفض النقل: #{{ ticket_number }}"
-
-msgid "[{{ brand_name }}] Announcement: {{ title }}"
-msgstr "[{{ brand_name }}] إعلان: {{ title }}"
-
-msgid "View ticket"
-msgstr "عرض التذكرة"
-
-msgid "Open ticket"
-msgstr "فتح التذكرة"
-
-msgid "View announcements"
-msgstr "عرض الإعلانات"
-
-# Notification event types
-msgid "New ticket"
-msgstr "تذكرة جديدة"
-
-msgid "Ticket picked"
-msgstr "تذكرة مستلمة"
-
-msgid "Ticket reply"
-msgstr "رد على تذكرة"
-
-msgid "Status change"
-msgstr "تغيير حالة"
-
-msgid "Ticket update"
-msgstr "تحديث تذكرة"
-
-msgid "Transfer requested"
-msgstr "نقل مطلوب"
-
-msgid "Transfer accepted"
-msgstr "نقل مقبول"
-
-msgid "Transfer declined"
-msgstr "نقل مرفوض"
-
-# Ticket event types
-msgid "Status Change"
-msgstr "تغيير الحالة"
-
-msgid "Transfer Requested"
-msgstr "نقل مطلوب"
-
-msgid "Transfer Accepted"
-msgstr "نقل مقبول"
-
-msgid "Transfer Denied"
-msgstr "نقل مرفوض"
-
-msgid "Transfer Cancelled"
-msgstr "نقل ملغى"
-
-msgid "Ticket Merged"
-msgstr "تذكرة مدمجة"
-
-msgid "Priority Changed"
-msgstr "تغيرت الأولوية"
-
-msgid "Assigned"
-msgstr "مكلفة"
-
-msgid "Reopened"
-msgstr "أعيد فتحها"
-
-# Confirm modals
-msgid "Confirm Action"
-msgstr "تأكيد الإجراء"
-
-msgid "Are you sure you want to proceed?"
-msgstr "هل أنت متأكد من المتابعة؟"
-
-msgid "Yes, Discard"
-msgstr "نعم، تجاهل"
-
-msgid "You have unsaved changes. Are you sure you want to discard them?"
-msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من تجاهلها؟"
-
-msgid "You have unsaved changes. Are you sure you want to leave?"
-msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من المغادرة؟"
-
-msgid "Reset this template to defaults?"
-msgstr "إعادة هذا القالب للإعدادات الافتراضية؟"
-
-#: templates/core/management/delete_confirm_partial.html
-#, python-format
-msgid "Are you sure you want to delete this %s?"
-msgstr "هل أنت متأكد من حذف %s؟"
-
-#: templates/core/management/list_partial_v2.html
-#, python-format
-msgid "Total: %(count)s entries"
-msgstr "الإجمالي: %(count)s مدخل"
-
-#: templates/core/management/list_partial_v2.html
-#, python-format
-msgid "No %(model)s items found yet."
-msgstr "لا توجد عناصر %(model)s بعد."
-
-#: templates/email_template_form.html
-#, python-format
-msgid "Insert %(key)s"
-msgstr "إدراج %(key)s"
-
-# Additional UI strings
-msgid "Pending Support Agent"
-msgstr "في انتظار وكيل الدعم"
-
-msgid "View Attachment"
-msgstr "عرض المرفق"
-
-msgid "Sent"
-msgstr "أُرسل"
-
-msgid "and others"
-msgstr "وآخرون"
-
-msgid "typing…"
-msgstr "يكتب…"
-
-# Status breakdown visualization
-#: templates/tickets/partials/status_stack_list.html
-#, python-format
-msgid "Status breakdown for %(label)s"
-msgstr "تفصيل الحالة لـ %(label)s"
-
-msgid "Unsaved Changes"
-msgstr "تغييرات غير محفوظة"
-
-#, python-format
-msgid "%(count)s message"
-msgid_plural "%(count)s messages"
-msgstr[0] "لا رسائل"
-msgstr[1] "رسالة واحدة"
-msgstr[2] "رسالتان"
-msgstr[3] "%(count)s رسائل"
-msgstr[4] "%(count)s رسالة"
-msgstr[5] "%(count)s رسالة"
-
+#: templates/kb/list.html:216
 #, python-format
 msgid "<strong>%(count)s</strong> result"
 msgid_plural "<strong>%(count)s</strong> results"
@@ -1060,6 +880,18 @@ msgstr[3] "<strong>%(count)s</strong> نتائج"
 msgstr[4] "<strong>%(count)s</strong> نتيجة"
 msgstr[5] "<strong>%(count)s</strong> نتيجة"
 
+#: templates/kb/list.html:223
+#, python-format
+msgid "<strong>%(count)s</strong> article"
+msgid_plural "<strong>%(count)s</strong> articles"
+msgstr[0] "<strong>لا مقالات</strong>"
+msgstr[1] "<strong>مقال واحد</strong>"
+msgstr[2] "<strong>مقالان</strong>"
+msgstr[3] "<strong>%(count)s</strong> مقالات"
+msgstr[4] "<strong>%(count)s</strong> مقالاً"
+msgstr[5] "<strong>%(count)s</strong> مقال"
+
+#: templates/kb/list.html:177
 #, python-format
 msgid "%(count)s article"
 msgid_plural "%(count)s articles"
@@ -1070,195 +902,1672 @@ msgstr[3] "%(count)s مقالات"
 msgstr[4] "%(count)s مقالاً"
 msgstr[5] "%(count)s مقال"
 
+#: templates/kb/list.html:71
+#, python-format
+msgid "Drafts (%(count)s)"
+msgstr "مسودات (%(count)s)"
+
+# KB Detail page
+#: templates/kb/detail.html:10 templates/kb/form.html:10
+msgid "Breadcrumb"
+msgstr "التنقل"
+
+#: templates/kb/detail.html:33 templates/kb/detail.html:57
+#: templates/kb/partials/result_item.html:15
+msgid "Updated"
+msgstr "حُدثت"
+
+#: templates/kb/detail.html:49 templates/kb/detail.html:50
+msgid "More in this category"
+msgstr "المزيد في هذه الفئة"
+
+#: templates/kb/detail.html:61 templates/kb/form.html:30
+#: templates/kb/partials/result_item.html:19
+msgid "Draft"
+msgstr "مسودة"
+
+#: templates/kb/detail.html:72 templates/kb/form.html:67
+msgid "Article details"
+msgstr "تفاصيل المقالة"
+
+#: templates/kb/detail.html:79 templates/kb/list.html:200
+#: templates/kb/partials/result_item.html:7
+msgid "Uncategorized"
+msgstr "غير مصنفة"
+
+#: templates/kb/detail.html:85 templates/kb/form.html:76
+msgid "Related ticket"
+msgstr "تذكرة ذات صلة"
+
+#: templates/kb/detail.html:98 templates/kb/form.html:111
+msgid "Attachments"
+msgstr "المرفقات"
+
+#: templates/kb/detail.html:130
+msgid "Delete article"
+msgstr "حذف المقالة"
+
+#: templates/kb/detail.html:130
+msgid ""
+"This permanently removes the article and its attachments. This cannot be "
+"undone."
+msgstr "يحذف هذا المقالة ومرفقاتها نهائياً. لا يمكن التراجع عن هذا الإجراء."
+
+#: templates/kb/detail.html:141 templates/kb/detail.html:144
+#: templates/kb/detail.html:145
+msgid "Attachment preview"
+msgstr "معاينة المرفق"
+
+#: templates/kb/detail.html:142
+msgid "Close preview"
+msgstr "إغلاق المعاينة"
+
+# KB Forms
+#: kb/forms.py:61
+msgid "e.g. How to reset a branch password"
+msgstr "مثال: كيفية إعادة تعيين كلمة سر فرع"
+
+#: kb/forms.py:74
+msgid "No Category"
+msgstr "لا فئة"
+
+#: kb/forms.py:46
+msgid "Select one or more pictures or files to attach."
+msgstr "اختر صورة أو ملفات واحد أو أكثر للإرفاق."
+
+#: kb/forms.py:31
+#, python-format
+msgid "Attachment type '%(ext)s' is not allowed. Allowed: %(allowed)s"
+msgstr "نوع المرفق '%(ext)s' غير مسموح. المسموح: %(allowed)s"
+
+#: kb/forms.py:32
+msgid "(none)"
+msgstr "(لا شيء)"
+
+#: kb/forms.py:38
+#, python-format
+msgid ""
+"Attachment is too large (%(size)s bytes). Maximum is %(max_size)s bytes."
+msgstr "المرفق كبير جداً (%(size)s بايت). الحد الأقصى %(max_size)s بايت."
+
+# Account forms
+#: accounts/forms.py:79 accounts/forms.py:190
+msgid "First name"
+msgstr "الاسم الأول"
+
+#: accounts/forms.py:80 accounts/forms.py:191
+msgid "Last name"
+msgstr "اسم العائلة"
+
+#: accounts/forms.py:81 accounts/forms.py:192
+msgid "user@example.com"
+msgstr "user@example.com"
+
+#: accounts/forms.py:83
+msgid "Choose a strong password"
+msgstr "اختر كلمة سر قوية"
+
+#: accounts/forms.py:84
+msgid "Repeat the password"
+msgstr "كرر كلمة السر"
+
+#: accounts/forms.py:71 accounts/forms.py:184
+msgid "e.g., john.doe"
+msgstr "مثال: john.doe"
+
+#: accounts/forms.py:111 accounts/forms.py:238
+msgid "A user with that username already exists."
+msgstr "يوجد مستخدم بهذا الاسم بالفعل."
+
+#: accounts/forms.py:143 accounts/forms.py:270
+msgid "Branch is required for this user type."
+msgstr "الفرع مطلوب لهذا النوع من المستخدمين."
+
+#: accounts/forms.py:147 accounts/forms.py:274
+msgid "Department is required for this user type."
+msgstr "القسم مطلوب لهذا النوع من المستخدمين."
+
+#: accounts/forms.py:169
+msgid "New password"
+msgstr "كلمة السر الجديدة"
+
+#: accounts/forms.py:174
+msgid "Confirm password"
+msgstr "تأكيد كلمة السر"
+
+#: accounts/forms.py:194
+msgid "Leave blank to keep current"
+msgstr "اتركه فارغاً للإبقاء على الحالي"
+
+#: accounts/forms.py:195
+msgid "Repeat new password"
+msgstr "كرر كلمة السر الجديدة"
+
+#: accounts/forms.py:202
+msgid "Enter the same password as before, for verification."
+msgstr "أدخل نفس كلمة السر للتأكيد."
+
+#: accounts/forms.py:284
+msgid "Passwords do not match."
+msgstr "كلمات السر غير متطابقة."
+
+# Settings page
+#: templates/core/settings.html:17
+msgid "Administrative Settings"
+msgstr "الإعدادات الإدارية"
+
+#: templates/core/settings.html:18
+msgid "Configure and manage system entities from a unified interface."
+msgstr "إعداد وإدارة كيانات النظام من واجهة موحدة."
+
+#: templates/core/settings.html:49
+msgid "KB Categories"
+msgstr "فئات قاعدة المعرفة"
+
+#: core/management_views.py:319 core/models.py:133
+#: templates/core/management/form_partial.html:119
+#: templates/core/settings.html:57
+msgid "Roles"
+msgstr "الصلاحيات"
+
+#: accounts/management_views.py:103
+#: templates/core/management/form_partial.html:83
+#: templates/core/settings.html:64
+msgid "Users"
+msgstr "المستخدمون"
+
+#: core/management_views.py:396 core/models.py:171
+#: templates/core/management/email_settings_list.html:5
+#: templates/core/settings.html:71
+msgid "Email Settings"
+msgstr "إعدادات البريد"
+
+#: templates/core/settings.html:79
+msgid "Maintenance"
+msgstr "الصيانة"
+
+# Management forms - Branch
+#: core/forms.py:28
+msgid "e.g., Main Branch"
+msgstr "مثال: الفرع الرئيسي"
+
+#: core/forms.py:29
+msgid "e.g., MBR"
+msgstr "مثال: MBR"
+
+#: core/forms.py:35
+msgid "Branch name must be at least 2 characters long."
+msgstr "اسم الفرع يجب أن يكون حرفين على الأقل."
+
+#: core/forms.py:42
+msgid "Branch code is required."
+msgstr "رمز الفرع مطلوب."
+
+#: core/forms.py:45
+msgid "Code may only contain letters, numbers, hyphens, and underscores."
+msgstr "الرمز يمكن أن يحتوي على حروف وأرقام وشرطات وشرطات سفلية فقط."
+
+# Management forms - Department
+#: core/forms.py:57
+msgid "e.g., IT Support"
+msgstr "مثال: الدعم التقني"
+
+#: core/forms.py:63
+msgid "Department name must be at least 2 characters long."
+msgstr "اسم القسم يجب أن يكون حرفين على الأقل."
+
+#: core/forms.py:69
+msgid "A department with this name already exists."
+msgstr "يوجد قسم بهذا الاسم بالفعل."
+
+# Management forms - Category
+#: core/forms.py:84
+msgid "e.g., Hardware Issue"
+msgstr "مثال: مشكلة عتاد"
+
+#: core/forms.py:90
+msgid "Category name must be at least 2 characters long."
+msgstr "اسم الفئة يجب أن يكون حرفين على الأقل."
+
+# Management forms - Role
+#: core/forms.py:101
+msgid "e.g., Support Agent"
+msgstr "مثال: وكيل دعم"
+
+#: core/forms.py:168
+msgid "Role name must be at least 2 characters long."
+msgstr "اسم الصلاحية يجب أن يكون حرفين على الأقل."
+
+# Email settings
+#: core/forms.py:184
+msgid ""
+"Another email setting is already active. Disable it before activating this "
+"one."
+msgstr "إعداد بريد آخر نشط بالفعل. عطّله قبل تفعيل هذا."
+
+#: core/forms.py:196
+msgid "e.g., smtp.gmail.com"
+msgstr "مثال: smtp.gmail.com"
+
+#: core/forms.py:197
+msgid "e.g., 587"
+msgstr "مثال: 587"
+
+#: core/forms.py:198
+msgid "sender@example.com"
+msgstr "sender@example.com"
+
+#: core/forms.py:200
+msgid "e.g., MlamehTicket Support"
+msgstr "مثال: MlamehTicket Support"
+
+#: core/forms.py:201
+msgid "noreply@example.com"
+msgstr "noreply@example.com"
+
+# Email templates
+#: core/forms.py:228 core/models.py:199
+#: templates/core/management/email_template_form.html:18
+#: templates/core/management/email_template_form.html:100
+msgid "Subject"
+msgstr "الموضوع"
+
+#: core/forms.py:234 core/models.py:200
+#: templates/core/management/email_template_form.html:37
+msgid "Body"
+msgstr "المحتوى"
+
+#: templates/core/management/email_template_form.html:52
+msgid "Insert merge fields"
+msgstr "إدراج حقول الدمج"
+
+#: templates/core/management/email_template_form.html:53
+msgid "Insert field into focused box:"
+msgstr "إدراج حقل في المربع المحدد:"
+
+#: templates/core/management/email_template_form.html:66
+msgid ""
+"Plain text only. A View/Open button is added automatically under the body "
+"when the email is sent."
+msgstr "نص عادي فقط. يُضاف زر عرض/فتح تلقائياً أسفل المحتوى عند إرسال البريد."
+
+#: templates/core/management/email_template_form.html:71
+msgid "Save template"
+msgstr "حفظ القالب"
+
+#: templates/core/management/email_template_form.html:79
+msgid "Send test email"
+msgstr "إرسال بريد تجريبي"
+
+#: templates/core/management/email_template_form.html:82
+msgid "Reset to default"
+msgstr "إعادة للافتراضي"
+
+#: templates/core/management/email_template_form.html:86
+msgid ""
+"Test email uses the text above (even if unsaved) and is sent to the active "
+"SMTP from-address."
+msgstr ""
+"البريد التجريبي يستخدم النص أعلاه (حتى لو غير محفوظ) ويُرسل إلى عنوان SMTP "
+"النشط."
+
+#: templates/core/management/email_template_form.html:89
+msgid ""
+"You can view templates but need Manage Email Settings permission to edit "
+"them."
+msgstr "يمكنك عرض القوالب لكن تحتاج صلاحية إدارة إعدادات البريد لتعديلها."
+
+#: templates/core/management/email_template_form.html:95
+msgid "Email preview"
+msgstr "معاينة البريد"
+
+#: templates/core/management/email_template_form.html:96
+msgid "Looks like the message that will be sent"
+msgstr "تبدو مثل الرسالة التي ستُرسل"
+
+#: templates/core/management/email_template_form.html:106
+msgid "Email body preview"
+msgstr "معاينة محتوى البريد"
+
+#: core/forms.py:210
+msgid "[{{ brand_name }}] New ticket #{{ ticket_number }}"
+msgstr "[{{ brand_name }}] تذكرة جديدة #{{ ticket_number }}"
+
+#: core/forms.py:215
+msgid "Write the email body. Use Insert field buttons for merge values."
+msgstr "اكتب محتوى البريد. استخدم أزرار إدراج الحقول لقيم الدمج."
+
+#: core/forms.py:223
+#, python-format
+msgid "%(label)s contains unsupported template tags."
+msgstr "%(label)s يحتوي على وسوم قوالب غير مدعومة."
+
+#: core/forms.py:230
+msgid "Subject is required."
+msgstr "الموضوع مطلوب."
+
+#: core/forms.py:236
+msgid "Body is required."
+msgstr "المحتوى مطلوب."
+
+# Notification event types
+#: core/models.py:184 notifications/email_templates.py:195
+msgid "New ticket"
+msgstr "تذكرة جديدة"
+
+#: core/models.py:162 core/models.py:185 notifications/email_templates.py:196
+msgid "Ticket picked"
+msgstr "تذكرة مستلمة"
+
+#: core/models.py:186 notifications/email_templates.py:197
+msgid "Ticket reply"
+msgstr "رد على تذكرة"
+
+#: core/models.py:187 notifications/email_templates.py:198
+msgid "Status change"
+msgstr "تغيير حالة"
+
+#: core/models.py:188 notifications/email_templates.py:199
+msgid "Ticket update"
+msgstr "تحديث تذكرة"
+
+#: core/models.py:189 notifications/email_templates.py:200
+msgid "Transfer requested"
+msgstr "نقل مطلوب"
+
+#: core/models.py:190 notifications/email_templates.py:201
+msgid "Transfer accepted"
+msgstr "نقل مقبول"
+
+#: core/models.py:191 notifications/email_templates.py:202
+msgid "Transfer declined"
+msgstr "نقل مرفوض"
+
+# Ticket event types
+#: tickets/models.py:194
+msgid "Status Change"
+msgstr "تغيير الحالة"
+
+#: tickets/models.py:195
+msgid "Transfer Requested"
+msgstr "نقل مطلوب"
+
+#: tickets/models.py:196
+msgid "Transfer Accepted"
+msgstr "نقل مقبول"
+
+#: tickets/models.py:197
+msgid "Transfer Denied"
+msgstr "نقل مرفوض"
+
+#: tickets/models.py:198
+msgid "Transfer Cancelled"
+msgstr "نقل ملغى"
+
+#: tickets/models.py:199
+msgid "Ticket Merged"
+msgstr "تذكرة مدمجة"
+
+#: tickets/models.py:200
+msgid "Priority Changed"
+msgstr "تغيرت الأولوية"
+
+#: templates/tickets/list_append.html:14
+#: templates/tickets/list_live_partial.html:17
+#: templates/tickets/list_live_partial.html:35 tickets/models.py:201
+msgid "Assigned"
+msgstr "مكلفة"
+
+#: tickets/models.py:202
+msgid "Reopened"
+msgstr "أعيد فتحها"
+
+# Confirm modals
+#: templates/base.html:458
+msgid "Confirm Action"
+msgstr "تأكيد الإجراء"
+
+#: templates/base.html:469
+msgid "Are you sure you want to proceed?"
+msgstr "هل أنت متأكد من المتابعة؟"
+
+#: templates/base.html:448
+msgid "Yes, Discard"
+msgstr "نعم، تجاهل"
+
+#: templates/base.html:442
+msgid "You have unsaved changes. Are you sure you want to discard them?"
+msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من تجاهلها؟"
+
+#: templates/base.html:82
+msgid "You have unsaved changes. Are you sure you want to leave?"
+msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من المغادرة؟"
+
+#: templates/base.html:83
+msgid "Reset this template to defaults?"
+msgstr "إعادة هذا القالب للإعدادات الافتراضية؟"
+
+#: templates/core/management/email_settings_list.html:6
+#: templates/core/management/list_partial_v2.html:7
+#, python-format
+msgid "Total: %(count)s entries"
+msgstr "الإجمالي: %(count)s مدخل"
+
+#: templates/core/management/list_partial_v2.html:85
+#, python-format
+msgid "No %(model)s items found yet."
+msgstr "لا توجد عناصر %(model)s بعد."
+
+#: templates/core/management/email_template_form.html:59
+#, python-format
+msgid "Insert %(key)s"
+msgstr "إدراج %(key)s"
+
+# Additional UI strings
+#: templates/base.html:75 templates/tickets/partials/details_drawer.html:47
+msgid "Pending Support Agent"
+msgstr "في انتظار وكيل الدعم"
+
+#: templates/base.html:76
+msgid "View Attachment"
+msgstr "عرض المرفق"
+
+#: templates/base.html:77
+msgid "Sent"
+msgstr "أُرسل"
+
+#: templates/base.html:78
+msgid "and others"
+msgstr "وآخرون"
+
+#: templates/base.html:79
+msgid "typing…"
+msgstr "يكتب…"
+
+# Status breakdown visualization
+#: templates/tickets/partials/status_stack_list.html:25
+#, python-format
+msgid "Status breakdown for %(label)s"
+msgstr "تفصيل الحالة لـ %(label)s"
+
+#: templates/base.html:431
+msgid "Unsaved Changes"
+msgstr "تغييرات غير محفوظة"
+
+#: templates/core/management/list_partial_v2.html:63
+#: templates/core/management/list_partial_v2.html:65
 msgid "Admin"
 msgstr "مسؤول"
 
+#: accounts/models.py:46 core/management_views.py:112 core/models.py:132
+#: templates/core/management/list_partial_v2.html:25
+#: templates/core/management/list_partial_v2.html:53
 msgid "Role"
 msgstr "دور"
 
+#: accounts/management_views.py:57 core/management_views.py:114
 msgid "User"
 msgstr "مستخدم"
 
+#: core/management_views.py:113 core/models.py:170
 msgid "Email Setting"
 msgstr "إعداد البريد"
 
+#: core/management_views.py:115
 msgid "Email Template"
 msgstr "قالب بريد"
 
+#: templates/core/management/list_partial_v2.html:6
 msgid "Entries"
 msgstr "العناصر"
 
+#: templates/accounts/management/form_partial.html:3
+#: templates/core/management/form_partial.html:3
 msgid "Entry"
 msgstr "عنصر"
 
+#: templates/core/management/form.html:4
 msgid "Manage"
 msgstr "إدارة"
 
+#: core/models.py:74
 msgid "Pick Ticket"
 msgstr "استلام التذكرة"
 
+#: templates/tickets/list_append.html:33
+#: templates/tickets/list_live_partial.html:54
 msgid "Pick"
 msgstr "أستلم"
 
+#: templates/tickets/list_append.html:36
+#: templates/tickets/list_live_partial.html:57
 msgid "Picked"
 msgstr "تم الاستلام"
 
+#: core/models.py:75
 msgid "Update Ticket Status"
 msgstr "تحديث حالة التذكرة"
 
+#: core/models.py:76
 msgid "Update Status after closed"
 msgstr "تحديث الحالة بعد الإغلاق"
 
+#: core/models.py:77 templates/tickets/detail.html:357
 msgid "Send Message"
 msgstr "إرسال رسالة"
 
+#: core/models.py:78
 msgid "Edit Message"
 msgstr "تعديل رسالة"
 
+#: core/models.py:79
 msgid "Delete Message"
 msgstr "حذف رسالة"
 
+#: core/models.py:80
 msgid "Access Dashboard"
 msgstr "الوصول للوحة التحكم"
 
+#: core/models.py:81
 msgid "View Agent Leaderboard"
 msgstr "عرض لوحة أداء الوكلاء"
 
+#: core/models.py:82
 msgid "Access Settings"
 msgstr "الوصول للإعدادات"
 
+#: core/models.py:85
 msgid "Create User"
 msgstr "إنشاء مستخدم"
 
+#: core/models.py:86
 msgid "Edit User"
 msgstr "تعديل مستخدم"
 
+#: core/models.py:87
 msgid "Delete User"
 msgstr "حذف مستخدم"
 
+#: core/models.py:90
 msgid "Create Branch"
 msgstr "إنشاء فرع"
 
+#: core/models.py:91
 msgid "Edit Branch"
 msgstr "تعديل فرع"
 
+#: core/models.py:92
 msgid "Delete Branch"
 msgstr "حذف فرع"
 
+#: core/models.py:95
 msgid "Create Department"
 msgstr "إنشاء قسم"
 
+#: core/models.py:96
 msgid "Edit Department"
 msgstr "تعديل قسم"
 
+#: core/models.py:97
 msgid "Delete Department"
 msgstr "حذف قسم"
 
+#: core/models.py:100
 msgid "Create Category"
 msgstr "إنشاء فئة"
 
+#: core/models.py:101
 msgid "Edit Category"
 msgstr "تعديل فئة"
 
+#: core/models.py:102
 msgid "Delete Category"
 msgstr "حذف فئة"
 
+#: core/models.py:105
 msgid "Create Role"
 msgstr "إنشاء دور"
 
+#: core/models.py:106
 msgid "Edit Role"
 msgstr "تعديل دور"
 
+#: core/models.py:107
 msgid "Delete Role"
 msgstr "حذف دور"
 
+#: core/models.py:110
 msgid "Manage Email Settings"
 msgstr "إدارة إعدادات البريد"
 
+#: core/models.py:113
 msgid "Manage News"
 msgstr "إدارة الأخبار"
 
+#: core/models.py:116
 msgid "Access Knowledge Base"
 msgstr "الوصول لقاعدة المعرفة"
 
+#: core/models.py:117
 msgid "Manage Knowledge Base"
 msgstr "إدارة قاعدة المعرفة"
 
+#: core/models.py:120
 msgid "Manage System Maintenance"
 msgstr "إدارة صيانة النظام"
 
+#: core/models.py:153 templates/core/management/email_settings_list.html:20
+#: templates/core/management/email_settings_list.html:36
 msgid "SMTP Host"
 msgstr "خادم SMTP"
 
+#: core/models.py:154
 msgid "SMTP Port"
 msgstr "منفذ SMTP"
 
+#: core/models.py:155
 msgid "SMTP Email"
 msgstr "بريد SMTP"
 
+#: core/models.py:156
 msgid "SMTP Password"
 msgstr "كلمة مرور SMTP"
 
+#: core/models.py:157 templates/core/management/email_settings_list.html:22
+#: templates/core/management/email_settings_list.html:38
 msgid "Encryption"
 msgstr "التشفير"
 
+#: core/models.py:158
 msgid "From Name"
 msgstr "اسم المرسل"
 
+#: core/models.py:159 templates/core/management/email_settings_list.html:21
+#: templates/core/management/email_settings_list.html:37
 msgid "From Email"
 msgstr "بريد المرسل"
 
+#: accounts/models.py:40 core/models.py:160
+#: templates/core/management/email_settings_list.html:23
+#: templates/core/management/email_settings_list.html:41
+#: templates/core/management/email_settings_list.html:43
+#: templates/news/list.html:44
 msgid "Active"
 msgstr "نشط"
 
+#: accounts/models.py:41 templates/core/management/email_settings_list.html:43
+#: templates/news/list.html:40
 msgid "Inactive"
 msgstr "غير نشط"
 
+#: core/models.py:161
 msgid "New tickets"
 msgstr "تذاكر جديدة"
 
+#: core/models.py:163
 msgid "Ticket messages"
 msgstr "رسائل التذاكر"
 
+#: core/models.py:164
 msgid "Status changes"
 msgstr "تغييرات الحالة"
 
+#: core/models.py:165
 msgid "Ticket updates"
 msgstr "تحديثات التذاكر"
 
+#: core/models.py:166
 msgid "Announcements"
 msgstr "الإعلانات"
 
+#: accounts/models.py:36
 msgid "Needs Support"
 msgstr "يحتاج دعم"
 
+#: accounts/models.py:44
 msgid "Phone"
 msgstr "الهاتف"
 
+#: accounts/models.py:43 templates/core/management/form_partial.html:128
 msgid "Email"
 msgstr "البريد الإلكتروني"
 
+#: core/models.py:148
 msgid "None"
 msgstr "بدون"
 
+#: core/models.py:149
 msgid "TLS"
 msgstr "TLS"
 
+#: core/models.py:150
 msgid "SSL"
 msgstr "SSL"
 
+#: core/models.py:204
 msgid "Email template"
 msgstr "قالب بريد"
 
+#: core/models.py:205 templates/core/management/email_settings_list.html:77
 msgid "Email templates"
 msgstr "قوالب البريد"
 
+#: core/models.py:17 templates/core/management/list_partial_v2.html:30
+#: templates/core/management/list_partial_v2.html:57
 msgid "Code"
 msgstr "الرمز"
 
+#: core/models.py:52 templates/core/management/list_partial_v2.html:32
+#: templates/core/management/list_partial_v2.html:59
 msgid "Default Priority"
 msgstr "الأولوية الافتراضية"
 
+#: accounts/models.py:66
 msgid "Requires password change"
 msgstr "يتطلب تغيير كلمة المرور"
 
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: accounts/models.py:37 templates/core/management/form_partial.html:24
+msgid "Support Agent"
+msgstr "موظف الدعم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: accounts/models.py:64 templates/core/management/list_partial_v2.html:23
+#: templates/core/management/list_partial_v2.html:51
+msgid "User Type"
+msgstr "نوع المستخدم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: accounts/template_views.py:27
+msgid ""
+"Password changed successfully. Please log in again with your new password."
+msgstr ""
+"تم تغيير كلمة المرور بنجاح. الرجاء تسجيل الدخول مرة أخرى بكلمة المرور "
+"الجديدة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/form_partial.html:3
+#: templates/core/management/form_partial.html:3
+msgid "Add"
+msgstr "إضافة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/list.html:3
+msgid "Manage Users"
+msgstr "إدارة المستخدمين"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/list.html:6
+msgid "+ New User"
+msgstr "+ مستخدم جديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/list.html:19
+msgid "Type"
+msgstr "النوع"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/list.html:22
+#: templates/core/management/email_settings_list.html:24
+#: templates/core/management/email_settings_list.html:46
+#: templates/core/management/list_partial_v2.html:33
+#: templates/core/management/list_partial_v2.html:60
+#: templates/news/list.html:31 templates/news/list.html:71
+msgid "Actions"
+msgstr "الإجراءات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/accounts/management/list.html:44
+msgid "No users found."
+msgstr "لا يوجد مستخدمون."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/delete_confirm.html:4
+#: templates/core/management/delete_confirm.html:9
+#: templates/core/management/delete_confirm_partial.html:3
+msgid "Confirm Deletion"
+msgstr "تأكيد الحذف"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/delete_confirm.html:11
+#: templates/core/management/delete_confirm_partial.html:13
+#, python-format
+msgid "Are you sure you want to delete this %(object)s?"
+msgstr "هل أنت متأكد من حذف %(object)s؟"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/delete_confirm.html:14
+#: templates/core/management/delete_confirm_partial.html:14
+msgid "This action cannot be undone."
+msgstr "لا يمكن التراجع عن هذا الإجراء."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/email_settings_list.html:11
+#: templates/core/management/list_partial_v2.html:12
+msgid "Create New"
+msgstr "إنشاء جديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/email_settings_list.html:65
+msgid "No email settings found yet."
+msgstr "لا توجد إعدادات بريد بعد."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/email_settings_list.html:79
+msgid ""
+"Choose a notification, edit subject and body, and insert fields as needed."
+msgstr "اختر إشعارًا، وعدّل الموضوع والمحتوى، وأدرج الحقول حسب الحاجة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/email_settings_list.html:82
+msgid "Saved."
+msgstr "تم الحفظ."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/email_settings_list.html:87
+msgid "Notification type"
+msgstr "نوع الإشعار"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/form_partial.html:23
+msgid "Quick Presets:"
+msgstr "إعدادات سريعة:"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/form_partial.html:25
+msgid "Branch User"
+msgstr "مستخدم فرع"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/form_partial.html:26
+msgid "Full Access"
+msgstr "وصول كامل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/form_partial.html:27
+msgid "Clear All"
+msgstr "مسح الكل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/form_partial.html:70
+msgid "Access"
+msgstr "الوصول"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/list_partial_v2.html:24
+#: templates/core/management/list_partial_v2.html:52
+msgid "Branch / Department"
+msgstr "الفرع / القسم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:5
+msgid "System Maintenance"
+msgstr "صيانة النظام"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:6
+msgid "Backup database and media files, and clean up old records."
+msgstr "انسخ قاعدة البيانات وملفات الوسائط احتياطيًا، ونظّف السجلات القديمة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:13
+msgid "Export & Backup"
+msgstr "التصدير والنسخ الاحتياطي"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:15
+msgid ""
+"Export tickets and chat messages as a readable text file, or download a zip "
+"of all uploaded media files."
+msgstr ""
+"صدّر التذاكر ورسائل المحادثة كملف نصي قابل للقراءة، أو نزّل ملفًا مضغوطًا "
+"لكل ملفات الوسائط المرفوعة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:23
+msgid "Export Tickets & Messages"
+msgstr "تصدير التذاكر والرسائل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:31
+msgid "Download Media Zip"
+msgstr "تنزيل ملف الوسائط المضغوط"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:42
+msgid "System Cleanup"
+msgstr "تنظيف النظام"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:44
+msgid ""
+"Permanently delete old records to free up database space. A preview count is"
+" shown before any deletion."
+msgstr ""
+"احذف السجلات القديمة نهائيًا لتحرير مساحة قاعدة البيانات. يُعرض عدد تقديري "
+"قبل أي عملية حذف."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:52
+msgid "Cleanup Old Tickets"
+msgstr "تنظيف التذاكر القديمة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:53
+msgid ""
+"Delete closed tickets and their messages/attachments older than the selected"
+" period."
+msgstr "احذف التذاكر المغلقة ورسائلها ومرفقاتها الأقدم من الفترة المحددة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:58
+msgid "Older than 30 days"
+msgstr "أقدم من 30 يومًا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:59
+msgid "Older than 60 days"
+msgstr "أقدم من 60 يومًا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:60
+msgid "Older than 90 days"
+msgstr "أقدم من 90 يومًا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:61
+msgid "Older than 1 year"
+msgstr "أقدم من سنة واحدة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:63
+#: templates/core/management/maintenance.html:92
+msgid "Preview"
+msgstr "معاينة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:69
+msgid "Cleanup Notifications"
+msgstr "تنظيف الإشعارات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:70
+msgid ""
+"Delete read notifications older than a threshold, and all notifications past"
+" an absolute age."
+msgstr ""
+"احذف الإشعارات المقروءة الأقدم من حد معين، وكل الإشعارات التي تجاوزت عمرًا "
+"مطلقًا."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:75
+msgid "Read older than"
+msgstr "المقروءة الأقدم من"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:81
+#: templates/core/management/maintenance.html:90
+msgid "days"
+msgstr "يومًا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/core/management/maintenance.html:84
+msgid "All older than"
+msgstr "الكل الأقدم من"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:4
+msgid "Edit Article"
+msgstr "تعديل المقال"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:4 templates/kb/form.html:18
+msgid "New Article"
+msgstr "مقال جديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:28
+msgid "Edit article"
+msgstr "تعديل المقال"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:28
+msgid "New article"
+msgstr "مقال جديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:35
+msgid "Draft — publish when ready for the team."
+msgstr "مسودة — انشرها عندما تكون جاهزة للفريق."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:37
+msgid "Update content, then save or keep as draft."
+msgstr "حدّث المحتوى، ثم احفظ أو أبقِه كمسودة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:39
+msgid "Procedures and notes for the team."
+msgstr "إجراءات وملاحظات للفريق."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:57
+msgid "Loading editor..."
+msgstr "جارٍ تحميل المحرر..."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:76 templates/kb/form.html:112
+msgid "optional"
+msgstr "اختياري"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:80
+msgid "Select a ticket…"
+msgstr "اختر تذكرة…"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:92
+msgid "Remove Related Ticket"
+msgstr "إزالة التذكرة المرتبطة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:118
+msgid "Current files"
+msgstr "الملفات الحالية"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:130
+msgid "Save actions"
+msgstr "إجراءات الحفظ"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:132
+msgid "Publish"
+msgstr "نشر"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:134
+msgid "Save draft"
+msgstr "حفظ كمسودة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:147 templates/kb/form.html:155
+msgid "Search ticket"
+msgstr "البحث عن تذكرة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:153
+msgid "Search and select the ticket related to this article."
+msgstr "ابحث واختر التذكرة المرتبطة بهذا المقال."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/kb/form.html:158 templates/tickets/detail.html:760
+msgid "Type ticket number or title..."
+msgstr "اكتب رقم التذكرة أو عنوانها..."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/announcement_card.html:16
+msgid "By"
+msgstr "بواسطة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:4 templates/news/list.html:11
+msgid "News & Announcements"
+msgstr "الأخبار والإعلانات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:17
+msgid "+ New Announcement"
+msgstr "+ إعلان جديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:27 templates/news/list.html:47
+msgid "Target"
+msgstr "الجهة المستهدفة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:28 templates/news/list.html:54
+msgid "Expires"
+msgstr "تنتهي في"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:42
+msgid "Expired"
+msgstr "منتهي"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:51
+msgid "All branches"
+msgstr "كل الفروع"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:61
+msgid "Never"
+msgstr "أبدًا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/news/list.html:77
+msgid "No announcements found."
+msgstr "لا توجد إعلانات."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:5
+msgid "Branch Dashboard"
+msgstr "لوحة تحكم الفرع"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:17
+msgid "Start Date"
+msgstr "تاريخ البداية"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:21
+msgid "End Date"
+msgstr "تاريخ النهاية"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:48
+msgid "Total Requests"
+msgstr "إجمالي الطلبات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:73
+msgid "Requests by Status"
+msgstr "الطلبات حسب الحالة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:94
+msgid "Requests by Department"
+msgstr "الطلبات حسب القسم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:101
+msgid "Requests by Category"
+msgstr "الطلبات حسب الفئة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:122
+msgid "Request Activity by Date"
+msgstr "نشاط الطلبات حسب التاريخ"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:127
+#: templates/tickets/branch_dashboard.html:129
+msgid "Drill Up"
+msgstr "تصعيد المستوى"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:132
+#: templates/tickets/branch_dashboard.html:134
+msgid "Drill Down"
+msgstr "تفصيل المستوى"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/branch_dashboard.html:141
+msgid "Request activity by date chart"
+msgstr "مخطط نشاط الطلبات حسب التاريخ"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/dashboard.html:204
+msgid "Tickets by Branch"
+msgstr "التذاكر حسب الفرع"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/dashboard.html:212
+msgid "Categories Breakdown"
+msgstr "تفصيل الفئات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/dashboard.html:306
+msgid "Tickets by Department"
+msgstr "التذاكر حسب القسم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:15
+msgid "Back to Tickets"
+msgstr "العودة إلى التذاكر"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:24
+msgid "Chat Support"
+msgstr "محادثة الدعم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:24
+msgid "Live"
+msgstr "مباشر"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:29
+msgid "View Details"
+msgstr "عرض التفاصيل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:36 templates/tickets/detail.html:189
+#: templates/tickets/list_append.html:47
+#: templates/tickets/list_live_partial.html:68
+msgid "Details"
+msgstr "التفاصيل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:77 templates/tickets/detail.html:300
+#: templates/tickets/detail.html:372
+msgid "Accept"
+msgstr "قبول"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:81
+msgid "Deny"
+msgstr "رفض"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:87
+msgid "Cancel Request"
+msgstr "إلغاء الطلب"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:144
+msgid "Reply"
+msgstr "رد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:153
+msgid "Message options"
+msgstr "خيارات الرسالة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:196
+msgid "Sender"
+msgstr "المرسل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:197
+msgid "Time"
+msgstr "الوقت"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:228
+msgid "No messages yet."
+msgstr "لا رسائل بعد."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:235
+msgid "is typing"
+msgstr "يكتب الآن"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:249
+msgid "Drop file here"
+msgstr "أفلت الملف هنا"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:256
+msgid "Replying to"
+msgstr "رد على"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:261
+msgid "Cancel reply"
+msgstr "إلغاء الرد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:270
+msgid "Type your message or paste/drop a file..."
+msgstr "اكتب رسالتك أو الصق/أفلت ملفًا..."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:282
+msgid "Remove file"
+msgstr "إزالة الملف"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:293
+msgid "Ticket is Merged"
+msgstr "التذكرة مدمجة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:321
+msgid "Wait for User"
+msgstr "انتظار المستخدم"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:328
+msgid "Merge"
+msgstr "دمج"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:328 templates/tickets/detail.html:742
+#: templates/tickets/detail.html:774
+msgid "Merge Ticket"
+msgstr "دمج التذكرة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:332
+msgid "Transfer"
+msgstr "نقل"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:332 templates/tickets/detail.html:786
+#: templates/tickets/detail.html:814
+msgid "Transfer Ticket"
+msgstr "نقل التذكرة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:348
+msgid "Attach File"
+msgstr "إرفاق ملف"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:358
+msgid "Send"
+msgstr "إرسال"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:377 templates/tickets/detail.html:382
+#: tickets/template_views.py:973
+msgid "You do not have permission to send messages."
+msgstr "ليس لديك صلاحية لإرسال الرسائل."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:392
+msgid "Reopen"
+msgstr "إعادة فتح"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:711
+msgid "Close Ticket"
+msgstr "إغلاق التذكرة"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:725
+msgid ""
+"Are you sure you want to close this ticket? You will not be able to send new"
+" messages."
+msgstr "هل أنت متأكد من إغلاق هذه التذكرة؟ لن تتمكن من إرسال رسائل جديدة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:730
+msgid "Yes, Close"
+msgstr "نعم، أغلق"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:755
+msgid "Search and select the ticket you want to absorb into this one."
+msgstr "ابحث واختر التذكرة التي تريد دمجها في هذه التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:757
+msgid "Search Ticket to Merge"
+msgstr "ابحث عن تذكرة للدمج"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:799
+msgid "Select a support agent to transfer this ticket to."
+msgstr "اختر موظف دعم لنقل هذه التذكرة إليه."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:801
+msgid "New Assignee"
+msgstr "المسؤول الجديد"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/detail.html:803
+msgid "-- Select Agent --"
+msgstr "-- اختر موظف الدعم --"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/list_live_partial.html:79
+msgid "No tickets found."
+msgstr "لا توجد تذاكر."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/merge_preview_partial.html:14
+msgid "Description:"
+msgstr "الوصف:"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: templates/tickets/partials/status_stack_list.html:9
+msgid "Status legend"
+msgstr "مفتاح الحالات"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:640
+msgid "Ticket created successfully."
+msgstr "تم إنشاء التذكرة بنجاح."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:697 tickets/template_views.py:700
+#: tickets/template_views.py:702
+msgid "You do not have permission to edit this ticket."
+msgstr "ليس لديك صلاحية لتعديل هذه التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:713
+msgid "Ticket updated successfully."
+msgstr "تم تحديث التذكرة بنجاح."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:951
+msgid "You do not have permission to access categories."
+msgstr "ليس لديك صلاحية للوصول إلى الفئات."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:970
+msgid "You can only send messages on tickets for your branch."
+msgstr "يمكنك إرسال الرسائل على تذاكر فرعك فقط."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:981
+msgid "Message or attachment is required."
+msgstr "الرسالة أو المرفق مطلوب."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:999
+msgid "Failed to send message: {}"
+msgstr "فشل إرسال الرسالة: {}"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1012
+msgid "You do not have permission to delete this message."
+msgstr "ليس لديك صلاحية لحذف هذه الرسالة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1017
+msgid "Message deleted."
+msgstr "تم حذف الرسالة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1042
+msgid "You do not have permission to edit this message."
+msgstr "ليس لديك صلاحية لتعديل هذه الرسالة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1049
+msgid "Message updated."
+msgstr "تم تحديث الرسالة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1072
+msgid "Message text cannot be empty."
+msgstr "لا يمكن أن يكون نص الرسالة فارغًا."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1127
+msgid "You can only update the status of tickets assigned to you."
+msgstr "يمكنك تحديث حالة التذاكر المسندة إليك فقط."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1130
+msgid "You do not have permission to update a closed ticket."
+msgstr "ليس لديك صلاحية لتحديث تذكرة مغلقة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1162
+msgid "Status updated to {}."
+msgstr "تم تحديث الحالة إلى {}."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1181
+msgid "Failed to update status: {}"
+msgstr "فشل تحديث الحالة: {}"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1188
+msgid "You do not have permission to pick tickets."
+msgstr "ليس لديك صلاحية لالتقاط التذاكر."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1194
+msgid "Cannot pick a merged ticket."
+msgstr "لا يمكن التقاط تذكرة مدمجة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1205
+msgid "Ticket assigned to you."
+msgstr "تم إسناد التذكرة إليك."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1217
+msgid "Failed to pick ticket: {}"
+msgstr "فشل التقاط التذكرة: {}"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1231
+msgid "You do not have permission to transfer this ticket."
+msgstr "ليس لديك صلاحية لنقل هذه التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1243
+msgid "You can only transfer to agents in the same department or admins."
+msgstr "يمكنك النقل فقط إلى موظفي الدعم في نفس القسم أو إلى المسؤولين."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1245
+msgid "A transfer is already pending."
+msgstr "هناك عملية نقل معلقة بالفعل."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1268
+msgid "Transfer request sent to {}."
+msgstr "تم إرسال طلب النقل إلى {}."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1273
+msgid "Selected user is not a valid supporter."
+msgstr "المستخدم المحدد ليس موظف دعم صالحًا."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1275
+msgid "Failed to request transfer: {}"
+msgstr "فشل طلب النقل: {}"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1289
+msgid "You do not have permission to accept this transfer."
+msgstr "ليس لديك صلاحية لقبول هذا النقل."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1316
+msgid "Ticket transfer accepted."
+msgstr "تم قبول نقل التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1334
+msgid "You do not have permission to deny this transfer."
+msgstr "ليس لديك صلاحية لرفض هذا النقل."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1360
+msgid "Ticket transfer denied."
+msgstr "تم رفض نقل التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1374
+msgid "You do not have permission to cancel this transfer."
+msgstr "ليس لديك صلاحية لإلغاء هذا النقل."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1396
+msgid "Ticket transfer canceled."
+msgstr "تم إلغاء نقل التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1475 tickets/template_views.py:1477
+msgid "You do not have permission to view this ticket."
+msgstr "ليس لديك صلاحية لعرض هذه التذكرة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1488
+msgid "You do not have permission to merge tickets."
+msgstr "ليس لديك صلاحية لدمج التذاكر."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1495
+msgid "Target ticket number is required."
+msgstr "رقم التذكرة الهدف مطلوب."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1501
+msgid "Ticket {} not found."
+msgstr "التذكرة {} غير موجودة."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1506
+msgid "Ticket {} merged into this ticket successfully."
+msgstr "تم دمج التذكرة {} في هذه التذكرة بنجاح."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/template_views.py:1527
+msgid "Failed to merge ticket: {}"
+msgstr "فشل دمج التذكرة: {}"
+
+#~ msgid "English"
+#~ msgstr "الإنجليزية"
+
+#~ msgid "Arabic"
+#~ msgstr "العربية"
+
+#, python-format
+#~ msgid "[%(brand_name)s] New ticket #%(ticket_number)s: %(title)s"
+#~ msgstr "[%(brand_name)s] تذكرة جديدة #%(ticket_number)s: %(title)s"
+
+# Email template subjects/bodies
+#~ msgid "[{{ brand_name }}] New ticket #{{ ticket_number }}: {{ title }}"
+#~ msgstr "[{{ brand_name }}] تذكرة جديدة #{{ ticket_number }}: {{ title }}"
+
+#~ msgid "[{{ brand_name }}] Ticket #{{ ticket_number }} picked up"
+#~ msgstr "[{{ brand_name }}] تم استلام التذكرة #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] New reply on #{{ ticket_number }}"
+#~ msgstr "[{{ brand_name }}] رد جديد على #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] Status update on #{{ ticket_number }}: {{ status }}"
+#~ msgstr "[{{ brand_name }}] تحديث حالة على #{{ ticket_number }}: {{ status }}"
+
+#~ msgid "[{{ brand_name }}] Update on ticket #{{ ticket_number }}"
+#~ msgstr "[{{ brand_name }}] تحديث على التذكرة #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] Transfer requested: #{{ ticket_number }}"
+#~ msgstr "[{{ brand_name }}] طُلب نقل: #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] Transfer accepted: #{{ ticket_number }}"
+#~ msgstr "[{{ brand_name }}] قُبل النقل: #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] Transfer declined: #{{ ticket_number }}"
+#~ msgstr "[{{ brand_name }}] رُفض النقل: #{{ ticket_number }}"
+
+#~ msgid "[{{ brand_name }}] Announcement: {{ title }}"
+#~ msgstr "[{{ brand_name }}] إعلان: {{ title }}"
+
+#~ msgid "View ticket"
+#~ msgstr "عرض التذكرة"
+
+#~ msgid "Open ticket"
+#~ msgstr "فتح التذكرة"
+
+#~ msgid "View announcements"
+#~ msgstr "عرض الإعلانات"
+
+#, python-format
+#~ msgid "Are you sure you want to delete this %s?"
+#~ msgstr "هل أنت متأكد من حذف %s؟"
