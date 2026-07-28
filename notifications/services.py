@@ -10,7 +10,7 @@ from accounts.models import User
 from tickets.models import Ticket, TicketMessage
 from .utils import get_branch_users, get_department_users
 from .models import InAppNotification
-from .text import bilingual
+from .text import bilingual as _bilingual
 from django.utils.translation import gettext_noop
 try:
     import webpush
@@ -28,6 +28,40 @@ from .email_queue import enqueue_email
 logger = logging.getLogger(__name__)
 
 
+def bilingual(*args, **kwargs):
+    """Never let translation failures block notification delivery."""
+    try:
+        return _bilingual(*args, **kwargs)
+    except Exception:
+        logger.exception("bilingual() failed; falling back to English-only copy")
+        title_msgid = args[0] if args else kwargs.get("title_msgid", "")
+        title_params = args[1] if len(args) > 1 else kwargs.get("title_params") or {}
+        message_msgid = args[2] if len(args) > 2 else kwargs.get("message_msgid", "")
+        message_params = args[3] if len(args) > 3 else kwargs.get("message_params")
+        message_plain = kwargs.get("message_plain")
+        status = kwargs.get("status")
+        params = dict(title_params or {})
+        if status is not None:
+            from .utils import format_status_label
+            params["status"] = format_status_label(status) or status
+        try:
+            title = title_msgid % params if title_msgid else ""
+        except Exception:
+            title = str(title_msgid)
+        if message_plain is not None:
+            message = message_plain
+        else:
+            mp = dict(message_params if message_params is not None else params)
+            if status is not None and "status" not in mp:
+                from .utils import format_status_label
+                mp["status"] = format_status_label(status) or status
+            try:
+                message = message_msgid % mp if message_msgid else ""
+            except Exception:
+                message = str(message_msgid)
+        return title, message, "", ""
+
+
 def _broadcast_notification(notification: InAppNotification):
     channel_layer = get_channel_layer()
     if not channel_layer:
@@ -38,8 +72,8 @@ def _broadcast_notification(notification: InAppNotification):
         "id": notification.id,
         "title": notification.title,
         "message": notification.message,
-        "title_ar": notification.title_ar or "",
-        "message_ar": notification.message_ar or "",
+        "title_ar": notification.arabic_title(),
+        "message_ar": notification.arabic_message(),
         "link": notification.link,
         "notification_type": notification.notification_type,
         "is_read": notification.is_read,
@@ -117,15 +151,27 @@ def _notify_users(
             created_at__gte=dedup_window,
         ).exists():
             continue
-        notification = InAppNotification.objects.create(
-            recipient=user,
-            title=title,
-            message=message,
-            title_ar=title_ar or "",
-            message_ar=message_ar or "",
-            link=link,
-            notification_type=notification_type,
-        )
+        try:
+            notification = InAppNotification.objects.create(
+                recipient=user,
+                title=title,
+                message=message,
+                title_ar=title_ar or "",
+                message_ar=message_ar or "",
+                params={
+                    "title_ar": title_ar or "",
+                    "message_ar": message_ar or "",
+                },
+                link=link,
+                notification_type=notification_type,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to create in-app notification for user %s (title=%r)",
+                getattr(user, "id", None),
+                title,
+            )
+            continue
         _broadcast_notification(notification)
         
         if webpush and getattr(webpush, "send_user_notification", None):

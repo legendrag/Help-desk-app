@@ -1,9 +1,12 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+import logging
 
 from tickets.models import Ticket, TicketMessage, TicketStatusHistory
 from tickets.realtime import broadcast_ticket_message, broadcast_ticket_list_event
 from notifications.services import notify_new_ticket, notify_ticket_update
+
+logger = logging.getLogger(__name__)
 @receiver(post_save, sender=TicketMessage)
 def broadcast_new_message(sender, instance, created, **kwargs):
     if created:
@@ -63,8 +66,8 @@ def broadcast_new_message(sender, instance, created, **kwargs):
                                     message=message_text,
                                     is_system_message=True
                                 )
-        except Exception as e:
-            print(f"[WS-DEBUG] Error broadcasting message: {e}")
+        except Exception:
+            logger.exception("Error broadcasting message / notifying for TicketMessage %s", getattr(instance, "id", None))
 
 
 @receiver(post_save, sender=Ticket)
@@ -89,8 +92,8 @@ def broadcast_ticket_change(sender, instance, created, **kwargs):
         
         if created:
             notify_new_ticket(instance)
-    except Exception as e:
-        print(f"[WS-DEBUG] Error broadcasting ticket change: {e}")
+    except Exception:
+        logger.exception("Error broadcasting ticket change / notifying for Ticket %s", getattr(instance, "id", None))
 
 
 @receiver(post_delete, sender=Ticket)
@@ -98,8 +101,8 @@ def broadcast_ticket_deletion(sender, instance, **kwargs):
     try:
         payload = {"id": instance.id}
         broadcast_ticket_list_event("ticket_deleted", payload, branch_id=instance.branch_id, department_id=instance.department_id)
-    except Exception as e:
-        print(f"[WS-DEBUG] Error broadcasting ticket deletion: {e}")
+    except Exception:
+        logger.exception("Error broadcasting ticket deletion for Ticket %s", getattr(instance, "id", None))
 
 
 @receiver(post_save, sender=TicketStatusHistory)
@@ -125,7 +128,7 @@ def create_status_system_message(sender, instance, created, **kwargs):
                     message=message_text,
                     is_system_message=True
                 )
-        except Exception as e:
-            print(f"[WS-DEBUG] Error creating status system message: {e}")
+        except Exception:
+            logger.exception("Error creating status system message for history %s", getattr(instance, "id", None))
 
 

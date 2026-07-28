@@ -78,12 +78,21 @@ function updateBadge(count) {
 
 // ── Localized title/message (English always present as fallback) ──
 function resolveNotifCopy(item) {
-    const useAr = window.LANGUAGE_CODE === "ar";
-    const title = (useAr && item.title_ar) ? item.title_ar
-        : (item.title || (window.I18N && window.I18N.notification) || "Notification");
-    const message = (useAr && item.message_ar) ? item.message_ar
-        : (item.message || "");
-    return { title, message };
+    try {
+        const useAr = window.LANGUAGE_CODE === "ar";
+        const titleAr = item && item.title_ar;
+        const messageAr = item && item.message_ar;
+        const title = (useAr && titleAr) ? titleAr
+            : ((item && item.title) || (window.I18N && window.I18N.notification) || "Notification");
+        const message = (useAr && messageAr) ? messageAr
+            : ((item && item.message) || "");
+        return { title, message };
+    } catch (e) {
+        return {
+            title: (item && item.title) || "Notification",
+            message: (item && item.message) || "",
+        };
+    }
 }
 
 // ── Build Notification Item ──
