@@ -1,6 +1,7 @@
 ﻿{% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}Tickets - MlamehTicket{% endblock title %}
+{% block title %}{% trans "Tickets" %} - MlamehTicket{% endblock title %}
 
 {% block content %}
 <div class="tickets-page">
@@ -8,14 +9,14 @@
     <div class="panel tickets-panel">
         <div class="tickets-toolbar">
             <div class="tickets-title">
-                <h2>Support Tickets</h2>
+                <h2>{% trans "Support Tickets" %}</h2>
                 {% if user.is_superuser or user.role.can_create_ticket %}
                 <button type="button"
                         hx-get="{% url 'ticket_create' %}"
                         hx-target="#modal-content"
                         hx-trigger="click"
                         onclick="openModal()"
-                        class="tickets-new-btn">+ New Ticket</button>
+                        class="tickets-new-btn">{% trans "+ New Ticket" %}</button>
                 {% endif %}
             </div>
 
@@ -33,14 +34,14 @@
                         </svg>
                     </span>
                     <input type="search" name="q" id="search-q" class="search-input"
-                           placeholder="Search ID, title, client, phone, branch…"
+                           placeholder="{% trans 'Search ID, title, client, phone, branch…' %}"
                            value="{{ filter_values.q }}"
-                           aria-label="Search tickets">
+                           aria-label="{% trans 'Search tickets' %}">
                 </div>
                 <div class="filter-row">
                     {% if not user.user_type == 'branch' %}
                     <select name="branch">
-                        <option value="all">All Branches</option>
+                        <option value="all">{% trans "All Branches" %}</option>
                         {% for branch in branches %}
                         <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
                         {% endfor %}
@@ -48,21 +49,21 @@
                     {% endif %}
                     
                     <select name="status">
-                        <option value="all">All Statuses</option>
+                        <option value="all">{% trans "All Statuses" %}</option>
                         {% for value, label in status_choices %}
                         <option value="{{ value }}"{% if filter_values.status == value %} selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                     
                     <select name="assignment">
-                        <option value="all">All Assignments</option>
-                        <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>Unassigned</option>
+                        <option value="all">{% trans "All Assignments" %}</option>
+                        <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>{% trans "Unassigned" %}</option>
                         {% for assignee in assignees %}
                         <option value="{{ assignee.id }}"{% if filter_values.assignment|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <button type="submit" class="visually-hidden">Apply</button>
+                <button type="submit" class="visually-hidden">{% trans "Apply" %}</button>
             </form>
         </div>
 

@@ -9,6 +9,7 @@ from django.views.decorators.cache import never_cache
 
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico', permanent=True)),
+    path("i18n/", include("django.conf.urls.i18n")),
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
     path("core/", include("core.urls")),

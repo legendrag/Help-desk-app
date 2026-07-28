@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% load kb_extras %}
+{% load kb_extras i18n %}
 
-{% block title %}{{ article.title }} | Knowledge Base{% endblock title %}
+{% block title %}{{ article.title }} | {% trans "Knowledge Base" %}{% endblock title %}
 
 {% block body_class %}kb-page kb-detail-page{% endblock body_class %}
 
 {% block content %}
 <div class="kb-detail-shell">
-    <nav class="kb-breadcrumb" aria-label="Breadcrumb">
-        <a href="{% url 'kb_list' %}" class="kb-breadcrumb-link">Knowledge Base</a>
+    <nav class="kb-breadcrumb" aria-label="{% trans 'Breadcrumb' %}">
+        <a href="{% url 'kb_list' %}" class="kb-breadcrumb-link">{% trans "Knowledge Base" %}</a>
         <span class="kb-breadcrumb-sep" aria-hidden="true">&rsaquo;</span>
         {% if article.category %}
         <a href="{% url 'kb_list' %}?category={{ article.category.id }}" class="kb-breadcrumb-link">{{ article.category.name }}</a>
@@ -30,7 +30,7 @@
             <span>{{ article.created_at|date:"M j, Y" }}</span>
             {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}
             <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
-            <span>Updated {{ article.updated_at|date:"M j, Y" }}</span>
+            <span>{% trans "Updated" %} {{ article.updated_at|date:"M j, Y" }}</span>
             {% endif %}
             <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
             <span>{{ article.content|read_time }}</span>
@@ -46,19 +46,19 @@
             </article>
 
             {% if related_articles %}
-            <section class="kb-related-section" aria-label="More in this category">
-                <h2 class="kb-related-heading">More in this category</h2>
+            <section class="kb-related-section" aria-label="{% trans 'More in this category' %}">
+                <h2 class="kb-related-heading">{% trans "More in this category" %}</h2>
                 <ul class="kb-related-list">
                     {% for related in related_articles %}
                     <li>
                         <a href="{% url 'kb_detail' related.id %}" class="kb-related-link panel">
                             <span class="kb-related-title">{{ related.title }}</span>
                             <span class="kb-related-meta">
-                                Updated {{ related.updated_at|date:"M j, Y" }}
+                                {% trans "Updated" %} {{ related.updated_at|date:"M j, Y" }}
                                 <span aria-hidden="true">&middot;</span>
                                 {{ related.content|read_time }}
                                 {% if not related.is_published %}
-                                <span class="pill kb-draft-pill">Draft</span>
+                                <span class="pill kb-draft-pill">{% trans "Draft" %}</span>
                                 {% endif %}
                             </span>
                         </a>
@@ -69,20 +69,20 @@
             {% endif %}
         </main>
 
-        <aside class="kb-detail-sidebar" aria-label="Article details">
+        <aside class="kb-detail-sidebar" aria-label="{% trans 'Article details' %}">
             <section class="panel kb-detail-side-card">
                 <div class="kb-detail-side-block">
-                    <h2 class="kb-detail-side-label">Category</h2>
+                    <h2 class="kb-detail-side-label">{% trans "Category" %}</h2>
                     {% if article.category %}
                     <a href="{% url 'kb_list' %}?category={{ article.category.id }}" class="kb-detail-side-value kb-card-category-link">{{ article.category.name }}</a>
                     {% else %}
-                    <span class="kb-detail-side-value">Uncategorized</span>
+                    <span class="kb-detail-side-value">{% trans "Uncategorized" %}</span>
                     {% endif %}
                 </div>
 
                 {% if article.related_ticket %}
                 <div class="kb-detail-side-block">
-                    <h2 class="kb-detail-side-label">Related ticket</h2>
+                    <h2 class="kb-detail-side-label">{% trans "Related ticket" %}</h2>
                     <a href="{% url 'ticket_detail' article.related_ticket.id %}" class="kb-detail-ticket-link">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
@@ -95,7 +95,7 @@
 
                 {% if article.attachments.all %}
                 <div class="kb-detail-side-block">
-                    <h2 class="kb-detail-side-label">Attachments</h2>
+                    <h2 class="kb-detail-side-label">{% trans "Attachments" %}</h2>
                     <ul class="kb-detail-attachment-list">
                         {% for attachment in article.attachments.all %}
                         {% with kind=attachment.file.url|kb_attachment_kind name=attachment.file.name|basename %}
@@ -126,8 +126,8 @@
 
                 {% if can_manage_kb %}
                 <div class="kb-detail-side-actions">
-                    <a href="{% url 'kb_update' article.id %}" class="btn primary kb-detail-edit-btn">Edit</a>
-                    <button type="button" class="btn secondary kb-detail-delete-btn" onclick="showConfirmModal({ title: 'Delete article', message: 'This permanently removes the article and its attachments. This cannot be undone.', yesText: 'Delete', onConfirm: () => document.getElementById('kb-delete-form').submit() })">Delete</button>
+                    <a href="{% url 'kb_update' article.id %}" class="btn primary kb-detail-edit-btn">{% trans "Edit" %}</a>
+                    <button type="button" class="btn secondary kb-detail-delete-btn" onclick="showConfirmModal({ title: '{% trans "Delete article" %}', message: '{% trans "This permanently removes the article and its attachments. This cannot be undone." %}', yesText: '{% trans "Delete" %}', onConfirm: () => document.getElementById('kb-delete-form').submit() })">{% trans "Delete" %}</button>
                     <form id="kb-delete-form" action="{% url 'kb_delete' article.id %}" method="post" style="display:none;">
                         {% csrf_token %}
                     </form>
@@ -138,11 +138,11 @@
     </div>
 </div>
 
-<div id="kb-attachment-preview" class="kb-attachment-preview" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Attachment preview">
-    <button type="button" class="kb-attachment-preview-close" onclick="closeKbAttachmentPreview()" aria-label="Close preview">&times;</button>
+<div id="kb-attachment-preview" class="kb-attachment-preview" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="{% trans 'Attachment preview' %}">
+    <button type="button" class="kb-attachment-preview-close" onclick="closeKbAttachmentPreview()" aria-label="{% trans 'Close preview' %}">&times;</button>
     <div class="kb-attachment-preview-stage" onclick="if(event.target === this) closeKbAttachmentPreview()">
-        <img id="kb-attachment-preview-image" class="kb-attachment-preview-media" alt="Attachment preview" hidden>
-        <iframe id="kb-attachment-preview-frame" class="kb-attachment-preview-frame" title="Attachment preview" hidden></iframe>
+        <img id="kb-attachment-preview-image" class="kb-attachment-preview-media" alt="{% trans 'Attachment preview' %}" hidden>
+        <iframe id="kb-attachment-preview-frame" class="kb-attachment-preview-frame" title="{% trans 'Attachment preview' %}" hidden></iframe>
     </div>
 </div>
 

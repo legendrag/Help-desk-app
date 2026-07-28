@@ -1,4 +1,5 @@
 {% load ticket_extras %}
+{% load i18n %}
 
 <!-- Overlay for offcanvas -->
 <div id="ticket-offcanvas-overlay" class="ticket-offcanvas-overlay" onclick="toggleTicketDetails()"></div>
@@ -6,8 +7,8 @@
 <!-- Sidebar: Ticket Info (Moved to Offcanvas) -->
 <div id="ticket-offcanvas" class="ticket-offcanvas">
     <div class="ticket-offcanvas-header">
-        <h3>Ticket Details</h3>
-        <button type="button" class="modal-close" onclick="toggleTicketDetails()" aria-label="Close details">
+        <h3>{% trans "Ticket Details" %}</h3>
+        <button type="button" class="modal-close" onclick="toggleTicketDetails()" aria-label="{% trans 'Close details' %}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
@@ -22,49 +23,49 @@
         </header>
 
         <section class="description-box">
-            <label>Description</label>
+            <label>{% trans "Description" %}</label>
             <p>{{ ticket.description }}</p>
         </section>
 
         <div class="meta-grid meta-grid-two-col">
             {% if not user.user_type == 'branch' %}
             <div class="meta-item">
-                <label>Branch</label>
+                <label>{% trans "Branch" %}</label>
                 <span>{{ ticket.branch.name }}</span>
             </div>
             {% endif %}
             <div class="meta-item">
-                <label>Department</label>
+                <label>{% trans "Department" %}</label>
                 <span>{{ ticket.department.name }}</span>
             </div>
             <div class="meta-item">
-                <label>Category</label>
+                <label>{% trans "Category" %}</label>
                 <span>{{ ticket.category.name }}</span>
             </div>
             <div class="meta-item">
-                <label>Assigned To</label>
-                <span id="ticket-assigned-to">{{ ticket.assigned_to.username|default:"Pending Support Agent" }}</span>
+                <label>{% trans "Assigned To" %}</label>
+                <span id="ticket-assigned-to">{{ ticket.assigned_to.username|default:_("Pending Support Agent") }}</span>
             </div>
             <div class="meta-item">
-                <label>Priority</label>
+                <label>{% trans "Priority" %}</label>
                 <span
                     class="{% if ticket.priority == 'urgent' or ticket.priority == 'high' %}priority-alert{% else %}priority-normal{% endif %}">
                     {{ ticket.get_priority_display|upper }}
                 </span>
             </div>
             <div class="meta-item">
-                <label>Created At</label>
+                <label>{% trans "Created At" %}</label>
                 <span>{{ ticket.created_at|date:"Y-m-d H:i" }}</span>
             </div>
             {% if ticket.client_name %}
             <div class="meta-item">
-                <label>Name</label>
+                <label>{% trans "Name" %}</label>
                 <span>{{ ticket.client_name }}</span>
             </div>
             {% endif %}
             {% if ticket.client_phone %}
             <div class="meta-item">
-                <label>Phone Number</label>
+                <label>{% trans "Phone Number" %}</label>
                 <span>{{ ticket.client_phone }}</span>
             </div>
             {% endif %}
@@ -73,12 +74,12 @@
         {% if user.is_superuser or ticket.assigned_to == user %}
         <div class="ticket-edit-btn-wrap">
             <button type="button" hx-get="{% url 'ticket_update' ticket.id %}" hx-target="#modal-content"
-                onclick="openModal()" class="secondary">Edit Ticket</button>
+                onclick="openModal()" class="secondary">{% trans "Edit Ticket" %}</button>
         </div>
         {% endif %} 
         {% if ticket.merged_tickets.exists %}
         <div class="merged-tickets-section">
-            <label class="merged-tickets-label">Merged Tickets</label>
+            <label class="merged-tickets-label">{% trans "Merged Tickets" %}</label>
             <div class="merged-tickets-sidebar-list">
                 {% for st in ticket.merged_tickets.all %}
                 <a href="{% url 'ticket_detail' st.id %}" class="merged-sidebar-item">
@@ -94,7 +95,7 @@
         
         {% if ticket.kb_articles.exists %}
         <div class="kb-articles-section">
-            <label class="merged-tickets-label">Related Knowledge Base Articles</label>
+            <label class="merged-tickets-label">{% trans "Related Knowledge Base Articles" %}</label>
             <div class="merged-tickets-sidebar-list">
                 {% for article in ticket.kb_articles.all %}
                 <a href="{% url 'kb_detail' article.id %}" class="merged-sidebar-item kb-article-link">

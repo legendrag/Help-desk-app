@@ -1832,13 +1832,25 @@ td.mgmt-empty-cell {
   font-size: 0.875rem;
 }
 .btn-details-list {
-  padding: 0.25rem 0.5rem;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
 }
 .ticket-action-wrapper {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
+}
+.ticket-action-wrapper form {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
 }
 .kb-articles-section {
   margin-top: 1rem;
@@ -3237,7 +3249,7 @@ a.kb-article-card:hover {
 
 @media (max-width: 768px) {
   /* ── Touch Targets & Spacing ── */
-  button:not(.password-toggle), .btn, .btn-link, input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-control, .sidebar-action-btn {
+  button:not(.password-toggle):not(.theme-switch):not(.lang-switch):not(.auth-lang-btn), .btn, .btn-link, input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ts-control, .sidebar-action-btn {
     min-height: 48px !important;
   }
 
@@ -3653,13 +3665,13 @@ a.kb-article-card:hover {
   }
 
   /* Header Row: Agent Name + Grade */
-  .tickets-table .leaderboard-table td[data-label="Agent"] {
+  .tickets-table .leaderboard-table td[data-col="agent"] {
     grid-column: 1 / 2 !important;
     grid-row: 1 !important;
     min-width: 0 !important;
   }
   
-  .tickets-table .leaderboard-table td[data-label="Agent"] strong {
+  .tickets-table .leaderboard-table td[data-col="agent"] strong {
     font-size: 0.98rem !important;
     font-weight: 600 !important;
     color: var(--text-main) !important;
@@ -3667,31 +3679,31 @@ a.kb-article-card:hover {
     word-break: break-word !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Agent"]::before {
+  .tickets-table .leaderboard-table td[data-col="agent"]::before {
     display: none !important; /* Hide redundant "AGENT" label */
   }
 
-  .tickets-table .leaderboard-table td[data-label="Grade"] {
+  .tickets-table .leaderboard-table td[data-col="grade"] {
     grid-column: 2 / 3 !important;
     grid-row: 1 !important;
     justify-self: end !important;
     align-self: center !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Grade"]::before {
+  .tickets-table .leaderboard-table td[data-col="grade"]::before {
     display: none !important; /* Hide redundant "GRADE" label */
   }
   
-  .tickets-table .leaderboard-table td[data-label="Grade"] > div {
+  .tickets-table .leaderboard-table td[data-col="grade"] > div {
     justify-content: flex-end !important;
     width: auto !important;
   }
 
   /* Stats: Resolved / Response, then Resolution / Working */
-  .tickets-table .leaderboard-table td[data-label="Resolved"],
-  .tickets-table .leaderboard-table td[data-label="Response Time"],
-  .tickets-table .leaderboard-table td[data-label="Resolution Time"],
-  .tickets-table .leaderboard-table td[data-label="Working Time"] {
+  .tickets-table .leaderboard-table td[data-col="resolved"],
+  .tickets-table .leaderboard-table td[data-col="response-time"],
+  .tickets-table .leaderboard-table td[data-col="resolution-time"],
+  .tickets-table .leaderboard-table td[data-col="working-time"] {
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -3700,7 +3712,7 @@ a.kb-article-card:hover {
     min-width: 0 !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Resolved"] {
+  .tickets-table .leaderboard-table td[data-col="resolved"] {
     grid-column: 1 / 2 !important;
     grid-row: 2 !important;
     font-weight: 600 !important;
@@ -3708,25 +3720,25 @@ a.kb-article-card:hover {
     font-size: 0.9rem !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Response Time"] {
+  .tickets-table .leaderboard-table td[data-col="response-time"] {
     grid-column: 2 / 3 !important;
     grid-row: 2 !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Resolution Time"] {
+  .tickets-table .leaderboard-table td[data-col="resolution-time"] {
     grid-column: 1 / 2 !important;
     grid-row: 3 !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Working Time"] {
+  .tickets-table .leaderboard-table td[data-col="working-time"] {
     grid-column: 2 / 3 !important;
     grid-row: 3 !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Resolved"]::before,
-  .tickets-table .leaderboard-table td[data-label="Response Time"]::before,
-  .tickets-table .leaderboard-table td[data-label="Resolution Time"]::before,
-  .tickets-table .leaderboard-table td[data-label="Working Time"]::before {
+  .tickets-table .leaderboard-table td[data-col="resolved"]::before,
+  .tickets-table .leaderboard-table td[data-col="response-time"]::before,
+  .tickets-table .leaderboard-table td[data-col="resolution-time"]::before,
+  .tickets-table .leaderboard-table td[data-col="working-time"]::before {
     content: attr(data-label) !important;
     display: block !important;
     font-size: 0.62rem !important;
@@ -3739,9 +3751,9 @@ a.kb-article-card:hover {
     margin: 0 !important;
   }
 
-  .tickets-table .leaderboard-table td[data-label="Response Time"] span,
-  .tickets-table .leaderboard-table td[data-label="Resolution Time"] span,
-  .tickets-table .leaderboard-table td[data-label="Working Time"] span {
+  .tickets-table .leaderboard-table td[data-col="response-time"] span,
+  .tickets-table .leaderboard-table td[data-col="resolution-time"] span,
+  .tickets-table .leaderboard-table td[data-col="working-time"] span {
     font-weight: 600 !important;
     color: var(--text-main) !important;
     font-size: 0.88rem !important;
@@ -6316,19 +6328,19 @@ body.kb-preview-open {
   }
   
   /* Hide the data-label for obvious columns */
-  .tickets-table td[data-label="Ticket ID"]::before,
-  .tickets-table td[data-label="Title"]::before,
-  .tickets-table td[data-label="Status"]::before,
-  .tickets-table td[data-label="Date"]::before,
-  .tickets-table td[data-label="Action"]::before {
+  .tickets-table td[data-col="ticket-id"]::before,
+  .tickets-table td[data-col="title"]::before,
+  .tickets-table td[data-col="status"]::before,
+  .tickets-table td[data-col="date"]::before,
+  .tickets-table td[data-col="action"]::before {
     display: none !important;
   }
   
   /* Small visual labels for attributes */
-  .tickets-table td[data-label="Branch"]::before,
-  .tickets-table td[data-label="Department"]::before,
-  .tickets-table td[data-label="Assigned"]::before,
-  .tickets-table td[data-label="Priority"]::before {
+  .tickets-table td[data-col="branch"]::before,
+  .tickets-table td[data-col="department"]::before,
+  .tickets-table td[data-col="assigned"]::before,
+  .tickets-table td[data-col="priority"]::before {
     content: attr(data-label) ": " !important;
     display: inline-block !important;
     font-size: 0.7rem !important;
@@ -6342,7 +6354,7 @@ body.kb-preview-open {
   }
   
   /* Grid Positions */
-  .tickets-table td[data-label="Ticket ID"] {
+  .tickets-table td[data-col="ticket-id"] {
     grid-column: 1 / 2 !important;
     grid-row: 1 !important;
     font-size: 0.85rem !important;
@@ -6351,14 +6363,14 @@ body.kb-preview-open {
     align-self: center !important;
   }
   
-  .tickets-table td[data-label="Status"] {
+  .tickets-table td[data-col="status"] {
     grid-column: 2 / 3 !important;
     grid-row: 1 !important;
     justify-self: end !important;
     align-self: center !important;
   }
   
-  .tickets-table td[data-label="Title"] {
+  .tickets-table td[data-col="title"] {
     grid-column: 1 / 3 !important;
     grid-row: 2 !important;
     font-size: 1.1rem !important;
@@ -6367,12 +6379,12 @@ body.kb-preview-open {
     margin: 0.15rem 0 0.35rem !important;
   }
   
-  .tickets-table td[data-label="Title"] a {
+  .tickets-table td[data-col="title"] a {
     color: var(--text-main) !important;
     text-decoration: none !important;
   }
   
-  .tickets-table td[data-label="Branch"] {
+  .tickets-table td[data-col="branch"] {
     grid-column: 1 / 2 !important;
     grid-row: 3 !important;
     font-size: 0.85rem !important;
@@ -6381,7 +6393,7 @@ body.kb-preview-open {
     gap: 0.25rem !important;
   }
   
-  .tickets-table td[data-label="Department"] {
+  .tickets-table td[data-col="department"] {
     grid-column: 2 / 3 !important;
     grid-row: 3 !important;
     justify-self: start !important;
@@ -6391,7 +6403,7 @@ body.kb-preview-open {
     gap: 0.25rem !important;
   }
   
-  .tickets-table td[data-label="Assigned"] {
+  .tickets-table td[data-col="assigned"] {
     grid-column: 1 / 2 !important;
     grid-row: 4 !important;
     font-size: 0.85rem !important;
@@ -6400,7 +6412,7 @@ body.kb-preview-open {
     gap: 0.25rem !important;
   }
   
-  .tickets-table td[data-label="Priority"] {
+  .tickets-table td[data-col="priority"] {
     grid-column: 2 / 3 !important;
     grid-row: 4 !important;
     justify-self: start !important;
@@ -6410,7 +6422,7 @@ body.kb-preview-open {
     gap: 0.25rem !important;
   }
   
-  .tickets-table td[data-label="Date"] {
+  .tickets-table td[data-col="date"] {
     grid-column: 1 / 2 !important;
     grid-row: 5 !important;
     align-self: center !important;
@@ -6419,19 +6431,19 @@ body.kb-preview-open {
     margin-top: 0.25rem !important;
   }
   
-  .tickets-table td[data-label="Date"] .date-stack {
+  .tickets-table td[data-col="date"] .date-stack {
     display: flex !important;
     flex-direction: row !important;
     gap: 0.5rem !important;
     align-items: center !important;
   }
   
-  .tickets-table td[data-label="Date"] .date-stack small {
+  .tickets-table td[data-col="date"] .date-stack small {
     font-size: 0.8rem !important;
     color: var(--text-muted) !important;
   }
   
-  .tickets-table td[data-label="Action"] {
+  .tickets-table td[data-col="action"] {
     grid-column: 2 / 3 !important;
     grid-row: 5 !important;
     justify-self: end !important;
@@ -6459,16 +6471,24 @@ body.kb-preview-open {
     flex: none !important;
   }
   
-  .tickets-table .pick-btn {
+  .tickets-table .pick-btn,
+  .tickets-table .pill {
     padding: 0.4rem 1rem !important;
     font-size: 0.85rem !important;
-    min-height: 34px !important;
-    height: 34px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
     border-radius: 8px !important;
     width: auto !important;
     min-width: 70px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
-  
+
   .tickets-table .btn-details-list {
     min-height: 34px !important;
     height: 34px !important;
@@ -6479,18 +6499,6 @@ body.kb-preview-open {
     justify-content: center !important;
     border-radius: 8px !important;
     flex: none !important;
-  }
-  
-  .tickets-table .pill {
-    padding: 0.4rem 1rem !important;
-    font-size: 0.85rem !important;
-    border-radius: 8px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    min-width: 70px !important;
   }
 
   /* ── News List Premium Mobile Cards ── */
@@ -6503,16 +6511,16 @@ body.kb-preview-open {
     min-height: unset !important;
   }
 
-  .news-table td[data-label="Title"]::before,
-  .news-table td[data-label="Status"]::before,
-  .news-table td[data-label="Date"]::before,
-  .news-table td[data-label="Actions"]::before {
+  .news-table td[data-col="title"]::before,
+  .news-table td[data-col="status"]::before,
+  .news-table td[data-col="date"]::before,
+  .news-table td[data-col="actions"]::before {
     display: none !important;
   }
 
-  .news-table td[data-label="Target"]::before,
-  .news-table td[data-label="Expires"]::before,
-  .news-table td[data-label="Created By"]::before {
+  .news-table td[data-col="target"]::before,
+  .news-table td[data-col="expires"]::before,
+  .news-table td[data-col="created-by"]::before {
     content: attr(data-label) !important;
     display: block !important;
     font-size: 0.68rem !important;
@@ -6525,7 +6533,7 @@ body.kb-preview-open {
   }
 
   /* Title + status header */
-  .news-table td[data-label="Title"] {
+  .news-table td[data-col="title"] {
     grid-column: 1 / 2 !important;
     grid-row: 1 !important;
     font-size: 1.05rem !important;
@@ -6537,14 +6545,14 @@ body.kb-preview-open {
     overflow-wrap: anywhere !important;
   }
 
-  .news-table td[data-label="Status"] {
+  .news-table td[data-col="status"] {
     grid-column: 2 / 3 !important;
     grid-row: 1 !important;
     justify-self: end !important;
     align-self: start !important;
   }
 
-  .news-table td[data-label="Target"] {
+  .news-table td[data-col="target"] {
     grid-column: 1 / 3 !important;
     grid-row: 2 !important;
     font-size: 0.88rem !important;
@@ -6552,7 +6560,7 @@ body.kb-preview-open {
   }
 
   /* Full-width expires so date/time never wraps awkwardly in a half column */
-  .news-table td[data-label="Expires"] {
+  .news-table td[data-col="expires"] {
     grid-column: 1 / 3 !important;
     grid-row: 3 !important;
     font-size: 0.88rem !important;
@@ -6560,7 +6568,7 @@ body.kb-preview-open {
     color: var(--text-main) !important;
   }
 
-  .news-table td[data-label="Expires"] .news-expires-stack {
+  .news-table td[data-col="expires"] .news-expires-stack {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -6569,12 +6577,12 @@ body.kb-preview-open {
     white-space: nowrap !important;
   }
 
-  .news-table td[data-label="Expires"] .news-expires-stack small {
+  .news-table td[data-col="expires"] .news-expires-stack small {
     font-size: 0.82rem !important;
     color: var(--text-muted) !important;
   }
 
-  .news-table td[data-label="Created By"] {
+  .news-table td[data-col="created-by"] {
     grid-column: 1 / 2 !important;
     grid-row: 4 !important;
     font-size: 0.85rem !important;
@@ -6582,7 +6590,7 @@ body.kb-preview-open {
     min-width: 0 !important;
   }
 
-  .news-table td[data-label="Date"] {
+  .news-table td[data-col="date"] {
     grid-column: 1 / 2 !important;
     grid-row: 5 !important;
     align-self: center !important;
@@ -6591,7 +6599,7 @@ body.kb-preview-open {
     margin-top: 0.15rem !important;
   }
 
-  .news-table td[data-label="Date"] .news-created-stack {
+  .news-table td[data-col="date"] .news-created-stack {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -6600,12 +6608,12 @@ body.kb-preview-open {
     white-space: nowrap !important;
   }
 
-  .news-table td[data-label="Date"] .news-created-stack small {
+  .news-table td[data-col="date"] .news-created-stack small {
     font-size: 0.78rem !important;
     color: var(--text-muted) !important;
   }
 
-  .news-table td[data-label="Actions"] {
+  .news-table td[data-col="actions"] {
     grid-column: 2 / 3 !important;
     grid-row: 4 / 6 !important;
     justify-self: end !important;
@@ -6614,7 +6622,7 @@ body.kb-preview-open {
     margin-top: 0.35rem !important;
   }
 
-  .news-table td[data-label="Actions"] .btn {
+  .news-table td[data-col="actions"] .btn {
     min-width: 72px !important;
     font-size: 0.82rem !important;
     display: inline-flex !important;

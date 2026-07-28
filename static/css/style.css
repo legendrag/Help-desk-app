@@ -947,12 +947,13 @@ textarea:hover:not(:disabled) {
 
 .password-field input {
   width: 100%;
-  padding-right: 3.5rem !important;
+  padding-inline-end: 3.5rem !important;
 }
 
 .password-toggle {
   position: absolute;
-  right: 0.6rem;
+  inset-inline-end: 0.6rem;
+  inset-inline-start: auto;
   top: 50%;
   transform: translateY(-50%) !important;
   background: transparent;
@@ -1658,7 +1659,8 @@ tr:hover td {
   max-width: 420px;
   min-width: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Keep focus rings visible (overflow:hidden clips the highlight) */
+  overflow: visible;
   box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   animation: slideInAuth 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -1707,12 +1709,15 @@ tr:hover td {
 
 .auth-form .form-group {
   margin: 0;
+  /* Breathing room so the focus glow doesn't crowd labels/text */
+  padding-block: 0.15rem;
 }
 
 .auth-form .form-group label {
+  display: block;
   font-weight: 600;
   color: #334155;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1721,7 +1726,7 @@ tr:hover td {
 .auth-form input[type="text"],
 .auth-form input[type="password"] {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.1rem;
   border-radius: 12px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
@@ -4485,17 +4490,26 @@ html.modal-open body {
 
 @media (min-width: 901px) {
   .action-cell {
-    width: 130px;
+    width: 150px;
   }
 }
 
 .pick-btn {
-  padding: 0.3rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 65px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
 }
 
 .pick-btn:hover {
@@ -4507,13 +4521,39 @@ html.modal-open body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.3rem 0.6rem;
+  padding: 0 0.75rem;
   border-radius: 999px;
   background: #f1f5f9;
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
   min-width: 65px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
+}
+
+.ticket-action-wrapper form {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.ticket-action-wrapper .btn-details-list {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .pagination {
@@ -4726,17 +4766,26 @@ html.modal-open body {
 
 @media (min-width: 901px) {
   .action-cell {
-    width: 130px;
+    width: 150px;
   }
 }
 
 .pick-btn {
-  padding: 0.3rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 65px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
 }
 
 .pick-btn:hover {
@@ -4748,13 +4797,39 @@ html.modal-open body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.3rem 0.6rem;
+  padding: 0 0.75rem;
   border-radius: 999px;
   background: #f1f5f9;
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
   min-width: 65px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
+}
+
+.ticket-action-wrapper form {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.ticket-action-wrapper .btn-details-list {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .pagination {

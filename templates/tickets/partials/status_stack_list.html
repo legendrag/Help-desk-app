@@ -1,3 +1,4 @@
+{% load i18n %}
 {% comment %}
 Requires:
   items — list of {label, count, statuses:[{value, label, count, percent}]}
@@ -5,7 +6,7 @@ Requires:
 {% endcomment %}
 <div class="status-stack-panel">
 {% if items %}
-    <div class="status-stack-legend" aria-label="Status legend">
+    <div class="status-stack-legend" aria-label="{% trans 'Status legend' %}">
         {% for status in status_legend %}
         <span class="status-stack-legend-item">
             <span class="status-dot status-{{ status.value }}"></span>
@@ -21,7 +22,7 @@ Requires:
                 <div class="status-stack-total">{{ item.count }}</div>
             </div>
             {% if item.statuses %}
-            <div class="status-stack-bar" role="img" aria-label="Status breakdown for {{ item.label }}">
+            <div class="status-stack-bar" role="img" aria-label="{% blocktrans with label=item.label %}Status breakdown for {{ label }}{% endblocktrans %}">
                 {% for status in item.statuses %}
                 <button
                     type="button"
@@ -42,6 +43,6 @@ Requires:
         {% endfor %}
     </div>
 {% else %}
-    <div class="empty-state">No data available.</div>
+    <div class="empty-state">{% trans "No data available." %}</div>
 {% endif %}
 </div>

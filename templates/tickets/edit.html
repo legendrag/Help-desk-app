@@ -1,11 +1,12 @@
 ﻿{% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}Edit Ticket - MlamehTicket{% endblock title %}
+{% block title %}{% trans "Edit Ticket" %} - MlamehTicket{% endblock title %}
 
 {% block content %}
 <div class="create-ticket-page">
     <div class="page-header">
-        <h1>Edit Ticket</h1>
+        <h1>{% trans "Edit Ticket" %}</h1>
     </div>
 
     <div class="panel">
@@ -20,57 +21,57 @@
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="{{ form.title.id_for_label }}">Title</label>
+                    <label for="{{ form.title.id_for_label }}">{% trans "Title" %}</label>
                     {{ form.title }}
                     {% if form.title.errors %}<div class="field-error">{{ form.title.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.branch.id_for_label }}">Branch</label>
+                    <label for="{{ form.branch.id_for_label }}">{% trans "Branch" %}</label>
                     {{ form.branch }}
                     {% if form.branch.errors %}<div class="field-error">{{ form.branch.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.department.id_for_label }}">Department</label>
+                    <label for="{{ form.department.id_for_label }}">{% trans "Department" %}</label>
                     {{ form.department }}
                     {% if form.department.errors %}<div class="field-error">{{ form.department.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.category.id_for_label }}">Category</label>
+                    <label for="{{ form.category.id_for_label }}">{% trans "Category" %}</label>
                     {{ form.category }}
                     {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.priority.id_for_label }}">Priority</label>
+                    <label for="{{ form.priority.id_for_label }}">{% trans "Priority" %}</label>
                     {{ form.priority }}
                     {% if form.priority.errors %}<div class="field-error">{{ form.priority.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.client_name.id_for_label }}">{{ form.client_name.label|default:"Name" }}</label>
+                    <label for="{{ form.client_name.id_for_label }}">{{ form.client_name.label|default:_("Name") }}</label>
                     {{ form.client_name }}
                     {% if form.client_name.errors %}<div class="field-error">{{ form.client_name.errors }}</div>{% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.client_phone.id_for_label }}">{{ form.client_phone.label|default:"Phone Number" }}</label>
+                    <label for="{{ form.client_phone.id_for_label }}">{{ form.client_phone.label|default:_("Phone Number") }}</label>
                     {{ form.client_phone }}
                     {% if form.client_phone.errors %}<div class="field-error">{{ form.client_phone.errors }}</div>{% endif %}
                 </div>
             </div>
 
             <div class="form-group form-group--mt-lg">
-                <label for="{{ form.description.id_for_label }}">Description</label>
+                <label for="{{ form.description.id_for_label }}">{% trans "Description" %}</label>
                 {{ form.description }}
                 {% if form.description.errors %}<div class="field-error">{{ form.description.errors }}</div>{% endif %}
             </div>
 
             <div class="form-actions--spaced">
-                <button type="submit">Save Changes</button>
-                <a href="{% url 'ticket_detail' ticket.id %}" class="secondary button">Cancel</a>
+                <button type="submit">{% trans "Save Changes" %}</button>
+                <a href="{% url 'ticket_detail' ticket.id %}" class="secondary button">{% trans "Cancel" %}</a>
             </div>
         </form>
     </div>

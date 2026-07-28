@@ -3,6 +3,7 @@ from datetime import datetime, time
 from django import forms
 from django.utils import timezone
 from django.utils.timezone import localtime, make_aware
+from django.utils.translation import gettext_lazy as _
 
 from .models import Announcement
 
@@ -12,7 +13,7 @@ class AnnouncementForm(forms.ModelForm):
 
     expires_date = forms.DateField(
         required=False,
-        label="Expires on",
+        label=_("Expires on"),
         widget=forms.DateInput(
             attrs={
                 "class": "form-control",
@@ -25,7 +26,7 @@ class AnnouncementForm(forms.ModelForm):
     )
     expires_time = forms.TimeField(
         required=False,
-        label="Expires at",
+        label=_("Expires at"),
         widget=forms.TimeInput(
             attrs={
                 "class": "form-control",
@@ -42,8 +43,8 @@ class AnnouncementForm(forms.ModelForm):
         model = Announcement
         fields = ["title", "content", "is_active", "target_branch"]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Announcement Title"}),
-            "content": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "Message content..."}),
+            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": _("Announcement Title")}),
+            "content": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": _("Message content...")}),
             "target_branch": forms.Select(attrs={"class": "form-control"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
@@ -62,7 +63,7 @@ class AnnouncementForm(forms.ModelForm):
         expires_time = cleaned.get("expires_time")
 
         if expires_time and not expires_date:
-            self.add_error("expires_date", "Enter a date when setting an expiration time.")
+            self.add_error("expires_date", _("Enter a date when setting an expiration time."))
             return cleaned
 
         if expires_date:

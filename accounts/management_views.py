@@ -49,7 +49,11 @@ class BaseManagementView:
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if hasattr(self, 'model'):
-            context['model_name'] = self.model._meta.verbose_name.title()
+            # Keep English keys for template comparisons; translate on display via |gettext.
+            _names = {
+                "User": "User",
+            }
+            context["model_name"] = _names.get(self.model.__name__, self.model.__name__)
         return context
 
 # User Views

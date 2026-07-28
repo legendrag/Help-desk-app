@@ -1,7 +1,7 @@
 ﻿{% extends "base.html" %}
-{% load kb_extras static %}
+{% load kb_extras static i18n %}
 
-{% block title %}Knowledge Base | MlamehTicket{% endblock title %}
+{% block title %}{% trans "Knowledge Base" %} | MlamehTicket{% endblock title %}
 
 {% block body_class %}kb-page kb-search-page{% endblock body_class %}
 
@@ -12,8 +12,8 @@
 {% block content %}
 <div class="kb-page">
     <div class="kb-search-layout">
-        <aside class="kb-filters-panel panel" aria-label="Filter results">
-            <h2 class="kb-filters-heading">Filter Results</h2>
+        <aside class="kb-filters-panel panel" aria-label="{% trans 'Filter results' %}">
+            <h2 class="kb-filters-heading">{% trans "Filter Results" %}</h2>
 
             <form method="get" class="kb-filters-form" id="kb-filters-form">
                 {% if search_query %}
@@ -27,7 +27,7 @@
                 {% endif %}
 
                 <fieldset class="kb-filter-group">
-                    <legend class="kb-filter-label">Categories</legend>
+                    <legend class="kb-filter-label">{% trans "Categories" %}</legend>
                     <ul class="kb-filter-list">
                         {% for c in categories %}
                         <li class="kb-filter-item">
@@ -43,7 +43,7 @@
                             {% endif %}
                         </li>
                         {% empty %}
-                        <li class="kb-filter-empty">No categories yet</li>
+                        <li class="kb-filter-empty">{% trans "No categories yet" %}</li>
                         {% endfor %}
                     </ul>
                 </fieldset>
@@ -51,7 +51,7 @@
 
                 {% if can_manage_kb %}
                 <fieldset class="kb-filter-group kb-filter-group-divider">
-                    <legend class="kb-filter-label">Status</legend>
+                    <legend class="kb-filter-label">{% trans "Status" %}</legend>
                     <ul class="kb-filter-list">
                         <li class="kb-filter-item">
                             <label class="kb-radio-label">
@@ -59,7 +59,7 @@
                                     form="kb-status-form"
                                     {% if current_status == 'published' or not current_status %}checked{% endif %}
                                     onchange="document.getElementById('kb-status-form').submit()">
-                                <span>Published</span>
+                                <span>{% trans "Published" %}</span>
                             </label>
                         </li>
                         <li class="kb-filter-item">
@@ -68,7 +68,7 @@
                                     form="kb-status-form"
                                     {% if current_status == 'draft' %}checked{% endif %}
                                     onchange="document.getElementById('kb-status-form').submit()">
-                                <span>Drafts ({{ draft_count|default:"0" }})</span>
+                                <span>{% blocktrans with count=draft_count|default:"0" %}Drafts ({{ count }}){% endblocktrans %}</span>
                             </label>
                         </li>
                     </ul>
@@ -99,8 +99,8 @@
             <header class="kb-results-header">
                 <div class="kb-results-header-row">
                     <div class="kb-results-header-text">
-                        <h1 class="kb-page-title">Knowledge Base</h1>
-                        <p class="kb-page-subtitle">Internal reference library for the team</p>
+                        <h1 class="kb-page-title">{% trans "Knowledge Base" %}</h1>
+                        <p class="kb-page-subtitle">{% trans "Internal reference library for the team" %}</p>
                     </div>
                     {% if can_manage_kb %}
                     <a href="{% url 'kb_create' %}" class="btn primary kb-new-article-btn">
@@ -133,15 +133,15 @@
                         </svg>
                     </span>
                     <input type="text" name="q" id="search-q" class="kb-search-field-input"
-                           placeholder="Search articles…" value="{{ search_query }}"
-                           aria-label="Search knowledge base" autocomplete="off"
+                           placeholder="{% trans 'Search articles…' %}" value="{{ search_query }}"
+                           aria-label="{% trans 'Search knowledge base' %}" autocomplete="off"
                            hx-get="{% url 'kb_search_suggest' %}"
                            hx-trigger="keyup changed delay:300ms, search"
                            hx-target="#kb-search-suggestions"
                            hx-include="#search-q">
                     {% if search_query %}
                     <a href="{% url 'kb_list' %}{% if filter_query_no_q %}?{{ filter_query_no_q }}{% endif %}"
-                       class="kb-search-field-clear" title="Clear search" aria-label="Clear search">
+                       class="kb-search-field-clear" title="{% trans 'Clear search' %}" aria-label="{% trans 'Clear search' %}">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -149,7 +149,7 @@
                     </a>
                     {% endif %}
                     <button type="submit" class="btn primary kb-search-btn">
-                        <span class="kb-search-btn-text">Search</span>
+                        <span class="kb-search-btn-text">{% trans "Search" %}</span>
                         <span class="kb-search-btn-icon" style="display: none;">
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -162,9 +162,9 @@
             </form>
 
             {% if is_browse_home %}
-            <section class="kb-browse-home" aria-label="Browse knowledge base">
+            <section class="kb-browse-home" aria-label="{% trans 'Browse knowledge base' %}">
                 <div class="kb-browse-section">
-                    <h2 class="kb-browse-heading">Browse by category</h2>
+                    <h2 class="kb-browse-heading">{% trans "Browse by category" %}</h2>
                     <div class="kb-category-tiles">
                         {% for c in categories %}
                         <a href="{% url 'kb_list' %}?category={{ c.id }}" class="kb-category-tile panel">
@@ -174,13 +174,13 @@
                                 {% if c.description %}
                                 <p class="kb-category-tile-desc">{{ c.description|truncatechars:90 }}</p>
                                 {% endif %}
-                                <span class="kb-category-tile-count">{{ c.article_count }} article{{ c.article_count|pluralize }}</span>
+                                <span class="kb-category-tile-count">{% blocktrans count counter=c.article_count %}{{ counter }} article{% plural %}{{ counter }} articles{% endblocktrans %}</span>
                             </div>
                         </a>
                         {% empty %}
                         <div class="panel kb-empty-state kb-empty-state--inline">
-                            <h3 class="kb-empty-title">No categories yet</h3>
-                            <p class="kb-empty-text">Add categories in Settings to organize articles.</p>
+                            <h3 class="kb-empty-title">{% trans "No categories yet" %}</h3>
+                            <p class="kb-empty-text">{% trans "Add categories in Settings to organize articles." %}</p>
                         </div>
                         {% endfor %}
                     </div>
@@ -188,7 +188,7 @@
 
                 {% if recent_articles %}
                 <div class="kb-browse-section">
-                    <h2 class="kb-browse-heading">Recently updated</h2>
+                    <h2 class="kb-browse-heading">{% trans "Recently updated" %}</h2>
                     <ul class="kb-recent-list">
                         {% for article in recent_articles %}
                         <li>
@@ -197,7 +197,7 @@
                                 <div class="kb-recent-item-body">
                                     <span class="kb-recent-item-title">{{ article.title }}</span>
                                     <span class="kb-recent-item-meta">
-                                        {{ article.category.name|default:"Uncategorized" }}
+                                        {{ article.category.name|default:_("Uncategorized") }}
                                         <span aria-hidden="true">&middot;</span>
                                         {{ article.updated_at|date:"M j, Y" }}
                                     </span>
@@ -213,9 +213,18 @@
             <div class="kb-results-toolbar">
                 <p class="kb-results-summary">
                     {% if search_query %}
-                    <strong>{{ article_count }}</strong> result{{ article_count|pluralize }} for &ldquo;{{ search_query|truncatechars:40 }}&rdquo;
+                    {% blocktrans count counter=article_count %}
+                    <strong>{{ counter }}</strong> result
+                    {% plural %}
+                    <strong>{{ counter }}</strong> results
+                    {% endblocktrans %}
+                    {% trans "for" %} &ldquo;{{ search_query|truncatechars:40 }}&rdquo;
                     {% else %}
-                    <strong>{{ article_count }}</strong> article{{ article_count|pluralize }}
+                    {% blocktrans count counter=article_count %}
+                    <strong>{{ counter }}</strong> article
+                    {% plural %}
+                    <strong>{{ counter }}</strong> articles
+                    {% endblocktrans %}
                     {% endif %}
                 </p>
 
@@ -228,13 +237,13 @@
                         {% if current_status and current_status != 'published' %}
                         <input type="hidden" name="status" value="{{ current_status }}">
                         {% endif %}
-                        <label class="kb-sort-label" for="kb-sort">Sort by:</label>
+                        <label class="kb-sort-label" for="kb-sort">{% trans "Sort by:" %}</label>
                         <select name="sort" id="kb-sort" class="kb-sort-select no-tomselect" onchange="this.form.submit()">
                             {% if search_query %}
-                            <option value="relevance" {% if current_sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                            <option value="relevance" {% if current_sort == 'relevance' %}selected{% endif %}>{% trans "Relevance" %}</option>
                             {% endif %}
-                            <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Newest</option>
-                            <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>Oldest</option>
+                            <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
+                            <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>{% trans "Oldest" %}</option>
                         </select>
                     </form>
                 </div>
@@ -251,9 +260,9 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </div>
-                    <h3 class="kb-empty-title">No matching articles</h3>
-                    <p class="kb-empty-text">Try adjusting your search or filters to find what you need.</p>
-                    <a href="{% url 'kb_list' %}" class="btn secondary">Clear Filters</a>
+                    <h3 class="kb-empty-title">{% trans "No matching articles" %}</h3>
+                    <p class="kb-empty-text">{% trans "Try adjusting your search or filters to find what you need." %}</p>
+                    <a href="{% url 'kb_list' %}" class="btn secondary">{% trans "Clear Filters" %}</a>
                 </div>
                 {% endfor %}
             </div>
@@ -262,9 +271,9 @@
             {% endif %}
         </main>
 
-        <aside class="kb-help-panel" aria-label="Team actions">
+        <aside class="kb-help-panel" aria-label="{% trans 'Team actions' %}">
             <div class="kb-help-card panel kb-team-actions-card">
-                <h3 class="kb-help-card-title">Team actions</h3>
+                <h3 class="kb-help-card-title">{% trans "Team actions" %}</h3>
                 <div class="kb-team-actions">
                     {% if can_manage_kb %}
                     <a href="{% url 'kb_create' %}" class="btn primary kb-team-action-btn">
@@ -300,9 +309,9 @@
                     {% endif %}
                 </div>
                 {% if can_manage_kb %}
-                <p class="kb-help-card-text kb-team-tip">Drafts stay private until published. Use the Status filter to review unpublished articles.</p>
+                <p class="kb-help-card-text kb-team-tip">{% trans "Drafts stay private until published. Use the Status filter to review unpublished articles." %}</p>
                 {% else %}
-                <p class="kb-help-card-text kb-team-tip">Search or open a category to find procedures and troubleshooting notes.</p>
+                <p class="kb-help-card-text kb-team-tip">{% trans "Search or open a category to find procedures and troubleshooting notes." %}</p>
                 {% endif %}
             </div>
 
@@ -314,8 +323,8 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <h3 class="kb-help-card-title">No exact matches?</h3>
-                <p class="kb-help-card-text">Try different keywords or remove some filters to broaden your search.</p>
+                <h3 class="kb-help-card-title">{% trans "No exact matches?" %}</h3>
+                <p class="kb-help-card-text">{% trans "Try different keywords or remove some filters to broaden your search." %}</p>
             </div>
             {% endif %}
         </aside>

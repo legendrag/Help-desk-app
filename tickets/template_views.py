@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, time
 from collections import defaultdict
 import os
 from django.utils import timezone as tz
+from django.utils.translation import gettext as _
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -636,7 +637,7 @@ class TicketCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
-        django_messages.success(self.request, "Ticket created successfully.")
+        django_messages.success(self.request, _("Ticket created successfully."))
 
         TicketStatusHistory.objects.create(ticket=self.object, status=self.object.status, changed_by=self.request.user)
 
@@ -693,12 +694,12 @@ class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
         if user.user_type == "branch":
             if ticket.branch_id != user.branch_id:
-                raise PermissionDenied("You do not have permission to edit this ticket.")
+                raise PermissionDenied(_("You do not have permission to edit this ticket."))
         elif user.user_type == "support":
             if ticket.department_id != user.department_id:
-                raise PermissionDenied("You do not have permission to edit this ticket.")
+                raise PermissionDenied(_("You do not have permission to edit this ticket."))
         else:
-            raise PermissionDenied("You do not have permission to edit this ticket.")
+            raise PermissionDenied(_("You do not have permission to edit this ticket."))
 
         return ticket
 
@@ -709,7 +710,7 @@ class TicketUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        django_messages.success(self.request, "Ticket updated successfully.")
+        django_messages.success(self.request, _("Ticket updated successfully."))
 
         if "priority" in form.changed_data:
             old_priority = form.initial.get("priority")
@@ -947,7 +948,7 @@ def ticket_category_options(request):
     if not user.is_superuser:
         if user.user_type == "support":
             if not (user.role and (user.role.can_create_ticket or user.role.can_update_ticket)):
-                raise PermissionDenied("You do not have permission to access categories.")
+                raise PermissionDenied(_("You do not have permission to access categories."))
 
     department_id = request.GET.get("department")
     if department_id:
@@ -966,10 +967,10 @@ def post_message(request, ticket_id):
     if not request.user.is_superuser:
         if request.user.user_type == "branch":
             if ticket.branch_id != request.user.branch_id:
-                raise PermissionDenied("You can only send messages on tickets for your branch.")
+                raise PermissionDenied(_("You can only send messages on tickets for your branch."))
         elif request.user.user_type == "support":
             if ticket.assigned_to_id != request.user.id and not (request.user.role and request.user.role.can_send_message):
-                raise PermissionDenied("You do not have permission to send messages.")
+                raise PermissionDenied(_("You do not have permission to send messages."))
 
     if request.method == "POST":
         message_text = request.POST.get("message")
@@ -977,7 +978,7 @@ def post_message(request, ticket_id):
         reply_to_id = request.POST.get("reply_to")
 
         if not message_text and not attachment:
-            django_messages.error(request, "Message or attachment is required.")
+            django_messages.error(request, _("Message or attachment is required."))
         else:
             try:
                 reply_to = None
@@ -995,7 +996,7 @@ def post_message(request, ticket_id):
                 for message in e.messages:
                     django_messages.error(request, message)
             except Exception as e:
-                django_messages.error(request, f"Failed to send message: {str(e)}")
+                django_messages.error(request, _("Failed to send message: {}").format(str(e)))
 
         # For HTMX requests, return 204 to avoid full page reload
         if request.headers.get('HX-Request'):
@@ -1008,12 +1009,12 @@ def post_message(request, ticket_id):
 def delete_message(request, message_id):
     message = get_object_or_404(TicketMessage, pk=message_id)
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_delete_message and message.sender == request.user)):
-        raise PermissionDenied("You do not have permission to delete this message.")
+        raise PermissionDenied(_("You do not have permission to delete this message."))
     ticket_id = message.ticket.id
     msg_id = message.id
     if request.method == "POST":
         message.delete()
-        django_messages.success(request, "Message deleted.")
+        django_messages.success(request, _("Message deleted."))
 
         # Broadcast delete event via WebSocket
         from channels.layers import get_channel_layer
@@ -1038,14 +1039,14 @@ def delete_message(request, message_id):
 def edit_message(request, message_id):
     message = get_object_or_404(TicketMessage, pk=message_id)
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_edit_message and message.sender == request.user)):
-        raise PermissionDenied("You do not have permission to edit this message.")
+        raise PermissionDenied(_("You do not have permission to edit this message."))
     ticket_id = message.ticket.id
     if request.method == "POST":
         new_text = request.POST.get("message")
         if new_text:
             message.message = new_text
             message.save()
-            django_messages.success(request, "Message updated.")
+            django_messages.success(request, _("Message updated."))
 
             # Broadcast edit event via WebSocket
             from channels.layers import get_channel_layer
@@ -1068,7 +1069,7 @@ def edit_message(request, message_id):
                 from django.http import HttpResponse
                 return HttpResponse(status=204)
         else:
-            django_messages.error(request, "Message text cannot be empty.")
+            django_messages.error(request, _("Message text cannot be empty."))
     return redirect("ticket_detail", ticket_id=ticket_id)
 
 def _broadcast_ticket_update(ticket, event_name, extra_payload=None):
@@ -1123,10 +1124,10 @@ def update_ticket_status(request, ticket_id):
         
         if ticket.status != Ticket.Status.CLOSED:
             if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
-                raise PermissionDenied("You can only update the status of tickets assigned to you.")
+                raise PermissionDenied(_("You can only update the status of tickets assigned to you."))
         else:
             if not user_can_reopen_ticket(request.user, ticket):
-                raise PermissionDenied("You do not have permission to update a closed ticket.")
+                raise PermissionDenied(_("You do not have permission to update a closed ticket."))
 
         new_status = request.POST.get("status")
         if new_status in Ticket.Status.values:
@@ -1158,7 +1159,7 @@ def update_ticket_status(request, ticket_id):
                             event_type=TicketStatusHistory.EventType.STATUS_CHANGE,
                             changed_by=request.user,
                         )
-                    django_messages.success(request, f"Status updated to {ticket.get_status_display()}.")
+                    django_messages.success(request, _("Status updated to {}.").format(ticket.get_status_display()))
                     notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
 
                     # Broadcast status change via WebSocket
@@ -1177,20 +1178,20 @@ def update_ticket_status(request, ticket_id):
                 for message in e.messages:
                     django_messages.error(request, message)
             except Exception as e:
-                django_messages.error(request, f"Failed to update status: {str(e)}")
+                django_messages.error(request, _("Failed to update status: {}").format(str(e)))
     return redirect("ticket_detail", ticket_id=ticket_id)
 
 @login_required
 def pick_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if not user_can_pick_ticket(request.user, ticket):
-        raise PermissionDenied("You do not have permission to pick tickets.")
+        raise PermissionDenied(_("You do not have permission to pick tickets."))
 
     if request.method == "POST":
         if ticket.assigned_to:
             pass
         elif ticket.status == Ticket.Status.MERGED:
-            django_messages.error(request, "Cannot pick a merged ticket.")
+            django_messages.error(request, _("Cannot pick a merged ticket."))
         else:
             try:
                 ticket.assigned_to = request.user
@@ -1201,7 +1202,7 @@ def pick_ticket(request, ticket_id):
                     status=Ticket.Status.IN_PROGRESS,
                     changed_by=request.user,
                 )
-                django_messages.success(request, "Ticket assigned to you.")
+                django_messages.success(request, _("Ticket assigned to you."))
                 notify_ticket_picked(ticket, request.user)
 
                 # Broadcast pick event via WebSocket
@@ -1213,7 +1214,7 @@ def pick_ticket(request, ticket_id):
                 for message in e.messages:
                     django_messages.error(request, message)
             except Exception as e:
-                django_messages.error(request, f"Failed to pick ticket: {str(e)}")
+                django_messages.error(request, _("Failed to pick ticket: {}").format(str(e)))
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse
@@ -1227,7 +1228,7 @@ def pick_ticket(request, ticket_id):
 def transfer_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if not (request.user.is_superuser or ticket.assigned_to_id == request.user.id):
-        raise PermissionDenied("You do not have permission to transfer this ticket.")
+        raise PermissionDenied(_("You do not have permission to transfer this ticket."))
 
     if request.method == "POST":
         new_assignee_id = request.POST.get("new_assignee")
@@ -1239,9 +1240,9 @@ def transfer_ticket(request, ticket_id):
                 is_same_dept = (new_assignee.user_type == User.UserType.SUPPORT 
                                 and new_assignee.department_id == ticket.department_id)
                 if not (new_assignee.is_superuser or is_same_dept):
-                    django_messages.error(request, "You can only transfer to agents in the same department or admins.")
+                    django_messages.error(request, _("You can only transfer to agents in the same department or admins."))
                 elif ticket.pending_transfer_to:
-                    django_messages.error(request, "A transfer is already pending.")
+                    django_messages.error(request, _("A transfer is already pending."))
                 else:
                     ticket.pending_transfer_to = new_assignee
                     ticket.pending_transfer_by = request.user
@@ -1264,14 +1265,14 @@ def transfer_ticket(request, ticket_id):
                     from notifications.services import notify_transfer_requested
                     notify_transfer_requested(ticket, request.user, new_assignee)
                     
-                    django_messages.success(request, f"Transfer request sent to {new_assignee.username}.")
+                    django_messages.success(request, _("Transfer request sent to {}.").format(new_assignee.username))
                     
                     _broadcast_ticket_update(ticket, "ticket_transfer_update")
                     
             except User.DoesNotExist:
-                django_messages.error(request, "Selected user is not a valid supporter.")
+                django_messages.error(request, _("Selected user is not a valid supporter."))
             except Exception as e:
-                django_messages.error(request, f"Failed to request transfer: {str(e)}")
+                django_messages.error(request, _("Failed to request transfer: {}").format(str(e)))
 
     if request.headers.get('HX-Request'):
         from django.http import HttpResponse
@@ -1285,7 +1286,7 @@ def transfer_ticket(request, ticket_id):
 def accept_transfer(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if request.user != ticket.pending_transfer_to:
-        raise PermissionDenied("You do not have permission to accept this transfer.")
+        raise PermissionDenied(_("You do not have permission to accept this transfer."))
         
     if request.method == "POST":
         requester = ticket.pending_transfer_by
@@ -1312,7 +1313,7 @@ def accept_transfer(request, ticket_id):
         if requester:
             notify_transfer_accepted(ticket, request.user, requester)
             
-        django_messages.success(request, "Ticket transfer accepted.")
+        django_messages.success(request, _("Ticket transfer accepted."))
         
         _broadcast_ticket_update(ticket, "ticket_picked", {
             "picked_by": request.user.username,
@@ -1330,7 +1331,7 @@ def accept_transfer(request, ticket_id):
 def deny_transfer(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if request.user != ticket.pending_transfer_to:
-        raise PermissionDenied("You do not have permission to deny this transfer.")
+        raise PermissionDenied(_("You do not have permission to deny this transfer."))
         
     if request.method == "POST":
         requester = ticket.pending_transfer_by
@@ -1356,7 +1357,7 @@ def deny_transfer(request, ticket_id):
         if requester:
             notify_transfer_denied(ticket, request.user, requester)
             
-        django_messages.success(request, "Ticket transfer denied.")
+        django_messages.success(request, _("Ticket transfer denied."))
         _broadcast_ticket_update(ticket, "ticket_transfer_update")
         
     if request.headers.get('HX-Request'):
@@ -1370,7 +1371,7 @@ def deny_transfer(request, ticket_id):
 def cancel_transfer(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     if not (request.user.is_superuser or request.user == ticket.pending_transfer_by):
-        raise PermissionDenied("You do not have permission to cancel this transfer.")
+        raise PermissionDenied(_("You do not have permission to cancel this transfer."))
         
     if request.method == "POST":
         target = ticket.pending_transfer_to
@@ -1392,7 +1393,7 @@ def cancel_transfer(request, ticket_id):
             changed_by=request.user,
         )
         
-        django_messages.success(request, "Ticket transfer canceled.")
+        django_messages.success(request, _("Ticket transfer canceled."))
         _broadcast_ticket_update(ticket, "ticket_transfer_update")
         
     if request.headers.get('HX-Request'):
@@ -1471,9 +1472,9 @@ def ticket_merge_preview(request, ticket_id):
     
     if not user.is_superuser:
         if user.user_type == "branch" and ticket.branch_id != user.branch_id:
-            raise PermissionDenied("You do not have permission to view this ticket.")
+            raise PermissionDenied(_("You do not have permission to view this ticket."))
         elif user.user_type == "support" and ticket.department_id != user.department_id:
-            raise PermissionDenied("You do not have permission to view this ticket.")
+            raise PermissionDenied(_("You do not have permission to view this ticket."))
             
     msg_count = ticket.messages.count()
     return render(request, "tickets/merge_preview_partial.html", {
@@ -1484,25 +1485,25 @@ def ticket_merge_preview(request, ticket_id):
 @login_required
 def merge_ticket(request, ticket_id):
     if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
-        raise PermissionDenied("You do not have permission to merge tickets.")
+        raise PermissionDenied(_("You do not have permission to merge tickets."))
 
     primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
 
     if request.method == "POST":
         target_ticket_number = request.POST.get("target_ticket_number")
         if not target_ticket_number:
-            django_messages.error(request, "Target ticket number is required.")
+            django_messages.error(request, _("Target ticket number is required."))
             return redirect("ticket_detail", ticket_id=ticket_id)
 
         try:
             secondary_ticket = Ticket.objects.get(ticket_number=target_ticket_number)
         except Ticket.DoesNotExist:
-            django_messages.error(request, f"Ticket {target_ticket_number} not found.")
+            django_messages.error(request, _("Ticket {} not found.").format(target_ticket_number))
             return redirect("ticket_detail", ticket_id=ticket_id)
 
         try:
             merge_tickets(primary_ticket.id, [secondary_ticket.id], request.user)
-            django_messages.success(request, f"Ticket {secondary_ticket.ticket_number} merged into this ticket successfully.")
+            django_messages.success(request, _("Ticket {} merged into this ticket successfully.").format(secondary_ticket.ticket_number))
             
             # Broadcast the secondary ticket status change as 'merged'
             _broadcast_ticket_update(secondary_ticket, "ticket_status_changed", {
@@ -1523,7 +1524,7 @@ def merge_ticket(request, ticket_id):
             for message in getattr(e, "messages", [str(e)]):
                 django_messages.error(request, message)
         except Exception as e:
-            django_messages.error(request, f"Failed to merge ticket: {str(e)}")
+            django_messages.error(request, _("Failed to merge ticket: {}").format(str(e)))
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 # Trigger Daphne Reload

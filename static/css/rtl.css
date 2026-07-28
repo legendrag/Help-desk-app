@@ -1,0 +1,380 @@
+/* RTL layout adjustments for Arabic (html[dir="rtl"]) */
+
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="rtl"] .sidebar {
+  left: auto;
+  right: 0;
+  transform: translateX(100%);
+}
+
+html[dir="rtl"] .sidebar.open {
+  transform: translateX(0);
+}
+
+html[dir="rtl"] .topbar,
+html[dir="rtl"] .topbar-controls,
+html[dir="rtl"] .form-actions,
+html[dir="rtl"] .notification-header,
+html[dir="rtl"] .notification-header-actions {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .brand {
+  flex-direction: row-reverse;
+}
+
+/* Do not mirror logo images */
+html[dir="rtl"] .brand-logo,
+html[dir="rtl"] .brand-mark,
+html[dir="rtl"] .auth-brand-lockup,
+html[dir="rtl"] .auth-brand-mark {
+  transform: none;
+}
+
+html[dir="rtl"] .notification-dropdown {
+  right: auto;
+  left: 0;
+}
+
+html[dir="rtl"] .field-error,
+html[dir="rtl"] .notice,
+html[dir="rtl"] label,
+html[dir="rtl"] .auth-form,
+html[dir="rtl"] .form-group {
+  text-align: right;
+}
+
+html[dir="rtl"] .auth-form .form-group label {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  text-align: right;
+}
+
+/* Native selects: keep caret clear of Arabic text */
+html[dir="rtl"] select:not(.tomselected) {
+  padding-inline-start: 1rem;
+  padding-inline-end: 2.25rem;
+  background-position: left 0.75rem center;
+}
+
+html[dir="rtl"] .kb-sort-form select.kb-sort-select,
+html[dir="rtl"] select.kb-sort-select.no-tomselect {
+  padding: 0 0.6rem 0 1.75rem !important;
+  background-position: left 0.45rem center;
+}
+
+/* Tom Select: move custom arrow to the start (left) in RTL */
+html[dir="rtl"] .ts-control {
+  padding: 0.5rem 1rem 0.5rem 2.2rem !important;
+  text-align: right;
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .ts-wrapper::after {
+  right: auto !important;
+  left: 0.75rem !important;
+}
+
+html[dir="rtl"] .kb-sort-form .ts-wrapper.kb-sort-select .ts-control {
+  padding: 0 0.6rem 0 1.75rem !important;
+}
+
+html[dir="rtl"] .kb-sort-form .ts-wrapper.kb-sort-select::after {
+  right: auto !important;
+  left: 0.45rem !important;
+}
+
+html[dir="rtl"] .ts-dropdown .option {
+  text-align: right;
+}
+
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[inputmode="tel"],
+html[dir="rtl"] input[data-normalize-digits="1"] {
+  text-align: left;
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+html[dir="rtl"] .auth-lang-switch {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: auto;
+}
+
+html[dir="ltr"] .auth-lang-switch,
+.auth-lang-switch {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+.auth-card {
+  position: relative;
+}
+
+html[dir="rtl"] .announcement-card::before {
+  left: auto;
+  right: 0;
+}
+
+/* ── Sidebar preferences (theme + language) ── */
+.sidebar-prefs {
+  margin-top: 0.75rem;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.035);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sidebar-pref-row {
+  margin-top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 10px;
+  color: var(--text-secondary, #64748b);
+}
+
+.sidebar-pref-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-main, #0f172a);
+  line-height: 1.2;
+}
+
+.lang-switch-form {
+  display: inline-flex;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Language pill switch — mirrors theme-switch motion */
+.lang-switch,
+.lang-switch:hover,
+.lang-switch:active,
+.lang-switch:focus,
+[data-theme="dark"] .lang-switch,
+[data-theme="dark"] .lang-switch:hover {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  box-shadow: none !important;
+  transform: none !important;
+  gap: 0 !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  min-width: auto;
+  min-height: auto !important;
+  height: auto !important;
+  color: inherit;
+}
+
+.lang-switch:focus-visible .lang-switch-track {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+}
+
+.lang-switch-track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #d1d5db;
+  border: none;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  direction: ltr;
+}
+
+.lang-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.35s ease, box-shadow 0.35s ease !important;
+  will-change: transform;
+}
+
+.lang-switch-knob .icon-flag-en,
+.lang-switch-knob .icon-flag-ar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: opacity 0.2s ease, transform 0.25s ease !important;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.lang-switch-knob .icon-flag-en {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.lang-switch-knob .icon-flag-ar {
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.5);
+}
+
+.lang-switch.is-ar .lang-switch-track {
+  /* Keep the same track tone as English; only the knob position/flag change */
+  background: #d1d5db;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.lang-switch.is-ar .lang-switch-knob {
+  transform: translateX(20px);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.lang-switch.is-ar .lang-switch-knob .icon-flag-en {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.5);
+}
+
+.lang-switch.is-ar .lang-switch-knob .icon-flag-ar {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+[data-theme="dark"] .lang-switch-track,
+[data-theme="dark"] .lang-switch.is-ar .lang-switch-track {
+  background: #4b5563;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .lang-switch-knob,
+[data-theme="dark"] .lang-switch.is-ar .lang-switch-knob {
+  background: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 768px) {
+  .sidebar-pref-row {
+    min-height: 2.75rem;
+  }
+}
+
+.auth-lang-btn {
+  min-width: 2.25rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #d0d5dd);
+  background: var(--surface, #fff);
+  color: var(--text-primary, #101828);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.auth-lang-btn:hover {
+  border-color: var(--primary, #7880f0);
+  color: var(--primary, #7880f0);
+}
+
+.auth-lang-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+}
+
+html[dir="rtl"] .chat-message.mine .message-meta,
+html[dir="rtl"] .ticket-meta,
+html[dir="rtl"] .filters-row {
+  direction: rtl;
+}
+
+/*
+ * Keep data tables LTR so column order/layout matches English.
+ * Mobile card CSS also keys off stable data-col hooks; translated
+ * data-label is only used for visible ::before text.
+ */
+html[dir="rtl"] .tickets-table table,
+html[dir="rtl"] .news-table,
+html[dir="rtl"] .mgmt-table,
+html[dir="rtl"] table.leaderboard-table {
+  direction: ltr;
+}
+
+html[dir="rtl"] .tickets-table th,
+html[dir="rtl"] .tickets-table td,
+html[dir="rtl"] .news-table th,
+html[dir="rtl"] .news-table td,
+html[dir="rtl"] .mgmt-table th,
+html[dir="rtl"] .mgmt-table td,
+html[dir="rtl"] table.leaderboard-table th,
+html[dir="rtl"] table.leaderboard-table td {
+  text-align: left;
+}
+
+html[dir="rtl"] .mgmt-th--right,
+html[dir="rtl"] .mgmt-td--right,
+html[dir="rtl"] .tickets-table .action-cell,
+html[dir="rtl"] .news-table .action-cell {
+  text-align: right;
+}
+
+html[dir="rtl"] .mgmt-actions-cell,
+html[dir="rtl"] .ticket-action-wrapper {
+  justify-content: flex-end;
+}
+
+/* Mobile stacked cards: keep label-then-value row like English */
+@media (max-width: 768px) {
+  html[dir="rtl"] .tickets-table tr,
+  html[dir="rtl"] .news-table tr,
+  html[dir="rtl"] .mgmt-table tr {
+    direction: ltr;
+  }
+}
+
+html[dir="rtl"] .modal-header,
+html[dir="rtl"] .discard-modal-header {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .menu-icon {
+  /* keep hamburger visual order */
+}
+
+html[dir="rtl"] .announcement-card::before {
+  left: auto;
+  right: 0;
+}

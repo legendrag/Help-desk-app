@@ -1,3 +1,4 @@
+{% load i18n %}
 {% if active_announcements %}
 <div class="announcements-container">
     {% for announcement in active_announcements %}
@@ -12,7 +13,7 @@
             {{ announcement.content|linebreaks }}
         </div>
         <div class="announcement-meta">
-            <span>By {{ announcement.created_by.username }}</span> • <span>{{ announcement.created_at|date:"M j, Y" }}</span>
+            <span>{% trans "By" %} {{ announcement.created_by.username }}</span> • <span>{{ announcement.created_at|date:"M j, Y" }}</span>
         </div>
     </div>
     {% endfor %}

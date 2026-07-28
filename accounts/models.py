@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class UserManager(BaseUserManager):
@@ -32,22 +33,25 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     class UserType(models.TextChoices):
-        BRANCH = "branch", "Needs Support"
-        SUPPORT = "support", "Support Agent"
+        BRANCH = "branch", _("Needs Support")
+        SUPPORT = "support", _("Support Agent")
 
     class Status(models.TextChoices):
-        ACTIVE = "active", "Active"
-        INACTIVE = "inactive", "Inactive"
+        ACTIVE = "active", _("Active")
+        INACTIVE = "inactive", _("Inactive")
 
-    email = models.EmailField(unique=True, blank=True, null=True)
-    phone = models.CharField(max_length=30, blank=True, null=True)
-    role = models.ForeignKey("core.Role", on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
+    email = models.EmailField(_("Email"), unique=True, blank=True, null=True)
+    phone = models.CharField(_("Phone"), max_length=30, blank=True, null=True)
+    role = models.ForeignKey(
+        "core.Role", on_delete=models.SET_NULL, null=True, blank=True, related_name="users", verbose_name=_("Role")
+    )
     branch = models.ForeignKey(
         "core.Branch",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="users",
+        verbose_name=_("Branch"),
     )
     department = models.ForeignKey(
         "core.Department",
@@ -55,10 +59,11 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name="users",
+        verbose_name=_("Department"),
     )
-    user_type = models.CharField(max_length=20, choices=UserType.choices, default=UserType.BRANCH)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
-    requires_password_change = models.BooleanField(default=False)
+    user_type = models.CharField(_("User Type"), max_length=20, choices=UserType.choices, default=UserType.BRANCH)
+    status = models.CharField(_("Status"), max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    requires_password_change = models.BooleanField(_("Requires password change"), default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

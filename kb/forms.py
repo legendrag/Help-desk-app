@@ -1,6 +1,7 @@
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from .models import Article, ArticleAttachment, Category
 import os
 
@@ -27,21 +28,22 @@ class MultipleFileField(forms.FileField):
             allowed = [e.lower() for e in getattr(settings, "ALLOWED_ATTACHMENT_EXTENSIONS", [])]
             if allowed and ext not in allowed:
                 raise ValidationError(
-                    f"Attachment type '{ext or '(none)'}' is not allowed. "
-                    f"Allowed: {', '.join(allowed)}"
+                    _("Attachment type '{}' is not allowed. Allowed: {}").format(
+                        ext or _('(none)'), ', '.join(allowed)
+                    )
                 )
             max_size = getattr(settings, "MAX_ATTACHMENT_SIZE", None)
             size = getattr(f, "size", None)
             if max_size and size is not None and size > max_size:
                 raise ValidationError(
-                    f"Attachment is too large ({size} bytes). Maximum is {max_size} bytes."
+                    _("Attachment is too large ({} bytes). Maximum is {} bytes.").format(size, max_size)
                 )
         return result
 
 class ArticleForm(forms.ModelForm):
     attachments = MultipleFileField(
         required=False,
-        help_text="Select one or more pictures or files to attach.",
+        help_text=_("Select one or more pictures or files to attach."),
         widget=MultipleFileInput(attrs={
             'class': 'form-control',
             'accept': '.pdf,.docx,.xlsx,.jpg,.jpeg,.png,image/*,application/pdf',
@@ -56,7 +58,7 @@ class ArticleForm(forms.ModelForm):
             "title": forms.TextInput(attrs={
                 "class": "form-control",
                 "required": True,
-                "placeholder": "e.g. How to reset a branch password",
+                "placeholder": _("e.g. How to reset a branch password"),
             }),
             "category": forms.Select(attrs={"class": "form-control"}),
             "related_ticket": forms.HiddenInput(attrs={"id": "id_related_ticket"}),
@@ -69,7 +71,7 @@ class ArticleForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if hasattr(self.fields['category'], 'empty_label'):
-            self.fields['category'].empty_label = "No Category"
+            self.fields['category'].empty_label = _("No Category")
 
 class KBCategoryForm(forms.ModelForm):
     class Meta:

@@ -1,7 +1,9 @@
 from django import forms
 from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 from .models import Ticket
 from core.models import Branch, Department, Category
+from core.utils import normalize_digits
 
 class CategorySelect(forms.Select):
     def __init__(self, categories_dict=None, *args, **kwargs):
@@ -22,19 +24,20 @@ class TicketCreateForm(forms.ModelForm):
         fields = ["title", "description", "branch", "department", "category", "priority", "client_name", "client_phone"]
         widgets = {
             "priority": forms.HiddenInput(),
-            "title": forms.TextInput(attrs={"minlength": "4", "required": "required", "placeholder": "Brief summary of the issue"}),
-            "description": forms.Textarea(attrs={"rows": 4, "minlength": "5", "required": "required", "placeholder": "Describe the issue in detail..."}),
-            "client_name": forms.TextInput(attrs={"minlength": "2", "required": "required", "placeholder": "Full name"}),
+            "title": forms.TextInput(attrs={"minlength": "4", "required": "required", "placeholder": _("Brief summary of the issue")}),
+            "description": forms.Textarea(attrs={"rows": 4, "minlength": "5", "required": "required", "placeholder": _("Describe the issue in detail...")}),
+            "client_name": forms.TextInput(attrs={"minlength": "2", "required": "required", "placeholder": _("Full name")}),
             "client_phone": forms.TextInput(attrs={
                 "type": "tel",
-                "pattern": r"^\+?1?\d{9,15}$",
+                "inputmode": "tel",
                 "required": "required",
-                "placeholder": "e.g., +01020481863"
+                "placeholder": _("e.g., +01020481863"),
+                "data-normalize-digits": "1",
             }),
         }
         labels = {
-            "client_name": "Name",
-            "client_phone": "Phone Number",
+            "client_name": _("Name"),
+            "client_phone": _("Phone Number"),
         }
 
     def __init__(self, *args, **kwargs):
@@ -85,30 +88,30 @@ class TicketCreateForm(forms.ModelForm):
     def clean_client_name(self):
         name = self.cleaned_data.get("client_name")
         if not name or len(name.strip()) < 2:
-            raise forms.ValidationError("Name must be at least 2 characters long.")
+            raise forms.ValidationError(_("Name must be at least 2 characters long."))
         return name.strip()
 
     def clean_client_phone(self):
         import re
         phone = self.cleaned_data.get("client_phone")
         if not phone:
-            raise forms.ValidationError("Phone number is required.")
-        phone = phone.strip()
+            raise forms.ValidationError(_("Phone number is required."))
+        phone = normalize_digits(phone.strip())
         pattern = r"^\+?1?\d{9,15}$"
         if not re.match(pattern, phone):
-            raise forms.ValidationError("Enter a valid phone number (e.g. +01020481863).")
+            raise forms.ValidationError(_("Enter a valid phone number (e.g. +01020481863)."))
         return phone
 
     def clean_title(self):
         title = self.cleaned_data.get("title")
         if not title or len(title.strip()) < 4:
-            raise forms.ValidationError("Title must be at least 4 characters long.")
+            raise forms.ValidationError(_("Title must be at least 4 characters long."))
         return title.strip()
 
     def clean_description(self):
         description = self.cleaned_data.get("description")
         if not description or len(description.strip()) < 5:
-            raise forms.ValidationError("Description must be at least 5 characters long.")
+            raise forms.ValidationError(_("Description must be at least 5 characters long."))
         return description.strip()
 
 class TicketUpdateForm(TicketCreateForm):

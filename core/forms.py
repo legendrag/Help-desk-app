@@ -1,4 +1,5 @@
 ﻿from django import forms
+from django.utils.translation import gettext_lazy as _
 from .models import (
     Branch,
     Department,
@@ -24,24 +25,24 @@ class BranchForm(forms.ModelForm):
         model = Branch
         fields = ['name', 'code']
         widgets = {
-            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': 'e.g., Main Branch'}),
-            'code': forms.TextInput(attrs={'minlength': '1', 'placeholder': 'e.g., MBR'}),
+            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': _('e.g., Main Branch')}),
+            'code': forms.TextInput(attrs={'minlength': '1', 'placeholder': _('e.g., MBR')}),
         }
 
     def clean_name(self):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
-            raise forms.ValidationError("Branch name must be at least 2 characters long.")
+            raise forms.ValidationError(_("Branch name must be at least 2 characters long."))
         return name.strip()
 
     def clean_code(self):
         import re
         code = self.cleaned_data.get('code')
         if not code or not code.strip():
-            raise forms.ValidationError("Branch code is required.")
+            raise forms.ValidationError(_("Branch code is required."))
         code = code.strip().upper()
         if not re.match(r'^[A-Z0-9_-]+$', code):
-            raise forms.ValidationError("Code may only contain letters, numbers, hyphens, and underscores.")
+            raise forms.ValidationError(_("Code may only contain letters, numbers, hyphens, and underscores."))
         return code
 
 class DepartmentForm(forms.ModelForm):
@@ -53,19 +54,19 @@ class DepartmentForm(forms.ModelForm):
         model = Department
         fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': 'e.g., IT Support'}),
+            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': _('e.g., IT Support')}),
         }
 
     def clean_name(self):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
-            raise forms.ValidationError("Department name must be at least 2 characters long.")
+            raise forms.ValidationError(_("Department name must be at least 2 characters long."))
         name = name.strip()
         qs = Department.objects.filter(name__iexact=name)
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise forms.ValidationError("A department with this name already exists.")
+            raise forms.ValidationError(_("A department with this name already exists."))
         return name
 
 class CategoryForm(forms.ModelForm):
@@ -80,13 +81,13 @@ class CategoryForm(forms.ModelForm):
         model = Category
         fields = ['department', 'name', 'default_priority']
         widgets = {
-            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': 'e.g., Hardware Issue'}),
+            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': _('e.g., Hardware Issue')}),
         }
 
     def clean_name(self):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
-            raise forms.ValidationError("Category name must be at least 2 characters long.")
+            raise forms.ValidationError(_("Category name must be at least 2 characters long."))
         return name.strip()
 
 class RoleForm(forms.ModelForm):
@@ -97,7 +98,7 @@ class RoleForm(forms.ModelForm):
     class Meta:
 
         widgets = {
-            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': 'e.g., Support Agent'}),
+            'name': forms.TextInput(attrs={'minlength': '2', 'placeholder': _('e.g., Support Agent')}),
             'can_create_ticket': forms.CheckboxInput(),
             'can_update_ticket': forms.CheckboxInput(),
             'can_pick_ticket': forms.CheckboxInput(),
@@ -164,7 +165,7 @@ class RoleForm(forms.ModelForm):
     def clean_name(self):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
-            raise forms.ValidationError("Role name must be at least 2 characters long.")
+            raise forms.ValidationError(_("Role name must be at least 2 characters long."))
         return name.strip()
 
 class EmailSettingForm(forms.ModelForm):
@@ -180,7 +181,7 @@ class EmailSettingForm(forms.ModelForm):
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                self.add_error('is_active', 'Another email setting is already active. Disable it before activating this one.')
+                self.add_error('is_active', _('Another email setting is already active. Disable it before activating this one.'))
         return cleaned
 
     class Meta:
@@ -192,12 +193,12 @@ class EmailSettingForm(forms.ModelForm):
             'notify_ticket_status', 'notify_ticket_update', 'notify_announcement',
         ]
         widgets = {
-            'smtp_host': forms.TextInput(attrs={'placeholder': 'e.g., smtp.gmail.com'}),
-            'smtp_port': forms.NumberInput(attrs={'placeholder': 'e.g., 587'}),
-            'smtp_email': forms.EmailInput(attrs={'placeholder': 'sender@example.com'}),
+            'smtp_host': forms.TextInput(attrs={'placeholder': _('e.g., smtp.gmail.com')}),
+            'smtp_port': forms.NumberInput(attrs={'placeholder': _('e.g., 587')}),
+            'smtp_email': forms.EmailInput(attrs={'placeholder': _('sender@example.com')}),
             'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
-            'from_name': forms.TextInput(attrs={'placeholder': 'e.g., MlamehTicket Support'}),
-            'from_email': forms.EmailInput(attrs={'placeholder': 'noreply@example.com'}),
+            'from_name': forms.TextInput(attrs={'placeholder': _('e.g., MlamehTicket Support')}),
+            'from_email': forms.EmailInput(attrs={'placeholder': _('noreply@example.com')}),
         }
 
 
@@ -206,31 +207,31 @@ class EmailTemplateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _style_fields(self)
         self.fields["subject"].widget.attrs.update(
-            {"placeholder": "[{{ brand_name }}] New ticket #{{ ticket_number }}"}
+            {"placeholder": _("[{{ brand_name }}] New ticket #{{ ticket_number }}")}
         )
         self.fields["body"].widget.attrs.update(
             {
                 "rows": 10,
-                "placeholder": "Write the email body. Use Insert field buttons for merge values.",
+                "placeholder": _("Write the email body. Use Insert field buttons for merge values."),
             }
         )
 
     def _reject_tags(self, value: str, label: str) -> str:
         value = (value or "").strip()
         if "{%" in value or "%}" in value:
-            raise forms.ValidationError(f"{label} contains unsupported template tags.")
+            raise forms.ValidationError(_("{} contains unsupported template tags.").format(label))
         return value
 
     def clean_subject(self):
-        subject = self._reject_tags(self.cleaned_data.get("subject"), "Subject")
+        subject = self._reject_tags(self.cleaned_data.get("subject"), _("Subject"))
         if not subject:
-            raise forms.ValidationError("Subject is required.")
+            raise forms.ValidationError(_("Subject is required."))
         return subject
 
     def clean_body(self):
-        body = self._reject_tags(self.cleaned_data.get("body"), "Body")
+        body = self._reject_tags(self.cleaned_data.get("body"), _("Body"))
         if not body:
-            raise forms.ValidationError("Body is required.")
+            raise forms.ValidationError(_("Body is required."))
         return body
 
     class Meta:

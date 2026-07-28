@@ -1,6 +1,7 @@
-﻿{% load static webpush_notifications %}
+﻿{% load static webpush_notifications i18n %}
+{% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="en" class="{% block html_class %}{% endblock html_class %}">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}">
 <script>
     // Reset scroll restoration to manual and force top scroll on load to prevent transition offsets
     if ('history' in window && 'scrollRestoration' in window) {
@@ -13,11 +14,23 @@
         document.body.scrollTop = 0;
     });
 
-    // FOUC prevention: apply saved theme before first paint
+    // FOUC prevention: apply saved theme and language dir before first paint
     (function () {
         var theme = localStorage.getItem('theme');
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        var lang = null;
+        try {
+            var m = document.cookie.match(/(?:^|;\s*)django_language=([^;]+)/);
+            if (m) lang = decodeURIComponent(m[1]);
+        } catch (e) {}
+        if (lang === 'ar') {
+            document.documentElement.setAttribute('lang', 'ar');
+            document.documentElement.setAttribute('dir', 'rtl');
+        } else if (lang === 'en') {
+            document.documentElement.setAttribute('lang', 'en');
+            document.documentElement.setAttribute('dir', 'ltr');
         }
     })();
 </script>
@@ -29,9 +42,10 @@
         content="MlamehTicket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.72">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.70">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.34">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.77">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.74">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.36">
+    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=1.9">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -47,6 +61,27 @@
         window.userIsAuthenticated = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
         window.userId = "{{ user.id }}";
         window.userIsSuperuser = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+        window.LANGUAGE_CODE = "{{ LANGUAGE_CODE|escapejs }}";
+        window.I18N = {
+            justNow: "{% filter escapejs %}{% trans 'Just now' %}{% endfilter %}",
+            yesterday: "{% filter escapejs %}{% trans 'Yesterday' %}{% endfilter %}",
+            minutesAgo: "{% filter escapejs %}{% trans 'm ago' %}{% endfilter %}",
+            hoursAgo: "{% filter escapejs %}{% trans 'h ago' %}{% endfilter %}",
+            notification: "{% filter escapejs %}{% trans 'Notification' %}{% endfilter %}",
+            deleteNotification: "{% filter escapejs %}{% trans 'Delete notification' %}{% endfilter %}",
+            enable: "{% filter escapejs %}{% trans 'Enable' %}{% endfilter %}",
+            enablePush: "{% filter escapejs %}{% trans 'Enable push notifications to stay updated.' %}{% endfilter %}",
+            pushDenied: "{% filter escapejs %}{% trans 'Notifications are blocked in browser settings.' %}{% endfilter %}",
+            pendingAgent: "{% filter escapejs %}{% trans 'Pending Support Agent' %}{% endfilter %}",
+            viewAttachment: "{% filter escapejs %}{% trans 'View Attachment' %}{% endfilter %}",
+            sent: "{% filter escapejs %}{% trans 'Sent' %}{% endfilter %}",
+            andOthers: "{% filter escapejs %}{% trans 'and others' %}{% endfilter %}",
+            typing: "{% filter escapejs %}{% trans 'typing…' %}{% endfilter %}",
+            openMenu: "{% filter escapejs %}{% trans 'Open menu' %}{% endfilter %}",
+            closeMenu: "{% filter escapejs %}{% trans 'Close menu' %}{% endfilter %}",
+            unsavedConfirm: "{% filter escapejs %}{% trans 'You have unsaved changes. Are you sure you want to leave?' %}{% endfilter %}",
+            resetConfirm: "{% filter escapejs %}{% trans 'Reset this template to defaults?' %}{% endfilter %}"
+        };
 
         // Defeat browser bfcache: when the page is restored from
         // back/forward cache, verify the session is still alive.
@@ -62,8 +97,30 @@
                     }).catch(function () { });
             }
         });
+
+        // Normalize Arabic/Persian digits in phone fields
+        (function () {
+            var map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'};
+            function normalizeDigits(str) {
+                return String(str || '').replace(/[٠-٩۰-۹]/g, function (ch) { return map[ch] || ch; });
+            }
+            window.normalizeDigits = normalizeDigits;
+            document.addEventListener('blur', function (e) {
+                var el = e.target;
+                if (!el || !el.getAttribute || el.getAttribute('data-normalize-digits') !== '1') return;
+                var next = normalizeDigits(el.value);
+                if (next !== el.value) el.value = next;
+            }, true);
+            document.addEventListener('submit', function (e) {
+                var form = e.target;
+                if (!form || !form.querySelectorAll) return;
+                form.querySelectorAll('[data-normalize-digits="1"]').forEach(function (el) {
+                    el.value = normalizeDigits(el.value);
+                });
+            }, true);
+        })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.17" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.18" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -84,7 +141,7 @@
                 {% if user.is_authenticated %}
 
                 <div class="notification-bell-container">
-                    <button type="button" class="notification-btn" id="notification-btn" aria-label="Notifications"
+                    <button type="button" class="notification-btn" id="notification-btn" aria-label="{% trans 'Notifications' %}"
                         aria-expanded="false" aria-controls="notification-dropdown" data-no-loading>
                         <span id="notification-count" class="notification-badge">0</span>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -95,18 +152,18 @@
                     </button>
                     <div id="notification-dropdown" class="notification-dropdown">
                         <div class="notification-header">
-                            <h4>Notifications</h4>
+                            <h4>{% trans "Notifications" %}</h4>
                             <div class="notification-header-actions">
 
                                 <button type="button" class="notif-action-btn" id="notification-mark-read"
-                                    title="Mark all as read" data-no-loading>
+                                    title="{% trans 'Mark all as read' %}" data-no-loading>
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="20 6 9 17 4 12"></polyline>
                                     </svg>
                                 </button>
                                 <button type="button" class="notif-action-btn" id="notification-clear-read"
-                                    title="Clear read notifications" data-no-loading>
+                                    title="{% trans 'Clear read notifications' %}" data-no-loading>
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -125,17 +182,17 @@
                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                 <line x1="1" y1="1" x2="23" y2="23"></line>
                             </svg>
-                            <span>No notifications yet</span>
+                            <span>{% trans "No notifications yet" %}</span>
                         </div>
                         <div id="notification-push-prompt" class="notification-push-prompt" hidden>
                             <p id="notification-push-prompt-text" class="notification-push-prompt-text"></p>
                             <button type="button" class="btn primary notification-push-enable-btn"
-                                id="notification-push-enable" data-no-loading>Enable</button>
+                                id="notification-push-enable" data-no-loading>{% trans "Enable" %}</button>
                         </div>
                     </div>
                 </div>
                 <button type="button" class="menu-btn-universal" id="menu-btn" onclick="toggleSidebar()"
-                    aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+                    aria-label="{% trans 'Open menu' %}" aria-expanded="false" aria-controls="sidebar">
                     <span class="menu-icon" aria-hidden="true">
                         <span></span>
                         <span></span>
@@ -371,7 +428,7 @@
             onclick="if(event.target == this) cancelDiscard()">
             <div class="modal-content discard-modal-content">
                 <div class="modal-header discard-modal-header">
-                    <h3 class="discard-modal-title">Unsaved Changes</h3>
+                    <h3 class="discard-modal-title">{% trans "Unsaved Changes" %}</h3>
                     <button type="button" class="modal-close discard-modal-close" onclick="cancelDiscard()"
                         data-no-loading aria-label="Close">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -382,13 +439,13 @@
                     </button>
                 </div>
                 <div class="discard-modal-body">
-                    <p class="discard-modal-text">You have unsaved changes. Are you sure you want to discard them?</p>
+                    <p class="discard-modal-text">{% trans "You have unsaved changes. Are you sure you want to discard them?" %}</p>
                 </div>
                 <div class="form-actions discard-modal-actions">
                     <button type="button" class="btn secondary discard-modal-btn" onclick="cancelDiscard()"
-                        data-no-loading>Cancel</button>
+                        data-no-loading>{% trans "Cancel" %}</button>
                     <button type="button" class="btn danger discard-modal-btn" onclick="confirmDiscard()"
-                        data-no-loading>Yes, Discard</button>
+                        data-no-loading>{% trans "Yes, Discard" %}</button>
                 </div>
             </div>
         </div>
@@ -398,9 +455,9 @@
             onclick="if(event.target == this) closeGlobalConfirmModal()">
             <div class="modal-content discard-modal-content">
                 <div class="modal-header discard-modal-header">
-                    <h3 class="discard-modal-title" id="global-confirm-title">Confirm Action</h3>
+                    <h3 class="discard-modal-title" id="global-confirm-title">{% trans "Confirm Action" %}</h3>
                     <button type="button" class="modal-close discard-modal-close" onclick="closeGlobalConfirmModal()"
-                        data-no-loading aria-label="Close">
+                        data-no-loading aria-label="{% trans 'Close' %}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -409,13 +466,13 @@
                     </button>
                 </div>
                 <div class="discard-modal-body">
-                    <p class="discard-modal-text" id="global-confirm-text">Are you sure you want to proceed?</p>
+                    <p class="discard-modal-text" id="global-confirm-text">{% trans "Are you sure you want to proceed?" %}</p>
                 </div>
                 <div class="form-actions discard-modal-actions">
                     <button type="button" class="btn secondary discard-modal-btn" onclick="closeGlobalConfirmModal()"
-                        data-no-loading id="global-confirm-cancel-btn">Cancel</button>
+                        data-no-loading id="global-confirm-cancel-btn">{% trans "Cancel" %}</button>
                     <button type="button" class="btn danger discard-modal-btn" data-no-loading
-                        id="global-confirm-action-btn">Yes, Delete</button>
+                        id="global-confirm-action-btn">{% trans "Yes, Delete" %}</button>
                 </div>
             </div>
         </div>
@@ -425,64 +482,102 @@
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 {% if user.is_authenticated %}
-                <span class="brand">Hi, {{ user.first_name|default:user.username }}</span>
+                <span class="brand">{% blocktrans with name=user.first_name|default:user.username %}Hi, {{ name }}{% endblocktrans %}</span>
                 {% else %}
-                <span class="brand">Menu</span>
+                <span class="brand">{% trans "Menu" %}</span>
                 {% endif %}
             </div>
             <nav class="sidebar-nav">
-                <a href="{% url 'tickets_list' %}">Tickets</a>
+                <a href="{% url 'tickets_list' %}">{% trans "Tickets" %}</a>
                 {% if user.is_superuser or user.role.can_manage_news %}
-                <a href="{% url 'news_list' %}">News</a>
+                <a href="{% url 'news_list' %}">{% trans "News" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_kb %}
-                <a href="{% url 'kb_list' %}">Knowledge Base</a>
+                <a href="{% url 'kb_list' %}">{% trans "Knowledge Base" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_dashboard %}
-                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_settings %}
-                <a href="{% url 'settings' %}">Settings Hub</a>
+                <a href="{% url 'settings' %}">{% trans "Settings Hub" %}</a>
                 {% endif %}
                 <hr>
                 <a href="#" hx-get="{% url 'password_change' %}" hx-target="#modal-content" hx-trigger="click"
-                    onclick="openModal()" class="sidebar-action-btn button">Change Password</a>
+                    onclick="openModal()" class="sidebar-action-btn button">{% trans "Change Password" %}</a>
 
                 <form action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
-                    <button type="submit" class="sidebar-action-btn danger">Logout</button>
+                    <button type="submit" class="sidebar-action-btn danger">{% trans "Logout" %}</button>
                 </form>
 
-                <div
-                    style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    <span>Theme</span>
-                    <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleDarkMode()"
-                        aria-label="Toggle dark mode" title="Toggle dark mode" role="switch">
-                        <span class="theme-switch-track">
-                            <span class="theme-switch-knob">
-                                <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
-                                    stroke="none">
-                                    <circle cx="12" cy="12" r="5"></circle>
-                                    <rect x="11" y="0" width="2" height="4" rx="1"></rect>
-                                    <rect x="11" y="20" width="2" height="4" rx="1"></rect>
-                                    <rect x="0" y="11" width="4" height="2" rx="1"></rect>
-                                    <rect x="20" y="11" width="4" height="2" rx="1"></rect>
-                                    <rect x="3.3" y="3.3" width="2" height="4" rx="1" transform="rotate(-45 4.3 5.3)">
-                                    </rect>
-                                    <rect x="18.7" y="16.7" width="2" height="4" rx="1"
-                                        transform="rotate(-45 19.7 18.7)"></rect>
-                                    <rect x="16.7" y="3.3" width="4" height="2" rx="1" transform="rotate(-45 18.7 4.3)">
-                                    </rect>
-                                    <rect x="3.3" y="18.7" width="4" height="2" rx="1" transform="rotate(-45 5.3 19.7)">
-                                    </rect>
-                                </svg>
-                                <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
-                                    stroke="none">
-                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                                </svg>
+                <div class="sidebar-prefs" role="group" aria-label="{% trans 'Preferences' %}">
+                    <div class="sidebar-pref-row">
+                        <span class="sidebar-pref-label">{% trans "Theme" %}</span>
+                        <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleDarkMode()"
+                            aria-label="{% trans 'Toggle dark mode' %}" title="{% trans 'Toggle dark mode' %}" role="switch">
+                            <span class="theme-switch-track">
+                                <span class="theme-switch-knob">
+                                    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+                                        stroke="none">
+                                        <circle cx="12" cy="12" r="5"></circle>
+                                        <rect x="11" y="0" width="2" height="4" rx="1"></rect>
+                                        <rect x="11" y="20" width="2" height="4" rx="1"></rect>
+                                        <rect x="0" y="11" width="4" height="2" rx="1"></rect>
+                                        <rect x="20" y="11" width="4" height="2" rx="1"></rect>
+                                        <rect x="3.3" y="3.3" width="2" height="4" rx="1" transform="rotate(-45 4.3 5.3)">
+                                        </rect>
+                                        <rect x="18.7" y="16.7" width="2" height="4" rx="1"
+                                            transform="rotate(-45 19.7 18.7)"></rect>
+                                        <rect x="16.7" y="3.3" width="4" height="2" rx="1" transform="rotate(-45 18.7 4.3)">
+                                        </rect>
+                                        <rect x="3.3" y="18.7" width="4" height="2" rx="1" transform="rotate(-45 5.3 19.7)">
+                                        </rect>
+                                    </svg>
+                                    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+                                        stroke="none">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                                    </svg>
+                                </span>
                             </span>
-                        </span>
-                    </button>
+                        </button>
+                    </div>
+                    <div class="sidebar-pref-row">
+                        <span class="sidebar-pref-label">{% trans "Language" %}</span>
+                        <form action="{% url 'set_language' %}" method="post" class="lang-switch-form" id="lang-switch-form" data-no-loading>
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            {% if LANGUAGE_CODE == 'ar' %}
+                            <input type="hidden" name="language" value="en">
+                            {% else %}
+                            <input type="hidden" name="language" value="ar">
+                            {% endif %}
+                            <button type="button"
+                                class="lang-switch{% if LANGUAGE_CODE == 'ar' %} is-ar{% endif %}"
+                                id="lang-toggle-btn"
+                                role="switch"
+                                aria-checked="{% if LANGUAGE_CODE == 'ar' %}true{% else %}false{% endif %}"
+                                aria-label="{% if LANGUAGE_CODE == 'ar' %}{% trans 'Switch to English' %}{% else %}{% trans 'Switch to Arabic' %}{% endif %}"
+                                title="{% if LANGUAGE_CODE == 'ar' %}{% trans 'Switch to English' %}{% else %}{% trans 'Switch to Arabic' %}{% endif %}">
+                                <span class="lang-switch-track">
+                                    <span class="lang-switch-knob">
+                                        <svg class="icon-flag-en" viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                            <rect width="60" height="30" fill="#012169"/>
+                                            <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/>
+                                            <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="2"/>
+                                            <path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/>
+                                            <path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6"/>
+                                        </svg>
+                                        <svg class="icon-flag-ar" viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                            <rect width="60" height="10" y="0" fill="#CE1126"/>
+                                            <rect width="60" height="10" y="10" fill="#fff"/>
+                                            <rect width="60" height="10" y="20" fill="#000"/>
+                                            <circle cx="30" cy="15" r="3.2" fill="#C09300"/>
+                                        </svg>
+                                    </span>
+                                </span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </nav>
         </aside>
@@ -500,12 +595,47 @@
                 localStorage.setItem('theme', 'dark');
             }
         }
+
+        // Language switch: animate first, then POST (avoid loading.js full-page overlay)
+        (function () {
+            var form = document.getElementById('lang-switch-form');
+            var btn = document.getElementById('lang-toggle-btn');
+            if (!form || !btn) return;
+
+            btn.addEventListener('click', function () {
+                if (btn.dataset.animating === '1') return;
+                btn.dataset.animating = '1';
+
+                var toAr = !btn.classList.contains('is-ar');
+                // Force a paint so the class change always transitions
+                void btn.offsetWidth;
+                btn.classList.toggle('is-ar', toAr);
+                btn.setAttribute('aria-checked', toAr ? 'true' : 'false');
+
+                var knob = btn.querySelector('.lang-switch-knob');
+                var done = false;
+                function go() {
+                    if (done) return;
+                    done = true;
+                    if (knob) knob.removeEventListener('transitionend', onEnd);
+                    form.submit();
+                }
+                function onEnd(ev) {
+                    if (ev.target !== knob) return;
+                    if (ev.propertyName && ev.propertyName !== 'transform') return;
+                    go();
+                }
+                if (knob) knob.addEventListener('transitionend', onEnd);
+                setTimeout(go, 420);
+            });
+        })();
+
         function setMenuButtonOpen(isOpen) {
             const menuBtn = document.getElementById('menu-btn') || document.querySelector('.menu-btn-universal');
             if (!menuBtn) return;
             menuBtn.classList.toggle('is-open', isOpen);
             menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            menuBtn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+            menuBtn.setAttribute('aria-label', isOpen ? (window.I18N && window.I18N.closeMenu) || 'Close menu' : (window.I18N && window.I18N.openMenu) || 'Open menu');
         }
 
         function openSidebar() {
@@ -1088,7 +1218,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=14"></script>
+    <script src="{% static 'js/loading.js' %}?v=15"></script>
 </body>
 
 </html>

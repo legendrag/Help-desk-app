@@ -1,3 +1,4 @@
+{% load i18n %}
 <form
     id="email-template-editor"
     class="email-template-form"
@@ -14,7 +15,7 @@
         <div class="email-template-layout__editor">
             <div class="email-template-form__field">
                 <div class="email-template-form__label-row">
-                    <label class="email-template-form__label" for="id_email_subject">Subject</label>
+                    <label class="email-template-form__label" for="id_email_subject">{% trans "Subject" %}</label>
                 </div>
                 <input
                     type="text"
@@ -33,7 +34,7 @@
 
             <div class="email-template-form__field">
                 <div class="email-template-form__label-row">
-                    <label class="email-template-form__label" for="id_email_body">Body</label>
+                    <label class="email-template-form__label" for="id_email_body">{% trans "Body" %}</label>
                 </div>
                 <textarea
                     name="body"
@@ -48,26 +49,26 @@
                 {% endif %}
             </div>
 
-            <div class="email-template-fields" aria-label="Insert merge fields">
-                <span class="email-template-fields__hint">Insert field into focused box:</span>
+            <div class="email-template-fields" aria-label="{% trans 'Insert merge fields' %}">
+                <span class="email-template-fields__hint">{% trans "Insert field into focused box:" %}</span>
                 {% for key, label in merge_fields %}
                 <button
                     type="button"
                     class="email-template-field-btn"
                     data-insert="{{ key }}"
-                    title="Insert {{ '{' }}{{ '{' }} {{ key }} {{ '}' }}{{ '}' }}"
+                    title="{% blocktrans %}Insert {{ key }}{% endblocktrans %}"
                     {% if not can_edit_email_templates %}disabled{% endif %}
                 >{{ label }}</button>
                 {% endfor %}
             </div>
 
             <p class="email-template-form__help">
-                Plain text only. A View/Open button is added automatically under the body when the email is sent.
+                {% trans "Plain text only. A View/Open button is added automatically under the body when the email is sent." %}
             </p>
 
             {% if can_edit_email_templates %}
             <div class="email-template-form__actions">
-                <button type="submit" class="primary">Save template</button>
+                <button type="submit" class="primary">{% trans "Save template" %}</button>
                 <button
                     type="button"
                     class="secondary"
@@ -75,34 +76,34 @@
                     hx-include="#email-template-editor"
                     hx-swap="none"
                 >
-                    Send test email
+                    {% trans "Send test email" %}
                 </button>
                 <button type="button" class="secondary email-template-reset-btn">
-                    Reset to default
+                    {% trans "Reset to default" %}
                 </button>
             </div>
             <p class="email-template-form__help">
-                Test email uses the text above (even if unsaved) and is sent to the active SMTP from-address.
+                {% trans "Test email uses the text above (even if unsaved) and is sent to the active SMTP from-address." %}
             </p>
             {% else %}
-            <p class="email-template-form__help">You can view templates but need Manage Email Settings permission to edit them.</p>
+            <p class="email-template-form__help">{% trans "You can view templates but need Manage Email Settings permission to edit them." %}</p>
             {% endif %}
         </div>
 
         <aside class="email-template-preview" aria-live="polite">
             <div class="email-template-preview__header">
-                <p class="email-template-preview__title">Email preview</p>
-                <p class="email-template-preview__hint">Looks like the message that will be sent</p>
+                <p class="email-template-preview__title">{% trans "Email preview" %}</p>
+                <p class="email-template-preview__hint">{% trans "Looks like the message that will be sent" %}</p>
             </div>
             <div class="email-template-preview__mail">
                 <div class="email-template-preview__subject-row">
-                    <span class="email-template-preview__subject-label">Subject</span>
+                    <span class="email-template-preview__subject-label">{% trans "Subject" %}</span>
                     <span class="email-template-preview__subject" id="email-template-preview-subject"></span>
                 </div>
                 <iframe
                     id="email-template-preview-frame"
                     class="email-template-preview__frame"
-                    title="Email body preview"
+                    title="{% trans 'Email body preview' %}"
                     sandbox=""
                 ></iframe>
             </div>

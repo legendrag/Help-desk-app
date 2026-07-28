@@ -1,7 +1,8 @@
 ﻿{% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Settings - MlamehTicket{% endblock title %}
+{% block title %}{% trans "Settings" %} - MlamehTicket{% endblock title %}
 
 {% block body_class %}settings-page{% endblock body_class %}
 
@@ -13,8 +14,8 @@
 <div class="settings-hub">
     <div class="panel settings-hero">
         <div class="settings-hero-text">
-            <h1>Administrative Settings</h1>
-            <p>Configure and manage system entities from a unified interface.</p>
+            <h1>{% trans "Administrative Settings" %}</h1>
+            <p>{% trans "Configure and manage system entities from a unified interface." %}</p>
         </div>
 
         <div class="settings-tabs">
@@ -23,21 +24,21 @@
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Branches
+                {% trans "Branches" %}
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'department_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Departments
+                {% trans "Departments" %}
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'category_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Categories
+                {% trans "Categories" %}
             </button>
             {% if request.user.is_superuser or request.user.role.can_manage_kb %}
             <button class="settings-tab"
@@ -45,7 +46,7 @@
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                KB Categories
+                {% trans "KB Categories" %}
             </button>
             {% endif %}
             <button class="settings-tab"
@@ -53,21 +54,21 @@
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Roles
+                {% trans "Roles" %}
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'user_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Users
+                {% trans "Users" %}
             </button>
             <button class="settings-tab"
                     hx-get="{% url 'email_setting_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Email Settings
+                {% trans "Email Settings" %}
             </button>
             {% if request.user.is_superuser or request.user.role.can_manage_maintenance %}
             <button class="settings-tab"
@@ -75,7 +76,7 @@
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
-                Maintenance
+                {% trans "Maintenance" %}
             </button>
             {% endif %}
         </div>

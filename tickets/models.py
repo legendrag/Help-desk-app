@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.text import get_valid_filename
+from django.utils.translation import gettext_lazy as _
 
 
 def ticket_attachment_path(instance, filename):
@@ -34,17 +35,17 @@ def validate_ticket_attachment(attachment):
 
 class Ticket(models.Model):
     class Status(models.TextChoices):
-        OPEN = "open", "Open"
-        IN_PROGRESS = "in_progress", "In Progress"
-        WAITING_FOR_BRANCH = "waiting_for_branch", "Waiting"
-        CLOSED = "closed", "Closed"
-        MERGED = "merged", "Merged"
+        OPEN = "open", _("Open")
+        IN_PROGRESS = "in_progress", _("In Progress")
+        WAITING_FOR_BRANCH = "waiting_for_branch", _("Waiting")
+        CLOSED = "closed", _("Closed")
+        MERGED = "merged", _("Merged")
 
     class Priority(models.TextChoices):
-        LOW = "low", "Low"
-        MEDIUM = "medium", "Medium"
-        HIGH = "high", "High"
-        URGENT = "urgent", "Urgent"
+        LOW = "low", _("Low")
+        MEDIUM = "medium", _("Medium")
+        HIGH = "high", _("High")
+        URGENT = "urgent", _("Urgent")
 
     ticket_number = models.CharField(max_length=30, unique=True, db_index=True)
     title = models.CharField(max_length=255)
@@ -190,15 +191,15 @@ class Ticket(models.Model):
 
 class TicketStatusHistory(models.Model):
     class EventType(models.TextChoices):
-        STATUS_CHANGE = "status_change", "Status Change"
-        TRANSFER_REQUESTED = "transfer_requested", "Transfer Requested"
-        TRANSFER_ACCEPTED = "transfer_accepted", "Transfer Accepted"
-        TRANSFER_DENIED = "transfer_denied", "Transfer Denied"
-        TRANSFER_CANCELLED = "transfer_cancelled", "Transfer Cancelled"
-        MERGED = "merged", "Ticket Merged"
-        PRIORITY_CHANGED = "priority_changed", "Priority Changed"
-        ASSIGNED = "assigned", "Assigned"
-        REOPENED = "reopened", "Reopened"
+        STATUS_CHANGE = "status_change", _("Status Change")
+        TRANSFER_REQUESTED = "transfer_requested", _("Transfer Requested")
+        TRANSFER_ACCEPTED = "transfer_accepted", _("Transfer Accepted")
+        TRANSFER_DENIED = "transfer_denied", _("Transfer Denied")
+        TRANSFER_CANCELLED = "transfer_cancelled", _("Transfer Cancelled")
+        MERGED = "merged", _("Ticket Merged")
+        PRIORITY_CHANGED = "priority_changed", _("Priority Changed")
+        ASSIGNED = "assigned", _("Assigned")
+        REOPENED = "reopened", _("Reopened")
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="status_history")
     status = models.CharField(max_length=30, choices=Ticket.Status.choices, blank=True, default="")

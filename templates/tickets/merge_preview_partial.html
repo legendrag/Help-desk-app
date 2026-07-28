@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="merge-preview-card">
     <div class="merge-preview-header">
         <span class="merge-preview-num">#{{ ticket.ticket_number }}</span>
@@ -10,25 +11,25 @@
     <h4 class="merge-preview-title">{{ ticket.title }}</h4>
     
     <div class="merge-preview-desc">
-        <strong>Description:</strong> {{ ticket.description|truncatewords:25 }}
+        <strong>{% trans "Description:" %}</strong> {{ ticket.description|truncatewords:25 }}
     </div>
     
     <div class="merge-preview-meta-grid">
         <div class="merge-meta-item">
-            <span class="label">Created By</span>
+            <span class="label">{% trans "Created By" %}</span>
             <span class="val">{{ ticket.created_by.username }}</span>
         </div>
         <div class="merge-meta-item">
-            <span class="label">Department</span>
+            <span class="label">{% trans "Department" %}</span>
             <span class="val">{{ ticket.department.name }}</span>
         </div>
         <div class="merge-meta-item">
-            <span class="label">Branch</span>
+            <span class="label">{% trans "Branch" %}</span>
             <span class="val">{{ ticket.branch.name }}</span>
         </div>
         <div class="merge-meta-item">
-            <span class="label">Messages</span>
-            <span class="val">{{ msg_count }} message{{ msg_count|pluralize }}</span>
+            <span class="label">{% trans "Messages" %}</span>
+            <span class="val">{% blocktrans count count=msg_count %}{{ count }} message{% plural %}{{ count }} messages{% endblocktrans %}</span>
         </div>
     </div>
     
@@ -38,6 +39,6 @@
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        <span>This action is irreversible. All messages will be moved into this ticket, and ticket #{{ ticket.ticket_number }} will be marked as Merged.</span>
+        <span>{% blocktrans with ticket_num=ticket.ticket_number %}This action is irreversible. All messages will be moved into this ticket, and ticket #{{ ticket_num }} will be marked as Merged.{% endblocktrans %}</span>
     </div>
 </div>

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
 
 
 class TimeStampedModel(models.Model):
@@ -12,21 +13,25 @@ class TimeStampedModel(models.Model):
 
 
 class Branch(models.Model):
-    name = models.CharField(max_length=150)
-    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(_("Name"), max_length=150)
+    code = models.CharField(_("Code"), max_length=50, unique=True)
 
     class Meta:
         ordering = ["name"]
+        verbose_name = _("Branch")
+        verbose_name_plural = _("Branches")
 
     def __str__(self) -> str:
         return f"{self.code} - {self.name}"
 
 
 class Department(models.Model):
-    name = models.CharField(max_length=150, unique=True)
+    name = models.CharField(_("Name"), max_length=150, unique=True)
 
     class Meta:
         ordering = ["name"]
+        verbose_name = _("Department")
+        verbose_name_plural = _("Departments")
 
     def __str__(self) -> str:
         return self.name
@@ -34,17 +39,23 @@ class Department(models.Model):
 
 class Category(models.Model):
     class Priority(models.TextChoices):
-        LOW = "low", "Low"
-        MEDIUM = "medium", "Medium"
-        HIGH = "high", "High"
-        URGENT = "urgent", "Urgent"
+        LOW = "low", _("Low")
+        MEDIUM = "medium", _("Medium")
+        HIGH = "high", _("High")
+        URGENT = "urgent", _("Urgent")
 
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="categories")
-    name = models.CharField(max_length=150)
-    default_priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    department = models.ForeignKey(
+        Department, on_delete=models.CASCADE, related_name="categories", verbose_name=_("Department")
+    )
+    name = models.CharField(_("Name"), max_length=150)
+    default_priority = models.CharField(
+        _("Default Priority"), max_length=20, choices=Priority.choices, default=Priority.MEDIUM
+    )
 
     class Meta:
         ordering = ["department__name", "name"]
+        verbose_name = _("Category")
+        verbose_name_plural = _("Categories")
         constraints = [
             models.UniqueConstraint(fields=["department", "name"], name="uniq_category_department_name"),
         ]
@@ -54,60 +65,60 @@ class Category(models.Model):
 
 
 class Role(TimeStampedModel):
-    name = models.CharField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    
+    name = models.CharField(_("Name"), max_length=100, unique=True)
+    description = models.TextField(_("Description"), blank=True)
+
     # Granular Permissions
-    can_create_ticket = models.BooleanField(default=True, verbose_name="Create Ticket")
-    can_update_ticket = models.BooleanField(default=False, verbose_name="Edit Ticket")
-    can_pick_ticket = models.BooleanField(default=False, verbose_name="Pick Ticket")
-    can_update_status = models.BooleanField(default=False, verbose_name="Update Ticket Status")
-    can_update_closed_ticket = models.BooleanField(default=False, verbose_name="Update Status after closed")
-    can_send_message = models.BooleanField(default=True, verbose_name="Send Message")
-    can_edit_message = models.BooleanField(default=False, verbose_name="Edit Message")
-    can_delete_message = models.BooleanField(default=False, verbose_name="Delete Message")
-    can_access_dashboard = models.BooleanField(default=False, verbose_name="Access Dashboard")
-    can_view_leaderboard = models.BooleanField(default=False, verbose_name="View Agent Leaderboard")
-    can_access_settings = models.BooleanField(default=False, verbose_name="Access Settings")
-    
+    can_create_ticket = models.BooleanField(default=True, verbose_name=_("Create Ticket"))
+    can_update_ticket = models.BooleanField(default=False, verbose_name=_("Edit Ticket"))
+    can_pick_ticket = models.BooleanField(default=False, verbose_name=_("Pick Ticket"))
+    can_update_status = models.BooleanField(default=False, verbose_name=_("Update Ticket Status"))
+    can_update_closed_ticket = models.BooleanField(default=False, verbose_name=_("Update Status after closed"))
+    can_send_message = models.BooleanField(default=True, verbose_name=_("Send Message"))
+    can_edit_message = models.BooleanField(default=False, verbose_name=_("Edit Message"))
+    can_delete_message = models.BooleanField(default=False, verbose_name=_("Delete Message"))
+    can_access_dashboard = models.BooleanField(default=False, verbose_name=_("Access Dashboard"))
+    can_view_leaderboard = models.BooleanField(default=False, verbose_name=_("View Agent Leaderboard"))
+    can_access_settings = models.BooleanField(default=False, verbose_name=_("Access Settings"))
+
     # Granular Settings Permissions (Users)
-    can_create_user = models.BooleanField(default=False, verbose_name="Create User")
-    can_update_user = models.BooleanField(default=False, verbose_name="Edit User")
-    can_delete_user = models.BooleanField(default=False, verbose_name="Delete User")
+    can_create_user = models.BooleanField(default=False, verbose_name=_("Create User"))
+    can_update_user = models.BooleanField(default=False, verbose_name=_("Edit User"))
+    can_delete_user = models.BooleanField(default=False, verbose_name=_("Delete User"))
 
     # Granular Settings Permissions (Branches)
-    can_create_branch = models.BooleanField(default=False, verbose_name="Create Branch")
-    can_update_branch = models.BooleanField(default=False, verbose_name="Edit Branch")
-    can_delete_branch = models.BooleanField(default=False, verbose_name="Delete Branch")
+    can_create_branch = models.BooleanField(default=False, verbose_name=_("Create Branch"))
+    can_update_branch = models.BooleanField(default=False, verbose_name=_("Edit Branch"))
+    can_delete_branch = models.BooleanField(default=False, verbose_name=_("Delete Branch"))
 
     # Granular Settings Permissions (Departments)
-    can_create_department = models.BooleanField(default=False, verbose_name="Create Department")
-    can_update_department = models.BooleanField(default=False, verbose_name="Edit Department")
-    can_delete_department = models.BooleanField(default=False, verbose_name="Delete Department")
+    can_create_department = models.BooleanField(default=False, verbose_name=_("Create Department"))
+    can_update_department = models.BooleanField(default=False, verbose_name=_("Edit Department"))
+    can_delete_department = models.BooleanField(default=False, verbose_name=_("Delete Department"))
 
     # Granular Settings Permissions (Categories)
-    can_create_category = models.BooleanField(default=False, verbose_name="Create Category")
-    can_update_category = models.BooleanField(default=False, verbose_name="Edit Category")
-    can_delete_category = models.BooleanField(default=False, verbose_name="Delete Category")
+    can_create_category = models.BooleanField(default=False, verbose_name=_("Create Category"))
+    can_update_category = models.BooleanField(default=False, verbose_name=_("Edit Category"))
+    can_delete_category = models.BooleanField(default=False, verbose_name=_("Delete Category"))
 
     # Granular Settings Permissions (Roles)
-    can_create_role = models.BooleanField(default=False, verbose_name="Create Role")
-    can_update_role = models.BooleanField(default=False, verbose_name="Edit Role")
-    can_delete_role = models.BooleanField(default=False, verbose_name="Delete Role")
+    can_create_role = models.BooleanField(default=False, verbose_name=_("Create Role"))
+    can_update_role = models.BooleanField(default=False, verbose_name=_("Edit Role"))
+    can_delete_role = models.BooleanField(default=False, verbose_name=_("Delete Role"))
 
     # Granular Settings Permissions (Email)
-    can_manage_email = models.BooleanField(default=False, verbose_name="Manage Email Settings")
-    
+    can_manage_email = models.BooleanField(default=False, verbose_name=_("Manage Email Settings"))
+
     # News Permissions
-    can_manage_news = models.BooleanField(default=False, verbose_name="Manage News")
-    
+    can_manage_news = models.BooleanField(default=False, verbose_name=_("Manage News"))
+
     # Knowledge Base Permissions
-    can_access_kb = models.BooleanField(default=False, verbose_name="Access Knowledge Base")
-    can_manage_kb = models.BooleanField(default=False, verbose_name="Manage Knowledge Base")
-    
+    can_access_kb = models.BooleanField(default=False, verbose_name=_("Access Knowledge Base"))
+    can_manage_kb = models.BooleanField(default=False, verbose_name=_("Manage Knowledge Base"))
+
     # System Maintenance Permissions
-    can_manage_maintenance = models.BooleanField(default=False, verbose_name="Manage System Maintenance")
-    
+    can_manage_maintenance = models.BooleanField(default=False, verbose_name=_("Manage System Maintenance"))
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -118,6 +129,8 @@ class Role(TimeStampedModel):
 
     class Meta:
         ordering = ["name"]
+        verbose_name = _("Role")
+        verbose_name_plural = _("Roles")
 
     def __str__(self) -> str:
         return self.name
@@ -132,28 +145,30 @@ class Role(TimeStampedModel):
 
 class EmailSetting(TimeStampedModel):
     ENCRYPTION_CHOICES = (
-        ("none", "None"),
-        ("tls", "TLS"),
-        ("ssl", "SSL"),
+        ("none", _("None")),
+        ("tls", _("TLS")),
+        ("ssl", _("SSL")),
     )
 
-    smtp_host = models.CharField(max_length=255)
-    smtp_port = models.PositiveIntegerField(default=587)
-    smtp_email = models.EmailField()
-    smtp_password = models.CharField(max_length=255)
-    encryption = models.CharField(max_length=10, choices=ENCRYPTION_CHOICES, default="tls")
-    from_name = models.CharField(max_length=255)
-    from_email = models.EmailField()
-    is_active = models.BooleanField(default=True)
-    notify_new_ticket = models.BooleanField(default=True, verbose_name="New tickets")
-    notify_ticket_picked = models.BooleanField(default=True, verbose_name="Ticket picked")
-    notify_ticket_message = models.BooleanField(default=True, verbose_name="Ticket messages")
-    notify_ticket_status = models.BooleanField(default=True, verbose_name="Status changes")
-    notify_ticket_update = models.BooleanField(default=True, verbose_name="Ticket updates")
-    notify_announcement = models.BooleanField(default=True, verbose_name="Announcements")
+    smtp_host = models.CharField(_("SMTP Host"), max_length=255)
+    smtp_port = models.PositiveIntegerField(_("SMTP Port"), default=587)
+    smtp_email = models.EmailField(_("SMTP Email"))
+    smtp_password = models.CharField(_("SMTP Password"), max_length=255)
+    encryption = models.CharField(_("Encryption"), max_length=10, choices=ENCRYPTION_CHOICES, default="tls")
+    from_name = models.CharField(_("From Name"), max_length=255)
+    from_email = models.EmailField(_("From Email"))
+    is_active = models.BooleanField(_("Active"), default=True)
+    notify_new_ticket = models.BooleanField(default=True, verbose_name=_("New tickets"))
+    notify_ticket_picked = models.BooleanField(default=True, verbose_name=_("Ticket picked"))
+    notify_ticket_message = models.BooleanField(default=True, verbose_name=_("Ticket messages"))
+    notify_ticket_status = models.BooleanField(default=True, verbose_name=_("Status changes"))
+    notify_ticket_update = models.BooleanField(default=True, verbose_name=_("Ticket updates"))
+    notify_announcement = models.BooleanField(default=True, verbose_name=_("Announcements"))
 
     class Meta:
         ordering = ["-updated_at"]
+        verbose_name = _("Email Setting")
+        verbose_name_plural = _("Email Settings")
         constraints = [
             models.UniqueConstraint(fields=["is_active"], condition=Q(is_active=True), name="uniq_active_email_setting"),
         ]
@@ -166,28 +181,28 @@ class EmailTemplate(TimeStampedModel):
     """Per-event subject/body for notification emails (plain text + merge tokens)."""
 
     class EventType(models.TextChoices):
-        NEW_TICKET = "new_ticket", "New ticket"
-        TICKET_PICKED = "ticket_picked", "Ticket picked"
-        TICKET_MESSAGE = "ticket_message", "Ticket reply"
-        TICKET_STATUS = "ticket_status", "Status change"
-        TICKET_UPDATE = "ticket_update", "Ticket update"
-        TRANSFER_REQUESTED = "transfer_requested", "Transfer requested"
-        TRANSFER_ACCEPTED = "transfer_accepted", "Transfer accepted"
-        TRANSFER_DENIED = "transfer_denied", "Transfer declined"
-        ANNOUNCEMENT = "announcement", "Announcement"
+        NEW_TICKET = "new_ticket", _("New ticket")
+        TICKET_PICKED = "ticket_picked", _("Ticket picked")
+        TICKET_MESSAGE = "ticket_message", _("Ticket reply")
+        TICKET_STATUS = "ticket_status", _("Status change")
+        TICKET_UPDATE = "ticket_update", _("Ticket update")
+        TRANSFER_REQUESTED = "transfer_requested", _("Transfer requested")
+        TRANSFER_ACCEPTED = "transfer_accepted", _("Transfer accepted")
+        TRANSFER_DENIED = "transfer_denied", _("Transfer declined")
+        ANNOUNCEMENT = "announcement", _("Announcement")
 
     event_type = models.CharField(
         max_length=40,
         choices=EventType.choices,
         unique=True,
     )
-    subject = models.CharField(max_length=255)
-    body = models.TextField()
+    subject = models.CharField(_("Subject"), max_length=255)
+    body = models.TextField(_("Body"))
 
     class Meta:
         ordering = ["event_type"]
-        verbose_name = "Email template"
-        verbose_name_plural = "Email templates"
+        verbose_name = _("Email template")
+        verbose_name_plural = _("Email templates")
 
     def __str__(self) -> str:
         return self.get_event_type_display()

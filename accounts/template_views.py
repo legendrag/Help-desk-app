@@ -2,6 +2,7 @@ from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.urls import reverse_lazy
 from django.shortcuts import render
 from django.contrib import messages
+from django.utils.translation import gettext as _
 
 # We can reuse the built-in Django LoginView
 from .forms import CustomAuthenticationForm, CustomPasswordChangeForm
@@ -23,7 +24,7 @@ class UserPasswordChangeView(PasswordChangeView):
         # Save the form which updates the password
         response = super().form_valid(form)
         
-        messages.success(self.request, "Password changed successfully. Please log in again with your new password.")
+        messages.success(self.request, _("Password changed successfully. Please log in again with your new password."))
         
         # Clear the requires_password_change flag if it's set
         if getattr(self.request.user, 'requires_password_change', False):

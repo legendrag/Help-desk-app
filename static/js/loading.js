@@ -705,6 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Native Form Submit Hooks ---
     document.addEventListener('submit', function(evt) {
+        if (evt.defaultPrevented) return;
         const form = evt.target;
         if (
             form.hasAttribute('hx-post') ||
@@ -755,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        if (target.classList.contains('menu-btn-universal') || target.classList.contains('theme-switch')) {
+        if (target.classList.contains('menu-btn-universal') || target.classList.contains('theme-switch') || target.classList.contains('lang-switch')) {
             return;
         }
 

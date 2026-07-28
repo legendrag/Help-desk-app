@@ -1,10 +1,10 @@
-{% load kb_extras %}
+{% load kb_extras i18n %}
 <a href="{% url 'kb_detail' article.id %}" class="kb-result-item panel {% if not article.is_published %}kb-result-item-draft{% endif %}">
     {% kb_category_icon article.category %}
     <div class="kb-result-body">
         <h3 class="kb-result-title">{{ article.title }}</h3>
         <p class="kb-result-breadcrumb">
-            {{ article.category.name|default:"Uncategorized" }}
+            {{ article.category.name|default:_("Uncategorized") }}
             <span aria-hidden="true">&rsaquo;</span>
             {{ article.title|truncatechars:50 }}
         </p>
@@ -12,11 +12,11 @@
             {{ article.content|striptags|truncatewords:35|highlight:search_query }}
         </p>
         <div class="kb-result-meta">
-            <span>Updated {{ article.updated_at|date:"M j, Y" }}</span>
+            <span>{% trans "Updated" %} {{ article.updated_at|date:"M j, Y" }}</span>
             <span class="kb-result-meta-sep" aria-hidden="true">&middot;</span>
             <span>{{ article.content|read_time }}</span>
             {% if not article.is_published %}
-            <span class="pill kb-draft-pill">Draft</span>
+            <span class="pill kb-draft-pill">{% trans "Draft" %}</span>
             {% endif %}
         </div>
     </div>

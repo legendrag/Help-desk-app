@@ -133,7 +133,7 @@ function initChat(ticketId) {
         } else if (names.length === 2) {
             usernameEl.textContent = names.join(' and ');
         } else {
-            usernameEl.textContent = names.slice(0, 2).join(', ') + ' and others';
+            usernameEl.textContent = names.slice(0, 2).join(', ') + ' ' + ((window.I18N && window.I18N.andOthers) || 'and others');
         }
 
         indicator.style.display = 'flex';
@@ -251,7 +251,7 @@ function initChat(ticketId) {
         // Update assigned to
         const assignedSpan = document.getElementById('ticket-assigned-to') || document.querySelector('.meta-grid .meta-item:nth-child(4) span:last-child');
         if (assignedSpan) {
-            assignedSpan.textContent = payload.assigned_to || 'Pending Support Agent';
+            assignedSpan.textContent = payload.assigned_to || (window.I18N && window.I18N.pendingAgent) || 'Pending Support Agent';
         }
 
         // Update status badge
@@ -448,7 +448,7 @@ function initChat(ticketId) {
                             ` : `
                             <div style="margin-top: 0.5rem;">
                                 <a href="${escapeHtml(payload.attachment_url)}" target="_blank" download style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
-                                    📎 ${escapeHtml(payload.attachment_name || 'View Attachment')}
+                                    📎 ${escapeHtml(payload.attachment_name || (window.I18N && window.I18N.viewAttachment) || 'View Attachment')}
                                 </a>
                             </div>
                             `
@@ -623,7 +623,7 @@ function _promotePendingToSent(pendingKey) {
     if (statusEl) {
         statusEl.textContent = '';
         // Briefly flash "Sent" then fade out
-        statusEl.textContent = 'Sent';
+        statusEl.textContent = (window.I18N && window.I18N.sent) || 'Sent';
         setTimeout(() => {
             statusEl.style.transition = 'opacity 0.5s';
             statusEl.style.opacity = '0';

@@ -227,7 +227,7 @@
     var form = $("email-template-editor");
     var currentType = form ? form.getAttribute("data-event-type") : null;
     if (currentType && nextType === currentType) return;
-    if (isDirty() && !window.confirm("You have unsaved changes. Switch notification type and discard them?")) {
+    if (isDirty() && !window.confirm((window.I18N && window.I18N.unsavedConfirm) || "You have unsaved changes. Are you sure you want to leave?")) {
       syncSelect(currentType);
       return;
     }
@@ -238,7 +238,7 @@
     var resetBtn = event.target.closest(".email-template-reset-btn");
     if (resetBtn) {
       event.preventDefault();
-      if (!window.confirm("Reset subject and body to the default template for this notification type?")) {
+      if (!window.confirm((window.I18N && window.I18N.resetConfirm) || "Reset this template to defaults?")) {
         return;
       }
       var meta = readMeta();

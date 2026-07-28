@@ -53,13 +53,14 @@ function formatRelativeTime(isoString) {
     const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
 
-    if (diffSec < 60) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay === 1) return "Yesterday";
+    if (diffSec < 60) return (window.I18N && window.I18N.justNow) || "Just now";
+    if (diffMin < 60) return `${diffMin}${(window.I18N && window.I18N.minutesAgo) || "m ago"}`;
+    if (diffHr < 24) return `${diffHr}${(window.I18N && window.I18N.hoursAgo) || "h ago"}`;
+    if (diffDay === 1) return (window.I18N && window.I18N.yesterday) || "Yesterday";
     if (diffDay < 7) return `${diffDay}d ago`;
     // Older than a week — show short date
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const locale = window.LANGUAGE_CODE === "ar" ? "ar" : undefined;
+    return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 // ── Badge ──
@@ -94,7 +95,7 @@ function buildNotificationItem(item) {
     content.className = "notification-content";
 
     const title = document.createElement("strong");
-    title.textContent = item.title || "Notification";
+    title.textContent = item.title || (window.I18N && window.I18N.notification) || "Notification";
 
     const message = document.createElement("p");
     message.textContent = item.message || "";
@@ -111,7 +112,7 @@ function buildNotificationItem(item) {
     // Delete button (desktop X)
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "notif-delete-btn";
-    deleteBtn.setAttribute("aria-label", "Delete notification");
+    deleteBtn.setAttribute("aria-label", (window.I18N && window.I18N.deleteNotification) || "Delete notification");
     deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
     deleteBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -464,10 +465,10 @@ function updatePushPermissionPrompt() {
     prompt.hidden = false;
     prompt.classList.add("is-visible");
     if (permission === "denied") {
-        text.textContent = "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
+        text.textContent = (window.I18N && window.I18N.pushDenied) || "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
         enableBtn.style.display = "none";
     } else {
-        text.textContent = "Enable browser notifications to get alerts when MlamehTicket is in the background.";
+        text.textContent = (window.I18N && window.I18N.enablePush) || "Enable push notifications to stay updated.";
         enableBtn.style.display = "";
     }
 }

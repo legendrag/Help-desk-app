@@ -1,19 +1,20 @@
 ﻿{% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}News & Announcements - MlamehTicket{% endblock title %}
+{% block title %}{% trans "News & Announcements" %} - MlamehTicket{% endblock title %}
 
 {% block content %}
 <div class="tickets-page">
     <div class="panel tickets-panel">
         <div class="tickets-toolbar">
             <div class="tickets-title">
-                <h2>News & Announcements</h2>
+                <h2>{% trans "News & Announcements" %}</h2>
                 <button type="button"
                         hx-get="{% url 'news_create' %}"
                         hx-target="#modal-content"
                         hx-trigger="click"
                         onclick="openModal()"
-                        class="tickets-new-btn">+ New Announcement</button>
+                        class="tickets-new-btn">{% trans "+ New Announcement" %}</button>
             </div>
         </div>
 
@@ -21,59 +22,59 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Target</th>
-                        <th>Expires</th>
-                        <th>Created By</th>
-                        <th>Date</th>
-                        <th>Actions</th>
+                        <th>{% trans "Title" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Target" %}</th>
+                        <th>{% trans "Expires" %}</th>
+                        <th>{% trans "Created By" %}</th>
+                        <th>{% trans "Date" %}</th>
+                        <th>{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="news-list-body">
                     {% for announcement in announcements %}
                     <tr class="clickable-row" data-href="#" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal()">
-                        <td data-label="Title"><strong>{{ announcement.title }}</strong></td>
-                        <td data-label="Status">
+                        <td data-col="title" data-label="{% trans 'Title' %}"><strong>{{ announcement.title }}</strong></td>
+                        <td data-col="status" data-label="{% trans 'Status' %}">
                             {% if not announcement.is_active %}
-                            <span class="badge badge-closed">Inactive</span>
+                            <span class="badge badge-closed">{% trans "Inactive" %}</span>
                             {% elif announcement.is_expired %}
-                            <span class="badge badge-expired">Expired</span>
+                            <span class="badge badge-expired">{% trans "Expired" %}</span>
                             {% else %}
-                            <span class="badge badge-open">Active</span>
+                            <span class="badge badge-open">{% trans "Active" %}</span>
                             {% endif %}
                         </td>
-                        <td data-label="Target">
+                        <td data-col="target" data-label="{% trans 'Target' %}">
                             {% if announcement.target_branch %}
                                 {{ announcement.target_branch.name }}
                             {% else %}
-                                All branches
+                                {% trans "All branches" %}
                             {% endif %}
                         </td>
-                        <td class="muted" data-label="Expires">
+                        <td class="muted" data-col="expires" data-label="{% trans 'Expires' %}">
                             {% if announcement.expires_at %}
                             <div class="date-stack news-expires-stack">
                                 <span>{{ announcement.expires_at|date:"M j, Y" }}</span>
                                 <small>{{ announcement.expires_at|date:"g:i A" }}</small>
                             </div>
                             {% else %}
-                            <span>Never</span>
+                            <span>{% trans "Never" %}</span>
                             {% endif %}
                         </td>
-                        <td data-label="Created By">{{ announcement.created_by.username }}</td>
-                        <td class="muted" data-label="Date">
+                        <td data-col="created-by" data-label="{% trans 'Created By' %}">{{ announcement.created_by.username }}</td>
+                        <td class="muted" data-col="date" data-label="{% trans 'Date' %}">
                             <div class="date-stack news-created-stack">
                                 <span>{{ announcement.created_at|date:"M j, Y" }}</span>
                                 <small>{{ announcement.created_at|date:"g:i A" }}</small>
                             </div>
                         </td>
-                        <td class="action-cell" data-label="Actions">
-                            <button type="button" class="btn secondary btn--sm" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal(); event.stopPropagation();">Edit</button>
+                        <td class="action-cell" data-col="actions" data-label="{% trans 'Actions' %}">
+                            <button type="button" class="btn secondary btn--sm" hx-get="{% url 'news_update' announcement.pk %}" hx-target="#modal-content" hx-trigger="click" onclick="openModal(); event.stopPropagation();">{% trans "Edit" %}</button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center empty-state-cell">No announcements found.</td>
+                        <td colspan="7" class="text-center empty-state-cell">{% trans "No announcements found." %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -1,35 +1,36 @@
 ﻿{% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Branch Dashboard - MlamehTicket{% endblock %}
+{% block title %}{% trans "Branch Dashboard" %} - MlamehTicket{% endblock %}
 {% block body_class %}dashboard-page{% endblock %}
 
 {% block content %}
 <div class="dashboard">
     <div class="panel dashboard-filters">
         <div class="dashboard-filters-header">
-            <h2>Filters</h2>
-            <a class="btn secondary" href="{% url 'dashboard' %}">Clear Filters</a>
+            <h2>{% trans "Filters" %}</h2>
+            <a class="btn secondary" href="{% url 'dashboard' %}">{% trans "Clear Filters" %}</a>
         </div>
         <form method="get" class="dashboard-filters-form" autocomplete="off">
             <div class="filter-group">
-                <label for="start_date">Start Date</label>
+                <label for="start_date">{% trans "Start Date" %}</label>
                 <input type="date" id="start_date" name="start_date" value="{{ filter_values.start_date }}" onchange="this.form.submit()">
             </div>
             <div class="filter-group">
-                <label for="end_date">End Date</label>
+                <label for="end_date">{% trans "End Date" %}</label>
                 <input type="date" id="end_date" name="end_date" value="{{ filter_values.end_date }}" onchange="this.form.submit()">
             </div>
             <div class="filter-group">
-                <label for="department">Department</label>
+                <label for="department">{% trans "Department" %}</label>
                 <select id="department" name="department" onchange="this.form.submit()">
-                    <option value="all">All Departments</option>
+                    <option value="all">{% trans "All Departments" %}</option>
                     {% for department in departments %}
                     <option value="{{ department.id }}"{% if filter_values.department|stringformat:"s" == department.id|stringformat:"s" %} selected{% endif %}>{{ department.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="visually-hidden">Apply</button>
+            <button type="submit" class="visually-hidden">{% trans "Apply" %}</button>
         </form>
     </div>
 
@@ -44,7 +45,7 @@
                 </svg>
             </div>
             <div>
-                <p>Total Requests</p>
+                <p>{% trans "Total Requests" %}</p>
                 <h3>{{ total_tickets }}</h3>
             </div>
         </div>
@@ -69,7 +70,7 @@
     <div class="dashboard-grid three">
         <div class="panel dashboard-card">
             <div class="card-header">
-                <h3>Requests by Status</h3>
+                <h3>{% trans "Requests by Status" %}</h3>
             </div>
             <div class="metric-list">
                 {% for item in status_summary %}
@@ -83,21 +84,21 @@
                     <div class="metric-count">{{ item.count }}</div>
                 </a>
                 {% empty %}
-                <div class="empty-state">No data available.</div>
+                <div class="empty-state">{% trans "No data available." %}</div>
                 {% endfor %}
             </div>
         </div>
 
         <div class="panel dashboard-card">
             <div class="card-header">
-                <h3>Requests by Department</h3>
+                <h3>{% trans "Requests by Department" %}</h3>
             </div>
             {% include "tickets/partials/status_stack_list.html" with items=tickets_by_department status_legend=status_legend %}
         </div>
 
         <div class="panel dashboard-card">
             <div class="card-header">
-                <h3>Requests by Category</h3>
+                <h3>{% trans "Requests by Category" %}</h3>
             </div>
             <div class="metric-list">
                 {% for item in tickets_by_category %}
@@ -109,7 +110,7 @@
                     <div class="metric-count">{{ item.count }}</div>
                 </div>
                 {% empty %}
-                <div class="empty-state">No data available.</div>
+                <div class="empty-state">{% trans "No data available." %}</div>
                 {% endfor %}
             </div>
         </div>
@@ -118,30 +119,30 @@
     <div class="dashboard-grid full">
         <div class="panel dashboard-card">
             <div class="card-header card-header-split">
-                <h3>Request Activity by Date</h3>
+                <h3>{% trans "Request Activity by Date" %}</h3>
                 <div class="date-controls">
-                    <span class="muted">View: {{ date_view|capfirst }}</span>
+                    <span class="muted">{% trans "View" %}: {{ date_view|capfirst }}</span>
                     <div class="date-drill">
                         {% if drill_up_query %}
-                        <a class="btn secondary" href="?{{ drill_up_query }}">Drill Up</a>
+                        <a class="btn secondary" href="?{{ drill_up_query }}">{% trans "Drill Up" %}</a>
                         {% else %}
-                        <button type="button" class="btn secondary disabled" disabled>Drill Up</button>
+                        <button type="button" class="btn secondary disabled" disabled>{% trans "Drill Up" %}</button>
                         {% endif %}
                         {% if drill_down_query %}
-                        <a class="btn secondary" href="?{{ drill_down_query }}">Drill Down</a>
+                        <a class="btn secondary" href="?{{ drill_down_query }}">{% trans "Drill Down" %}</a>
                         {% else %}
-                        <button type="button" class="btn secondary disabled" disabled>Drill Down</button>
+                        <button type="button" class="btn secondary disabled" disabled>{% trans "Drill Down" %}</button>
                         {% endif %}
                     </div>
                 </div>
             </div>
             {% if tickets_by_date %}
             <div class="volume-chart-wrap">
-                <canvas id="ticket-volume-chart" aria-label="Request activity by date chart"></canvas>
+                <canvas id="ticket-volume-chart" aria-label="{% trans 'Request activity by date chart' %}"></canvas>
             </div>
             {{ tickets_by_date|json_script:"volume-trend-data" }}
             {% else %}
-            <div class="empty-state">No data available.</div>
+            <div class="empty-state">{% trans "No data available." %}</div>
             {% endif %}
         </div>
     </div>

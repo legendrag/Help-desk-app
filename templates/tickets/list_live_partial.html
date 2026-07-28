@@ -1,3 +1,4 @@
+{% load i18n %}
 <div id="tickets-live"
      hx-get="{% url 'tickets_list' %}{% if filters_query %}?{{ filters_query }}{% endif %}"
      hx-trigger="every 20s [!document.body.classList.contains('pause-polling')], refreshTickets from:body"
@@ -7,64 +8,64 @@
         <table>
             <thead>
                 <tr>
-                    <th>Ticket ID</th>
-                    <th>Title</th>
-                    <th>Branch</th>
-                    <th>Department</th>
-                    <th>Status</th>
-                    <th>Priority</th>
-                    <th>Assigned</th>
-                    <th>Date</th>
-                    <th>Action</th>
+                    <th>{% trans "Ticket ID" %}</th>
+                    <th>{% trans "Title" %}</th>
+                    <th>{% trans "Branch" %}</th>
+                    <th>{% trans "Department" %}</th>
+                    <th>{% trans "Status" %}</th>
+                    <th>{% trans "Priority" %}</th>
+                    <th>{% trans "Assigned" %}</th>
+                    <th>{% trans "Date" %}</th>
+                    <th>{% trans "Action" %}</th>
                 </tr>
             </thead>
             <tbody id="tickets-tbody">
                 {% for ticket in tickets %}
                 <tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}">
-                    <td data-label="Ticket ID"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
-                    <td data-label="Title"><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
-                    <td data-label="Branch"><span>{{ ticket.branch.name }}</span></td>
-                    <td data-label="Department"><span>{{ ticket.department.name }}</span></td>
-                    <td data-label="Status">
+                    <td data-col="ticket-id" data-label="{% trans 'Ticket ID' %}"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
+                    <td data-col="title" data-label="{% trans 'Title' %}"><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
+                    <td data-col="branch" data-label="{% trans 'Branch' %}"><span>{{ ticket.branch.name }}</span></td>
+                    <td data-col="department" data-label="{% trans 'Department' %}"><span>{{ ticket.department.name }}</span></td>
+                    <td data-col="status" data-label="{% trans 'Status' %}">
                         <span class="badge badge-{{ ticket.status }}">
                             {{ ticket.get_status_display }}
                         </span>
                     </td>
-                    <td data-label="Priority"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
-                    <td data-label="Assigned">
+                    <td data-col="priority" data-label="{% trans 'Priority' %}"><span class="priority-text priority-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+                    <td data-col="assigned" data-label="{% trans 'Assigned' %}">
                         {% if ticket.assigned_to %}
                         <span>{{ ticket.assigned_to.username }}</span>
                         {% else %}
-                        <span class="muted">Unassigned</span>
+                        <span class="muted">{% trans "Unassigned" %}</span>
                         {% endif %}
                     </td>
-                    <td data-label="Date">
+                    <td data-col="date" data-label="{% trans 'Date' %}">
                         <div class="date-stack">
                             <span>{{ ticket.created_at|date:"m/d/Y" }}</span>
                             <small>{{ ticket.created_at|date:"h:i A" }}</small>
                         </div>
                     </td>
-                    <td data-label="Action" class="action-cell">
+                    <td data-col="action" data-label="{% trans 'Action' %}" class="action-cell">
                         <div class="ticket-action-wrapper">
                             {% if user.is_superuser or user.role.can_pick_ticket %}
                                 {% if not ticket.assigned_to and ticket.status != "closed" and ticket.status != "merged" %}
                                 <form method="post" action="{% url 'pick_ticket' ticket.id %}" hx-post="{% url 'pick_ticket' ticket.id %}" hx-swap="none">
                                     {% csrf_token %}
-                                    <button type="submit" class="pick-btn">Pick</button>
+                                    <button type="submit" class="pick-btn">{% trans "Pick" %}</button>
                                 </form>
                                 {% elif ticket.assigned_to %}
-                                <span class="pill">Picked</span>
+                                <span class="pill">{% trans "Picked" %}</span>
                                 {% elif ticket.status == "merged" %}
-                                <span class="pill muted">Merged</span>
+                                <span class="pill muted">{% trans "Merged" %}</span>
                                 {% else %}
-                                <span class="pill muted">Closed</span>
+                                <span class="pill muted">{% trans "Closed" %}</span>
                                 {% endif %}
                             {% else %}
                                 {% if user.user_type != 'branch' %}
                                 <span class="pill muted">--</span>
                                 {% endif %}
                             {% endif %}
-                            <button type="button" class="btn secondary btn--sm btn-details-list" aria-label="Details" title="Details"
+                            <button type="button" class="btn secondary btn--sm btn-details-list" aria-label="{% trans 'Details' %}" title="{% trans 'Details' %}"
                                     hx-get="{% url 'ticket_drawer' ticket.id %}"
                                     hx-target="#drawer-container"
                                     hx-swap="innerHTML">
@@ -75,7 +76,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="empty-table-cell">No tickets found.</td>
+                    <td colspan="9" class="empty-table-cell">{% trans "No tickets found." %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

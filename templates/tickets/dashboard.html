@@ -1,39 +1,40 @@
 ﻿{% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 
 {# djlint:off H021 #}
-{% block title %}Dashboard - MlamehTicket{% endblock title %}
+{% block title %}{% trans "Dashboard" %} - MlamehTicket{% endblock title %}
 {% block body_class %}dashboard-page{% endblock body_class %}
 
 {% block content %}
 <div class="dashboard">
     <div class="dashboard-filters-inline panel">
         <div class="filters-inline-left">
-            <span class="filters-label">Filters</span>
+            <span class="filters-label">{% trans "Filters" %}</span>
             <form method="get" class="filters-inline-form" id="dashboard-form" autocomplete="off">
                 <div class="date-filter-group">
                     <input type="date" name="start_date" value="{{ filter_values.start_date }}" onchange="this.form.submit()" class="inline-input">
-                    <span class="muted">to</span>
+                    <span class="muted">{% trans "to" %}</span>
                     <input type="date" name="end_date" value="{{ filter_values.end_date }}" onchange="this.form.submit()" class="inline-input">
                 </div>
                 
                 <select name="department" onchange="this.form.submit()" class="inline-select">
-                    <option value="all">All Departments</option>
+                    <option value="all">{% trans "All Departments" %}</option>
                     {% for department in departments %}
                     <option value="{{ department.id }}"{% if filter_values.department|stringformat:"s" == department.id|stringformat:"s" %} selected{% endif %}>{{ department.name }}</option>
                     {% endfor %}
                 </select>
                 
                 <select name="branch" onchange="this.form.submit()" class="inline-select">
-                    <option value="all">All Branches</option>
+                    <option value="all">{% trans "All Branches" %}</option>
                     {% for branch in branches %}
                     <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
                     {% endfor %}
                 </select>
                 
                 <select name="assigned_to" onchange="this.form.submit()" class="inline-select">
-                    <option value="all">All Users</option>
-                    <option value="unassigned"{% if filter_values.assigned_to == "unassigned" %} selected{% endif %}>Unassigned</option>
+                    <option value="all">{% trans "All Users" %}</option>
+                    <option value="unassigned"{% if filter_values.assigned_to == "unassigned" %} selected{% endif %}>{% trans "Unassigned" %}</option>
                     {% for assignee in assignees %}
                     <option value="{{ assignee.id }}"{% if filter_values.assigned_to|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
                     {% endfor %}
@@ -41,8 +42,8 @@
             </form>
         </div>
         <div class="filters-inline-right">
-            <a class="btn secondary small" href="{% url 'dashboard' %}">Clear</a>
-            <a class="btn small" href="{% url 'dashboard_export' %}?{{ request.GET.urlencode }}">Export Excel</a>
+            <a class="btn secondary small" href="{% url 'dashboard' %}">{% trans "Clear" %}</a>
+            <a class="btn small" href="{% url 'dashboard_export' %}?{{ request.GET.urlencode }}">{% trans "Export Excel" %}</a>
         </div>
     </div>
 
@@ -56,7 +57,7 @@
                 </svg>
             </div>
             <div>
-                <p>Total Tickets</p>
+                <p>{% trans "Total Tickets" %}</p>
                 <h3>{{ total_tickets }}</h3>
             </div>
         </div>
@@ -70,7 +71,7 @@
                 </svg>
             </div>
             <div>
-                <p>Total Users</p>
+                <p>{% trans "Total Users" %}</p>
                 <h3>{{ total_users }}</h3>
             </div>
         </div>
@@ -83,7 +84,7 @@
                 </svg>
             </div>
             <div>
-                <p>Branches</p>
+                <p>{% trans "Branches" %}</p>
                 <h3>{{ branches_count }}</h3>
             </div>
         </div>
@@ -96,7 +97,7 @@
                 </svg>
             </div>
             <div>
-                <p>Departments</p>
+                <p>{% trans "Departments" %}</p>
                 <h3>{{ departments_count }}</h3>
             </div>
         </div>
@@ -106,37 +107,37 @@
         <!-- Tickets by Date (Trend) -->
         <div class="panel dashboard-card col-span-2">
                 <div class="card-header card-header-split">
-                    <h3>Ticket Volume Trend</h3>
+                    <h3>{% trans "Ticket Volume Trend" %}</h3>
                     <div class="date-controls">
-                        <span class="muted">View: {{ date_view|capfirst }}</span>
+                        <span class="muted">{% trans "View" %}: {{ date_view|capfirst }}</span>
                         <div class="date-drill">
                             {% if drill_up_query %}
-                            <a class="btn secondary small" href="?{{ drill_up_query }}">Zoom Out</a>
+                            <a class="btn secondary small" href="?{{ drill_up_query }}">{% trans "Zoom Out" %}</a>
                             {% else %}
-                            <button type="button" class="btn secondary small disabled" disabled>Zoom Out</button>
+                            <button type="button" class="btn secondary small disabled" disabled>{% trans "Zoom Out" %}</button>
                             {% endif %}
                             {% if drill_down_query %}
-                            <a class="btn secondary small" href="?{{ drill_down_query }}">Zoom In</a>
+                            <a class="btn secondary small" href="?{{ drill_down_query }}">{% trans "Zoom In" %}</a>
                             {% else %}
-                            <button type="button" class="btn secondary small disabled" disabled>Zoom In</button>
+                            <button type="button" class="btn secondary small disabled" disabled>{% trans "Zoom In" %}</button>
                             {% endif %}
                         </div>
                     </div>
                 </div>
                 {% if tickets_by_date %}
                 <div class="volume-chart-wrap">
-                    <canvas id="ticket-volume-chart" aria-label="Ticket volume trend chart"></canvas>
+                    <canvas id="ticket-volume-chart" aria-label="{% trans 'Ticket volume trend chart' %}"></canvas>
                 </div>
                 {{ tickets_by_date|json_script:"volume-trend-data" }}
                 {% else %}
-                <div class="empty-state">No data available.</div>
+                <div class="empty-state">{% trans "No data available." %}</div>
                 {% endif %}
             </div>
 
             <!-- Tickets by Status -->
             <div class="panel dashboard-card col-span-1">
                 <div class="card-header">
-                    <h3>Status Breakdown</h3>
+                    <h3>{% trans "Status Breakdown" %}</h3>
                 </div>
                 <div class="metric-list compact-list">
                     {% for item in status_summary %}
@@ -151,7 +152,7 @@
                         <div class="metric-count">{{ item.count }}</div>
                     </a>
                     {% empty %}
-                    <div class="empty-state">No data available.</div>
+                    <div class="empty-state">{% trans "No data available." %}</div>
                     {% endfor %}
                 </div>
             </div>
@@ -160,36 +161,36 @@
             {% if agent_performance %}
             <div class="panel dashboard-card col-span-2">
                 <div class="card-header">
-                    <h3>Agent Performance</h3>
+                    <h3>{% trans "Agent Performance" %}</h3>
                 </div>
                 <div class="table-wrap tickets-table">
                     <table class="leaderboard-table">
                         <thead>
                             <tr>
-                                <th>Agent</th>
-                                <th>Resolved</th>
-                                <th>Response Time</th>
-                                <th>Resolution Time</th>
-                                <th>Working Time</th>
-                                <th>Grade</th>
+                                <th>{% trans "Agent" %}</th>
+                                <th>{% trans "Resolved" %}</th>
+                                <th>{% trans "Response Time" %}</th>
+                                <th>{% trans "Resolution Time" %}</th>
+                                <th>{% trans "Working Time" %}</th>
+                                <th>{% trans "Grade" %}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for agent in agent_performance %}
                             <tr>
-                                <td data-label="Agent"><strong>{{ agent.name }}</strong></td>
-                                <td data-label="Resolved">{{ agent.tickets_resolved }}</td>
-                                <td data-label="Response Time"><span class="muted">{{ agent.avg_response_time }}</span></td>
-                                <td data-label="Resolution Time"><span class="muted">{{ agent.avg_resolution_time }}</span></td>
-                                <td data-label="Working Time"><span class="muted">{{ agent.total_working_time }}</span></td>
-                                <td data-label="Grade">
+                                <td data-col="agent" data-label="{% trans 'Agent' %}"><strong>{{ agent.name }}</strong></td>
+                                <td data-col="resolved" data-label="{% trans 'Resolved' %}">{{ agent.tickets_resolved }}</td>
+                                <td data-col="response-time" data-label="{% trans 'Response Time' %}"><span class="muted">{{ agent.avg_response_time }}</span></td>
+                                <td data-col="resolution-time" data-label="{% trans 'Resolution Time' %}"><span class="muted">{{ agent.avg_resolution_time }}</span></td>
+                                <td data-col="working-time" data-label="{% trans 'Working Time' %}"><span class="muted">{{ agent.total_working_time }}</span></td>
+                                <td data-col="grade" data-label="{% trans 'Grade' %}">
                                     <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
                                         <span class="badge badge-{{ agent.grade_color }}" style="width: 28px; text-align: center;">{{ agent.grade }}</span>
                                     </div>
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="6" class="empty-state">No data available.</td></tr>
+                            <tr><td colspan="6" class="empty-state">{% trans "No data available." %}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -200,7 +201,7 @@
             <!-- Tickets by Branch -->
             <div class="panel dashboard-card col-span-1">
                 <div class="card-header">
-                    <h3>Tickets by Branch</h3>
+                    <h3>{% trans "Tickets by Branch" %}</h3>
                 </div>
                 {% include "tickets/partials/status_stack_list.html" with items=tickets_by_branch status_legend=status_legend %}
             </div>
@@ -208,7 +209,7 @@
             <!-- Tickets by Category -->
             <div class="panel dashboard-card col-span-2">
                 <div class="card-header">
-                    <h3>Categories Breakdown</h3>
+                    <h3>{% trans "Categories Breakdown" %}</h3>
                 </div>
                 <div class="pie-chart-wrapper">
                     <div class="pie-chart-container">
@@ -302,7 +303,7 @@
             <!-- Tickets by Department -->
             <div class="panel dashboard-card col-span-1">
                 <div class="card-header">
-                    <h3>Tickets by Department</h3>
+                    <h3>{% trans "Tickets by Department" %}</h3>
                 </div>
                 {% include "tickets/partials/status_stack_list.html" with items=tickets_by_department status_legend=status_legend %}
             </div>

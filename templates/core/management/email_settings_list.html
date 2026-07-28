@@ -1,13 +1,14 @@
+{% load i18n i18n_extras %}
 <div class="management-section">
     <div class="section-header mgmt-section-header">
         <div>
-            <h2 class="mgmt-section-title">{{ model_name|default:"Email Settings" }}</h2>
-            <p class="mgmt-section-subtitle">Total: {{ object_list|length }} entries</p>
+            <h2 class="mgmt-section-title">{{ model_name|default:_("Email Settings")|gettext }}</h2>
+            <p class="mgmt-section-subtitle">{% blocktrans with count=object_list|length %}Total: {{ count }} entries{% endblocktrans %}</p>
         </div>
         {% if can_add %}
         <button hx-get="{{ create_url }}" hx-target="#modal-content" onclick="openModal()" class="primary mgmt-create-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Create New
+            {% trans "Create New" %}
         </button>
         {% endif %}
     </div>
@@ -16,11 +17,11 @@
         <table class="mgmt-table">
             <thead class="mgmt-thead">
                 <tr>
-                    <th class="mgmt-th">SMTP Host</th>
-                    <th class="mgmt-th">From Email</th>
-                    <th class="mgmt-th">Encryption</th>
-                    <th class="mgmt-th">Active</th>
-                    <th class="mgmt-th--right">Actions</th>
+                    <th class="mgmt-th">{% trans "SMTP Host" %}</th>
+                    <th class="mgmt-th">{% trans "From Email" %}</th>
+                    <th class="mgmt-th">{% trans "Encryption" %}</th>
+                    <th class="mgmt-th">{% trans "Active" %}</th>
+                    <th class="mgmt-th--right">{% trans "Actions" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,25 +33,25 @@
                     hx-trigger="click"
                     onclick="openModal()"
                     {% endif %}>
-                    <td data-label="SMTP Host" class="mgmt-td--bold">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
-                    <td data-label="From Email" class="mgmt-td--muted">{{ item.from_email }}</td>
-                    <td data-label="Encryption" class="mgmt-td">
+                    <td data-label="{% trans 'SMTP Host' %}" class="mgmt-td--bold">{{ item.smtp_host }}:{{ item.smtp_port }}</td>
+                    <td data-label="{% trans 'From Email' %}" class="mgmt-td--muted">{{ item.from_email }}</td>
+                    <td data-label="{% trans 'Encryption' %}" class="mgmt-td">
                         <span class="badge badge--subtle">{{ item.get_encryption_display }}</span>
                     </td>
-                    <td data-label="Active" class="mgmt-td">
+                    <td data-label="{% trans 'Active' %}" class="mgmt-td">
                         <span class="badge {% if item.is_active %}badge--active{% else %}badge--inactive{% endif %}">
-                            {% if item.is_active %}Active{% else %}Inactive{% endif %}
+                            {% if item.is_active %}{% trans "Active" %}{% else %}{% trans "Inactive" %}{% endif %}
                         </span>
                     </td>
-                    <td data-label="Actions" class="mgmt-td--right">
+                    <td data-label="{% trans 'Actions' %}" class="mgmt-td--right">
                         <div class="mgmt-actions-cell">
                             {% if can_edit %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="secondary small mgmt-edit-btn" title="Edit">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/edit/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="secondary small mgmt-edit-btn" title="{% trans 'Edit' %}">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             {% endif %}
                             {% if can_delete %}
-                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="danger small mgmt-delete-btn" title="Delete">
+                            <button hx-get="{{ edit_url_prefix }}{{ item.pk }}/delete/" hx-target="#modal-content" onclick="openModal(); event.stopPropagation();" class="danger small mgmt-delete-btn" title="{% trans 'Delete' %}">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                             {% endif %}
@@ -61,7 +62,7 @@
                 <tr>
                     <td colspan="5" class="mgmt-empty-cell">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mgmt-empty-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        <p class="mgmt-empty-text">No email settings found yet.</p>
+                        <p class="mgmt-empty-text">{% trans "No email settings found yet." %}</p>
                     </td>
                 </tr>
                 {% endfor %}
@@ -73,17 +74,17 @@
         <div class="email-templates-panel__card">
             <div class="email-templates-panel__header">
                 <div>
-                    <h3 id="email-templates-heading" class="email-templates-panel__title">Email templates</h3>
+                    <h3 id="email-templates-heading" class="email-templates-panel__title">{% trans "Email templates" %}</h3>
                     <p class="email-templates-panel__subtitle">
-                        Choose a notification, edit subject and body, and insert fields as needed.
+                        {% trans "Choose a notification, edit subject and body, and insert fields as needed." %}
                     </p>
                 </div>
-                <p id="email-template-status" class="email-templates-panel__status" hidden>Saved.</p>
+                <p id="email-template-status" class="email-templates-panel__status" hidden>{% trans "Saved." %}</p>
             </div>
 
             <div class="email-templates-toolbar">
                 <div class="email-templates-toolbar__field">
-                    <label class="email-template-form__label" for="email-type-select">Notification type</label>
+                    <label class="email-template-form__label" for="email-type-select">{% trans "Notification type" %}</label>
                     <select
                         id="email-type-select"
                         class="form-control email-templates-panel__select"

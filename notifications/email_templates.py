@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from django.utils.html import escape
+from django.utils.translation import gettext_lazy as _
 
 from notifications.email_content import (
     absolute_url,
@@ -191,15 +192,15 @@ DEFAULT_TEMPLATES = {
 EVENT_META = [
     {"event_type": key, "label": label}
     for key, label in [
-        ("new_ticket", "New ticket"),
-        ("ticket_picked", "Ticket picked"),
-        ("ticket_message", "Ticket reply"),
-        ("ticket_status", "Status change"),
-        ("ticket_update", "Ticket update"),
-        ("transfer_requested", "Transfer requested"),
-        ("transfer_accepted", "Transfer accepted"),
-        ("transfer_denied", "Transfer declined"),
-        ("announcement", "Announcement"),
+        ("new_ticket", _("New ticket")),
+        ("ticket_picked", _("Ticket picked")),
+        ("ticket_message", _("Ticket reply")),
+        ("ticket_status", _("Status change")),
+        ("ticket_update", _("Ticket update")),
+        ("transfer_requested", _("Transfer requested")),
+        ("transfer_accepted", _("Transfer accepted")),
+        ("transfer_denied", _("Transfer declined")),
+        ("announcement", _("Announcement")),
     ]
 ]
 

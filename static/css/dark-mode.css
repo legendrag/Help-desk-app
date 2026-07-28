@@ -169,6 +169,15 @@
   color: var(--danger);
 }
 
+[data-theme="dark"] .sidebar-prefs {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+[data-theme="dark"] .sidebar-pref-label {
+  color: #e2e8f0;
+}
+
 [data-theme="dark"] .sidebar-overlay {
   background: rgba(0, 0, 0, 0.55);
 }

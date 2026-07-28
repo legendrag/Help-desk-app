@@ -1,7 +1,8 @@
 ﻿{% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Login - MlamehTicket{% endblock title %}
+{% block title %}{% trans "Login" %} - MlamehTicket{% endblock title %}
 {% block body_class %}auth-body{% endblock body_class %}
 
 {% block content %}
@@ -15,7 +16,7 @@
                 <img src="{% static 'images/mlameh-ticket-logo-dark.png' %}" alt="MlamehTicket"
                     class="auth-brand-lockup auth-brand-lockup--dark">
             </div>
-            <p>Login to your account</p>
+            <p>{% trans "Login to your account" %}</p>
         </div>
 
         {% if form.errors %}
@@ -25,7 +26,7 @@
                     {{ error }}<br>
                 {% endfor %}
             {% else %}
-                Your username and password didn't match. Please try again.
+                {% trans "Your username and password didn't match. Please try again." %}
             {% endif %}
         </div>
         {% endif %}
@@ -33,16 +34,16 @@
         <form method="post" action="{% url 'login' %}" class="auth-form">
             {% csrf_token %}
             <div class="form-group">
-                <label for="id_username">Username</label>
+                <label for="id_username">{% trans "Username" %}</label>
                 <input type="text" name="username" id="id_username" required autofocus autocomplete="username">
             </div>
 
             <div class="form-group">
-                <label for="id_password">Password</label>
+                <label for="id_password">{% trans "Password" %}</label>
                 <input type="password" name="password" id="id_password" required autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn-auth">Login</button>
+            <button type="submit" class="btn-auth">{% trans "Login" %}</button>
         </form>
     </div>
 </div>

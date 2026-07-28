@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm, PasswordChangeForm
+from django.utils.translation import gettext_lazy as _
+from core.utils import normalize_digits
 
 class CustomPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
@@ -17,8 +19,8 @@ def _style_fields(form):
 
 class CustomAuthenticationForm(AuthenticationForm):
     error_messages = {
-        "invalid_login": "Incorrect username or password. Please try again.",
-        "inactive": "This account is inactive.",
+        "invalid_login": _("Incorrect username or password. Please try again."),
+        "inactive": _("This account is inactive."),
     }
 
     def clean(self):
@@ -34,7 +36,7 @@ class CustomAuthenticationForm(AuthenticationForm):
             
             if attempts >= MAX_ATTEMPTS:
                 raise forms.ValidationError(
-                    "Too many failed login attempts. Please try again in 5 minutes.",
+                    _("Too many failed login attempts. Please try again in 5 minutes."),
                     code='too_many_attempts',
                 )
 
@@ -54,7 +56,7 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 
 class CustomUserCreationForm(UserCreationForm):
-    status = forms.BooleanField(label="Is Active", required=False, initial=True)
+    status = forms.BooleanField(label=_("Is Active"), required=False, initial=True)
     field_order = (
         'username', 'email', 'first_name', 'last_name',
         'phone', 'user_type', 'branch', 'department', 'role',
@@ -66,7 +68,7 @@ class CustomUserCreationForm(UserCreationForm):
         _style_fields(self)
         if "username" in self.fields:
             self.fields["username"].help_text = ""
-            self.fields["username"].widget.attrs.setdefault("placeholder", "e.g., john.doe")
+            self.fields["username"].widget.attrs.setdefault("placeholder", _("e.g., john.doe"))
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
@@ -74,16 +76,24 @@ class CustomUserCreationForm(UserCreationForm):
             if field_name in self.fields:
                 self.fields[field_name].required = False
         _placeholders = {
-            "first_name": "First name",
-            "last_name": "Last name",
-            "email": "user@example.com",
-            "phone": "e.g., +01020481863",
-            "password1": "Choose a strong password",
-            "password2": "Repeat the password",
+            "first_name": _("First name"),
+            "last_name": _("Last name"),
+            "email": _("user@example.com"),
+            "phone": _("e.g., +01020481863"),
+            "password1": _("Choose a strong password"),
+            "password2": _("Repeat the password"),
         }
         for fname, ph in _placeholders.items():
             if fname in self.fields:
                 self.fields[fname].widget.attrs.setdefault("placeholder", ph)
+        if "phone" in self.fields:
+            self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get("phone")
+        if phone:
+            return normalize_digits(phone.strip()) or None
+        return phone
 
     def clean_status(self):
         val = self.cleaned_data.get("status")
@@ -98,7 +108,7 @@ class CustomUserCreationForm(UserCreationForm):
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise forms.ValidationError("A user with that username already exists.")
+            raise forms.ValidationError(_("A user with that username already exists."))
         return username
 
     def clean_email(self):
@@ -130,11 +140,11 @@ class CustomUserCreationForm(UserCreationForm):
 
         if user_type == User.UserType.BRANCH:
             if not branch:
-                self.add_error("branch", "Branch is required for this user type.")
+                self.add_error("branch", _("Branch is required for this user type."))
             cleaned["department"] = None
         elif user_type == User.UserType.SUPPORT:
             if not department:
-                self.add_error("department", "Department is required for this user type.")
+                self.add_error("department", _("Department is required for this user type."))
             cleaned["branch"] = None
 
         return cleaned
@@ -149,19 +159,19 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 class CustomUserChangeForm(UserChangeForm):
-    status = forms.BooleanField(label="Is Active", required=False)
+    status = forms.BooleanField(label=_("Is Active"), required=False)
     field_order = (
         'username', 'email', 'first_name', 'last_name',
         'phone', 'user_type', 'branch', 'department', 'role',
         'password1', 'password2', 'status', 'requires_password_change'
     )
     password1 = forms.CharField(
-        label="New password",
+        label=_("New password"),
         required=False,
         widget=forms.PasswordInput(attrs={'minlength': 4}),
     )
     password2 = forms.CharField(
-        label="Confirm password",
+        label=_("Confirm password"),
         required=False,
         widget=forms.PasswordInput(attrs={'minlength': 4}),
     )
@@ -171,25 +181,28 @@ class CustomUserChangeForm(UserChangeForm):
         _style_fields(self)
         if "username" in self.fields:
             self.fields["username"].help_text = ""
-            self.fields["username"].widget.attrs.setdefault("placeholder", "e.g., john.doe")
+            self.fields["username"].widget.attrs.setdefault("placeholder", _("e.g., john.doe"))
 
         if "password1" in self.fields:
             from django.contrib.auth.password_validation import password_validators_help_text_html
             self.fields["password1"].help_text = password_validators_help_text_html()
         _placeholders = {
-            "first_name": "First name",
-            "last_name": "Last name",
-            "email": "user@example.com",
-            "phone": "e.g., +01020481863",
-            "password1": "Leave blank to keep current",
-            "password2": "Repeat new password",
+            "first_name": _("First name"),
+            "last_name": _("Last name"),
+            "email": _("user@example.com"),
+            "phone": _("e.g., +01020481863"),
+            "password1": _("Leave blank to keep current"),
+            "password2": _("Repeat new password"),
         }
         for fname, ph in _placeholders.items():
             if fname in self.fields:
                 self.fields[fname].widget.attrs.setdefault("placeholder", ph)
             
         if "password2" in self.fields:
-            self.fields["password2"].help_text = "Enter the same password as before, for verification."
+            self.fields["password2"].help_text = _("Enter the same password as before, for verification.")
+        
+        if "phone" in self.fields:
+            self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
             
         if self.instance and self.instance.pk:
             self.fields['status'].initial = (self.instance.status == User.Status.ACTIVE)
@@ -202,6 +215,12 @@ class CustomUserChangeForm(UserChangeForm):
 
         if "password" in self.fields:
             self.fields.pop("password")
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get("phone")
+        if phone:
+            return normalize_digits(phone.strip()) or None
+        return phone
 
     def clean_status(self):
         val = self.cleaned_data.get("status")
@@ -216,7 +235,7 @@ class CustomUserChangeForm(UserChangeForm):
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise forms.ValidationError("A user with that username already exists.")
+            raise forms.ValidationError(_("A user with that username already exists."))
         return username
 
     def clean_email(self):
@@ -248,11 +267,11 @@ class CustomUserChangeForm(UserChangeForm):
 
         if user_type == User.UserType.BRANCH:
             if not branch:
-                self.add_error("branch", "Branch is required for this user type.")
+                self.add_error("branch", _("Branch is required for this user type."))
             cleaned["department"] = None
         elif user_type == User.UserType.SUPPORT:
             if not department:
-                self.add_error("department", "Department is required for this user type.")
+                self.add_error("department", _("Department is required for this user type."))
             cleaned["branch"] = None
 
         return cleaned
@@ -262,7 +281,7 @@ class CustomUserChangeForm(UserChangeForm):
         p2 = self.cleaned_data.get("password2")
         if p1 or p2:
             if p1 != p2:
-                raise forms.ValidationError("Passwords do not match.")
+                raise forms.ValidationError(_("Passwords do not match."))
             from django.contrib.auth.password_validation import validate_password
             from django.core.exceptions import ValidationError
             try:

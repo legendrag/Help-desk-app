@@ -1,6 +1,7 @@
 ﻿{% extends "base.html" %}
+{% load i18n i18n_extras %}
 
-{% block title %}Manage {{ model_name }} - MlamehTicket{% endblock %}
+{% block title %}{% trans "Manage" %} {{ model_name|gettext }} - MlamehTicket{% endblock %}
 
 {% block content %}
 <div class="content-container">

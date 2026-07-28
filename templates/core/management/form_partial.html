@@ -1,5 +1,6 @@
+{% load i18n i18n_extras %}
 <div class="modal-header">
-    <h2>{% if object %}Edit{% else %}Add{% endif %} {{ model_name|default:"Entry" }}</h2>
+    <h2>{% if object %}{% trans "Edit" %}{% else %}{% trans "Add" %}{% endif %} {{ model_name|default:_("Entry")|gettext }}</h2>
     <button type="button" class="modal-close" onclick="closeModal()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -19,11 +20,11 @@
 
     {% if model_name == "Role" %}
     <div class="perm-card role-presets">
-        <h4>Quick Presets:</h4>
-        <button type="button" class="preset-btn" onclick="applyRolePreset('support')">Support Agent</button>
-        <button type="button" class="preset-btn" onclick="applyRolePreset('branch')">Branch User</button>
-        <button type="button" class="preset-btn" onclick="applyRolePreset('full')">Full Access</button>
-        <button type="button" class="preset-btn danger-preset" onclick="applyRolePreset('clear')">Clear All</button>
+        <h4>{% trans "Quick Presets:" %}</h4>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('support')">{% trans "Support Agent" %}</button>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('branch')">{% trans "Branch User" %}</button>
+        <button type="button" class="preset-btn" onclick="applyRolePreset('full')">{% trans "Full Access" %}</button>
+        <button type="button" class="preset-btn danger-preset" onclick="applyRolePreset('clear')">{% trans "Clear All" %}</button>
     </div>
     
     <div class="form-stack">
@@ -46,7 +47,7 @@
 
         <div class="perm-grid">
             <div class="perm-card">
-                <h4>Tickets</h4>
+                <h4>{% trans "Tickets" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_ticket }} <span>{{ form.can_create_ticket.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_ticket }} <span>{{ form.can_update_ticket.label }}</span></label>
@@ -57,7 +58,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Messages</h4>
+                <h4>{% trans "Messages" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_send_message }} <span>{{ form.can_send_message.label }}</span></label>
                     <label class="perm-item">{{ form.can_edit_message }} <span>{{ form.can_edit_message.label }}</span></label>
@@ -66,7 +67,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Access</h4>
+                <h4>{% trans "Access" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_access_dashboard }} <span>{{ form.can_access_dashboard.label }}</span></label>
                     <label class="perm-item">{{ form.can_view_leaderboard }} <span>{{ form.can_view_leaderboard.label }}</span></label>
@@ -79,7 +80,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Users</h4>
+                <h4>{% trans "Users" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_user }} <span>{{ form.can_create_user.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_user }} <span>{{ form.can_update_user.label }}</span></label>
@@ -88,7 +89,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Branches</h4>
+                <h4>{% trans "Branches" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_branch }} <span>{{ form.can_create_branch.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_branch }} <span>{{ form.can_update_branch.label }}</span></label>
@@ -97,7 +98,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Departments</h4>
+                <h4>{% trans "Departments" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_department }} <span>{{ form.can_create_department.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_department }} <span>{{ form.can_update_department.label }}</span></label>
@@ -106,7 +107,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Categories</h4>
+                <h4>{% trans "Categories" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_category }} <span>{{ form.can_create_category.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_category }} <span>{{ form.can_update_category.label }}</span></label>
@@ -115,7 +116,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Roles</h4>
+                <h4>{% trans "Roles" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_create_role }} <span>{{ form.can_create_role.label }}</span></label>
                     <label class="perm-item">{{ form.can_update_role }} <span>{{ form.can_update_role.label }}</span></label>
@@ -124,7 +125,7 @@
             </div>
 
             <div class="perm-card">
-                <h4>Email</h4>
+                <h4>{% trans "Email" %}</h4>
                 <div class="perm-list">
                     <label class="perm-item">{{ form.can_manage_email }} <span>{{ form.can_manage_email.label }}</span></label>
                 </div>
@@ -414,7 +415,7 @@
     </div>
 
     <div class="form-actions--end">
-        <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn primary">Save Changes</button>
+        <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+        <button type="submit" class="btn primary">{% trans "Save Changes" %}</button>
     </div>
 </form>
