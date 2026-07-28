@@ -491,3 +491,8 @@ html[dir="rtl"] .announcement-card::before {
   left: auto;
   right: 0;
 }
+
+/* Keep Close | chevron split-button order (same visual as LTR) */
+html[dir="rtl"] .action-bar-group {
+  flex-direction: row-reverse;
+}
