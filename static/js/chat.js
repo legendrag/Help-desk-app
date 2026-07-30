@@ -373,9 +373,13 @@ function initChat(ticketId) {
             row.id = `message-${payload.id}`;
             row.className = 'chat-system-message-row';
             row.dataset.messageId = payload.id;
+            // Display Arabic when available; keep English payload.message for status sniffing below.
+            const displayText = (window.LANGUAGE_CODE === 'ar' && payload.message_ar)
+                ? payload.message_ar
+                : (payload.message || '');
             row.innerHTML = `
                 <div class="chat-system-message-content">
-                    <span>${escapeHtml(payload.message)}</span>
+                    <span>${escapeHtml(displayText)}</span>
                 </div>
             `;
             chatBox.appendChild(row);

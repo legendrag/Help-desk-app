@@ -1255,11 +1255,13 @@ def transfer_ticket(request, ticket_id):
                     ticket.pending_transfer_by = request.user
                     ticket.save()
                     
-                    TicketMessage.objects.create(
-                        ticket=ticket,
-                        sender=request.user,
-                        message=f"Requested transfer to {new_assignee.username}",
-                        is_system_message=True
+                    from tickets.system_text import create_system_message
+
+                    create_system_message(
+                        ticket,
+                        request.user,
+                        "Requested transfer to %(username)s",
+                        {"username": new_assignee.username},
                     )
                     
                     TicketStatusHistory.objects.create(
@@ -1302,11 +1304,12 @@ def accept_transfer(request, ticket_id):
         ticket.pending_transfer_by = None
         ticket.save()
         
-        TicketMessage.objects.create(
-            ticket=ticket,
-            sender=request.user,
-            message="Accepted ticket transfer",
-            is_system_message=True
+        from tickets.system_text import create_system_message
+
+        create_system_message(
+            ticket,
+            request.user,
+            "Accepted ticket transfer",
         )
         
         TicketStatusHistory.objects.create(
@@ -1346,11 +1349,12 @@ def deny_transfer(request, ticket_id):
         ticket.pending_transfer_by = None
         ticket.save()
         
-        TicketMessage.objects.create(
-            ticket=ticket,
-            sender=request.user,
-            message="Denied ticket transfer",
-            is_system_message=True
+        from tickets.system_text import create_system_message
+
+        create_system_message(
+            ticket,
+            request.user,
+            "Denied ticket transfer",
         )
         
         TicketStatusHistory.objects.create(
@@ -1386,11 +1390,13 @@ def cancel_transfer(request, ticket_id):
         ticket.pending_transfer_by = None
         ticket.save()
         
-        TicketMessage.objects.create(
-            ticket=ticket,
-            sender=request.user,
-            message=f"Canceled ticket transfer to {target.username if target else 'unknown'}",
-            is_system_message=True
+        from tickets.system_text import create_system_message
+
+        create_system_message(
+            ticket,
+            request.user,
+            "Canceled ticket transfer to %(username)s",
+            {"username": target.username if target else "unknown"},
         )
         
         TicketStatusHistory.objects.create(

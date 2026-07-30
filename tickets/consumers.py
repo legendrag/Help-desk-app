@@ -129,6 +129,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             "sender": user.id,
             "sender_username": user.username,
             "message": message.message,
+            "message_ar": getattr(message, "message_ar", "") or "",
             "is_system_message": message.is_system_message,
             "attachment_url": None,
             "created_at": message.created_at.isoformat(),

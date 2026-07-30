@@ -4,6 +4,7 @@
 {% load static %}
 {% load i18n %}
 {% load ticket_extras %}
+{% get_current_language as LANGUAGE_CODE %}
 {% block content %}
 <div class="kb-back-navigation" style="margin-bottom: 1.25rem;">
     <a href="{% url 'tickets_list' %}" class="ticket-back-btn">
@@ -97,7 +98,7 @@
             {% if message.is_system_message %}
             <div class="chat-system-message-row" id="message-{{ message.id }}" data-message-id="{{ message.id }}">
                 <div class="chat-system-message-content">
-                    <span>{{ message.message }}</span>
+                    <span>{% if LANGUAGE_CODE == 'ar' and message.message_ar %}{{ message.message_ar }}{% else %}{{ message.message }}{% endif %}</span>
                 </div>
             </div>
             {% else %}
@@ -844,5 +845,5 @@
     window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
     window.currentUsername = "{{ user.username|escapejs }}{% if user.user_type == 'branch' and user.branch_id == ticket.branch_id and ticket.client_name %} - {{ ticket.client_name|escapejs }}{% endif %}";
 </script>
-<script src="{% static 'js/chat.js' %}?v=13" defer></script>
+<script src="{% static 'js/chat.js' %}?v=14" defer></script>
 {% endblock content %}

@@ -52,7 +52,7 @@ msgstr "الإعدادات"
 msgid "Change Password"
 msgstr "تغيير كلمة السر"
 
-#: templates/accounts/password_change.html:37 templates/base.html:511
+#: templates/accounts/password_change.html:45 templates/base.html:511
 msgid "Logout"
 msgstr "تسجيل الخروج"
 
@@ -191,7 +191,7 @@ msgstr "محاولات تسجيل دخول فاشلة كثيرة. حاول مج�
 msgid "Please enter your old and new password below."
 msgstr "أدخل كلمة السر القديمة والجديدة أدناه."
 
-#: templates/accounts/password_change.html:41
+#: templates/accounts/password_change.html:39
 msgid "Update"
 msgstr "تحديث"
 
@@ -237,7 +237,7 @@ msgstr "عاجلة"
 
 # Common buttons
 #: templates/accounts/management/form_partial.html:98
-#: templates/accounts/password_change.html:39
+#: templates/accounts/password_change.html:37
 #: templates/accounts/password_change_partial.html:48 templates/base.html:447
 #: templates/base.html:474 templates/core/management/delete_confirm.html:19
 #: templates/core/management/delete_confirm_partial.html:20
@@ -1678,7 +1678,7 @@ msgid "User Type"
 msgstr "نوع المستخدم"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: accounts/template_views.py:27
+#: accounts/template_views.py:51
 msgid ""
 "Password changed successfully. Please log in again with your new password."
 msgstr ""
@@ -2417,214 +2417,214 @@ msgid "You do not have permission to pick tickets."
 msgstr "ليس لديك صلاحية لالتقاط التذاكر."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1194
+#: tickets/template_views.py:1195
 msgid "Cannot pick a merged ticket."
 msgstr "لا يمكن التقاط تذكرة مدمجة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1205
+#: tickets/template_views.py:1206
 msgid "Ticket assigned to you."
 msgstr "تم إسناد التذكرة إليك."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1217
+#: tickets/template_views.py:1219
 msgid "Failed to pick ticket: {}"
 msgstr "فشل التقاط التذكرة: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1231
+#: tickets/template_views.py:1238
 msgid "You do not have permission to transfer this ticket."
 msgstr "ليس لديك صلاحية لنقل هذه التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1243
+#: tickets/template_views.py:1250
 msgid "You can only transfer to agents in the same department or admins."
 msgstr "يمكنك النقل فقط إلى موظفي الدعم في نفس القسم أو إلى المسؤولين."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1245
+#: tickets/template_views.py:1252
 msgid "A transfer is already pending."
 msgstr "هناك عملية نقل معلقة بالفعل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1268
+#: tickets/template_views.py:1277
 msgid "Transfer request sent to {}."
 msgstr "تم إرسال طلب النقل إلى {}."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1273
+#: tickets/template_views.py:1282
 msgid "Selected user is not a valid supporter."
 msgstr "المستخدم المحدد ليس موظف دعم صالحًا."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1275
+#: tickets/template_views.py:1284
 msgid "Failed to request transfer: {}"
 msgstr "فشل طلب النقل: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1289
+#: tickets/template_views.py:1298
 msgid "You do not have permission to accept this transfer."
 msgstr "ليس لديك صلاحية لقبول هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1316
+#: tickets/template_views.py:1326
 msgid "Ticket transfer accepted."
 msgstr "تم قبول نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1334
+#: tickets/template_views.py:1344
 msgid "You do not have permission to deny this transfer."
 msgstr "ليس لديك صلاحية لرفض هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1360
+#: tickets/template_views.py:1371
 msgid "Ticket transfer denied."
 msgstr "تم رفض نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1374
+#: tickets/template_views.py:1385
 msgid "You do not have permission to cancel this transfer."
 msgstr "ليس لديك صلاحية لإلغاء هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1396
+#: tickets/template_views.py:1409
 msgid "Ticket transfer canceled."
 msgstr "تم إلغاء نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1475 tickets/template_views.py:1477
+#: tickets/template_views.py:1488 tickets/template_views.py:1490
 msgid "You do not have permission to view this ticket."
 msgstr "ليس لديك صلاحية لعرض هذه التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1488
+#: tickets/template_views.py:1501
 msgid "You do not have permission to merge tickets."
 msgstr "ليس لديك صلاحية لدمج التذاكر."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1495
+#: tickets/template_views.py:1508
 msgid "Target ticket number is required."
 msgstr "رقم التذكرة الهدف مطلوب."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1501
+#: tickets/template_views.py:1514
 msgid "Ticket {} not found."
 msgstr "التذكرة {} غير موجودة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1506
+#: tickets/template_views.py:1519
 msgid "Ticket {} merged into this ticket successfully."
 msgstr "تم دمج التذكرة {} في هذه التذكرة بنجاح."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1527
+#: tickets/template_views.py:1540
 msgid "Failed to merge ticket: {}"
 msgstr "فشل دمج التذكرة: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:178
+#: notifications/services.py:215
 #, python-format
 msgid "New Ticket #%(number)s"
 msgstr "تذكرة جديدة #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:179
+#: notifications/services.py:217
 #, python-format
 msgid "A new ticket has been created for %(department)s: %(title)s"
 msgstr "تم إنشاء تذكرة جديدة لقسم %(department)s: %(title)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:202
+#: notifications/services.py:246
 #, python-format
 msgid "Ticket Picked: #%(number)s"
 msgstr "تم استلام التذكرة: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:203
+#: notifications/services.py:248
 #, python-format
 msgid "%(actor)s picked this ticket. Status is now %(status)s."
 msgstr "استلم %(actor)s هذه التذكرة. الحالة الآن %(status)s."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:243
+#: notifications/services.py:294
 #, python-format
 msgid "New Reply: #%(number)s"
 msgstr "رد جديد: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:244
+#: notifications/services.py:296
 #, python-format
 msgid "%(actor)s replied to the ticket."
 msgstr "رد %(actor)s على التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:252
+#: notifications/services.py:307
 #, python-format
 msgid "Status Changed: #%(number)s"
 msgstr "تغيّرت الحالة: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:253
+#: notifications/services.py:309
 #, python-format
 msgid "%(actor)s updated the status to %(status)s."
 msgstr "حدّث %(actor)s الحالة إلى %(status)s."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:265
+#: notifications/services.py:321
 #, python-format
 msgid "Ticket Updated: #%(number)s"
 msgstr "تم تحديث التذكرة: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:266
+#: notifications/services.py:323
 #, python-format
 msgid "%(actor)s updated the ticket."
 msgstr "حدّث %(actor)s التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:299
+#: notifications/services.py:357
 #, python-format
 msgid "Transfer Requested: #%(number)s"
 msgstr "طلب نقل: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:300
+#: notifications/services.py:359
 #, python-format
 msgid "%(actor)s has requested to transfer this ticket to you."
 msgstr "طلب %(actor)s نقل هذه التذكرة إليك."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:313
+#: notifications/services.py:379
 #, python-format
 msgid "Transfer Accepted: #%(number)s"
 msgstr "تم قبول النقل: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:314
+#: notifications/services.py:381
 #, python-format
 msgid "%(actor)s accepted the ticket transfer."
 msgstr "قبل %(actor)s نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:327
+#: notifications/services.py:401
 #, python-format
 msgid "Transfer Denied: #%(number)s"
 msgstr "تم رفض النقل: #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:328
+#: notifications/services.py:403
 #, python-format
 msgid "%(actor)s denied the ticket transfer."
 msgstr "رفض %(actor)s نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:359
+#: notifications/services.py:442 notifications/services.py:448
 #, python-format
 msgid "Announcement: %(title)s"
 msgstr "إعلان: %(title)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: notifications/services.py:363
+#: notifications/services.py:450
 msgid "A new announcement has been posted."
 msgstr "تم نشر إعلان جديد."
 
@@ -2632,6 +2632,51 @@ msgstr "تم نشر إعلان جديد."
 #: templates/base.html:70
 msgid "d ago"
 msgstr "ي"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:13
+msgid "Someone will help you soon."
+msgstr "??????? ??? ??????."
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:14
+#, python-format
+msgid "Ticket closed by %(username)s"
+msgstr "?????? ??????? ?????? %(username)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:15
+#, python-format
+msgid "Ticket reopened by %(username)s"
+msgstr "????? ??? ??????? ?????? %(username)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:16
+#, python-format
+msgid "Merged messages from ticket #%(number)s"
+msgstr "?? ??? ????? ?? ??????? #%(number)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:17
+#, python-format
+msgid "Requested transfer to %(username)s"
+msgstr "???? ????? ??? %(username)s"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:18
+msgid "Accepted ticket transfer"
+msgstr "?? ???? ??? ???????"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:19
+msgid "Denied ticket transfer"
+msgstr "?? ??? ??? ???????"
+
+# NEEDS NATIVE REVIEW (machine-assisted translation)
+#: tickets/system_text.py:20
+#, python-format
+msgid "Canceled ticket transfer to %(username)s"
+msgstr "????? ??? ??????? ??? %(username)s"
 
 #~ msgid "English"
 #~ msgstr "الإنجليزية"

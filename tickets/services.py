@@ -70,11 +70,13 @@ def merge_tickets(primary_ticket_id, secondary_ticket_ids, user):
         st.save()
 
         # Insert system message in primary ticket
-        TicketMessage.objects.create(
-            ticket=primary_ticket,
-            sender=user,
-            message=f"Merged messages from ticket #{st.ticket_number}",
-            is_system_message=True,
+        from tickets.system_text import create_system_message
+
+        create_system_message(
+            primary_ticket,
+            user,
+            "Merged messages from ticket #%(number)s",
+            {"number": st.ticket_number},
         )
 
         # Create status history record for secondary ticket

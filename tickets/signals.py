@@ -22,8 +22,9 @@ def broadcast_new_message(sender, instance, created, **kwargs):
                 "ticket": instance.ticket_id,
                 "sender": instance.sender_id,
                 "sender_username": sender_username,
-                "message": instance.message,
-                "is_system_message": getattr(instance, "is_system_message", False),
+            "message": instance.message,
+            "message_ar": getattr(instance, "message_ar", "") or "",
+            "is_system_message": getattr(instance, "is_system_message", False),
                 "attachment_url": instance.attachment.url if instance.attachment else None,
                 "attachment_name": __import__("os").path.basename(instance.attachment.name) if instance.attachment else None,
                 "created_at": instance.created_at.isoformat() if instance.created_at else None,
@@ -51,20 +52,25 @@ def broadcast_new_message(sender, instance, created, **kwargs):
 
                         if branch_msgs_count > 1:
                             from django.conf import settings
-                            message_text = getattr(settings, "TICKET_UNPICKED_SYSTEM_MESSAGE", "Someone will help you soon.")
+                            from tickets.system_text import create_system_message
+
+                            message_text = getattr(
+                                settings,
+                                "TICKET_UNPICKED_SYSTEM_MESSAGE",
+                                "Someone will help you soon.",
+                            )
 
                             already_sent = TicketMessage.objects.filter(
                                 ticket=ticket,
                                 is_system_message=True,
-                                message=message_text
+                                message=message_text,
                             ).exists()
 
                             if not already_sent:
-                                TicketMessage.objects.create(
-                                    ticket=ticket,
-                                    sender=ticket.created_by,
-                                    message=message_text,
-                                    is_system_message=True
+                                create_system_message(
+                                    ticket,
+                                    ticket.created_by,
+                                    message_text,
                                 )
         except Exception:
             logger.exception("Error broadcasting message / notifying for TicketMessage %s", getattr(instance, "id", None))
@@ -109,24 +115,24 @@ def broadcast_ticket_deletion(sender, instance, **kwargs):
 def create_status_system_message(sender, instance, created, **kwargs):
     if created:
         try:
+            from tickets.system_text import create_system_message
+
             ticket = instance.ticket
             user = instance.changed_by
 
             if instance.status == Ticket.Status.CLOSED:
-                message_text = f"Ticket closed by {user.username}"
-                TicketMessage.objects.create(
-                    ticket=ticket,
-                    sender=user,
-                    message=message_text,
-                    is_system_message=True
+                create_system_message(
+                    ticket,
+                    user,
+                    "Ticket closed by %(username)s",
+                    {"username": user.username},
                 )
             elif instance.event_type == TicketStatusHistory.EventType.REOPENED:
-                message_text = f"Ticket reopened by {user.username}"
-                TicketMessage.objects.create(
-                    ticket=ticket,
-                    sender=user,
-                    message=message_text,
-                    is_system_message=True
+                create_system_message(
+                    ticket,
+                    user,
+                    "Ticket reopened by %(username)s",
+                    {"username": user.username},
                 )
         except Exception:
             logger.exception("Error creating status system message for history %s", getattr(instance, "id", None))

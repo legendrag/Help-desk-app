@@ -225,6 +225,8 @@ class TicketMessage(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="ticket_messages")
     reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="replies")
     message = models.TextField(blank=True)
+    # Arabic parallel for system messages. Regular chat messages leave this empty.
+    message_ar = models.TextField(blank=True, default="")
     is_system_message = models.BooleanField(default=False)
     attachment = models.FileField(upload_to=ticket_attachment_path, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from django.db import close_old_connections
+
 logger = logging.getLogger(__name__)
 
 _QUEUE: "queue.Queue[EmailJob]" = queue.Queue()
@@ -44,6 +46,9 @@ def enqueue_email(func: Callable[..., Any], *args, max_attempts: int = 3, retry_
 def _worker_loop() -> None:
     while True:
         job = _QUEUE.get()
+        # Background threads skip request middleware, so stale MySQL sockets
+        # (CONN_MAX_AGE / server wait_timeout) must be cleared explicitly.
+        close_old_connections()
         try:
             try:
                 result = job.func(*job.args, **job.kwargs)
@@ -61,4 +66,5 @@ def _worker_loop() -> None:
                     time.sleep(job.retry_delay)
                     _QUEUE.put(job)
         finally:
+            close_old_connections()
             _QUEUE.task_done()
