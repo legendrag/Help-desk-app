@@ -2636,47 +2636,47 @@ msgstr "ي"
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:13
 msgid "Someone will help you soon."
-msgstr "??????? ??? ??????."
+msgstr "سيساعدك أحد قريباً."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:14
 #, python-format
 msgid "Ticket closed by %(username)s"
-msgstr "?????? ??????? ?????? %(username)s"
+msgstr "أُغلقت التذكرة بواسطة %(username)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:15
 #, python-format
 msgid "Ticket reopened by %(username)s"
-msgstr "????? ??? ??????? ?????? %(username)s"
+msgstr "أُعيد فتح التذكرة بواسطة %(username)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:16
 #, python-format
 msgid "Merged messages from ticket #%(number)s"
-msgstr "?? ??? ????? ?? ??????? #%(number)s"
+msgstr "تم دمج رسائل من التذكرة #%(number)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:17
 #, python-format
 msgid "Requested transfer to %(username)s"
-msgstr "???? ????? ??? %(username)s"
+msgstr "طُلب النقل إلى %(username)s"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:18
 msgid "Accepted ticket transfer"
-msgstr "?? ???? ??? ???????"
+msgstr "تم قبول نقل التذكرة"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:19
 msgid "Denied ticket transfer"
-msgstr "?? ??? ??? ???????"
+msgstr "تم رفض نقل التذكرة"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
 #: tickets/system_text.py:20
 #, python-format
 msgid "Canceled ticket transfer to %(username)s"
-msgstr "????? ??? ??????? ??? %(username)s"
+msgstr "أُلغي نقل التذكرة إلى %(username)s"
 
 #~ msgid "English"
 #~ msgstr "الإنجليزية"
