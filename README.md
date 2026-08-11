@@ -1,36 +1,41 @@
 ﻿# mlamehticket
 
-mlamehticket is a modern, high-performance ticket management platform built with **Django**, **HTMX**, and **Vanilla JavaScript**.
+mlamehticket is a modern help-desk and ticket management platform built with **Django**, **HTMX**, and **vanilla JavaScript**. Branch staff open tickets; support agents pick, chat, transfer, merge, and close them — with real-time updates over WebSockets.
 
-## Core Architecture
-- **Backend:** Python + Django (Monolithic Server-Side Rendering)
-- **Frontend:** HTML5, Vanilla CSS3, Vanilla JavaScript, HTMX (for dynamic updates)
-- **Real-time:** Django Channels + WebSockets (Chat & Notifications)
-- **Database:** MySQL (Production) / SQLite (Development)
-- **Authentication:** Django Session-Based Authentication
+## Tech stack
 
-## Key Features
-- **Real-time Chat:** Instant messaging within ticket details.
-- **Push Notifications:** Browser-native and in-app notifications for ticket updates.
-- **Smart Routing:** Automated category/branch/department ticket management.
-- **Performance Metrics:** Built-in tracking for response and resolution times.
-- **PWA Ready:** Modern responsive design that works on mobile and desktop.
+| Layer | Choice |
+|---|---|
+| Backend | Python 3.12+ · Django 6 (monolithic SSR) |
+| Frontend | HTML5 · vanilla CSS · vanilla JS · HTMX |
+| Real-time | Django Channels · Daphne (ASGI) · WebSockets |
+| Database | SQLite (development) · MySQL via PyMySQL (production) |
+| Auth | Django session authentication |
+| Notifications | In-app · Web Push · SMTP email (in-process queue) |
+| Languages | English · Arabic (cookie-based; no URL prefixes) |
 
-## Project Structure
-- `accounts/`: User management and session authentication.
-- `tickets/`: Core ticket lifecycle, views, and business logic.
-- `notifications/`: WebSocket consumers and notification signals.
-- `config/`: Global project settings and URL routing.
-- `static/`: Global CSS/JS assets (including `chat.js`, `notifications.js`).
-- `templates/`: Server-side HTML templates (Base & Component-based).
+There is **no** Celery, Redis, or Node/Tailwind build step.
 
-## Quick Start
+## Key features
 
-### 1) Prerequisites
-- **Python 3.12+**
-- **Virtual Environment:** Recommended to use `.venv`.
+- Ticket lifecycle with pick, waiting, close, reopen, transfer, and merge
+- Real-time chat and live ticket-list updates
+- Multi-channel notifications (in-app bell, browser push, email)
+- Role-based permissions (~31 granular flags) plus branch/support user types
+- Analytics dashboard with Excel export
+- Knowledge base and branch-targeted announcements
+- Bilingual UI (English / Arabic) with RTL support
+- Windows installer (Inno Setup) for offline client deployments — bundles Python/MySQL, runs as a Windows service, supports in-place upgrades
 
-### 2) Setup & Run
+## Quick start
+
+### Prerequisites
+
+- Python 3.12+
+- Virtual environment recommended (`.venv`)
+
+### Setup and run
+
 ```powershell
 # 1. Create and activate virtual environment
 py -m venv .venv
@@ -39,135 +44,90 @@ py -m venv .venv
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Create .env file (copy from .env.example)
-cp .env.example .env
+# 3. Create .env file
+Copy-Item .env.example .env
 
 # 4. Migrate database
 python manage.py migrate
 
-# 5. Start Server
+# 5. Start the development server
 python manage.py runserver
 ```
 
-### 3) Initial Access
-- **URL:** `http://localhost:8000`
-- **Bootstrap admin:** set `DEFAULT_SUPERADMIN_PASSWORD` in `.env` to a strong value before `migrate`. Auto-create is skipped if the password is empty or weak (`admin`, `password`, `changeme`). New bootstrap admins must change their password on first login.
+Or use the all-in-one launcher:
 
-## Environment Variables (`.env`)
-
-| Variable | Description | Default |
-|---|---|---|
-| `DEBUG` | Enable/Disable debug mode | `1` |
-| `SECRET_KEY` | Django unique secret key | `change-me` |
-| `DB_ENGINE` | `sqlite` or `mysql` | `sqlite` |
-| `DB_NAME` | Database name | `mlamehticket` |
-| `DB_HOST` | Database host | `localhost` |
-| `DB_PORT` | Database port | `3306` |
-| `DB_USER` | Database user | `root` |
-| `DB_PASSWORD` | Database password | *(empty)* |
-| `DB_CONN_MAX_AGE` | Persistent connection lifetime (seconds) | `600` |
-| `ALLOWED_HOSTS` | Server hostnames | `*` |
-| `DEFAULT_SUPERADMIN_USERNAME` | Bootstrap superuser username | `admin` |
-| `DEFAULT_SUPERADMIN_PASSWORD` | Bootstrap superuser password (required when `DEBUG=0`) | *(empty — skips auto-create)* |
-| `BACKUP_DIR` | Backup storage directory | `./backups` |
-| `BACKUP_KEEP` | Number of backups to retain | `7` |
-
-## Production Database Setup (MySQL)
-
-SQLite is used by default for development. For production, switch to MySQL:
-
-### 1) Install MySQL 8.0+
-
-Ensure the database uses **utf8mb4** charset:
-```sql
-CREATE DATABASE mlamehticket CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```powershell
+.\test-local.ps1 -InstallDeps
 ```
 
-### 2) Configure `.env`
-```env
-DB_ENGINE=mysql
-DB_NAME=mlamehticket
-DB_USER=mlamehticket_user
-DB_PASSWORD=your-secure-password
-DB_HOST=localhost
-DB_PORT=3306
-```
+### Initial access
 
-### 3) Run Migrations
-```bash
-python manage.py migrate
-```
+- **URL:** http://localhost:8000
+- **Bootstrap admin:** set `DEFAULT_SUPERADMIN_PASSWORD` in `.env` to a strong value before `migrate`. Auto-create is skipped if the password is empty or weak (`admin`, `password`, `changeme`, `12345678`). New bootstrap admins must change their password on first login.
 
-> **Note:** The MySQL config includes `CONN_MAX_AGE=600` (10 min persistent connections) and `CONN_HEALTH_CHECKS=True` for optimal performance with Django Channels / Daphne.
-
-## Database Maintenance
-
-### Backup
-```bash
-# Create a backup (SQLite: file copy, MySQL: mysqldump)
-python manage.py backup_db
-
-# Keep 14 backups instead of the default 7
-python manage.py backup_db --keep 14
-
-# Store in a custom directory
-python manage.py backup_db --dir /path/to/backups
-```
-
-### Notification Cleanup
-```bash
-# Delete read notifications >30 days old, all notifications >90 days old
-python manage.py cleanup_notifications
-
-# Preview what would be deleted
-python manage.py cleanup_notifications --dry-run
-
-# Custom retention periods
-python manage.py cleanup_notifications --read-days 14 --all-days 60
-```
-
-### Recommended Scheduled Tasks
-| Task | Schedule | Command |
-|---|---|---|
-| Database backup | Daily at 2:00 AM | `python manage.py backup_db` |
-| Notification cleanup | Daily at 3:00 AM | `python manage.py cleanup_notifications` |
-
-## Translations (i18n)
-
-The app ships English (`en`) and Arabic (`ar`). Language is chosen per-user via a
-cookie (`django_language`) and applied by `LocaleMiddleware`; there are no `/ar/`
-URL prefixes, so HTMX endpoints need no special handling.
-
-`scripts/i18n.py` replaces `makemessages`/`compilemessages` and is pure Python, so
-the **GNU gettext binaries are not required**:
-
-```bash
-# Requires the dev extras (polib)
-pip install -r requirements-dev.txt
-
-# 1. See what is translatable
-python scripts/i18n.py extract
-
-# 2. Merge new strings into locale/ar/LC_MESSAGES/django.po (never drops a msgstr)
-python scripts/i18n.py update
-
-# 3. Translate the new empty msgstr entries, then compile
-python scripts/i18n.py compile
-
-# 4. Verify nothing falls back to English (exits 1 on failure)
-python scripts/i18n.py check --verbose
-```
-
-`check` runs as part of `test-local.ps1`. **Run `update` + `compile` whenever you
-add or reword a `{% trans %}` / `_()` string** — gettext has no concept of a
-missing translation, so drift otherwise fails silently and renders English.
-
-> When editing a `{% blocktrans %}`, always include `trimmed`. Without it the
-> surrounding newlines and indentation become part of the msgid, which silently
-> breaks the lookup.
+For MySQL production setup, Daphne, and the Windows installer, see the [operations docs](docs/operations/installation.md).
 
 ## Documentation
-- [Gmail Setup](docs/GMAIL_APP_PASSWORD.md)
-- [Deployment Guide](docs/deployment_guide.md)
-- [Backup & Restore](docs/backup-restore-guide.md)
-- [System Reference](docs/REFERENCE.md)
+
+Full English documentation lives in [`docs/`](docs/README.md):
+
+| Audience | Start here |
+|---|---|
+| Branch staff & support agents | [User guide](docs/user-guide/getting-started.md) |
+| In-app administrators | [Admin guide](docs/admin-guide/settings-hub.md) |
+| Operators / deployers | [Installation](docs/operations/installation.md) · [Configuration](docs/operations/configuration.md) · [Deployment](docs/operations/deployment.md) |
+| Developers | [Architecture](docs/developer-guide/architecture.md) · [Data model](docs/developer-guide/data-model.md) |
+| Quick lookups | [Permissions matrix](docs/reference/permissions-matrix.md) · [Management commands](docs/reference/management-commands.md) · [Glossary](docs/reference/glossary.md) |
+
+Common shortcuts:
+
+- [Backup & restore](docs/operations/backup-restore.md)
+- [Gmail app password (SMTP)](docs/admin-guide/gmail-app-password.md)
+- [i18n workflow](docs/developer-guide/i18n.md)
+- [Testing](docs/developer-guide/testing.md)
+- [Troubleshooting](docs/operations/troubleshooting.md)
+
+## Project layout
+
+```
+accounts/          User model, login, password change, user CRUD
+core/              Branches, departments, categories, roles, email settings, maintenance, seeds
+tickets/           Ticket lifecycle, chat, dashboard, settings hub
+notifications/     In-app notifications, WebSockets, email queue, web push
+news/              Announcements
+kb/                Knowledge base articles and categories
+config/            Django settings, root URLs, ASGI/WSGI
+templates/         Server-rendered HTML
+static/            CSS and JavaScript (chat.js, notifications.js, …)
+scripts/           Pure-Python i18n tooling (scripts/i18n.py)
+installer/         Windows offline installer (Inno Setup + WinSW service)
+locale/            Arabic gettext catalogs
+docs/              English documentation
+```
+
+## Testing, translations, and backups
+
+```powershell
+# Unit tests (Django TestCase)
+python manage.py test
+
+# Translations (requires: pip install -r requirements-dev.txt)
+python scripts/i18n.py update
+python scripts/i18n.py compile
+python scripts/i18n.py check --verbose
+
+# Database backup
+python manage.py backup_db
+```
+
+See [Testing](docs/developer-guide/testing.md), [i18n](docs/developer-guide/i18n.md), and [Backup & restore](docs/operations/backup-restore.md) for full details.
+
+## Production notes
+
+- Set `DEBUG=0`, a strong `SECRET_KEY`, and non-wildcard `ALLOWED_HOSTS`.
+- Use `DB_ENGINE=mysql` with a `utf8mb4` database.
+- Run Daphne (not `runserver`) so WebSockets work — `.\run-mlamehticket.ps1`.
+- Configure SMTP in **Settings Hub → Email Settings** (database), not in `.env`.
+- Set `SITE_URL` so notification emails contain absolute links.
+
+See [Deployment](docs/operations/deployment.md) and [Security hardening](docs/operations/security-hardening.md).

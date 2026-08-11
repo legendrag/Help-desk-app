@@ -17,3 +17,8 @@ backups/
 # IDE
 .vscode/
 .idea/
+
+# Windows installer build artifacts
+installer/payload/
+installer/Output/
+logs/

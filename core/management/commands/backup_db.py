@@ -123,6 +123,9 @@ class Command(BaseCommand):
             "--single-transaction",
             "--routines",
             "--triggers",
+            # MySQL 8 requires the global PROCESS privilege to read tablespace
+            # metadata; the app DB user does not have it. This flag avoids that.
+            "--no-tablespaces",
             db_settings["NAME"],
         ]
 

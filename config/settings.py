@@ -174,22 +174,50 @@ SESSION_SAVE_EVERY_REQUEST = True
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = DEBUG
 
+_log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+_log_to_file = os.getenv("LOG_TO_FILE", "0") == "1"
+_logs_dir = BASE_DIR / "logs"
+if _log_to_file:
+    _logs_dir.mkdir(parents=True, exist_ok=True)
+
+_log_handlers = ["console"]
+_logging_handlers = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "formatter": "verbose",
+        "level": "WARNING" if _log_to_file else _log_level,
+    },
+}
+if _log_to_file:
+    _logging_handlers["file"] = {
+        "class": "logging.handlers.TimedRotatingFileHandler",
+        "filename": str(_logs_dir / "app.log"),
+        "when": "midnight",
+        "backupCount": 30,
+        "encoding": "utf-8",
+        "formatter": "verbose",
+        "level": _log_level,
+    }
+    _log_handlers.append("file")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
         },
     },
+    "handlers": _logging_handlers,
     "root": {
-        "handlers": ["console"],
-        "level": "INFO",
+        "handlers": _log_handlers,
+        "level": _log_level,
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
-            "level": "INFO",
+            "handlers": _log_handlers,
+            "level": _log_level,
             "propagate": False,
         },
     },
