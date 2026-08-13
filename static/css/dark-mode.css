@@ -111,10 +111,21 @@
   background: transparent;
   border-color: transparent;
 }
+[data-theme="dark"] .pwa-install-btn {
+  color: #e2e8f0;
+  background: transparent;
+  border-color: transparent;
+}
 [data-theme="dark"] .notification-btn:hover,
 [data-theme="dark"] .notification-btn:active,
 [data-theme="dark"] .notification-btn:focus,
 [data-theme="dark"] .notification-btn.is-open {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+[data-theme="dark"] .pwa-install-btn:hover,
+[data-theme="dark"] .pwa-install-btn:active,
+[data-theme="dark"] .pwa-install-btn:focus {
   background: rgba(148, 163, 184, 0.15);
   border-color: rgba(148, 163, 184, 0.2);
 }

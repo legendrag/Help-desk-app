@@ -7,6 +7,8 @@ from django.shortcuts import redirect
 from django.views.generic.base import RedirectView, TemplateView
 from django.views.decorators.cache import never_cache
 
+from core.pwa_views import web_manifest
+
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico', permanent=True)),
     path("i18n/", include("django.conf.urls.i18n")),
@@ -18,6 +20,7 @@ urlpatterns = [
     path("news/", include("news.urls")),
     path("kb/", include("kb.urls")),
     path("webpush/", include("webpush.urls")),
+    path("manifest.webmanifest", never_cache(web_manifest), name="web_manifest"),
     path("sw.js", never_cache(TemplateView.as_view(template_name="sw.js", content_type="application/javascript")), name="sw.js"),
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]

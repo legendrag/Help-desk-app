@@ -24,6 +24,32 @@ class NotificationsConfig(AppConfig):
         except (ImportError, RuntimeError):
             pass
 
+        # After migrate / on first request, drop a leftover user_agent column
+        # that would 500 on /webpush/save_information.
+        try:
+            from django.core.signals import request_started
+            from django.db.models.signals import post_migrate
+            from notifications.webpush_schema import (
+                drop_subscriptioninfo_user_agent_if_exists,
+                ensure_subscriptioninfo_schema,
+            )
+
+            def _ensure_webpush_schema(sender, app_config, **kwargs):
+                if app_config.label not in ("notifications", "webpush"):
+                    return
+                try:
+                    drop_subscriptioninfo_user_agent_if_exists()
+                except Exception:
+                    pass
+
+            post_migrate.connect(_ensure_webpush_schema, dispatch_uid="notifications.drop_webpush_user_agent")
+            request_started.connect(
+                lambda **kwargs: ensure_subscriptioninfo_schema(),
+                dispatch_uid="notifications.ensure_webpush_schema_on_request",
+            )
+        except Exception:
+            pass
+
         # 2. Inject patched webpush.forms module into sys.modules
         try:
             from django import forms
@@ -87,18 +113,40 @@ class NotificationsConfig(AppConfig):
                     fields = ('endpoint', 'auth', 'p256dh', 'browser')
 
                 def get_or_save(self):
+                    from django.db.utils import OperationalError
+                    from notifications.webpush_schema import drop_subscriptioninfo_user_agent_if_exists
+
+                    def _create():
+                        try:
+                            subscription, _created = SubscriptionInfo.objects.get_or_create(
+                                **self.cleaned_data
+                            )
+                        except SubscriptionInfo.MultipleObjectsReturned:
+                            subscriptions = SubscriptionInfo.objects.filter(**self.cleaned_data)
+                            subscription = subscriptions.first()
+                            subscriptions.exclude(id=subscription.id).delete()
+                        return subscription
+
                     try:
-                        subscription, created = SubscriptionInfo.objects.get_or_create(**self.cleaned_data)
-                    except SubscriptionInfo.MultipleObjectsReturned:
-                        subscriptions = SubscriptionInfo.objects.filter(**self.cleaned_data)
-                        subscription = subscriptions.first()
-                        subscriptions.exclude(id=subscription.id).delete()
-                    return subscription
+                        return _create()
+                    except OperationalError as exc:
+                        # MySQL 1364 when user_agent is NOT NULL and omitted by our patch.
+                        if "user_agent" not in str(exc).lower():
+                            raise
+                        drop_subscriptioninfo_user_agent_if_exists()
+                        return _create()
 
             forms_mod.WebPushForm = WebPushForm
             forms_mod.SubscriptionForm = SubscriptionForm
             
             sys.modules['webpush.forms'] = forms_mod
+            # views may already hold references from `from webpush.forms import ...`
+            try:
+                import webpush.views as webpush_views
+                webpush_views.WebPushForm = WebPushForm
+                webpush_views.SubscriptionForm = SubscriptionForm
+            except Exception:
+                pass
         except (ImportError, RuntimeError):
             pass
 

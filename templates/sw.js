@@ -1,9 +1,40 @@
-﻿self.addEventListener('install', event => {
+self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
     event.waitUntil(self.clients.claim());
+});
+
+// Chromium still wants a non-no-op fetch handler for beforeinstallprompt.
+// Never leave respondWith() with a rejected promise (that logs
+// "FetchEvent resulted in a network error" for HTMX/XHR to /tickets/).
+// Do not intercept navigations — let the browser talk to the tunnel directly.
+self.addEventListener('fetch', event => {
+    if (event.request.mode === 'navigate') {
+        return;
+    }
+    if (event.request.method !== 'GET') {
+        return;
+    }
+    let url;
+    try {
+        url = new URL(event.request.url);
+    } catch (e) {
+        return;
+    }
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+    event.respondWith(
+        fetch(event.request).catch(() =>
+            new Response('', {
+                status: 504,
+                statusText: 'Gateway Timeout',
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            })
+        )
+    );
 });
 
 self.addEventListener('push', event => {
@@ -42,7 +73,6 @@ self.addEventListener('push', event => {
         data: payload.data || { url: "/" },
         badge: "/static/images/mlameh-icon-fg.png",
         vibrate: [100, 50, 100],
-        // Collapse duplicate pushes for the same event into one OS toast
         tag: `mlameh:${displayTitle}:${targetUrl}`,
         renotify: false,
     };
@@ -50,8 +80,6 @@ self.addEventListener('push', event => {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // Suppress OS toast only when the recipient is visibly in that ticket chat
-                // (/tickets/<id>). List pages like /tickets/ (announcements) still toast.
                 const normTarget = String(targetUrl || "/").replace(/\/+$/, '') || "/";
                 const isTicketDetail = /^\/tickets\/\d+$/.test(normTarget);
                 const isInThatChat = isTicketDetail && windowClients.some(client => {
@@ -80,7 +108,6 @@ self.addEventListener('notificationclick', event => {
     event.notification.close();
 
     const rawUrl = (event.notification.data && event.notification.data.url) || "/";
-    // Push payloads use relative paths ("/tickets/1/"); client.url is absolute.
     const urlToOpen = new URL(rawUrl, self.location.origin).href;
     const targetPath = new URL(urlToOpen).pathname.replace(/\/+$/, "") || "/";
 
@@ -90,8 +117,6 @@ self.addEventListener('notificationclick', event => {
             includeUncontrolled: true,
         });
 
-        // Reuse any already-open same-origin tab/window (installed PWA or browser),
-        // then navigate it to the notification target instead of spawning a duplicate.
         for (const client of windowClients) {
             let clientUrl;
             try {

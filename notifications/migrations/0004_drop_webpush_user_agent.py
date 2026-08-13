@@ -1,10 +1,12 @@
 """Drop the rogue 'user_agent' column from webpush_subscriptioninfo.
 
-The django-webpush model does not define a 'user_agent' field, but some
-databases have one with a NOT NULL constraint. Dropping it (when present)
-brings the schema back in sync with the ORM model.
+We patch django-webpush's SubscriptionInfo to omit user_agent at runtime, but
+some DBs still have a NOT NULL user_agent column with no default. Dropping it
+(when present) brings the schema back in sync with the patched ORM.
 
-Idempotent: if the column is already absent (fresh MySQL installs), this is a no-op.
+Idempotent: if the column is already absent, this is a no-op.
+Upgrades also run 0010_drop_webpush_user_agent (stronger check) in case this
+migration was recorded as applied while the column remained.
 """
 
 from django.db import migrations

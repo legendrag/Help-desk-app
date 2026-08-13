@@ -42,18 +42,20 @@
         content="MlamehTicket — Modern support platform with real-time chat, smart routing, and knowledge base.">
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.77">
+    <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.79">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.74">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.36">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.37">
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
-    <link rel="manifest" href="{% static 'manifest.json' %}?v=7">
+    <link rel="manifest" href="{% url 'web_manifest' %}">
     <meta name="theme-color" content="#7880f0">
     <meta name="application-name" content="MlamehTicket">
     <meta name="apple-mobile-web-app-title" content="MlamehTicket">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     {% webpush_header %}
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -81,7 +83,9 @@
             openMenu: "{% filter escapejs %}{% trans 'Open menu' %}{% endfilter %}",
             closeMenu: "{% filter escapejs %}{% trans 'Close menu' %}{% endfilter %}",
             unsavedConfirm: "{% filter escapejs %}{% trans 'You have unsaved changes. Are you sure you want to leave?' %}{% endfilter %}",
-            resetConfirm: "{% filter escapejs %}{% trans 'Reset this template to defaults?' %}{% endfilter %}"
+            resetConfirm: "{% filter escapejs %}{% trans 'Reset this template to defaults?' %}{% endfilter %}",
+            installApp: "{% filter escapejs %}{% trans 'Install app' %}{% endfilter %}",
+            installViaBrowser: "{% filter escapejs %}{% trans 'Use Chrome menu (⋮) → Cast, save and share → Install page as app…' %}{% endfilter %}"
         };
 
         // Defeat browser bfcache: when the page is restored from
@@ -121,6 +125,7 @@
             }, true);
         })();
     </script>
+    <script src="{% static 'js/pwa.js' %}?v=1.2"></script>
     <script src="{% static 'js/notifications.js' %}?v=1.20" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
@@ -140,6 +145,17 @@
             <div class="topbar-controls">
 
                 {% if user.is_authenticated %}
+
+                <button type="button" class="pwa-install-btn" id="pwa-install-btn" data-pwa-install
+                    hidden aria-hidden="true" title="{% trans 'Install app' %}"
+                    aria-label="{% trans 'Install app' %}" data-no-loading>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
 
                 <div class="notification-bell-container">
                     <button type="button" class="notification-btn" id="notification-btn" aria-label="{% trans 'Notifications' %}"
@@ -503,6 +519,8 @@
                 <a href="{% url 'settings' %}">{% trans "Settings Hub" %}</a>
                 {% endif %}
                 <hr>
+                <button type="button" class="sidebar-action-btn button" data-pwa-install hidden aria-hidden="true"
+                    data-no-loading>{% trans "Install app" %}</button>
                 <a href="#" hx-get="{% url 'password_change' %}" hx-target="#modal-content" hx-trigger="click"
                     onclick="openModal()" class="sidebar-action-btn button">{% trans "Change Password" %}</a>
 
