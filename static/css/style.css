@@ -110,32 +110,6 @@ body:has(.ticket-offcanvas.open) .topbar {
   gap: 1rem;
 }
 
-.pwa-install-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: white;
-  padding: 0.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s, background 0.2s;
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
-}
-
-.pwa-install-btn:hover,
-.pwa-install-btn:active,
-.pwa-install-btn:focus {
-  transform: scale(1.1);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.pwa-install-btn[hidden] {
-  display: none !important;
-}
-
 .menu-btn-universal {
   background: transparent;
   color: white;

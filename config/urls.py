@@ -4,10 +4,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 from django.shortcuts import redirect
-from django.views.generic.base import RedirectView, TemplateView
-from django.views.decorators.cache import never_cache
+from django.views.generic.base import RedirectView
 
-from core.pwa_views import web_manifest
+from core.pwa_views import service_worker, web_manifest
 
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico', permanent=True)),
@@ -20,11 +19,10 @@ urlpatterns = [
     path("news/", include("news.urls")),
     path("kb/", include("kb.urls")),
     path("webpush/", include("webpush.urls")),
-    path("manifest.webmanifest", never_cache(web_manifest), name="web_manifest"),
-    path("sw.js", never_cache(TemplateView.as_view(template_name="sw.js", content_type="application/javascript")), name="sw.js"),
+    path("manifest.webmanifest", web_manifest, name="web_manifest"),
+    path("sw.js", service_worker, name="sw.js"),
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

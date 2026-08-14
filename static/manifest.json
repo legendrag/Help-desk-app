@@ -2,11 +2,9 @@
   "name": "MlamehTicket",
   "short_name": "MlamehTicket",
   "description": "MlamehTicket help desk application",
-  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#0a0818",
   "theme_color": "#7880f0",
   "icons": [

@@ -1,5 +1,7 @@
 from django.utils.cache import add_never_cache_headers
 
+_PWA_PATHS = frozenset({"/sw.js", "/manifest.webmanifest"})
+
 
 class NoCacheAfterLogoutMiddleware:
     """
@@ -16,6 +18,9 @@ class NoCacheAfterLogoutMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
+
+        if request.path in _PWA_PATHS:
+            return response
 
         if request.user.is_authenticated:
             add_never_cache_headers(response)

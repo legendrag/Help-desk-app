@@ -6,15 +6,15 @@ self.addEventListener('activate', event => {
     event.waitUntil(self.clients.claim());
 });
 
-// Chromium still wants a non-no-op fetch handler for beforeinstallprompt.
-// Never leave respondWith() with a rejected promise (that logs
-// "FetchEvent resulted in a network error" for HTMX/XHR to /tickets/).
-// Do not intercept navigations — let the browser talk to the tunnel directly.
+// Chrome's address-bar install icon requires a fetch handler that calls
+// respondWith. Only same-origin GETs; CDN/POST stay with the browser.
+// Never fetch() a navigation Request: mode "navigate" is rejected in the
+// worker ("Failed to fetch" on /tickets/). Let the browser load pages.
 self.addEventListener('fetch', event => {
-    if (event.request.mode === 'navigate') {
+    if (event.request.method !== 'GET') {
         return;
     }
-    if (event.request.method !== 'GET') {
+    if (event.request.mode === 'navigate') {
         return;
     }
     let url;
@@ -26,15 +26,7 @@ self.addEventListener('fetch', event => {
     if (url.origin !== self.location.origin) {
         return;
     }
-    event.respondWith(
-        fetch(event.request).catch(() =>
-            new Response('', {
-                status: 504,
-                statusText: 'Gateway Timeout',
-                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-            })
-        )
-    );
+    event.respondWith(fetch(event.request));
 });
 
 self.addEventListener('push', event => {

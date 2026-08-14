@@ -1,8 +1,4 @@
-"""Serve the web app manifest without a UTF-8 BOM.
-
-Editors on Windows often save JSON with a BOM. Chromium then fails to parse the
-manifest, so beforeinstallprompt never fires and Install never appears.
-"""
+"""Serve the PWA manifest and service worker with Chrome-installable headers."""
 
 from pathlib import Path
 
@@ -11,15 +7,25 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_GET
 
 
+def _pwa_response(body: str, content_type: str) -> HttpResponse:
+    response = HttpResponse(body, content_type=content_type)
+    # no-store prevents Chrome from persisting the service worker, so the
+    # origin never qualifies as an installable app.
+    response["Cache-Control"] = "max-age=0, must-revalidate"
+    return response
+
+
 @require_GET
 def web_manifest(request):
     path = Path(settings.BASE_DIR) / "static" / "manifest.json"
-    # utf-8-sig strips a leading BOM if present.
     text = path.read_text(encoding="utf-8-sig")
-    return HttpResponse(
-        text,
-        content_type="application/manifest+json; charset=utf-8",
-        headers={
-            "Cache-Control": "no-cache, max-age=0, must-revalidate",
-        },
-    )
+    return _pwa_response(text, "application/manifest+json; charset=utf-8")
+
+
+@require_GET
+def service_worker(request):
+    path = Path(settings.BASE_DIR) / "templates" / "sw.js"
+    body = path.read_text(encoding="utf-8")
+    response = _pwa_response(body, "application/javascript; charset=utf-8")
+    response["Service-Worker-Allowed"] = "/"
+    return response
