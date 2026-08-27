@@ -6,17 +6,9 @@ Conventions for changing mlamehticket so new work matches the existing SSR + HTM
 
 ## Read first
 
-- Product and UI expectations: [`../../PROJECT_STANDARDS.md`](../../PROJECT_STANDARDS.md)
+- How the product works (agent map): [`../../PROJECT_STANDARDS.md`](../../PROJECT_STANDARDS.md)
 - Architecture snapshot: [architecture.md](architecture.md)
 - Permissions: [permissions-and-scoping.md](permissions-and-scoping.md)
-
-### Stale notes in `PROJECT_STANDARDS.md`
-
-Treat that file as useful feature context, but verify against code when details conflict. Known drift:
-
-- **Role permission count** — the doc’s permission table is incomplete; `core.Role` currently exposes on the order of ~31 boolean flags (not a short dozen).
-- **Dropdown library** — the standards doc still mentions **Choices.js**; the live UI loads **Tom Select** from CDN (`templates/base.html`). Prefer Tom Select patterns when touching selects.
-- Chat send rules and other UX bullets may lag `tickets/access.py` / consumers — trust the code for authorization.
 
 ## Stack conventions
 

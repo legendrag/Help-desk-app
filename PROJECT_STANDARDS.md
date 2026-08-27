@@ -1,243 +1,195 @@
-﻿# mlamehticket Application - Features & Standards
+﻿# mlamehticket — how this project works
 
-This document serves as a persistent reference for the features and UI/UX design standards of the mlamehticket Application. It is written to reflect the actual codebase and should be updated as the project evolves.
+Persistent briefing for agents (and humans) changing this repo. It describes **current behavior**. If this file and the code disagree, **trust the code**, then update this file.
 
----
-
-## 🚀 Application Features
-
-### 1. Ticket Lifecycle Management
-
-The ticket is the core entity of the application, managed via `tickets/models.py` and `tickets/template_views.py`.
-
-#### Ticket Fields & Data Model
-- **Ticket Number**: Auto-generated on creation using the format `{BRANCH_CODE}-{YYYYMMDD}-{SEQUENCE}` (e.g., `HQ-20260501-0001`). Uses `SELECT FOR UPDATE` to ensure race-condition-safe sequential numbering.
-- **Title & Description**: Free-text fields captured during ticket creation.
-- **Branch / Department / Category**: Three-level organizational hierarchy. Category options are dynamically loaded via HTMX when a department is selected (`ticket_category_options` endpoint). Categories are validated server-side to belong to the selected department.
-- **Priority**: Four levels — `Low`, `Medium`, `High`, `Urgent`.
-- **Status**: Five states — `Open`, `In Progress`, `Waiting`, `Closed`, `Merged`.
-- **Assigned To**: Foreign key to a support user. Set automatically when a ticket is picked.
-- **Merge Tracking**: A `merged_into` self-referential foreign key marks merged tickets. A full `TicketMergeHistory` log records who merged, when, and which tickets were involved.
-
-#### Time Tracking (Automatic)
-The model automatically records and calculates time metrics on save:
-- **`picked_at`**: Timestamped when the ticket first transitions to `In Progress`.
-- **`closed_at`**: Timestamped when the ticket first transitions to `Closed`.
-- **`total_pending_duration_seconds`**: Accumulates total time spent in the `Waiting` status to exclude idle time from resolution time calculations.
-- **`last_status_change_at`**: Updated on every status transition.
-
-These raw timestamps are exposed as calculated metrics on the ticket detail page:
-- **Response Time**: `picked_at - created_at`
-- **Resolution Time**: `closed_at - picked_at - total_pending_duration_seconds`
-- **Time to Close**: `closed_at - created_at`
-
-#### Status History Log
-Every status change creates a `TicketStatusHistory` entry, recording the new status, the user who changed it, and the exact timestamp. This is displayed as a full audit trail on the ticket detail page.
+Deeper docs live under [`docs/`](docs/README.md). Do not duplicate them here.
 
 ---
 
-### 2. Ticket List View & Filtering
+## What this product is
 
-Handled by `TicketListView`, paginated at **25 tickets per page**.
+mlamehticket is a **branch help-desk**. Branch staff (Needs Support) open tickets. Support agents pick, chat, transfer, merge, wait, close, and reopen them. Live updates use WebSockets. The UI is bilingual English / Arabic.
 
-- **Search**: Full-text search across `ticket_number`, `title`, and `description` using `icontains` queries.
-- **Filter by Branch**: Dropdown filter. Branch users only see their own branch; support users see branches related to their department.
-- **Filter by Status**: Dropdown filter across all five status values.
-- **Filter by Assignee**: Filter by a specific assigned support agent or show only `Unassigned` tickets.
-- **HTMX Live Partial Reload**: When loaded via HTMX, the view returns `tickets/list_live_partial.html` instead of the full page, allowing in-place list refreshes triggered by WebSocket events (e.g., after a ticket is picked or status changes).
-- **Scoped Querysets**: Superusers see all tickets; branch users see only their branch's tickets; support users see only their department's tickets.
+It is a **Django 6 monolith**: server-rendered HTML, HTMX partials, vanilla CSS/JS. There is no SPA frontend.
 
 ---
 
-### 3. Ticket Detail View & Chat System
+## Stack and non-goals
 
-Handled by `TicketDetailView`.
-
-#### Messaging
-- **Post Message** (`post_message`): Sends a new message on a ticket. Supports text and a single file attachment per message.
-- **Reply Threading**: Messages support a `reply_to` foreign key, enabling threaded conversation display.
-- **Edit Message** (`edit_message`): Owners of a message (with the `can_edit_message` role permission) can edit the message text after sending.
-- **Delete Message** (`delete_message`): Owners of a message (with the `can_delete_message` role permission) can delete it.
-- **Chat Restrictions**:
-  - Branch users can only send messages on tickets *they created*.
-  - Support users can only send messages on tickets *assigned to them*.
-  - Messages cannot be sent on `Closed` or `Merged` tickets (enforced at the model level in `TicketMessage.clean()`).
-  - `can_chat` context variable controls whether the message input UI is rendered at all.
-- **Keyboard Shortcuts**: The message form is submitted via keyboard shortcut (e.g., `Ctrl+Enter` or `Enter`), without requiring the user to click the send button.
-
-#### File Attachments
-- **Drag-and-Drop Upload**: A visual drop-zone overlay activates when a user drags a file over the chat form area, providing clear visual feedback.
-- **File Preview Bar**: After selecting a file, an animated preview bar renders below the input showing the filename and a remove button.
-- **Storage Path**: Files are stored at `media/tickets/{ticket_id}/{filename}`.
-
-#### Real-Time WebSocket Updates (Django Channels)
-All messaging and ticket state events are broadcast instantly via Django Channels (`TicketChatConsumer`). Consumers are scoped to `ticket_{id}` groups.
-
-Events broadcast on the detail page:
-| Event Name | Triggered By |
+| Layer | What we use |
 |---|---|
-| `message_created` | New message posted |
-| `message_deleted` | Message deleted |
-| `message_edited` | Message text updated |
-| `ticket_status_changed` | Status updated |
-| `ticket_picked` | Ticket assigned via "Pick" action |
+| Backend | Python 3.12+ · Django 6 · session auth |
+| Frontend | Django templates · HTMX · vanilla CSS/JS |
+| Selects / charts | **Tom Select** (CDN) · Chart.js on the dashboard |
+| Realtime | Django Channels · Daphne · `InMemoryChannelLayer` |
+| Email | In-process daemon thread (`notifications.email_queue`) |
+| DB | SQLite (dev) · MySQL via PyMySQL (production) |
+| Languages | `en` + `ar`; cookie `django_language`; **no `/ar/` URL prefixes** |
+| Packaging | Windows Inno Setup installer under `installer/` |
 
-The list page also receives broadcast events via `ticket_list`, `ticket_list_branch_{id}`, and `ticket_list_department_{id}` groups, allowing it to refresh rows live without polling.
+**Do not add** React/Vue, Tailwind, Celery, Redis, or a second frontend build step unless the project explicitly changes architecture.
 
----
-
-### 4. Ticket Actions (Action Bar)
-
-Action buttons displayed on the ticket detail page, each permission-guarded by the user's role:
-
-- **Pick Ticket** (`pick_ticket`): Assigns the ticket to the logged-in support user, sets status to `In Progress`, records the `picked_at` timestamp, creates a `TicketStatusHistory` entry, fires the `notify_ticket_picked` notification, and broadcasts a WebSocket event.
-- **Update Status** (`update_ticket_status`): Allows changing the ticket status to any of the five states. Re-opening a closed ticket automatically re-assigns it to the user performing the action.
-- **Edit Ticket** (`TicketUpdateView`): Full form to edit ticket fields (branch, department, category, priority, etc.). Uses HTMX partial templates for modal-based in-place editing.
-- **Merge Ticket** (`merge_ticket`): See the Ticket Merging section below.
+**Realtime limit:** `InMemoryChannelLayer` is process-local. Multiple Daphne workers will not share chat/list/notification events. Email is likewise in-process, not a broker.
 
 ---
 
-### 5. Ticket Merging
+## Where code lives
 
-A dedicated feature accessible from the ticket detail action bar.
+| Package | Role | Start here |
+|---|---|---|
+| `accounts/` | Custom user, login, force-password-change, user CRUD | `accounts/models.py`, `accounts/middleware.py` |
+| `core/` | Branch, department, ticket category, role, email settings/templates, maintenance, seeds | `core/models.py`, `core/management_views.py` |
+| `tickets/` | Lifecycle, chat, list, dashboard, merge/transfer, Settings Hub shell | `tickets/template_views.py`, `tickets/access.py`, `tickets/models.py` |
+| `notifications/` | In-app, WebSockets, email queue, web push | `notifications/services.py`, `notifications/consumers.py` |
+| `news/` | Announcements | `news/views.py` |
+| `kb/` | Knowledge base articles (separate from ticket categories) | `kb/views.py`, `kb/models.py` |
+| `config/` | Settings, URLs, ASGI/WSGI | `config/settings.py`, `config/asgi.py` |
+| `templates/` | SSR HTML (plus app `templates/`) | `templates/base.html` |
+| `static/` | CSS/JS/images | `static/css/`, `static/js/` |
+| `scripts/i18n.py` | Extract / update / compile / check Arabic catalogs | `locale/ar/` |
+| `installer/` | Offline Windows installer only | `installer/README.md` |
 
-- **Modal UI**: A modal dialog presents a search field for finding the ticket to merge into the current one.
-- **HTMX Autocomplete Search** (`ticket_search_options`): As the user types (minimum 2 characters), HTMX fires a request that returns a styled HTML dropdown of matching tickets (by number or title), limited to 15 results. Already-merged tickets are excluded from results.
-- **Submit & Confirm**: Once a ticket is selected, the submit button becomes enabled. On confirmation:
-  1. The `merge_tickets` service function is called (from `tickets/services.py`).
-  2. A `TicketMergeHistory` record is created.
-  3. The secondary ticket is set to `Merged` status with a `merged_into` pointer to the primary.
-  4. A WebSocket broadcast notifies all clients of the status change on the secondary ticket.
-- **Permission Guard**: Only users with `can_update_status` (or superusers) can merge tickets.
-- **Data Integrity**: Merging a `Merged` ticket is blocked at the model level. The `merged_into` field is validated to be present when setting status to `Merged`.
-
----
-
-### 6. Analytics Dashboard
-
-Handled by `DashboardView`. Access is role-gated (`can_access_dashboard`).
-
-- **Scoped Data**: Superusers see all tickets; branch users see only their branch's data; support users see only their department's data.
-- **Filterable**: Dashboard data can be filtered by date range (`start_date`, `end_date`), department, branch, and assigned agent.
-- **Stat Cards**: Animated cards showing:
-  - Total Tickets
-  - Total Active Users
-  - Active Branches
-  - Active Departments
-- **Status Breakdown**: Visual horizontal bar chart showing counts and percentages for each status (`Open`, `In Progress`, `Waiting`, `Closed`, `Merged`).
-- **Breakdowns by Category, Department, and Branch**: Each shows a ranked list with relative percentage bars.
-- **Date-Series Chart**: Tickets created over time, with **drill-down navigation**:
-  - **Year → Month → Week → Day** progressively narrow the period. Drill-up is also supported.
-  - Displays the last 7 data points for the selected period granularity.
+Ticket HTTP endpoints are mostly in `tickets/template_views.py`. New ticket **authorization** belongs in or next to `tickets/access.py`, not copied ad hoc into each view.
 
 ---
 
-### 7. Notification System
+## Access: three layers
 
-A multi-channel notification system powered by Django Channels, Web Push (service worker), and an async email queue.
+These are independent. Check all three.
 
-#### In-App Notifications
-- **Model**: `InAppNotification` stores `title`, `message`, `link`, `notification_type`, `is_read`, and `created_at` per recipient user.
-- **WebSocket Push** (`notifications/consumers.py`): Each logged-in user is connected to their own `user_{id}_notifications` WebSocket group. New notifications are pushed instantly without polling.
-- **Browser / OS Push**: Delivered via Web Push through the service worker (`sw.js`) when the user has granted notification permission and subscribed. The in-app WebSocket path does not call the native `Notification` API directly.
-- **Notification Bell UI**: A bell icon in the topbar shows an unread count badge. Clicking it opens a dropdown panel that fetches the latest 20 notifications via the REST API (`/notifications/api/?limit=20`). Mark-all-read and clear-read are separate header actions (opening the bell does not mark all as read).
-- **Auto-Reconnect**: The WebSocket client reconnects automatically after 3 seconds on disconnect, except on auth failure (close code `4401`).
-- **On-page suppression**: If the user is already viewing the related ticket page, the live in-app toast is suppressed and the notification is marked read; the service worker similarly suppresses the OS toast when a visible tab is on that ticket URL.
+1. **`user_type`** — `branch` (Needs Support, scoped by `user.branch`) or `support` (agent, scoped by `user.department`).
+2. **`core.Role` flags** — ~31 booleans on `user.role`. Missing role ⇒ denied for gated actions. A role named `admin` (case-insensitive) **turns every flag on** at save. That is not the same as Django superuser.
+3. **`is_superuser`** — bypasses role flags and sees all tickets.
 
-#### Email Notifications (Async Queue)
-All email sends are enqueued into a background job queue (`email_queue.py`) rather than sent synchronously, so they never block the HTTP request cycle. Email jobs include:
-- `send_new_ticket_email`: Fired when a ticket is created.
-- `send_ticket_picked_email`: Fired when a support agent picks a ticket.
-- `send_ticket_update_email`: Fired on status changes and message replies (message emails are delayed 120 seconds to reduce noise if the recipient already read the in-app notification).
-- `send_transfer_event_email`: Fired on transfer request / accept / deny, to the transfer counterparty.
+Full flag list: [`docs/reference/permissions-matrix.md`](docs/reference/permissions-matrix.md). Tenancy rules: [`docs/developer-guide/permissions-and-scoping.md`](docs/developer-guide/permissions-and-scoping.md).
 
-Email event flags on the active `EmailSetting` gate email only; they do not disable in-app or Web Push notifications.
+### Tenancy
 
-#### Notification Recipient Logic
-- **New Ticket**: Notifies all branch users of the ticket's branch + all support users of the ticket's department + all admins, excluding the ticket creator.
-- **Ticket Picked**: Same audience as above, excluding the agent who performed the action.
-- **Status Updated**: Same audience, excluding the user who triggered the change (only when the status actually changes).
-- **Message Reply**: Notifies creator + assignee + admins when assigned; for unassigned tickets, first message also notifies branch/department users. The actor is always excluded.
-- **Transfer request / accept / deny**: Notifies only the transfer counterparty (and emails that same user).
-
----
-
-### 8. User & Role Management
-
-#### User Model (`accounts/models.py`)
-- Extends Django's `AbstractUser`.
-- **User Types**: `branch` (needs support) or `support` (support agent).
-- **Status**: `Active` or `Inactive`.
-- **Linked to**: A `Branch` (for branch users) or a `Department` (for support users).
-- **Role**: Foreign key to `core.Role`, which holds a set of granular boolean permissions.
-- **Normalized usernames**: Usernames are strip-lowercased on save for consistent handling.
-
-#### Role-Based Permissions (via `core.Role`)
-Each role has fine-grained boolean flags controlling access:
-| Permission | Controls |
+| Who | Default ticket visibility |
 |---|---|
-| `can_create_ticket` | Access to ticket creation form |
-| `can_update_ticket` | Access to ticket editing |
-| `can_update_status` | Status update action + ticket merging |
-| `can_pick_ticket` | "Pick" action on unassigned tickets |
-| `can_send_message` | Message input on ticket detail |
-| `can_edit_message` | Edit own messages |
-| `can_delete_message` | Delete own messages |
-| `can_update_closed_ticket` | Interact with closed tickets |
-| `can_access_dashboard` | Access analytics dashboard |
-| `can_access_settings` | Access admin settings panel |
+| Branch user | `ticket.branch_id == user.branch_id` |
+| Support user | `ticket.department_id == user.department_id` |
+| Superuser | All tickets |
+
+### Helpers in `tickets/access.py`
+
+| Helper | Use for |
+|---|---|
+| `user_in_ticket_org` | Mutations, pick, reopen, **chat WebSocket**. Strict org match. **No KB bypass.** |
+| `user_can_view_ticket` | HTTP detail/drawer **read**. Org match **or** KB bypass. |
+| `user_can_pick_ticket` | Pick: org + unassigned + not merged + `can_pick_ticket`. |
+| `user_can_reopen_ticket` | Reopen: org + same-dept support (or `can_update_closed_ticket` / superuser). |
+
+**KB bypass (intentional, view-only):** if `can_access_kb` and the ticket has a **published** related KB article, HTTP can show the ticket across org boundaries. Chat WebSocket, pick, reopen, and other writes must **not** use this. Do not copy `user_can_view_ticket` onto mutating endpoints.
+
+`ForcePasswordChangeMiddleware` redirects almost every request to password change when `user.requires_password_change` is true.
 
 ---
 
-### 9. HTMX Integration Patterns
+## Tickets
 
-The application uses HTMX extensively to deliver a single-page-app feel without a JavaScript framework.
+Core model: `tickets/models.py`. Number format: `{BRANCH_CODE}-{YYYYMMDD}-{SEQUENCE}` with `select_for_update`. Fields include title, description, branch, department, **ticket** category, priority, status, assignee, `client_name` / `client_phone`, merge pointer, pending transfer FKs.
 
-- **Partial Templates**: Views detect `HX-Request` headers and return lightweight partial templates (e.g., `create_partial.html`, `edit_partial.html`, `list_live_partial.html`) instead of full pages.
-- **HX-Trigger Headers**: Server responses send `HX-Trigger` headers to fire client-side events: `closeModal`, `refreshTickets`, `reloadPage`.
-- **Dynamic Category Loading**: Selecting a department in the ticket form triggers an HTMX GET to `/tickets/category-options/`, which returns a fresh `<select>` options partial.
-- **Merge Search Autocomplete**: The merge modal's search field triggers an HTMX GET to `/tickets/search-options/` with 2-character minimum, returning an inline HTML dropdown without any JavaScript component libraries.
+**Statuses:** `open` · `in_progress` · `waiting_for_branch` (UI: Waiting) · `closed` · `merged`.
+
+**Priorities:** `low` · `medium` · `high` · `urgent`. Category can supply a default priority.
+
+**Time fields:** `picked_at`, `closed_at`, `total_pending_duration_seconds` (time spent Waiting), `last_status_change_at`. Detail page derives response / resolution / time-to-close from those.
+
+**History:** every status/transfer/merge-style event writes `TicketStatusHistory` (`event_type` + optional `detail`).
+
+### List and search
+
+`TicketListView`, 25 per page, scoped querysets as above. HTMX can return `tickets/list_live_partial.html` for live refresh.
+
+Search (`tickets/search.py`) is **AND across tokens**, not a single `icontains` on title/description. Tokens match ticket number, title, description, client name/phone (digits ignore separators), branch/department/category names, assignee and creator usernames. Ranking prefers exact/ID/title hits.
+
+Filters: branch, status, assignee (including unassigned).
+
+### Actions
+
+| Action | Notes |
+|---|---|
+| **Pick** | Assigns current support user, typically `in_progress`, notifies, broadcasts. Org-scoped. |
+| **Status** | Role `can_update_status`. Reopen uses `user_can_reopen_ticket` (not “any support, any ticket”). |
+| **Edit** | `can_update_ticket`; HTMX modal partials. |
+| **Transfer** | Assignee or superuser → another **same-department** agent. Pending `pending_transfer_to` / `_by` until accept / deny / cancel. Branch users do not transfer. |
+| **Merge** | `can_update_status` or superuser. `tickets.services.merge_tickets`; secondary becomes `merged` with `merged_into`. HTMX search: min 2 chars, exclude already-merged. |
+
+### Chat
+
+Messages: `TicketMessage` — text, optional one attachment, `reply_to` threading, `is_system_message` (+ `message_ar` for system text). `clean()` **blocks non-system messages** on closed/merged tickets. Attachments: `validate_ticket_attachment` against `ALLOWED_ATTACHMENT_EXTENSIONS` and `MAX_ATTACHMENT_SIZE` (10 MiB; pdf/docx/xlsx/jpg/jpeg/png). Stored under `media/tickets/{ticket_id}/`.
+
+**Composer UI (`can_chat`):** superuser, or branch user on a ticket in their branch, or support user who is the **assignee**. Closed/merged tickets should not accept new chat.
+
+**WebSocket send** (`tickets/consumers.py`): authenticated; `user_in_ticket_org`; `can_send_message` (superuser always); support (non-superuser) only if **assigned**; reject closed/merged. Connect uses org match only (close `4401` unauthenticated, `4403` forbidden).
+
+**HTTP `post_message` is looser** than the WebSocket path (branch = any ticket in branch; support = assignee **or** `can_send_message`, without `user_in_ticket_org`). **New chat/authz must follow `tickets.access` + the WebSocket rules**, not the older HTTP checks.
+
+Live events on a ticket group `ticket_{id}`: `message_created` / `edited` / `deleted`, `ticket_status_changed`, `ticket_picked`, typing. List groups: `ticket_list`, `ticket_list_branch_{id}`, `ticket_list_department_{id}`.
+
+Escape chat HTML (`escapeHtml` in `static/js/chat.js`; no `|safe` on message bodies).
 
 ---
 
-### 10. Settings Panel
+## Other surfaces
 
-- Accessible to superusers and users with the `can_access_settings` role permission.
-- Provides admin-level controls for managing users, branches, departments, categories, and roles.
+| Surface | What it is | Gate |
+|---|---|---|
+| **Dashboard** | Volume, status bars, org breakdowns, Chart.js drill-down, Excel export, optional agent leaderboard | `can_access_dashboard`; leaderboard also `can_view_leaderboard`. Same tenancy as tickets. |
+| **Notifications** | In-app bell (WS `user_{id}_notifications` + `/notifications/api/`), Web Push (`sw.js`), SMTP via in-process queue | Email toggles on active `EmailSetting` affect **email only**. Bilingual title/body fields exist on in-app rows. |
+| **Announcements** | `news` app; optional branch targeting | Manage: `can_manage_news` |
+| **Knowledge base** | `kb.Category` ≠ `core.Category`. Articles can link a related ticket. | View: `can_access_kb`. Manage: `can_manage_kb`. |
+| **Settings Hub** | `/tickets/settings/` — HTMX tabs: branches, departments, categories, roles, users, email, conditional KB categories + maintenance | Open hub: `can_access_settings`. Each CRUD action has its own flag. |
+| **PWA** | Manifest + service worker served from `core/pwa_views.py` (`Cache-Control: must-revalidate`, `Service-Worker-Allowed: /`) | Authenticated app shell |
+| **Installer** | Inno Setup (`installer/setup.iss`, `build.ps1`), not a “PowerShell installer” as the product. Bundles Python/MySQL, Windows service, upgrades. | Ops docs |
+
+Notification audiences (actor excluded): new ticket / pick / status → branch users of the ticket’s branch + support of its department + admins; replies → creator + assignee + admins (unassigned first message also pings branch/dept); transfer events → counterparty only. Message emails are often delayed ~120s. Details: [`docs/developer-guide/notifications-internals.md`](docs/developer-guide/notifications-internals.md).
 
 ---
 
-### 11. Installer & Deployment
+## UI conventions
 
-- **PowerShell Installer** (`installer/build.ps1`): A packaged installer script to set up the application on Windows environments.
-- **Run Script** (`run-mlamehticket.ps1`): A convenience script to launch the Django development server.
-- **Environment Configuration**: Sensitive values (database, email credentials, secret key) are managed via a `.env` file (excluded from git via `.gitignore`).
+- **Templates + HTMX:** detect `HX-Request` and return `*_partial.html` / live list fragments. Use existing `HX-Trigger` names (`closeModal`, `refreshTickets`, `reloadPage`) rather than inventing a JSON API for the same UI.
+- **CSS:** `static/css/modern.css` (tokens, glass/panels), `style.css` (structure), `rtl.css`, `dark-mode.css`. Extend tokens; do not add Tailwind. Prefer directional helpers over hard-coded left/right.
+- **JS:** `static/js/chat.js`, `notifications.js`, and small page scripts. **Tom Select**, not Choices.js.
+- **i18n:** wrap user-facing copy in `{% trans %}` / `{% blocktrans trimmed %}` / gettext. After string changes: `python scripts/i18n.py update` → translate → `compile` → `check --verbose`. See [`docs/developer-guide/i18n.md`](docs/developer-guide/i18n.md).
+- **Tone:** professional, grounded hovers (no energetic scale/pop). Empty states stay muted and consistent.
 
 ---
 
-## 🎨 CSS & Design Standards
+## Agent do / don’t
 
-The application follows a **Premium SaaS / Glassmorphism** design architecture utilizing strictly Vanilla CSS. TailwindCSS or external utility frameworks are avoided in favor of complete design control.
+**Do**
 
-### 1. Architecture & Variable Management
-- All modern, high-end styling overrides are located in `static/css/modern.css`. Structural basics are maintained in `style.css`.
-- Rely entirely on CSS Custom Properties (`:root`) defined at the top of `modern.css` for colors, border-radii, and shadow tokens.
-- **Primary Color Palette**: Uses Indigo (`#4f46e5`) as the primary brand color alongside muted slates for text (`#0f172a`, `#475569`).
+- Read `tickets/access.py` before adding ticket HTTP or WebSocket behavior.
+- Scope querysets by branch/department unless the user is a superuser.
+- Return HTMX partials when the request is `HX-Request`.
+- Keep installer changes inside `installer/`.
+- Add Django `TestCase` coverage for tenancy and permission changes (`python manage.py test`). Prefer extending `tickets.tests` (especially security/tenancy classes).
+- Update the matching `docs/` page when user-visible behavior changes.
 
-### 2. Glassmorphism & Depth
-- **Panels & Topbars**: Must utilize semi-transparent backgrounds with `backdrop-filter: blur(24px)` to achieve the frosted glass effect.
-- **Borders & Shadows**: Use a subtle white glass border (`1px solid rgba(255, 255, 255, 0.9)`) and deep, soft shadows to create visual hierarchy instead of harsh solid lines.
-- **Global Backgrounds**: The body features a premium fixed background utilizing radial gradients to create subtle background glows.
+**Don’t**
 
-### 3. Interactions & Micro-Animations
-- **Subtle Button Hovers**: Buttons should only exhibit subtle background color shifts on hover. *Do not* use "energetic" scaling, popping, or intense drop-shadow transitions. The UI must feel grounded and professional.
-- **Smooth Transitions**: Interactive elements (table rows, action bar icons) should use standardized easing transitions: `transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)`.
-- **Typing & Loading**: Leverage custom CSS `@keyframes` for smooth typing dot bounces and drop-zone fade-ins.
+- Widen KB bypass into pick, reopen, chat write, or other mutations.
+- Assume Celery/Redis exist, or run multiple Daphne workers expecting shared Channels.
+- Introduce React/Vue/Tailwind or Choices.js.
+- Add `/ar/` URL prefixes; language is a cookie.
+- Treat a role named `admin` as Django superuser (or the reverse).
+- Copy the incomplete permission table from older versions of this file — use the [permissions matrix](docs/reference/permissions-matrix.md).
+- Leave new English-only strings without a catalog update.
 
-### 4. Custom Components Standards
-- **Dropdowns (Choices.js)**: 
-  - Ensure uniform padding, border colors, and rounded corners (`8px` to `12px`).
-  - Native dropdown arrows are replaced with custom animated SVG icons that smoothly rotate `-180deg` on open.
-  - Ensure the hidden input elements generated by Choices.js are strictly removed from the document flow (`position: absolute; opacity: 0; z-index: -1`) to prevent grid layout jumps.
-- **Forms & Grids**: Forms and Modals should enforce rigid CSS Grid layouts that lock columns in place, preventing visual reflows or jumping when error messages or dynamic elements appear.
-- **Empty States**: Use consistent, centered, faded typography with large muted emojis/icons to display empty states elegantly.
+---
+
+## Where to go next
+
+| Need | Doc |
+|---|---|
+| Contributing conventions | [`docs/developer-guide/contributing.md`](docs/developer-guide/contributing.md) |
+| Request flow, middleware, non-goals | [`docs/developer-guide/architecture.md`](docs/developer-guide/architecture.md) |
+| Models | [`docs/developer-guide/data-model.md`](docs/developer-guide/data-model.md) |
+| WebSocket events / close codes | [`docs/developer-guide/realtime.md`](docs/developer-guide/realtime.md) |
+| URLs | [`docs/developer-guide/url-reference.md`](docs/developer-guide/url-reference.md) |
+| Tests | [`docs/developer-guide/testing.md`](docs/developer-guide/testing.md) |
+| End-user flows | [`docs/user-guide/`](docs/user-guide/getting-started.md) |
+| Settings / roles | [`docs/admin-guide/settings-hub.md`](docs/admin-guide/settings-hub.md) |

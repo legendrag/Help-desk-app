@@ -12,7 +12,7 @@ app/
 ├── requirements.txt          # Runtime deps
 ├── requirements-dev.txt      # polib, djlint, and related tooling
 ├── .env / .env.example       # Local/runtime configuration
-├── PROJECT_STANDARDS.md      # Feature + UI conventions (may be partially stale)
+├── PROJECT_STANDARDS.md      # Agent map: how the product works, stack, access, conventions
 ├── README.md
 ├── run-mlamehticket.ps1      # Local run helper
 ├── test-local.ps1            # Local test + i18n check helper
