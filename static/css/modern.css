@@ -1502,6 +1502,12 @@ ul.errorlist li {
   gap: 0.35rem;
   margin-top: 0.75rem;
 }
+.ticket-copy-value-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
 .ticket-title-number {
   margin: 0;
 }

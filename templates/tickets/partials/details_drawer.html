@@ -20,24 +20,8 @@
             </div>
             <div class="ticket-number-row">
                 <h2 class="ticket-title-number">{{ ticket.ticket_number }}</h2>
-                <button type="button" class="ticket-copy-number-btn"
-                    data-copy-text="{{ ticket.ticket_number }}"
-                    data-copy-label="{% trans 'Copy ticket number' %}"
-                    data-copied-label="{% trans 'Copied' %}"
-                    onclick="copyTicketNumber(this)"
-                    aria-label="{% trans 'Copy ticket number' %}"
-                    title="{% trans 'Copy ticket number' %}">
-                    <svg class="ticket-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <svg class="ticket-copy-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </button>
-                <span id="ticket-copy-status" class="visually-hidden" aria-live="polite"></span>
+                {% trans "Copy ticket number" as copy_ticket_label %}
+                {% include "tickets/partials/copy_field_button.html" with copy_text=ticket.ticket_number copy_label=copy_ticket_label %}
             </div>
             <p class="ticket-title-text">{{ ticket.title }}</p>
         </header>
@@ -86,7 +70,11 @@
             {% if ticket.client_phone %}
             <div class="meta-item">
                 <label>{% trans "Phone Number" %}</label>
-                <span>{{ ticket.client_phone }}</span>
+                <span class="ticket-copy-value-row">
+                    <span>{{ ticket.client_phone }}</span>
+                    {% trans "Copy phone number" as copy_phone_label %}
+                    {% include "tickets/partials/copy_field_button.html" with copy_text=ticket.client_phone copy_label=copy_phone_label %}
+                </span>
             </div>
             {% endif %}
         </div>
@@ -196,7 +184,9 @@
             if (!text) return;
             const copyLabel = btn.getAttribute('data-copy-label') || '';
             const copiedLabel = btn.getAttribute('data-copied-label') || '';
-            const statusEl = document.getElementById('ticket-copy-status');
+            const statusEl = btn.parentElement
+                ? btn.parentElement.querySelector('.ticket-copy-status')
+                : null;
 
             function markCopied() {
                 btn.classList.add('copied');

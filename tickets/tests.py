@@ -659,20 +659,22 @@ class TicketNumberCopyButtonTests(TestCase):
             category=self.category,
             created_by=self.user,
             client_name="Client",
-            client_phone="123",
+            client_phone="0501234567",
         )
 
-    def test_detail_page_has_copy_button_for_ticket_number(self):
+    def test_detail_page_has_copy_buttons_for_ticket_and_phone(self):
         self.client.login(username="copy_branch", password="password123")
         response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'class="ticket-copy-number-btn"')
+        self.assertContains(response, 'class="ticket-copy-number-btn"', count=2)
         self.assertContains(response, 'data-copy-text="TK-COPY-1"')
+        self.assertContains(response, 'data-copy-text="0501234567"')
         self.assertContains(response, "copyTicketNumber")
 
-    def test_drawer_partial_has_copy_button_for_ticket_number(self):
+    def test_drawer_partial_has_copy_buttons_for_ticket_and_phone(self):
         self.client.login(username="copy_branch", password="password123")
         response = self.client.get(reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'class="ticket-copy-number-btn"')
+        self.assertContains(response, 'class="ticket-copy-number-btn"', count=2)
         self.assertContains(response, 'data-copy-text="TK-COPY-1"')
+        self.assertContains(response, 'data-copy-text="0501234567"')

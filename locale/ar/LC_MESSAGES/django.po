@@ -392,7 +392,7 @@ msgstr "إجراء"
 #: templates/tickets/list_live_partial.html:13
 #: templates/tickets/list_live_partial.html:27
 #: templates/tickets/merge_preview_partial.html:27
-#: templates/tickets/partials/details_drawer.html:53 tickets/forms.py:41
+#: templates/tickets/partials/details_drawer.html:37 tickets/forms.py:41
 #: tickets/models.py:53
 msgid "Branch"
 msgstr "الفرع"
@@ -405,7 +405,7 @@ msgstr "الفرع"
 #: templates/tickets/list_live_partial.html:14
 #: templates/tickets/list_live_partial.html:28
 #: templates/tickets/merge_preview_partial.html:23
-#: templates/tickets/partials/details_drawer.html:58 tickets/forms.py:42
+#: templates/tickets/partials/details_drawer.html:42 tickets/forms.py:42
 #: tickets/models.py:54
 msgid "Department"
 msgstr "القسم"
@@ -413,14 +413,14 @@ msgstr "القسم"
 #: core/management_views.py:111 core/models.py:57 templates/kb/detail.html:75
 #: templates/kb/form.html:70 templates/tickets/create.html:43
 #: templates/tickets/edit.html:42
-#: templates/tickets/partials/details_drawer.html:62 tickets/forms.py:43
+#: templates/tickets/partials/details_drawer.html:46 tickets/forms.py:43
 #: tickets/models.py:55
 msgid "Category"
 msgstr "الفئة"
 
 #: core/models.py:69 templates/tickets/create.html:64
 #: templates/tickets/edit.html:67
-#: templates/tickets/partials/details_drawer.html:46 tickets/forms.py:40
+#: templates/tickets/partials/details_drawer.html:30 tickets/forms.py:40
 #: tickets/models.py:52
 msgid "Description"
 msgstr "الوصف"
@@ -441,13 +441,13 @@ msgstr "الاسم الكامل"
 #: templates/core/management/list_partial_v2.html:27
 #: templates/core/management/list_partial_v2.html:55
 #: templates/tickets/create.html:51 templates/tickets/edit.html:54
-#: templates/tickets/partials/details_drawer.html:82 tickets/forms.py:45
+#: templates/tickets/partials/details_drawer.html:66 tickets/forms.py:45
 #: tickets/models.py:58
 msgid "Name"
 msgstr "الاسم"
 
 #: templates/tickets/create.html:57 templates/tickets/edit.html:60
-#: templates/tickets/partials/details_drawer.html:88 tickets/forms.py:46
+#: templates/tickets/partials/details_drawer.html:72 tickets/forms.py:46
 #: tickets/models.py:59
 msgid "Phone Number"
 msgstr "رقم الهاتف"
@@ -480,7 +480,7 @@ msgstr "الوصف يجب أن يكون 5 أحرف على الأقل."
 # Ticket detail page
 #: core/models.py:73 templates/tickets/edit.html:4
 #: templates/tickets/edit.html:9 templates/tickets/edit_partial.html:3
-#: templates/tickets/partials/details_drawer.html:97
+#: templates/tickets/partials/details_drawer.html:85
 msgid "Edit Ticket"
 msgstr "تعديل التذكرة"
 
@@ -492,27 +492,27 @@ msgstr "تفاصيل التذكرة"
 msgid "Close details"
 msgstr "إغلاق التفاصيل"
 
-#: templates/tickets/partials/details_drawer.html:66
+#: templates/tickets/partials/details_drawer.html:50
 msgid "Assigned To"
 msgstr "مكلفة إلى"
 
 #: templates/tickets/edit.html:48 templates/tickets/list_append.html:13
 #: templates/tickets/list_live_partial.html:16
 #: templates/tickets/list_live_partial.html:34
-#: templates/tickets/partials/details_drawer.html:70 tickets/forms.py:44
+#: templates/tickets/partials/details_drawer.html:54 tickets/forms.py:44
 #: tickets/models.py:57
 msgid "Priority"
 msgstr "الأولوية"
 
-#: templates/tickets/partials/details_drawer.html:77
+#: templates/tickets/partials/details_drawer.html:61
 msgid "Created At"
 msgstr "أنشئت في"
 
-#: templates/tickets/partials/details_drawer.html:102
+#: templates/tickets/partials/details_drawer.html:90
 msgid "Merged Tickets"
 msgstr "التذاكر المدمجة"
 
-#: templates/tickets/partials/details_drawer.html:118
+#: templates/tickets/partials/details_drawer.html:106
 msgid "Related Knowledge Base Articles"
 msgstr "مقالات قاعدة المعرفة ذات الصلة"
 
@@ -1364,7 +1364,7 @@ msgid "Insert %(key)s"
 msgstr "إدراج %(key)s"
 
 # Additional UI strings
-#: templates/base.html:81 templates/tickets/partials/details_drawer.html:67
+#: templates/base.html:81 templates/tickets/partials/details_drawer.html:51
 msgid "Pending Support Agent"
 msgstr "في انتظار وكيل الدعم"
 
@@ -2678,15 +2678,17 @@ msgstr "تم رفض نقل التذكرة"
 msgid "Canceled ticket transfer to %(username)s"
 msgstr "أُلغي نقل التذكرة إلى %(username)s"
 
-#: templates/tickets/partials/details_drawer.html:25
-#: templates/tickets/partials/details_drawer.html:28
-#: templates/tickets/partials/details_drawer.html:29
+#: templates/tickets/partials/details_drawer.html:23
 msgid "Copy ticket number"
 msgstr "نسخ رقم التذكرة"
 
-#: templates/tickets/partials/details_drawer.html:26
+#: templates/tickets/partials/copy_field_button.html:5
 msgid "Copied"
 msgstr "تم النسخ"
+
+#: templates/tickets/partials/details_drawer.html:75
+msgid "Copy phone number"
+msgstr "نسخ رقم الهاتف"
 
 #~ msgid "English"
 #~ msgstr "الإنجليزية"

@@ -29,7 +29,7 @@ The detail page shows the ticket header, chat thread, composer (when allowed), a
 
 ### Details drawer
 
-Use **Details** to open the details drawer. It shows ticket metadata and related information (for example related Knowledge Base articles when present). Use the copy icon next to the ticket number to copy that number. Close the drawer when you are done.
+Use **Details** to open the details drawer. It shows ticket metadata and related information (for example related Knowledge Base articles when present). Use the copy icon next to the ticket number or phone number to copy that value. Close the drawer when you are done.
 
 ## Ticket numbers and statuses
 
