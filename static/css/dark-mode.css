@@ -1859,6 +1859,11 @@
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
+[data-theme="dark"] .skeleton-form__panel {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
 [data-theme="dark"] a.is-navigating,
 [data-theme="dark"] .clickable-row.is-navigating,
 [data-theme="dark"] .kb-result-item.is-navigating,
@@ -2040,5 +2045,11 @@
 [data-theme="dark"] .email-template-preview__subject-row {
   background: #0f172a;
   border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .ticket-copy-number-btn:hover,
+[data-theme="dark"] .ticket-copy-number-btn:focus-visible {
+  background: rgba(129, 140, 248, 0.18);
+  color: #a5b4fc;
 }
 

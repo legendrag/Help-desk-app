@@ -44,8 +44,8 @@
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.81">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.74">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.39">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.75">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.41">
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
@@ -383,36 +383,81 @@
                 </div>
             </div>
 
-            <!-- Default fallback -->
-            <div class="page-nav-overlay__screen" data-skeleton="default" hidden>
-                <div class="skeleton-list">
-                    <div class="skeleton-list__row">
-                        <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
-                        <div class="skeleton-list__lines">
-                            <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
-                        </div>
+            <!-- Password change (auth card, 3 fields, no brand) -->
+            <div class="page-nav-overlay__screen skeleton-auth" data-skeleton="password-change" hidden>
+                <div class="skeleton-auth__card">
+                    <div class="skeleton skeleton--text skeleton-w-65 skeleton-auth__title" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text-sm skeleton-w-80 skeleton-auth__subtitle" aria-hidden="true"></div>
+                    <div class="skeleton-auth__fields">
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__input" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__input" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__input" aria-hidden="true"></div>
                     </div>
-                    <div class="skeleton-list__row">
-                        <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
-                        <div class="skeleton-list__lines">
-                            <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
-                        </div>
+                    <div class="skeleton skeleton--text skeleton-w-100 skeleton-auth__button" aria-hidden="true"></div>
+                </div>
+            </div>
+
+            <!-- Form pages (ticket create/edit, KB create/edit) -->
+            <div class="page-nav-overlay__screen skeleton-form" data-skeleton="form" hidden>
+                <div class="skeleton-toolbar">
+                    <div class="skeleton skeleton--text skeleton-w-40 skeleton-toolbar__title" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-form__panel">
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
                     </div>
-                    <div class="skeleton-list__row">
-                        <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
-                        <div class="skeleton-list__lines">
-                            <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
-                        </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
                     </div>
-                    <div class="skeleton-list__row">
-                        <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>
-                        <div class="skeleton-list__lines">
-                            <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>
-                            <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>
-                        </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__actions">
+                        <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Default fallback — form-shaped, not a people list -->
+            <div class="page-nav-overlay__screen skeleton-form" data-skeleton="default" hidden>
+                <div class="skeleton-toolbar">
+                    <div class="skeleton skeleton--text skeleton-w-40 skeleton-toolbar__title" aria-hidden="true"></div>
+                </div>
+                <div class="skeleton-form__panel">
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__actions">
+                        <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
                     </div>
                 </div>
             </div>
@@ -428,6 +473,33 @@
                 <!-- HTMX will load content here -->
             </div>
         </div>
+        <template id="modal-skeleton">
+            <div class="skeleton-placeholder skeleton-modal-form" aria-busy="true">
+                <div class="skeleton skeleton--text skeleton-modal-form__header" aria-hidden="true"></div>
+                <div class="skeleton-modal-form__body">
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                    <div class="skeleton-form__field">
+                        <div class="skeleton skeleton--text-sm skeleton-form__label" aria-hidden="true"></div>
+                        <div class="skeleton skeleton--text skeleton-w-100 skeleton-form__input" aria-hidden="true"></div>
+                    </div>
+                </div>
+                <div class="skeleton-modal-form__actions">
+                    <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
+                    <div class="skeleton skeleton--text skeleton-form__btn" aria-hidden="true"></div>
+                </div>
+            </div>
+        </template>
 
         <!-- Unsaved Changes Discard Confirmation Modal -->
         <div id="discard-confirm-modal" class="modal-overlay discard-modal-overlay"
@@ -706,31 +778,10 @@
             if (content) {
                 const textWithoutComments = content.innerHTML.replace(new RegExp('<!--[\\\\s\\\\S]*?-->', 'g'), '').trim();
                 if (!textWithoutComments) {
-                    content.innerHTML = [
-                        '<div class="skeleton-placeholder skeleton-list" aria-busy="true">',
-                        '  <div class="skeleton-list__row">',
-                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
-                        '    <div class="skeleton-list__lines">',
-                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
-                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
-                        '    </div>',
-                        '  </div>',
-                        '  <div class="skeleton-list__row">',
-                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
-                        '    <div class="skeleton-list__lines">',
-                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
-                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
-                        '    </div>',
-                        '  </div>',
-                        '  <div class="skeleton-list__row">',
-                        '    <div class="skeleton skeleton--circle skeleton-list__avatar" aria-hidden="true"></div>',
-                        '    <div class="skeleton-list__lines">',
-                        '      <div class="skeleton skeleton--text skeleton-w-55" aria-hidden="true"></div>',
-                        '      <div class="skeleton skeleton--text-sm skeleton-w-35" aria-hidden="true"></div>',
-                        '    </div>',
-                        '  </div>',
-                        '</div>'
-                    ].join('');
+                    const tpl = document.getElementById('modal-skeleton');
+                    if (tpl && tpl.content) {
+                        content.replaceChildren(tpl.content.cloneNode(true));
+                    }
                 }
             }
 
@@ -1224,7 +1275,7 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=15"></script>
+    <script src="{% static 'js/loading.js' %}?v=16"></script>
 </body>
 
 </html>

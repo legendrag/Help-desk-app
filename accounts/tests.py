@@ -78,3 +78,30 @@ class LogoutClearsWebPushTests(TestCase):
 
         self.assertEqual(clear_user_webpush_subscriptions(AnonymousUser()), 0)
         self.assertEqual(clear_user_webpush_subscriptions(None), 0)
+
+
+class PasswordChangePageTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="changer",
+            email="changer@test.local",
+            password="str0ng-Passw0rd!",
+        )
+
+    def test_full_page_uses_auth_body_class(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("password_change"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "auth-body")
+        self.assertContains(response, 'data-skeleton="password-change"')
+        self.assertContains(response, 'id="modal-skeleton"')
+
+    def test_htmx_partial_does_not_use_full_auth_chrome(self):
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("password_change"),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "auth-body")
+        self.assertContains(response, "password-change-form")

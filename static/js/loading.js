@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Map a destination URL to a skeleton variant id.
-     * Match order matters (dashboard/settings before ticket id, kb detail before list).
+     * Match order matters (create/edit before id catch-alls, dashboard/settings before ticket id).
      */
     function classifyNavSkeleton(href) {
         if (!href) return 'default';
@@ -427,14 +427,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (path === '/' || path === '') return 'ticket-list';
 
         if (path === '/accounts/login') return 'login';
+        if (path === '/accounts/password-change') return 'password-change';
         if (path === '/tickets/dashboard') return 'dashboard';
         if (path === '/tickets/settings' || path.indexOf('/tickets/settings') === 0) return 'settings';
+        if (path === '/tickets/create' || path.indexOf('/tickets/create') === 0) return 'form';
+        if (/^\/tickets\/\d+\/edit/.test(path)) return 'form';
         // Ticket detail and any in-ticket action (status, merge, transfer, …)
         if (/^\/tickets\/\d+/.test(path)) return 'ticket-detail';
         if (path === '/tickets') return 'ticket-list';
-        // KB article view / edit / delete land back on article or list chrome
+        if (path === '/kb/create' || path.indexOf('/kb/create') === 0) return 'form';
+        if (/^\/kb\/\d+\/edit/.test(path)) return 'form';
         if (/^\/kb\/\d+/.test(path)) return 'kb-detail';
-        if (path === '/kb/create' || path.indexOf('/kb/create') === 0) return 'kb-detail';
         if (path === '/kb' || path.indexOf('/kb/') === 0) return 'kb-list';
         if (path === '/news' || path.indexOf('/news/') === 0) return 'news-list';
         return 'default';
@@ -470,6 +473,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Logout → login screen skeleton
             if (actionPath === '/accounts/logout' || actionPath.indexOf('/accounts/logout') === 0) {
+                return '/accounts/login/';
+            }
+
+            // Password change logs the user out and lands on login
+            if (actionPath === '/accounts/password-change' || actionPath.indexOf('/accounts/password-change') === 0) {
                 return '/accounts/login/';
             }
 

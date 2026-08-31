@@ -18,7 +18,27 @@
             <div class="ticket-header-actions">
                 <span class="badge badge-{{ ticket.status }} ticket-status-pill">{{ ticket.get_status_display }}</span>
             </div>
-            <h2 class="ticket-title-number">{{ ticket.ticket_number }}</h2>
+            <div class="ticket-number-row">
+                <h2 class="ticket-title-number">{{ ticket.ticket_number }}</h2>
+                <button type="button" class="ticket-copy-number-btn"
+                    data-copy-text="{{ ticket.ticket_number }}"
+                    data-copy-label="{% trans 'Copy ticket number' %}"
+                    data-copied-label="{% trans 'Copied' %}"
+                    onclick="copyTicketNumber(this)"
+                    aria-label="{% trans 'Copy ticket number' %}"
+                    title="{% trans 'Copy ticket number' %}">
+                    <svg class="ticket-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <svg class="ticket-copy-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+                <span id="ticket-copy-status" class="visually-hidden" aria-live="polite"></span>
+            </div>
             <p class="ticket-title-text">{{ ticket.title }}</p>
         </header>
 
@@ -167,6 +187,57 @@
                 overlay.classList.toggle('open');
             }
         }
+    }
+
+    if (typeof copyTicketNumber !== 'function') {
+        window.copyTicketNumber = function(btn) {
+            if (!btn) return;
+            const text = btn.getAttribute('data-copy-text') || '';
+            if (!text) return;
+            const copyLabel = btn.getAttribute('data-copy-label') || '';
+            const copiedLabel = btn.getAttribute('data-copied-label') || '';
+            const statusEl = document.getElementById('ticket-copy-status');
+
+            function markCopied() {
+                btn.classList.add('copied');
+                if (copiedLabel) {
+                    btn.setAttribute('aria-label', copiedLabel);
+                    btn.setAttribute('title', copiedLabel);
+                }
+                if (statusEl) statusEl.textContent = copiedLabel;
+                clearTimeout(btn._copyResetTimer);
+                btn._copyResetTimer = setTimeout(function() {
+                    btn.classList.remove('copied');
+                    if (copyLabel) {
+                        btn.setAttribute('aria-label', copyLabel);
+                        btn.setAttribute('title', copyLabel);
+                    }
+                    if (statusEl) statusEl.textContent = '';
+                }, 1600);
+            }
+
+            function fallbackCopy() {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-9999px';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    markCopied();
+                } catch (e) {}
+                document.body.removeChild(ta);
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+        };
     }
 
     {% if auto_open %}

@@ -634,3 +634,45 @@ class SecurityTenancyTests(TestCase):
         self.assertIn(response.status_code, (200, 204, 302))
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
+
+
+class TicketNumberCopyButtonTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="COPY", name="Copy Branch")
+        self.department = Department.objects.create(name="Copy Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Copy Cat", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.user = User.objects.create_user(
+            username="copy_branch",
+            email="copy@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-COPY-1",
+            title="Copy ticket",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.user,
+            client_name="Client",
+            client_phone="123",
+        )
+
+    def test_detail_page_has_copy_button_for_ticket_number(self):
+        self.client.login(username="copy_branch", password="password123")
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="ticket-copy-number-btn"')
+        self.assertContains(response, 'data-copy-text="TK-COPY-1"')
+        self.assertContains(response, "copyTicketNumber")
+
+    def test_drawer_partial_has_copy_button_for_ticket_number(self):
+        self.client.login(username="copy_branch", password="password123")
+        response = self.client.get(reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="ticket-copy-number-btn"')
+        self.assertContains(response, 'data-copy-text="TK-COPY-1"')
