@@ -284,6 +284,9 @@ class CategoryListView(CategoryPermissionMixin, LoginRequiredMixin, ListView):
     partial_template_name = "core/management/list_partial_v2.html"
     context_object_name = "object_list"
 
+    def get_queryset(self):
+        return super().get_queryset().select_related("department")
+
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
             return [self.partial_template_name]

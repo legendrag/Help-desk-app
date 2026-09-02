@@ -7,7 +7,14 @@ from core.models import Branch, Category, Department, EmailSetting, EmailTemplat
 from news.models import Announcement
 from notifications.email_content import render_notification_email
 from notifications.email_jobs import send_announcement_email, send_new_ticket_email
-from notifications.email_templates import ensure_email_templates, render_tokens, resolve_template
+from notifications.email_templates import (
+    ensure_email_templates,
+    merge_fields_for_event,
+    render_tokens,
+    resolve_template,
+    sample_context_for_event,
+    ticket_merge_context,
+)
 from notifications.models import InAppNotification
 from notifications.services import notify_announcement_created, notify_new_ticket
 from tickets.models import Ticket
@@ -208,6 +215,115 @@ class EmailContentTests(TestCase):
         )
         self.assertEqual(subject, "CUSTOM TK-1")
         self.assertEqual(body, "Body for Outage")
+
+    def test_merge_fields_new_ticket_includes_name_and_phone_after_requester(self):
+        keys = [key for key, _label in merge_fields_for_event("new_ticket")]
+        self.assertIn("client_name", keys)
+        self.assertIn("client_phone", keys)
+        self.assertEqual(keys[keys.index("requester") + 1], "client_name")
+        self.assertEqual(keys[keys.index("requester") + 2], "client_phone")
+
+    def test_merge_fields_other_ticket_events_include_name_and_phone_after_title(self):
+        for event_type in (
+            "ticket_picked",
+            "ticket_message",
+            "ticket_status",
+            "ticket_update",
+            "transfer_requested",
+            "transfer_accepted",
+            "transfer_denied",
+        ):
+            keys = [key for key, _label in merge_fields_for_event(event_type)]
+            self.assertIn("client_name", keys, event_type)
+            self.assertIn("client_phone", keys, event_type)
+            self.assertEqual(keys[keys.index("title") + 1], "client_name", event_type)
+            self.assertEqual(keys[keys.index("title") + 2], "client_phone", event_type)
+
+    def test_merge_fields_announcement_excludes_client_fields(self):
+        keys = [key for key, _label in merge_fields_for_event("announcement")]
+        self.assertNotIn("client_name", keys)
+        self.assertNotIn("client_phone", keys)
+
+    def test_ticket_merge_context_includes_client_name_and_phone(self):
+        branch = Branch.objects.create(code="MF", name="Merge Branch")
+        department = Department.objects.create(name="Merge Dept")
+        category = Category.objects.create(department=department, name="Merge Cat")
+        creator = User.objects.create_user(
+            username="merge_creator",
+            email="merge_creator@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=branch,
+        )
+        ticket = Ticket.objects.create(
+            ticket_number="TK-MERGE-1",
+            title="Lobby printer",
+            description="Offline",
+            branch=branch,
+            department=department,
+            category=category,
+            created_by=creator,
+            client_name="Reception Desk",
+            client_phone="+201111111101",
+        )
+        ctx = ticket_merge_context(ticket)
+        self.assertEqual(ctx["client_name"], "Reception Desk")
+        self.assertEqual(ctx["client_phone"], "+201111111101")
+
+    def test_ticket_merge_context_empty_client_fields_are_blank(self):
+        branch = Branch.objects.create(code="MF2", name="Merge Branch 2")
+        department = Department.objects.create(name="Merge Dept 2")
+        category = Category.objects.create(department=department, name="Merge Cat 2")
+        creator = User.objects.create_user(
+            username="merge_creator2",
+            email="merge_creator2@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=branch,
+        )
+        ticket = Ticket.objects.create(
+            ticket_number="TK-MERGE-2",
+            title="No contact",
+            description="Missing contact",
+            branch=branch,
+            department=department,
+            category=category,
+            created_by=creator,
+            client_name="Temp Name",
+            client_phone="0500000000",
+        )
+        ticket.client_name = ""
+        ticket.client_phone = ""
+        ctx = ticket_merge_context(ticket)
+        self.assertEqual(ctx["client_name"], "")
+        self.assertEqual(ctx["client_phone"], "")
+        rendered = render_tokens(
+            "Name: {{ client_name }} Phone: {{ client_phone }}",
+            ctx,
+        )
+        self.assertEqual(rendered, "Name:  Phone: ")
+
+    def test_custom_template_resolves_client_name_and_phone(self):
+        ensure_email_templates()
+        EmailTemplate.objects.filter(event_type="new_ticket").update(
+            subject="Call {{ client_name }}",
+            body="Phone {{ client_phone }} for {{ title }}",
+        )
+        subject, body, _cta = resolve_template(
+            "new_ticket",
+            {
+                "client_name": "Reception Desk",
+                "client_phone": "+201111111101",
+                "title": "Printer",
+            },
+        )
+        self.assertEqual(subject, "Call Reception Desk")
+        self.assertEqual(body, "Phone +201111111101 for Printer")
+
+    def test_sample_context_includes_client_name_and_phone(self):
+        sample = sample_context_for_event("new_ticket")
+        self.assertEqual(sample["client_name"], "Reception Desk")
+        self.assertEqual(sample["client_phone"], "+201111111101")
 
     @override_settings(SITE_URL="https://helpdesk.example.com")
     @patch("notifications.email_jobs.send_with_retries")

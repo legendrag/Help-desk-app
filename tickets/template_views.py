@@ -158,8 +158,13 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return user.role and user.role.can_access_dashboard
 
     def get_template_names(self):
+        is_htmx = bool(self.request.headers.get("HX-Request"))
         if self.request.user.user_type == "branch":
+            if is_htmx:
+                return ["tickets/partials/branch_dashboard_live.html"]
             return ["tickets/branch_dashboard.html"]
+        if is_htmx:
+            return ["tickets/partials/dashboard_live.html"]
         return [self.template_name]
 
     def get_queryset(self):
@@ -294,12 +299,12 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             for key in ordered_keys
         ]
 
-        total_tickets = filtered_queryset.count()
+        total_tickets = base_queryset.count()
         total_users = User.objects.filter(
-            Q(created_tickets__in=filtered_queryset) | Q(assigned_tickets__in=filtered_queryset)
+            Q(created_tickets__in=base_queryset) | Q(assigned_tickets__in=base_queryset)
         ).distinct().count()
-        branches_count = filtered_queryset.values("branch_id").distinct().count()
-        departments_count = filtered_queryset.values("department_id").distinct().count()
+        branches_count = base_queryset.values("branch_id").distinct().count()
+        departments_count = base_queryset.values("department_id").distinct().count()
 
         if user.is_superuser:
             departments = Department.objects.all()
@@ -857,8 +862,13 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         return Ticket.objects.select_related(
-            "branch", "department", "category", "created_by", "assigned_to"
-        ).prefetch_related("messages", "messages__sender", "status_history", "status_history__changed_by")
+            "branch", "department", "category", "created_by", "assigned_to",
+            "merged_into", "pending_transfer_to", "pending_transfer_by",
+        ).prefetch_related(
+            "messages", "messages__sender",
+            "messages__reply_to", "messages__reply_to__sender",
+            "status_history", "status_history__changed_by",
+        )
 
     def get_object(self, queryset=None):
         ticket = super().get_object(queryset)
@@ -868,7 +878,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        ticket = self.get_object()
+        ticket = self.object
         user = self.request.user
 
         # Calculate metrics
@@ -894,7 +904,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         ).filter(
             Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
             Q(is_superuser=True)
-        ).exclude(id=ticket.assigned_to_id)
+        ).exclude(id=ticket.assigned_to_id).select_related("department")
 
         context['supporters'] = supporters
 
@@ -923,7 +933,7 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        ticket = self.get_object()
+        ticket = self.object
         user = self.request.user
 
         # Calculate metrics (same as detail view)

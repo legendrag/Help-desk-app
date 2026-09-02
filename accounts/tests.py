@@ -105,3 +105,39 @@ class PasswordChangePageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "auth-body")
         self.assertContains(response, "password-change-form")
+
+
+class UserListQueryOptimizationTests(TestCase):
+    def test_user_list_queryset_selects_related_org_fields(self):
+        from accounts.management_views import UserListView
+        from core.models import Branch, Department, Role
+
+        branch = Branch.objects.create(code="UL", name="User List Branch")
+        department = Department.objects.create(name="User List Dept")
+        role = Role.objects.create(name="User List Role", can_access_settings=True)
+        User.objects.create_user(
+            username="ul_user",
+            email="ul@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            branch=branch,
+            department=department,
+            role=role,
+        )
+        users = list(UserListView().get_queryset())
+        listed = next(u for u in users if u.username == "ul_user")
+        with self.assertNumQueries(0):
+            self.assertEqual(listed.branch.name, "User List Branch")
+            self.assertEqual(listed.department.name, "User List Dept")
+            self.assertEqual(listed.role.name, "User List Role")
+
+
+class VendorStaticTests(TestCase):
+    def test_login_page_uses_local_vendor_assets(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "vendor/tom-select.complete.min.js")
+        self.assertContains(response, "vendor/htmx.min.js")
+        self.assertContains(response, "vendor/tom-select.default.min.css")
+        self.assertNotContains(response, "cdn.jsdelivr.net/npm/tom-select")
+        self.assertNotContains(response, "unpkg.com/htmx")

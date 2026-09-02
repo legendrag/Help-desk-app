@@ -678,3 +678,269 @@ class TicketNumberCopyButtonTests(TestCase):
         self.assertContains(response, 'class="ticket-copy-number-btn"', count=2)
         self.assertContains(response, 'data-copy-text="TK-COPY-1"')
         self.assertContains(response, 'data-copy-text="0501234567"')
+
+
+class TicketDetailQueryOptimizationTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="QO", name="Query Opt Branch")
+        self.department = Department.objects.create(name="Query Opt Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Query Opt Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.branch_user = User.objects.create_user(
+            username="qo_branch",
+            email="qo_branch@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+        self.support_user = User.objects.create_user(
+            username="qo_support",
+            email="qo_support@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+        self.other_support = User.objects.create_user(
+            username="qo_support2",
+            email="qo_support2@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+        self.target = Ticket.objects.create(
+            ticket_number="TK-QO-TARGET",
+            title="Merge target",
+            description="Target",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.branch_user,
+            client_name="Client",
+            client_phone="0500000000",
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-QO-1",
+            title="Query opt ticket",
+            description="Needs replies",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.branch_user,
+            client_name="Client",
+            client_phone="0500000001",
+            pending_transfer_to=self.support_user,
+            pending_transfer_by=self.branch_user,
+            merged_into=self.target,
+        )
+        first = TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.branch_user,
+            message="First message",
+        )
+        TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.support_user,
+            message="Reply to first",
+            reply_to=first,
+        )
+
+    def test_detail_queryset_prefetches_reply_chain_and_transfer_fks(self):
+        from tickets.template_views import TicketDetailView
+
+        ticket = TicketDetailView().get_queryset().get(pk=self.ticket.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(ticket.merged_into.ticket_number, "TK-QO-TARGET")
+            self.assertEqual(ticket.pending_transfer_to.username, "qo_support")
+            self.assertEqual(ticket.pending_transfer_by.username, "qo_branch")
+            messages = list(ticket.messages.all())
+            reply = next(m for m in messages if m.reply_to_id)
+            self.assertEqual(reply.reply_to.sender.username, "qo_branch")
+            self.assertEqual(reply.sender.username, "qo_support")
+
+    def test_detail_get_context_data_does_not_refetch_ticket(self):
+        from django.db import connection
+        from django.test import RequestFactory
+        from django.test.utils import CaptureQueriesContext
+        from tickets.template_views import TicketDetailView
+
+        request = RequestFactory().get(f"/tickets/{self.ticket.id}/")
+        request.user = self.branch_user
+        view = TicketDetailView()
+        view.setup(request, ticket_id=self.ticket.id)
+        view.object = view.get_object()
+
+        with CaptureQueriesContext(connection) as ctx:
+            context = view.get_context_data()
+
+        ticket_selects = [
+            q["sql"]
+            for q in ctx.captured_queries
+            if q["sql"].lstrip().upper().startswith("SELECT") and "tickets_ticket" in q["sql"]
+        ]
+        self.assertEqual(ticket_selects, [])
+        self.assertIs(context["ticket"], view.object)
+
+    def test_drawer_get_context_data_does_not_refetch_ticket(self):
+        from django.db import connection
+        from django.test import RequestFactory
+        from django.test.utils import CaptureQueriesContext
+        from tickets.template_views import TicketDrawerPartialView
+
+        request = RequestFactory().get(f"/tickets/{self.ticket.id}/drawer/")
+        request.user = self.branch_user
+        view = TicketDrawerPartialView()
+        view.setup(request, ticket_id=self.ticket.id)
+        view.object = view.get_object()
+
+        with CaptureQueriesContext(connection) as ctx:
+            context = view.get_context_data()
+
+        ticket_selects = [
+            q["sql"]
+            for q in ctx.captured_queries
+            if q["sql"].lstrip().upper().startswith("SELECT") and "tickets_ticket" in q["sql"]
+        ]
+        self.assertEqual(ticket_selects, [])
+        self.assertIs(context["ticket"], view.object)
+
+    def test_supporters_select_related_department(self):
+        from django.test import RequestFactory
+        from tickets.template_views import TicketDetailView
+
+        request = RequestFactory().get(f"/tickets/{self.ticket.id}/")
+        request.user = self.branch_user
+        view = TicketDetailView()
+        view.setup(request, ticket_id=self.ticket.id)
+        view.object = view.get_object()
+        supporters = list(view.get_context_data()["supporters"])
+        self.assertTrue(any(s.department_id for s in supporters))
+        with self.assertNumQueries(0):
+            for supporter in supporters:
+                if supporter.department_id:
+                    _ = supporter.department.name
+
+    def test_detail_view_renders_reply_quote(self):
+        self.client.login(username="qo_branch", password="password123")
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "qo_branch")
+        self.assertContains(response, "Reply to first")
+
+
+class DashboardFilterPartialTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="DASH", name="Dash Branch")
+        self.department = Department.objects.create(name="Dash Department")
+        self.admin = User.objects.create_user(
+            username="dash_admin",
+            email="dash_admin@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            is_superuser=True,
+            is_staff=True,
+        )
+        self.role = Role.objects.create(name="Branch Dashboard", can_access_dashboard=True)
+        self.branch_user = User.objects.create_user(
+            username="dash_branch",
+            email="dash_branch@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+            role=self.role,
+        )
+        self.client.login(username="dash_admin", password="password123")
+
+    def test_full_page_uses_htmx_filters_without_full_reload(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/dashboard.html")
+        self.assertContains(response, 'id="dashboard-form"')
+        self.assertContains(response, 'id="dashboard-live"')
+        self.assertContains(response, 'hx-target="#dashboard-live"')
+        self.assertNotContains(response, "this.form.submit()")
+        self.assertNotContains(response, "window.location.replace(window.location.pathname)")
+
+    def test_htmx_request_returns_live_partial(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"department": "all"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/partials/dashboard_live.html")
+        self.assertContains(response, 'id="dashboard-live"')
+        self.assertNotContains(response, 'id="dashboard-form"')
+        self.assertNotContains(response, 'class="dashboard-stats"')
+        self.assertNotContains(response, "<html")
+
+    def test_htmx_filters_apply_to_partial(self):
+        other_dept = Department.objects.create(name="Other Dash Dept")
+        category = Category.objects.create(
+            department=self.department,
+            name="Dash Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        Ticket.objects.create(
+            ticket_number="TK-DASH-1",
+            title="Dash ticket",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=category,
+            created_by=self.admin,
+            client_name="Client",
+            client_phone="123",
+        )
+        response = self.client.get(
+            reverse("dashboard"),
+            {"department": other_dept.id},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_tickets"], 1)
+        self.assertEqual(sum(item["count"] for item in response.context["status_summary"]), 0)
+
+    def test_headline_stats_ignore_dashboard_filters(self):
+        other_dept = Department.objects.create(name="Other Dash Dept")
+        other_branch = Branch.objects.create(code="DASH2", name="Dash Branch 2")
+        category = Category.objects.create(
+            department=self.department,
+            name="Dash Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        Ticket.objects.create(
+            ticket_number="TK-DASH-1",
+            title="Dash ticket",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=category,
+            created_by=self.admin,
+            client_name="Client",
+            client_phone="123",
+        )
+        response = self.client.get(
+            reverse("dashboard"),
+            {
+                "department": other_dept.id,
+                "branch": other_branch.id,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_tickets"], 1)
+        self.assertEqual(response.context["branches_count"], 1)
+        self.assertEqual(response.context["departments_count"], 1)
+        self.assertContains(response, 'class="dashboard-stats"')
+        self.assertEqual(sum(item["count"] for item in response.context["status_summary"]), 0)
+
+    def test_branch_dashboard_htmx_returns_partial(self):
+        self.client.logout()
+        self.client.login(username="dash_branch", password="password123")
+        response = self.client.get(reverse("dashboard"), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/partials/branch_dashboard_live.html")
+        self.assertContains(response, 'id="dashboard-live"')
+        self.assertNotContains(response, "<html")

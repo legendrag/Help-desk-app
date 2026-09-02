@@ -24,38 +24,45 @@
         return window.matchMedia(MOBILE_MQ).matches;
     }
 
-    // Hide dots for zero values on desktop; hide all dots on mobile.
-    function pointRadiusFor(mobile) {
-        if (mobile) {
-            return 0;
-        }
+    function isPeak(counts, index) {
+        var value = counts[index];
+        if (!value) return false;
+        var left = index > 0 ? counts[index - 1] : Number.NEGATIVE_INFINITY;
+        var right = index < counts.length - 1 ? counts[index + 1] : Number.NEGATIVE_INFINITY;
+        return value >= left && value >= right && (value > left || value > right);
+    }
+
+    function pointRadiusFor(mobile, counts) {
         return function (context) {
-            var value = context.parsed && context.parsed.y;
-            return value === 0 || value == null ? 0 : 3;
+            if (!isPeak(counts, context.dataIndex)) return 0;
+            return mobile ? 2 : 3;
         };
     }
 
-    function pointHoverRadiusFor(mobile) {
-        if (mobile) {
-            return 4;
-        }
+    function pointHoverRadiusFor(mobile, counts) {
         return function (context) {
-            var value = context.parsed && context.parsed.y;
-            return value === 0 || value == null ? 0 : 5;
+            if (!isPeak(counts, context.dataIndex)) return 0;
+            return mobile ? 4 : 5;
         };
+    }
+
+    function layoutPadding(mobile) {
+        return mobile
+            ? { top: 4, right: 2, bottom: 0, left: 0 }
+            : { top: 0, right: 0, bottom: 0, left: 0 };
     }
 
     function applyMobileChartOptions(chart, mobile) {
         var dataset = chart.data.datasets[0];
+        var counts = dataset.data;
         dataset.borderWidth = mobile ? 1.75 : 2;
-        dataset.pointRadius = pointRadiusFor(mobile);
-        dataset.pointHoverRadius = pointHoverRadiusFor(mobile);
+        dataset.pointRadius = pointRadiusFor(mobile, counts);
+        dataset.pointHoverRadius = pointHoverRadiusFor(mobile, counts);
         dataset.pointHitRadius = mobile ? 8 : 4;
+        dataset.clip = false;
 
         chart.options.layout = {
-            padding: mobile
-                ? { top: 4, right: 2, bottom: 0, left: 0 }
-                : { top: 0, right: 0, bottom: 0, left: 0 }
+            padding: layoutPadding(mobile)
         };
 
         chart.options.scales.x.ticks.maxRotation = mobile ? 0 : 45;
@@ -69,7 +76,35 @@
         chart.options.scales.y.ticks.padding = mobile ? 4 : 8;
     }
 
+    var mediaQuery = null;
+    var mediaListener = null;
+
+    function isDashboardLive(node) {
+        if (!node) return false;
+        if (node.id === "dashboard-live") return true;
+        return typeof node.querySelector === "function" && !!node.querySelector("#dashboard-live");
+    }
+
+    function destroyVolumeTrendChart() {
+        var canvas = document.getElementById("ticket-volume-chart");
+        if (canvas && typeof Chart !== "undefined") {
+            var existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+        }
+        if (mediaQuery && mediaListener) {
+            if (typeof mediaQuery.removeEventListener === "function") {
+                mediaQuery.removeEventListener("change", mediaListener);
+            } else if (typeof mediaQuery.removeListener === "function") {
+                mediaQuery.removeListener(mediaListener);
+            }
+        }
+        mediaQuery = null;
+        mediaListener = null;
+    }
+
     function initVolumeTrendChart() {
+        destroyVolumeTrendChart();
+
         var dataEl = document.getElementById("volume-trend-data");
         var canvas = document.getElementById("ticket-volume-chart");
         if (!dataEl || !canvas || typeof Chart === "undefined") {
@@ -105,9 +140,10 @@
                     borderWidth: mobile ? 1.75 : 2,
                     pointBackgroundColor: primary,
                     pointBorderColor: "#fff",
-                    pointRadius: pointRadiusFor(mobile),
-                    pointHoverRadius: pointHoverRadiusFor(mobile),
+                    pointRadius: pointRadiusFor(mobile, counts),
+                    pointHoverRadius: pointHoverRadiusFor(mobile, counts),
                     pointHitRadius: mobile ? 8 : 4,
+                    clip: false,
                     fill: true,
                     tension: 0.3
                 }]
@@ -116,9 +152,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: {
-                    padding: mobile
-                        ? { top: 4, right: 2, bottom: 0, left: 0 }
-                        : { top: 0, right: 0, bottom: 0, left: 0 }
+                    padding: layoutPadding(mobile)
                 },
                 interaction: {
                     mode: "index",
@@ -163,29 +197,43 @@
             }
         });
 
-        // Keep desktop options intact when the viewport crosses the breakpoint.
-        var media = window.matchMedia(MOBILE_MQ);
-        var onViewportChange = function () {
-            applyMobileChartOptions(chart, media.matches);
+        mediaQuery = window.matchMedia(MOBILE_MQ);
+        mediaListener = function () {
+            applyMobileChartOptions(chart, mediaQuery.matches);
             chart.update("none");
             chart.resize();
         };
-        if (typeof media.addEventListener === "function") {
-            media.addEventListener("change", onViewportChange);
-        } else if (typeof media.addListener === "function") {
-            media.addListener(onViewportChange);
+        if (typeof mediaQuery.addEventListener === "function") {
+            mediaQuery.addEventListener("change", mediaListener);
+        } else if (typeof mediaQuery.addListener === "function") {
+            mediaQuery.addListener(mediaListener);
         }
 
-        // Mobile layout can settle after first paint; force a resize so the
-        // canvas isn't left at 0×0 from the initial measure.
         requestAnimationFrame(function () {
             chart.resize();
         });
     }
+
+    window.initVolumeTrendChart = initVolumeTrendChart;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initVolumeTrendChart);
     } else {
         initVolumeTrendChart();
     }
+
+    document.body.addEventListener("htmx:beforeSwap", function (evt) {
+        var target = evt.detail && evt.detail.target;
+        if (isDashboardLive(target)) {
+            destroyVolumeTrendChart();
+        }
+    });
+
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+        var target = evt.detail && evt.detail.target;
+        var elt = evt.detail && evt.detail.elt;
+        if (isDashboardLive(target) || isDashboardLive(elt)) {
+            initVolumeTrendChart();
+        }
+    });
 })();

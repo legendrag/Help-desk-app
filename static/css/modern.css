@@ -2095,7 +2095,6 @@ td.mgmt-empty-cell {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -2157,6 +2156,11 @@ td.mgmt-empty-cell {
   width: auto !important;
 }
 
+.filters-inline-form select.inline-select {
+  min-width: 170px;
+  min-height: 36px;
+}
+
 .ts-wrapper.inline-select {
   min-width: 170px !important;
   width: auto !important;
@@ -2182,11 +2186,17 @@ td.mgmt-empty-cell {
   font-size: 0.85rem;
 }
 
+#dashboard-live {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
   align-items: start;
 }
 
@@ -2250,6 +2260,10 @@ td.mgmt-empty-cell {
 }
 
 @media (max-width: 768px) {
+  #dashboard-live {
+    gap: 1rem;
+  }
+
   .bento-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -2615,6 +2629,7 @@ a.metric-row:hover {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background: var(--panel-bg-solid, #ffffff);
+  overflow: visible;
 }
 
 [data-theme="dark"] .dashboard-card:has(.volume-chart-wrap) {
@@ -2626,6 +2641,7 @@ a.metric-row:hover {
   width: 100%;
   height: 260px;
   margin-top: 0.5rem;
+  overflow: visible;
   /* Own compositing layer — keeps canvas off the filtered ancestor surface */
   isolation: isolate;
   transform: translateZ(0);
@@ -2637,6 +2653,52 @@ a.metric-row:hover {
   height: 100% !important;
   /* WebKit workaround: transparent bg-image forces canvas to paint */
   background-image: linear-gradient(transparent, transparent);
+}
+
+.volume-chart-tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.volume-chart-tooltip.is-below {
+  transform: translate(-50%, 12px);
+}
+
+.volume-chart-tooltip.is-left {
+  transform: translate(0, calc(-100% - 10px));
+}
+
+.volume-chart-tooltip.is-left.is-below {
+  transform: translate(0, 12px);
+}
+
+.volume-chart-tooltip.is-right {
+  transform: translate(-100%, calc(-100% - 10px));
+}
+
+.volume-chart-tooltip.is-right.is-below {
+  transform: translate(-100%, 12px);
+}
+
+.volume-chart-tooltip__date {
+  font-weight: 600;
+}
+
+.volume-chart-tooltip__value {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Mobile-only: tighter chart chrome; desktop rules above stay unchanged */
@@ -3448,6 +3510,10 @@ a.kb-article-card:hover {
     min-height: auto !important;
     padding: 0.3rem 0.6rem !important;
     border-radius: 999px !important;
+  }
+  .btn-details-list {
+    min-height: auto !important;
+    max-height: none !important;
   }
   
   button.mgmt-edit-btn, button.mgmt-delete-btn {
@@ -6583,10 +6649,13 @@ body.kb-preview-open {
   .tickets-table .action-cell {
     display: flex !important;
     justify-content: flex-end !important;
+    align-items: center !important;
   }
   
   .tickets-table .ticket-action-wrapper {
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     gap: 0.5rem !important;
     width: auto !important;
     align-items: center !important;
@@ -6611,6 +6680,7 @@ body.kb-preview-open {
     min-width: 70px !important;
     min-height: 34px !important;
     height: 34px !important;
+    max-height: 34px !important;
     box-sizing: border-box !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -6620,11 +6690,15 @@ body.kb-preview-open {
   .tickets-table .btn-details-list {
     min-height: 34px !important;
     height: 34px !important;
+    max-height: 34px !important;
     width: 34px !important;
+    min-width: 34px !important;
     padding: 0 !important;
+    line-height: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    align-self: center !important;
     border-radius: 8px !important;
     flex: none !important;
   }

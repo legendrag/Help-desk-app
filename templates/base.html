@@ -43,11 +43,11 @@
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.81">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.76">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.41">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.84">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.80">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.43">
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.default.min.css" />
+    <link rel="stylesheet" href="{% static 'vendor/tom-select.default.min.css' %}">
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
     <meta name="theme-color" content="#7880f0">
@@ -60,8 +60,8 @@
             navigator.serviceWorker.register('{% url "sw.js" %}');
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="{% static 'vendor/tom-select.complete.min.js' %}"></script>
+    <script src="{% static 'vendor/htmx.min.js' %}"></script>
     <script>
         window.userIsAuthenticated = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
         window.userId = "{{ user.id }}";

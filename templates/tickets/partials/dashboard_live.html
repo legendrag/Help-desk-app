@@ -1,0 +1,144 @@
+{% load i18n %}
+<div id="dashboard-live">
+    <input type="hidden" name="date_view" value="{{ date_view }}" form="dashboard-form">
+
+    <div class="bento-grid">
+        <!-- Tickets by Date (Trend) -->
+        <div class="panel dashboard-card col-span-2">
+            <div class="card-header card-header-split">
+                <h3>{% trans "Ticket Volume Trend" %}</h3>
+                <div class="date-controls">
+                    <span class="muted">{% trans "View" %}: {{ date_view|capfirst }}</span>
+                    <div class="date-drill">
+                        {% if drill_up_query %}
+                        <a class="btn secondary small"
+                           href="{% url 'dashboard' %}?{{ drill_up_query }}"
+                           hx-get="{% url 'dashboard' %}?{{ drill_up_query }}"
+                           hx-target="#dashboard-live"
+                           hx-swap="outerHTML"
+                           hx-push-url="true">{% trans "Zoom Out" %}</a>
+                        {% else %}
+                        <button type="button" class="btn secondary small disabled" disabled>{% trans "Zoom Out" %}</button>
+                        {% endif %}
+                        {% if drill_down_query %}
+                        <a class="btn secondary small"
+                           href="{% url 'dashboard' %}?{{ drill_down_query }}"
+                           hx-get="{% url 'dashboard' %}?{{ drill_down_query }}"
+                           hx-target="#dashboard-live"
+                           hx-swap="outerHTML"
+                           hx-push-url="true">{% trans "Zoom In" %}</a>
+                        {% else %}
+                        <button type="button" class="btn secondary small disabled" disabled>{% trans "Zoom In" %}</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if tickets_by_date %}
+            <div class="volume-chart-wrap">
+                <canvas id="ticket-volume-chart" aria-label="{% trans 'Ticket volume trend chart' %}"></canvas>
+            </div>
+            {{ tickets_by_date|json_script:"volume-trend-data" }}
+            {% else %}
+            <div class="empty-state">{% trans "No data available." %}</div>
+            {% endif %}
+        </div>
+
+        <!-- Tickets by Status -->
+        <div class="panel dashboard-card col-span-1">
+            <div class="card-header">
+                <h3>{% trans "Status Breakdown" %}</h3>
+            </div>
+            <div class="metric-list compact-list">
+                {% for item in status_summary %}
+                <a class="metric-row compact" href="{% url 'tickets_list' %}?status={{ item.value }}">
+                    <div class="metric-label">
+                        <span class="status-dot status-{{ item.value }}"></span>
+                        {{ item.label }}
+                    </div>
+                    <div class="metric-bar slim">
+                        <span class="metric-bar-fill status-{{ item.value }}" style="width: {{ item.percent }}%"></span>
+                    </div>
+                    <div class="metric-count">{{ item.count }}</div>
+                </a>
+                {% empty %}
+                <div class="empty-state">{% trans "No data available." %}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Agent Leaderboard -->
+        {% if agent_performance %}
+        <div class="panel dashboard-card col-span-2">
+            <div class="card-header">
+                <h3>{% trans "Agent Performance" %}</h3>
+            </div>
+            <div class="table-wrap tickets-table">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Agent" %}</th>
+                            <th>{% trans "Resolved" %}</th>
+                            <th>{% trans "Response Time" %}</th>
+                            <th>{% trans "Resolution Time" %}</th>
+                            <th>{% trans "Working Time" %}</th>
+                            <th>{% trans "Grade" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for agent in agent_performance %}
+                        <tr>
+                            <td data-col="agent" data-label="{% trans 'Agent' %}"><strong>{{ agent.name }}</strong></td>
+                            <td data-col="resolved" data-label="{% trans 'Resolved' %}">{{ agent.tickets_resolved }}</td>
+                            <td data-col="response-time" data-label="{% trans 'Response Time' %}"><span class="muted">{{ agent.avg_response_time }}</span></td>
+                            <td data-col="resolution-time" data-label="{% trans 'Resolution Time' %}"><span class="muted">{{ agent.avg_resolution_time }}</span></td>
+                            <td data-col="working-time" data-label="{% trans 'Working Time' %}"><span class="muted">{{ agent.total_working_time }}</span></td>
+                            <td data-col="grade" data-label="{% trans 'Grade' %}">
+                                <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
+                                    <span class="badge badge-{{ agent.grade_color }}" style="width: 28px; text-align: center;">{{ agent.grade }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="empty-state">{% trans "No data available." %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tickets by Branch -->
+        <div class="panel dashboard-card col-span-1">
+            <div class="card-header">
+                <h3>{% trans "Tickets by Branch" %}</h3>
+            </div>
+            {% include "tickets/partials/status_stack_list.html" with items=tickets_by_branch status_legend=status_legend %}
+        </div>
+
+        <!-- Tickets by Category -->
+        <div class="panel dashboard-card col-span-2">
+            <div class="card-header">
+                <h3>{% trans "Categories Breakdown" %}</h3>
+            </div>
+            <div class="pie-chart-wrapper">
+                <div class="pie-chart-container">
+                    <svg id="category-pie" viewBox="0 0 32 32" style="width: 100%; height: 100%; transform: rotate(-90deg); border-radius: 50%; cursor: pointer;"></svg>
+                    <div id="pie-tooltip" class="pie-tooltip">
+                        <div id="pie-tooltip-label"></div>
+                        <div id="pie-tooltip-val"></div>
+                    </div>
+                </div>
+                <div id="pie-legend" class="pie-legend"></div>
+            </div>
+            {{ tickets_by_category|json_script:"category-data" }}
+        </div>
+
+        <!-- Tickets by Department -->
+        <div class="panel dashboard-card col-span-1">
+            <div class="card-header">
+                <h3>{% trans "Tickets by Department" %}</h3>
+            </div>
+            {% include "tickets/partials/status_stack_list.html" with items=tickets_by_department status_legend=status_legend %}
+        </div>
+    </div>
+</div>

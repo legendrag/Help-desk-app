@@ -2031,6 +2031,19 @@
   border-color: rgba(148, 163, 184, 0.25);
 }
 
+[data-theme="dark"] .email-template-field-btn:hover:not(:disabled),
+[data-theme="dark"] .email-template-field-btn:focus-visible:not(:disabled) {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: var(--primary, #818cf8);
+  color: #c7d2fe;
+}
+
+[data-theme="dark"] .email-template-field-btn:active:not(:disabled) {
+  background: rgba(99, 102, 241, 0.24);
+  border-color: var(--primary, #818cf8);
+  color: #c7d2fe;
+}
+
 [data-theme="dark"] .email-template-fields,
 [data-theme="dark"] .email-template-preview {
   background: rgba(15, 23, 42, 0.55);
@@ -2047,9 +2060,15 @@
   border-color: rgba(148, 163, 184, 0.2);
 }
 
+[data-theme="dark"] .ticket-copy-number-btn {
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+}
+
 [data-theme="dark"] .ticket-copy-number-btn:hover,
 [data-theme="dark"] .ticket-copy-number-btn:focus-visible {
-  background: rgba(129, 140, 248, 0.18);
-  color: #a5b4fc;
+  background: transparent;
+  color: #e2e8f0;
+  box-shadow: none;
 }
 

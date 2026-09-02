@@ -11,23 +11,18 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"ticket_{self.ticket_id}"
 
         user = self.scope.get("user")
-        print(f"[WS-DEBUG] Attempting connect: User {user} to group {self.group_name}")
-
         if not user or not user.is_authenticated:
-            print("[WS-DEBUG] Connection rejected: Anonymous user")
             await self.close(code=4401)
             return
 
         # Strict org scope for live chat — no KB bypass (view-only cross-org via HTTP).
         allowed_ticket = await self._user_can_access_ticket(user.id, self.ticket_id)
         if not allowed_ticket:
-            print(f"[WS-DEBUG] Connection rejected: User {user.id} cannot access ticket {self.ticket_id}")
             await self.close(code=4403)
             return
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        print(f"[WS-DEBUG] Connection accepted: User {user.username} joined {self.group_name}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)

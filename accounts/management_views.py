@@ -98,6 +98,9 @@ class UserListView(UserPermissionMixin, LoginRequiredMixin, ListView):
     context_object_name = "object_list"
     paginate_by = 20
 
+    def get_queryset(self):
+        return super().get_queryset().select_related("branch", "department", "role")
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['model_name'] = gettext_noop("Users")

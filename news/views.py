@@ -18,6 +18,10 @@ class NewsListView(LoginRequiredMixin, NewsPermissionMixin, ListView):
     template_name = "news/list.html"
     context_object_name = "announcements"
 
+    def get_queryset(self):
+        return super().get_queryset().select_related("created_by")
+
+
 class NewsCreateView(LoginRequiredMixin, NewsPermissionMixin, CreateView):
     model = Announcement
     form_class = AnnouncementForm
