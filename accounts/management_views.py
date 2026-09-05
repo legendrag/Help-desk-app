@@ -110,8 +110,3 @@ class UserListView(UserPermissionMixin, LoginRequiredMixin, ListView):
         context['can_edit'] = self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_update_user)
         context['can_delete'] = self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_delete_user)
         return context
-
-    def get_template_names(self):
-        if self.request.headers.get('HX-Request'):
-            return [self.template_name]
-        return ["accounts/management/list.html"]

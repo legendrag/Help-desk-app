@@ -171,8 +171,19 @@ SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 259200))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
 
-WHITENOISE_USE_FINDERS = True
+# Finders are for local DEBUG only — they scan app static dirs on every request.
+WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_AUTOREFRESH = DEBUG
+
+if not DEBUG:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
 
 _log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 _log_to_file = os.getenv("LOG_TO_FILE", "0") == "1"

@@ -60,8 +60,8 @@
             navigator.serviceWorker.register('{% url "sw.js" %}');
         }
     </script>
-    <script src="{% static 'vendor/tom-select.complete.min.js' %}"></script>
-    <script src="{% static 'vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'vendor/tom-select.complete.min.js' %}" defer></script>
+    <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
     <script>
         window.userIsAuthenticated = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
         window.userId = "{{ user.id }}";

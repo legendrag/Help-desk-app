@@ -860,6 +860,8 @@ class DashboardFilterPartialTests(TestCase):
         self.assertContains(response, 'id="dashboard-form"')
         self.assertContains(response, 'id="dashboard-live"')
         self.assertContains(response, 'hx-target="#dashboard-live"')
+        self.assertContains(response, "vendor/chart.umd.min.js")
+        self.assertNotContains(response, "cdn.jsdelivr.net/npm/chart.js")
         self.assertNotContains(response, "this.form.submit()")
         self.assertNotContains(response, "window.location.replace(window.location.pathname)")
 
@@ -944,3 +946,48 @@ class DashboardFilterPartialTests(TestCase):
         self.assertTemplateUsed(response, "tickets/partials/branch_dashboard_live.html")
         self.assertContains(response, 'id="dashboard-live"')
         self.assertNotContains(response, "<html")
+
+    def test_branch_dashboard_uses_local_chartjs(self):
+        self.client.logout()
+        self.client.login(username="dash_branch", password="password123")
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/branch_dashboard.html")
+        self.assertContains(response, "vendor/chart.umd.min.js")
+        self.assertNotContains(response, "cdn.jsdelivr.net/npm/chart.js")
+
+    def test_export_excel_returns_workbook(self):
+        category = Category.objects.create(
+            department=self.department,
+            name="Dash Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        Ticket.objects.create(
+            ticket_number="TK-DASH-XLSX",
+            title="Export ticket",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=category,
+            created_by=self.admin,
+            client_name="Client",
+            client_phone="123",
+        )
+        response = self.client.get(reverse("dashboard_export"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        from io import BytesIO
+        import openpyxl
+
+        workbook = openpyxl.load_workbook(BytesIO(response.content))
+        self.assertIn("Tickets", workbook.sheetnames)
+        self.assertIn("Status Summary", workbook.sheetnames)
+        ticket_rows = list(workbook["Tickets"].iter_rows(min_row=2, values_only=True))
+        self.assertTrue(any(row[0] == "TK-DASH-XLSX" for row in ticket_rows))
+        self.assertTrue(
+            any(row[5] == "Open" for row in ticket_rows),
+            "status display values must be written as strings",
+        )

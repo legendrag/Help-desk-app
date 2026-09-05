@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, time
 from collections import defaultdict
 import os
 from django.utils import timezone as tz
+from django.utils.encoding import force_str
 from django.utils.translation import gettext as _
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
@@ -526,7 +527,7 @@ class ExportDashboardExcelView(DashboardView):
         def make_header(ws, row, headers):
             for col_num, header in enumerate(headers, 1):
                 cell = ws.cell(row=row, column=col_num)
-                cell.value = header
+                cell.value = force_str(header)
                 cell.font = Font(bold=True)
                 cell.alignment = Alignment(horizontal="center")
 
@@ -572,7 +573,7 @@ class ExportDashboardExcelView(DashboardView):
         ws_status = wb.create_sheet(title="Status Summary")
         make_header(ws_status, 1, ['Status', 'Count', 'Percentage'])
         for row, stat in enumerate(context.get('status_summary', []), 2):
-            ws_status.cell(row=row, column=1, value=stat['label'])
+            ws_status.cell(row=row, column=1, value=force_str(stat['label']))
             ws_status.cell(row=row, column=2, value=stat['count'])
             ws_status.cell(row=row, column=3, value=f"{stat.get('percent', 0)}%")
 

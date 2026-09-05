@@ -7,14 +7,25 @@ self.addEventListener('activate', event => {
 });
 
 // Chrome's address-bar install icon requires a fetch handler that calls
-// respondWith. Only same-origin GETs; CDN/POST stay with the browser.
-// Never fetch() a navigation Request: mode "navigate" is rejected in the
-// worker ("Failed to fetch" on /tickets/). Let the browser load pages.
+// respondWith. Only same-origin asset GETs; leave pages/HTMX to the browser.
+// fetch() of navigations, document requests, and HTMX polls of /tickets/
+// rejects with TypeError: Failed to fetch.
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') {
         return;
     }
     if (event.request.mode === 'navigate') {
+        return;
+    }
+    const dest = event.request.destination;
+    if (!dest || dest === 'document' || dest === 'iframe' || dest === 'frame') {
+        return;
+    }
+    if (event.request.headers.get('HX-Request')) {
+        return;
+    }
+    const accept = event.request.headers.get('Accept') || '';
+    if (accept.includes('text/html')) {
         return;
     }
     let url;
@@ -26,7 +37,11 @@ self.addEventListener('fetch', event => {
     if (url.origin !== self.location.origin) {
         return;
     }
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+        fetch(event.request).catch(function () {
+            return new Response('', { status: 504, statusText: 'Gateway Timeout' });
+        })
+    );
 });
 
 self.addEventListener('push', event => {

@@ -1,5 +1,8 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from accounts.signals import ensure_default_superadmin, _is_weak_bootstrap_password
@@ -132,6 +135,37 @@ class UserListQueryOptimizationTests(TestCase):
             self.assertEqual(listed.role.name, "User List Role")
 
 
+class UserListTemplateTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="ul_admin",
+            email="ul_admin@test.local",
+            password="str0ng-Passw0rd!",
+        )
+        self.listed = User.objects.create_user(
+            username="listed_agent",
+            email="listed_agent@test.local",
+            password="str0ng-Passw0rd!",
+            user_type=User.UserType.SUPPORT,
+        )
+        self.client.force_login(self.admin)
+
+    def test_full_page_user_list_renders_object_list_partial(self):
+        response = self.client.get(reverse("user_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/management/list_partial_v2.html")
+        self.assertTemplateNotUsed(response, "accounts/management/list.html")
+        self.assertContains(response, "listed_agent")
+        self.assertContains(response, "mgmt-table")
+        self.assertNotContains(response, "Manage Users")
+
+    def test_htmx_user_list_uses_the_same_partial(self):
+        response = self.client.get(reverse("user_list"), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/management/list_partial_v2.html")
+        self.assertContains(response, "listed_agent")
+
+
 class VendorStaticTests(TestCase):
     def test_login_page_uses_local_vendor_assets(self):
         response = self.client.get(reverse("login"))
@@ -141,3 +175,30 @@ class VendorStaticTests(TestCase):
         self.assertContains(response, "vendor/tom-select.default.min.css")
         self.assertNotContains(response, "cdn.jsdelivr.net/npm/tom-select")
         self.assertNotContains(response, "unpkg.com/htmx")
+
+    def test_chartjs_is_vendored_locally(self):
+        chart = Path(settings.BASE_DIR) / "static" / "vendor" / "chart.umd.min.js"
+        self.assertTrue(chart.is_file(), "Chart.js must be self-hosted for offline installs")
+        self.assertGreater(chart.stat().st_size, 10_000)
+
+    def test_tinymce_is_vendored_locally(self):
+        tinymce = Path(settings.BASE_DIR) / "static" / "vendor" / "tinymce" / "tinymce.min.js"
+        self.assertTrue(tinymce.is_file(), "TinyMCE must be self-hosted for offline installs")
+        self.assertGreater(tinymce.stat().st_size, 10_000)
+
+
+class ProductionStaticConfigTests(SimpleTestCase):
+    def _settings_source(self):
+        return (Path(settings.BASE_DIR) / "config" / "settings.py").read_text(encoding="utf-8")
+
+    def test_whitenoise_finders_follow_debug(self):
+        source = self._settings_source()
+        self.assertRegex(
+            source,
+            r"WHITENOISE_USE_FINDERS\s*=\s*DEBUG",
+            msg="WhiteNoise finders must be off in production (DEBUG=0) installs",
+        )
+
+    def test_production_uses_compressed_static_storage(self):
+        source = self._settings_source()
+        self.assertIn("whitenoise.storage.CompressedStaticFilesStorage", source)

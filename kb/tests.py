@@ -133,6 +133,8 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertContains(response, "Save draft")
         self.assertContains(response, "kb-form-layout")
         self.assertContains(response, "kb-form-side-actions")
+        self.assertContains(response, "vendor/tinymce/tinymce.min.js")
+        self.assertNotContains(response, "cdn.jsdelivr.net/npm/tinymce")
         self.assertNotContains(response, "tickets-page")
 
     def test_attachment_kind_helpers(self):

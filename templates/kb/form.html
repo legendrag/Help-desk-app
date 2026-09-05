@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{% if object %}{% trans "Edit Article" %}{% else %}{% trans "New Article" %}{% endif %} | {% trans "Knowledge Base" %}{% endblock title %}
 
@@ -177,6 +177,8 @@
             const isNarrow = window.matchMedia('(max-width: 640px)').matches;
             tinymce.init({
                 selector: '.tinymce-editor',
+                base_url: "{% static 'vendor/tinymce' %}".replace(/\/$/, ''),
+                suffix: '.min',
                 menubar: false,
                 statusbar: false,
                 plugins: 'lists link image',
@@ -205,7 +207,7 @@
 
         const loadTinyMCE = () => {
             const script = document.createElement("script");
-            script.src = "https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js";
+            script.src = "{% static 'vendor/tinymce/tinymce.min.js' %}";
             script.referrerPolicy = "origin";
             script.onload = () => {
                 initEditor();
