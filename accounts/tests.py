@@ -166,6 +166,75 @@ class UserListTemplateTests(TestCase):
         self.assertContains(response, "listed_agent")
 
 
+class LoginHtmxTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="login_user",
+            email="login@test.local",
+            password="str0ng-Passw0rd!",
+        )
+
+    def test_htmx_wrong_password_stays_on_login(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_user", "password": "wrong-password"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("HX-Redirect", response.headers)
+        self.assertContains(response, "Incorrect username or password")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_htmx_success_redirects_to_tickets(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_user", "password": "str0ng-Passw0rd!"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("tickets_list"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_htmx_success_honors_next(self):
+        next_url = reverse("tickets_list") + "?status=open"
+        response = self.client.post(
+            reverse("login"),
+            {
+                "username": "login_user",
+                "password": "str0ng-Passw0rd!",
+                "next": next_url,
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], next_url)
+
+    def test_htmx_password_change_required_skips_tickets(self):
+        self.user.requires_password_change = True
+        self.user.save(update_fields=["requires_password_change"])
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_user", "password": "str0ng-Passw0rd!"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("password_change"))
+
+    def test_html_post_still_redirects(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_user", "password": "str0ng-Passw0rd!"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("tickets_list"))
+
+    def test_login_form_uses_htmx(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="login-form"')
+        self.assertContains(response, 'hx-post')
+
+
 class VendorStaticTests(TestCase):
     def test_login_page_uses_local_vendor_assets(self):
         response = self.client.get(reverse("login"))

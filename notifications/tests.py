@@ -1,4 +1,5 @@
-﻿from unittest.mock import patch
+﻿import json
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
@@ -448,6 +449,41 @@ class EmailContentTests(TestCase):
         subject, body, _recipients = send_with_retries.call_args.args[:3]
         self.assertEqual(subject, "ALERT TK-CUSTOM-1")
         self.assertIn("Please help with VPN down", body)
+
+
+class EmailTemplateFormPartialTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="email_admin",
+            email="admin@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            is_superuser=True,
+            is_staff=True,
+        )
+        self.client.force_login(self.user)
+
+    def test_htmx_partial_avoids_sandboxed_iframe_and_json_script(self):
+        ensure_email_templates()
+        response = self.client.get(
+            "/core/email-templates/form/",
+            {"email_type": "new_ticket"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertNotIn("<iframe", html)
+        self.assertNotIn("sandbox=", html)
+        self.assertNotIn('<script id="email-template-meta"', html)
+        self.assertIn('<template id="email-template-meta">', html)
+        self.assertIn('id="email-template-preview-frame"', html)
+        meta_start = html.index('<template id="email-template-meta">') + len(
+            '<template id="email-template-meta">'
+        )
+        meta_end = html.index("</template>", meta_start)
+        meta = json.loads(html[meta_start:meta_end])
+        self.assertEqual(meta["event_type"], "new_ticket")
+        self.assertIn("sample", meta)
 
 
 class EmailTemplateTestSendTests(TestCase):

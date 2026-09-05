@@ -1,0 +1,18 @@
+{% load i18n %}
+{% if form.errors %}
+<div class="notice notice-error form-error-summary" role="alert">
+    <div>
+        <strong>{% trans "Please complete the following:" %}</strong>
+        <ul class="form-error-summary__list">
+            {% for field in form %}
+                {% if field.errors and not field.is_hidden %}
+                <li>{{ field.errors.0 }}</li>
+                {% endif %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}

@@ -477,6 +477,26 @@ msgstr "العنوان يجب أن يكون 4 أحرف على الأقل."
 msgid "Description must be at least 5 characters long."
 msgstr "الوصف يجب أن يكون 5 أحرف على الأقل."
 
+#: tickets/forms.py:97 templates/base.html
+msgid "This field"
+msgstr "هذا الحقل"
+
+#: tickets/forms.py:98 templates/base.html
+msgid "%(label)s is required."
+msgstr "%(label)s مطلوب."
+
+#: templates/base.html
+msgid "%(label)s must be at least %(min)s characters."
+msgstr "%(label)s يجب أن يكون %(min)s أحرف على الأقل."
+
+#: templates/base.html
+msgid "Enter a valid %(label)s."
+msgstr "أدخل %(label)s صحيحًا."
+
+#: templates/tickets/partials/form_error_summary.html templates/base.html
+msgid "Please complete the following:"
+msgstr "يرجى إكمال الحقول التالية:"
+
 # Ticket detail page
 #: core/models.py:73 templates/tickets/edit.html:4
 #: templates/tickets/edit.html:9 templates/tickets/edit_partial.html:3

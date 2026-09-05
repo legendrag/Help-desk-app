@@ -9,7 +9,7 @@
     {% if not can_edit_email_templates %}aria-disabled="true"{% endif %}
 >
     {% csrf_token %}
-    {{ email_template_meta|json_script:"email-template-meta" }}
+    <template id="email-template-meta">{{ email_template_meta_json }}</template>
 
     <div class="email-template-layout">
         <div class="email-template-layout__editor">
@@ -100,12 +100,12 @@
                     <span class="email-template-preview__subject-label">{% trans "Subject" %}</span>
                     <span class="email-template-preview__subject" id="email-template-preview-subject"></span>
                 </div>
-                <iframe
+                <div
                     id="email-template-preview-frame"
                     class="email-template-preview__frame"
-                    title="{% trans 'Email body preview' %}"
-                    sandbox=""
-                ></iframe>
+                    role="document"
+                    aria-label="{% trans 'Email body preview' %}"
+                ></div>
             </div>
         </aside>
     </div>

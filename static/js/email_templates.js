@@ -10,8 +10,9 @@
   function readMeta() {
     var el = $("email-template-meta");
     if (!el) return { sample: {}, defaults: { subject: "", body: "" } };
+    var raw = el.tagName === "TEMPLATE" ? el.innerHTML : el.textContent;
     try {
-      return JSON.parse(el.textContent);
+      return JSON.parse(raw);
     } catch (err) {
       return { sample: {}, defaults: { subject: "", body: "" } };
     }
@@ -132,12 +133,10 @@
         "</td>";
 
     return (
-      "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
-      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-      "<title>" +
-      brand +
-      "</title></head>" +
-      '<body style="margin:0;padding:0;background:#f8fafc;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">' +
+      "<style>" +
+      ":host{display:block;width:100%;height:100%;overflow:auto;background:#f8fafc;}" +
+      "</style>" +
+      '<div style="margin:0;padding:0;min-height:100%;background:#f8fafc;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">' +
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:24px 12px;">' +
       "<tr><td align=\"center\">" +
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">' +
@@ -164,7 +163,7 @@
       "</tr>" +
       "</table>" +
       "</td></tr></table>" +
-      "</body></html>"
+      "</div>"
     );
   }
 
@@ -178,7 +177,8 @@
     var subject = resolveTokens(values.subject, sample).trim();
     var body = resolveTokens(values.body, sample).trim();
     subjectEl.textContent = subject || "—";
-    frame.srcdoc = buildEmailDocument(meta, body);
+    var root = frame.shadowRoot || frame.attachShadow({ mode: "open" });
+    root.innerHTML = buildEmailDocument(meta, body);
   }
 
   function syncSelect(eventType) {

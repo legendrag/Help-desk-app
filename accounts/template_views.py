@@ -1,5 +1,6 @@
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
-from django.urls import reverse_lazy
+from django.http import HttpResponse
+from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.utils.translation import gettext as _
 
@@ -11,6 +12,25 @@ class UserLoginView(LoginView):
     template_name = "accounts/login.html"
     form_class = CustomAuthenticationForm
     redirect_authenticated_user = True
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if not self.request.headers.get("HX-Request"):
+            return response
+
+        redirect_to = response.get("Location") or self.get_success_url()
+        user = form.get_user()
+        if getattr(user, "requires_password_change", False):
+            redirect_to = reverse("password_change")
+
+        htmx_response = HttpResponse(status=204)
+        htmx_response["HX-Redirect"] = redirect_to
+        return htmx_response
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request") and self.request.method == "POST":
+            return ["accounts/login_form_partial.html"]
+        return [self.template_name]
 
 
 class UserLogoutView(LogoutView):

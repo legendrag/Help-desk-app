@@ -13,11 +13,7 @@
         <form method="post" class="management-form">
             {% csrf_token %}
             
-            {% if form.non_field_errors %}
-            <div class="notice notice-error">
-                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-            </div>
-            {% endif %}
+            {% include "tickets/partials/form_error_summary.html" %}
 
             <div class="form-stack">
                 <div class="form-group full">

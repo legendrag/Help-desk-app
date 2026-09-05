@@ -91,6 +91,12 @@ class TicketCreateForm(forms.ModelForm):
             self.fields["branch"].initial = user.branch
             self.fields["branch"].disabled = True
 
+        self.fields["priority"].initial = self.fields["priority"].initial or Ticket.Priority.MEDIUM
+
+        for field in self.fields.values():
+            label = field.label or _("This field")
+            field.error_messages["required"] = _("%(label)s is required.") % {"label": label}
+
     def clean_client_name(self):
         name = self.cleaned_data.get("client_name")
         if not name or len(name.strip()) < 2:
@@ -119,6 +125,9 @@ class TicketCreateForm(forms.ModelForm):
         if not description or len(description.strip()) < 5:
             raise forms.ValidationError(_("Description must be at least 5 characters long."))
         return description.strip()
+
+    def clean_priority(self):
+        return self.cleaned_data.get("priority") or Ticket.Priority.MEDIUM
 
 class TicketUpdateForm(TicketCreateForm):
     def __init__(self, *args, **kwargs):

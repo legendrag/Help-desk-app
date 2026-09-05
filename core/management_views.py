@@ -1,10 +1,12 @@
 import json
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_noop
 
 from notifications.email_content import brand_asset_urls, render_notification_email
@@ -329,6 +331,19 @@ class RoleListView(RolePermissionMixin, LoginRequiredMixin, ListView):
         return context
 
 
+_JSON_HTML_ESCAPES = {
+    ord(">"): "\\u003E",
+    ord("<"): "\\u003C",
+    ord("&"): "\\u0026",
+}
+
+
+def _json_for_html_template(value) -> str:
+    return mark_safe(
+        json.dumps(value, cls=DjangoJSONEncoder).translate(_JSON_HTML_ESCAPES)
+    )
+
+
 def _can_manage_email(user) -> bool:
     return bool(
         user.is_superuser or (user.role and user.role.can_manage_email)
@@ -353,6 +368,19 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
             "You’re receiving this because email notifications are enabled "
             "for your MlamehTicket account."
         )
+    email_template_meta = {
+        "event_type": event_type,
+        "sample": sample,
+        "defaults": {
+            "subject": defaults["subject"],
+            "body": defaults["body"],
+        },
+        "brand_name": sample.get("brand_name") or "MlamehTicket",
+        "cta_label": defaults.get("cta_label") or "Open",
+        "cta_url": cta_url_for_event(event_type, sample) or "#",
+        "footer_note": footer_note,
+        **brand_asset_urls(),
+    }
     return {
         "email_template": template,
         "email_template_form": form,
@@ -363,19 +391,8 @@ def _email_template_form_context(event_type: str, can_edit: bool, form=None) -> 
         "sample_context": sample,
         "default_subject": defaults["subject"],
         "default_body": defaults["body"],
-        "email_template_meta": {
-            "event_type": event_type,
-            "sample": sample,
-            "defaults": {
-                "subject": defaults["subject"],
-                "body": defaults["body"],
-            },
-            "brand_name": sample.get("brand_name") or "MlamehTicket",
-            "cta_label": defaults.get("cta_label") or "Open",
-            "cta_url": cta_url_for_event(event_type, sample) or "#",
-            "footer_note": footer_note,
-            **brand_asset_urls(),
-        },
+        "email_template_meta": email_template_meta,
+        "email_template_meta_json": _json_for_html_template(email_template_meta),
     }
 
 

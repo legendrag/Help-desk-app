@@ -1769,6 +1769,18 @@ tr:hover td {
   transform: translateY(0);
 }
 
+.btn-auth:disabled,
+.btn-auth.btn-loading {
+  transform: none;
+  cursor: wait;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.btn-auth.btn-loading::after {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
+
 .auth-actions {
   display: flex;
   gap: 1rem;
@@ -6216,6 +6228,7 @@ body.ticket-detail-page .chat-actions-closed {
   height: 420px;
   border: 0;
   background: #f8fafc;
+  overflow: hidden;
 }
 
 .email-template-form__actions {

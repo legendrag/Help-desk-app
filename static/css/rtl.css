@@ -53,12 +53,8 @@ html[dir="rtl"] .notification-dropdown {
   }
 }
 
-html[dir="rtl"] .field-error,
-html[dir="rtl"] .notice,
-html[dir="rtl"] label,
-html[dir="rtl"] .auth-form,
-html[dir="rtl"] .form-group {
-  text-align: right;
+html[dir="rtl"] .form-error-summary__list {
+  margin: 0.35rem 1.15rem 0 0;
 }
 
 html[dir="rtl"] .auth-form .form-group label {

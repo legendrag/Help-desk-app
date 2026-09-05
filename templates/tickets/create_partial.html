@@ -12,11 +12,7 @@
     {% csrf_token %}
     <div class="modal-body">
         <div class="form-stack">
-            {% if form.non_field_errors %}
-            <div class="non-field-errors">
-                {{ form.non_field_errors }}
-            </div>
-            {% endif %}
+            {% include "tickets/partials/form_error_summary.html" %}
             <div class="form-group full">
                 <label>{{ form.title.label }}</label>
                 {{ form.title }}

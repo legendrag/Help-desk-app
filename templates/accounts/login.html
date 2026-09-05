@@ -19,32 +19,7 @@
             <p>{% trans "Login to your account" %}</p>
         </div>
 
-        {% if form.errors %}
-        <div class="notice notice-error">
-            {% if form.non_field_errors %}
-                {% for error in form.non_field_errors %}
-                    {{ error }}<br>
-                {% endfor %}
-            {% else %}
-                {% trans "Your username and password didn't match. Please try again." %}
-            {% endif %}
-        </div>
-        {% endif %}
-
-        <form method="post" action="{% url 'login' %}" class="auth-form">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="id_username">{% trans "Username" %}</label>
-                <input type="text" name="username" id="id_username" required autofocus autocomplete="username">
-            </div>
-
-            <div class="form-group">
-                <label for="id_password">{% trans "Password" %}</label>
-                <input type="password" name="password" id="id_password" required autocomplete="current-password">
-            </div>
-
-            <button type="submit" class="btn-auth">{% trans "Login" %}</button>
-        </form>
+        {% include "accounts/login_form_partial.html" %}
     </div>
 </div>
 <script>

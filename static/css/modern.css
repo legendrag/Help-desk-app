@@ -1112,6 +1112,27 @@ ul.errorlist li {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
 }
 
+.form-control.is-invalid,
+.form-control[aria-invalid="true"],
+.ts-wrapper.invalid .ts-control {
+  border-color: var(--danger, #ef4444) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.form-error-summary {
+  align-items: flex-start;
+}
+
+.form-error-summary__list {
+  list-style: disc;
+  margin: 0.35rem 0 0 1.15rem;
+  padding: 0;
+}
+
+.form-error-summary__list li {
+  margin: 0.15rem 0;
+}
+
 /* --- Ticket Merge Revisions CSS --- */
 
 /* Dropdown Search Results */

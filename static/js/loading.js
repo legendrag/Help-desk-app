@@ -460,15 +460,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 actionPath = '';
             }
 
-            // Login POST → tickets list (or ?next= / hidden next field)
+            // Login POST destination is unknown until the server authenticates.
+            // Failed credentials re-render this page; success may go to tickets,
+            // ?next=, or password-change. Preview login so a bad attempt does
+            // not flash the tickets skeleton.
             if (actionPath === '/accounts/login' || actionPath.indexOf('/accounts/login') === 0) {
-                var nextInput = target.querySelector('input[name="next"]');
-                if (nextInput && nextInput.value) return nextInput.value;
-                try {
-                    var nextParam = new URL(window.location.href).searchParams.get('next');
-                    if (nextParam) return nextParam;
-                } catch (e2) { /* ignore */ }
-                return '/tickets/';
+                return '/accounts/login/';
             }
 
             // Logout → login screen skeleton
@@ -553,6 +550,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return target.getAttribute('action');
         }
         return target.getAttribute('href') || target.dataset.href || target.getAttribute('data-href') || '';
+    }
+
+    function isLoginForm(form) {
+        if (!form) return false;
+        if (form.id === 'login-form') return true;
+        const node = form.closest ? form.closest('#login-form') : null;
+        if (node) return true;
+        if (form.tagName !== 'FORM') return false;
+        try {
+            const action = form.getAttribute('hx-post') || form.getAttribute('action') || '';
+            const actionPath = normalizePathname(new URL(action || window.location.href, window.location.origin).pathname);
+            return actionPath === '/accounts/login' || actionPath.indexOf('/accounts/login') === 0;
+        } catch (e) {
+            return false;
+        }
     }
 
     /**
@@ -690,6 +702,27 @@ document.addEventListener('DOMContentLoaded', function() {
         clearLoadingUI();
     });
 
+    // Login: only after the server confirms the destination do we paint
+    // that page's skeleton and leave. Failed attempts stay on this form.
+    document.body.addEventListener('htmx:beforeOnLoad', function(evt) {
+        const xhr = evt.detail && evt.detail.xhr;
+        if (!xhr) return;
+        let redirect = '';
+        try {
+            redirect = xhr.getResponseHeader('HX-Redirect') || '';
+        } catch (e) {
+            return;
+        }
+        if (!redirect) return;
+        if (!isLoginForm(evt.detail.elt)) return;
+
+        evt.preventDefault();
+        beginFullPageNavigation(null, redirect);
+        requestAnimationFrame(function() {
+            window.location.assign(redirect);
+        });
+    });
+
     function watchForDownload(btnEl) {
         document.cookie = 'fileDownload=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
@@ -721,6 +754,14 @@ document.addEventListener('DOMContentLoaded', function() {
             form.hasAttribute('hx-put') ||
             form.hasAttribute('hx-delete')
         ) {
+            return;
+        }
+
+        if (isLoginForm(form)) {
+            // Wait for the server before showing any destination skeleton.
+            disableButton(form);
+            markFullPageLoading();
+            startProgress({ immediate: true });
             return;
         }
 

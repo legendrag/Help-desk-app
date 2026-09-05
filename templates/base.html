@@ -43,10 +43,10 @@
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.84">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.80">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.43">
-    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.0">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.86">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.81">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.44">
+    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.1">
     <link rel="stylesheet" href="{% static 'vendor/tom-select.default.min.css' %}">
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -86,7 +86,12 @@
             openMenu: "{% filter escapejs %}{% trans 'Open menu' %}{% endfilter %}",
             closeMenu: "{% filter escapejs %}{% trans 'Close menu' %}{% endfilter %}",
             unsavedConfirm: "{% filter escapejs %}{% trans 'You have unsaved changes. Are you sure you want to leave?' %}{% endfilter %}",
-            resetConfirm: "{% filter escapejs %}{% trans 'Reset this template to defaults?' %}{% endfilter %}"
+            resetConfirm: "{% filter escapejs %}{% trans 'Reset this template to defaults?' %}{% endfilter %}",
+            thisField: "{% filter escapejs %}{% trans 'This field' %}{% endfilter %}",
+            fieldRequired: "{% filter escapejs %}{% trans '%(label)s is required.' %}{% endfilter %}",
+            fieldTooShort: "{% filter escapejs %}{% trans '%(label)s must be at least %(min)s characters.' %}{% endfilter %}",
+            fieldInvalid: "{% filter escapejs %}{% trans 'Enter a valid %(label)s.' %}{% endfilter %}",
+            completeTheFollowing: "{% filter escapejs %}{% trans 'Please complete the following:' %}{% endfilter %}"
         };
 
         // Defeat browser bfcache: when the page is restored from
@@ -1275,7 +1280,8 @@
     </script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/loading.js' %}?v=16"></script>
+    <script src="{% static 'js/form-validation.js' %}?v=1" defer></script>
+    <script src="{% static 'js/loading.js' %}?v=17"></script>
 </body>
 
 </html>

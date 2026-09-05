@@ -991,3 +991,51 @@ class DashboardFilterPartialTests(TestCase):
             any(row[5] == "Open" for row in ticket_rows),
             "status display values must be written as strings",
         )
+
+
+class TicketCreateValidationTests(TestCase):
+    def setUp(self):
+        from tickets.forms import TicketCreateForm
+
+        self.TicketCreateForm = TicketCreateForm
+        self.branch = Branch.objects.create(code="CRT", name="Create Branch")
+        self.department = Department.objects.create(name="Create Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Create Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.role = Role.objects.create(name="Create Role", can_create_ticket=True)
+        self.user = User.objects.create_user(
+            username="ticket_creator",
+            email="creator@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+            role=self.role,
+        )
+
+    def test_missing_required_fields_name_the_field(self):
+        form = self.TicketCreateForm(data={}, user=self.user)
+        self.assertFalse(form.is_valid())
+        for name in ("title", "description", "department", "category", "client_name", "client_phone"):
+            self.assertIn(name, form.errors)
+            label = str(form.fields[name].label)
+            self.assertIn(label, str(form.errors[name]))
+
+    def test_create_page_lists_missing_fields(self):
+        self.client.login(username="ticket_creator", password="password123")
+        response = self.client.post(reverse("ticket_create"), {})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please complete the following")
+        for label in ("Title", "Description", "Department", "Category", "Name", "Phone Number"):
+            self.assertContains(response, label)
+        self.assertContains(response, "Title is required")
+        self.assertContains(response, "Department is required")
+
+    def test_create_page_includes_client_validation(self):
+        self.client.login(username="ticket_creator", password="password123")
+        response = self.client.get(reverse("ticket_create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "form-validation.js")
+        self.assertContains(response, "completeTheFollowing")
