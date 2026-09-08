@@ -569,29 +569,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Start a full-page navigation loading state.
+     * @param {Element|null} target
+     * @param {string} href
+     * @param {{skeleton?: boolean}} [options] Pass { skeleton: false } for a
+     *   progress-bar-only navigation that leaves the current page visible.
      * @returns {boolean} false if a nav is already pending (spam ignored)
      */
-    function beginFullPageNavigation(target, href) {
+    function beginFullPageNavigation(target, href, options) {
         // Anti-spam: ignore further card/link clicks while a nav is in flight.
         // Stall watchdog below unlocks after NAV_STALL_MS so the UI never freezes forever.
         if (fullPageNavPending) {
             return false;
         }
+        // Bar-only navigations (language switch) keep the current page visible
+        const withSkeleton = !(options && options.skeleton === false);
 
         fullPageNavPending = true;
         if (target) {
             target.classList.add('is-navigating');
             // Nav bar / sidebar selection → close the drawer so the full-screen skeleton shows
-            if (target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
+            if (withSkeleton && target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
                 window.closeSidebar();
             }
         }
 
-        const destination = resolveSkeletonHref(target, href);
-        showNavSkeleton(classifyNavSkeleton(destination));
-
-        // Paint press state + full-screen skeleton before any navigation work
-        setPageNavigating(true);
+        if (withSkeleton) {
+            const destination = resolveSkeletonHref(target, href);
+            showNavSkeleton(classifyNavSkeleton(destination));
+            // Paint press state + full-screen skeleton before any navigation work
+            setPageNavigating(true);
+        }
         markFullPageLoading();
         startProgress({ immediate: true });
 
@@ -620,6 +627,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.clearLoadingUI = clearLoadingUI;
     window.reloadWithLoading = reloadWithLoading;
     window.isPageNavigating = function() { return fullPageNavPending; };
+    window.beginProgressNavigation = function () {
+        return beginFullPageNavigation(null, '', { skeleton: false });
+    };
 
     function shouldTrackElement(elt) {
         return !isExcluded(elt);

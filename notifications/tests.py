@@ -633,9 +633,15 @@ class PushOffBannerMarkupTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="push-off-banner"')
         self.assertContains(response, 'id="push-allow-modal"')
+        self.assertContains(response, 'data-push-guide="site-settings"')
+        self.assertContains(response, 'data-push-guide="app-settings"')
+        self.assertContains(response, 'data-push-guide="install"')
 
     def test_login_page_omits_banner_and_modal(self):
         response = self.client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="push-off-banner"')
         self.assertNotContains(response, 'id="push-allow-modal"')
+        self.assertNotContains(response, 'data-push-guide="site-settings"')
+        self.assertNotContains(response, 'data-push-guide="app-settings"')
+        self.assertNotContains(response, 'data-push-guide="install"')

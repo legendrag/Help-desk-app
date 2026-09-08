@@ -441,9 +441,13 @@
 
     // Offcanvas logic is now loaded dynamically from details_drawer.html partial
 
-    // Auto-open if query param exists
+    // Auto-open if query param exists (after a paint so the slide animates)
     if (window.location.search.includes('show_details=true')) {
-        toggleTicketDetails();
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                toggleTicketDetails();
+            });
+        });
     }
 
     function selectTicketForMerge(ticketNumber) {

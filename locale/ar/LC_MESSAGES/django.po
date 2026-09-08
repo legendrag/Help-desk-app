@@ -17,27 +17,27 @@ msgstr ""
 "Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
 
 # Base template - Sidebar navigation
-#: templates/base.html:644 templates/core/management/form_partial.html:50
+#: templates/base.html:670 templates/core/management/form_partial.html:50
 #: templates/tickets/list.html:4
 msgid "Tickets"
 msgstr "التذاكر"
 
-#: templates/base.html:646
+#: templates/base.html:672
 msgid "News"
 msgstr "الأخبار"
 
-#: templates/base.html:649 templates/kb/detail.html:4
+#: templates/base.html:675 templates/kb/detail.html:4
 #: templates/kb/detail.html:11 templates/kb/form.html:4
 #: templates/kb/form.html:11 templates/kb/list.html:4
 #: templates/kb/list.html:102
 msgid "Knowledge Base"
 msgstr "قاعدة المعرفة"
 
-#: templates/base.html:652 templates/tickets/dashboard.html:6
+#: templates/base.html:678 templates/tickets/dashboard.html:6
 msgid "Dashboard"
 msgstr "لوحة التحكم"
 
-#: templates/base.html:655
+#: templates/base.html:681
 msgid "Settings Hub"
 msgstr "مركز الإعدادات"
 
@@ -48,36 +48,36 @@ msgstr "الإعدادات"
 #: templates/accounts/password_change.html:4
 #: templates/accounts/password_change.html:11
 #: templates/accounts/password_change_partial.html:10
-#: templates/accounts/password_change_partial.html:49 templates/base.html:659
+#: templates/accounts/password_change_partial.html:49 templates/base.html:685
 msgid "Change Password"
 msgstr "تغيير كلمة السر"
 
-#: templates/accounts/password_change.html:46 templates/base.html:663
+#: templates/accounts/password_change.html:46 templates/base.html:689
 msgid "Logout"
 msgstr "تسجيل الخروج"
 
-#: templates/base.html:668
+#: templates/base.html:694
 msgid "Theme"
 msgstr "المظهر"
 
-#: templates/base.html:698
+#: templates/base.html:724
 msgid "Language"
 msgstr "اللغة"
 
-#: templates/base.html:666
+#: templates/base.html:692
 msgid "Preferences"
 msgstr "التفضيلات"
 
-#: templates/base.html:640
+#: templates/base.html:666
 msgid "Menu"
 msgstr "القائمة"
 
-#: templates/base.html:638
+#: templates/base.html:664
 #, python-format
 msgid "Hi, %(name)s"
 msgstr "مرحباً %(name)s"
 
-#: templates/base.html:86 templates/base.html:212
+#: templates/base.html:86 templates/base.html:217
 msgid "Open menu"
 msgstr "فتح القائمة"
 
@@ -85,36 +85,36 @@ msgstr "فتح القائمة"
 msgid "Close menu"
 msgstr "إغلاق القائمة"
 
-#: templates/base.html:670
+#: templates/base.html:696
 msgid "Toggle dark mode"
 msgstr "تبديل الوضع الداكن"
 
-#: templates/base.html:712 templates/base.html:713
+#: templates/base.html:738 templates/base.html:739
 msgid "Switch to English"
 msgstr "التبديل للإنجليزية"
 
-#: templates/base.html:712 templates/base.html:713
+#: templates/base.html:738 templates/base.html:739
 msgid "Switch to Arabic"
 msgstr "التبديل للعربية"
 
 # Notifications
-#: templates/base.html:161 templates/base.html:172
+#: templates/base.html:166 templates/base.html:177
 msgid "Notifications"
 msgstr "الإشعارات"
 
-#: templates/base.html:176
+#: templates/base.html:181
 msgid "Mark all as read"
 msgstr "تعليم الكل كمقروء"
 
-#: templates/base.html:183
+#: templates/base.html:188
 msgid "Clear read notifications"
 msgstr "مسح الإشعارات المقروءة"
 
-#: templates/base.html:202
+#: templates/base.html:207
 msgid "No notifications yet"
 msgstr "لا إشعارات بعد"
 
-#: templates/base.html:78 templates/base.html:207
+#: templates/base.html:78 templates/base.html:212
 msgid "Enable"
 msgstr "تفعيل"
 
@@ -239,8 +239,8 @@ msgstr "عاجلة"
 # Common buttons
 #: templates/accounts/management/form_partial.html:98
 #: templates/accounts/password_change.html:38
-#: templates/accounts/password_change_partial.html:48 templates/base.html:564
-#: templates/base.html:591 templates/core/management/delete_confirm.html:19
+#: templates/accounts/password_change_partial.html:48 templates/base.html:569
+#: templates/base.html:596 templates/core/management/delete_confirm.html:19
 #: templates/core/management/delete_confirm_partial.html:20
 #: templates/core/management/form_partial.html:418 templates/kb/form.html:135
 #: templates/news/form_partial.html:61 templates/tickets/create.html:71
@@ -279,7 +279,7 @@ msgstr "تعديل"
 msgid "Delete"
 msgstr "حذف"
 
-#: templates/base.html:578 templates/tickets/detail.html:309
+#: templates/base.html:583 templates/tickets/detail.html:309
 #: templates/tickets/detail.html:319
 msgid "Close"
 msgstr "إغلاق"
@@ -758,7 +758,7 @@ msgstr "هل أنت متأكد من حذف هذا الإعلان؟"
 msgid "Delete Announcement"
 msgstr "حذف الإعلان"
 
-#: templates/base.html:593 templates/core/management/delete_confirm.html:18
+#: templates/base.html:598 templates/core/management/delete_confirm.html:18
 #: templates/core/management/delete_confirm_partial.html:19
 #: templates/news/form_partial.html:59
 msgid "Yes, Delete"
@@ -1341,19 +1341,19 @@ msgid "Reopened"
 msgstr "أعيد فتحها"
 
 # Confirm modals
-#: templates/base.html:576
+#: templates/base.html:581
 msgid "Confirm Action"
 msgstr "تأكيد الإجراء"
 
-#: templates/base.html:587
+#: templates/base.html:592
 msgid "Are you sure you want to proceed?"
 msgstr "هل أنت متأكد من المتابعة؟"
 
-#: templates/base.html:566
+#: templates/base.html:571
 msgid "Yes, Discard"
 msgstr "نعم، تجاهل"
 
-#: templates/base.html:560
+#: templates/base.html:565
 msgid "You have unsaved changes. Are you sure you want to discard them?"
 msgstr "لديك تغييرات غير محفوظة. هل أنت متأكد من تجاهلها؟"
 
@@ -1408,7 +1408,7 @@ msgstr "يكتب…"
 msgid "Status breakdown for %(label)s"
 msgstr "تفصيل الحالة لـ %(label)s"
 
-#: templates/base.html:549
+#: templates/base.html:554
 msgid "Unsaved Changes"
 msgstr "تغييرات غير محفوظة"
 
@@ -2702,33 +2702,55 @@ msgstr "%%(label)s يجب أن يكون %%(min)s أحرف على الأقل."
 msgid "Enter a valid %%(label)s."
 msgstr "أدخل %%(label)s صحيحًا."
 
-#: templates/base.html:94 templates/base.html:480 templates/base.html:490
+#: templates/base.html:94 templates/base.html:485 templates/base.html:495
 msgid "Notifications are off"
 msgstr "الإشعارات متوقفة"
 
-#: templates/base.html:95 templates/base.html:492
+#: templates/base.html:95 templates/base.html:497
 msgid "Get notifications for tickets and messages."
 msgstr "احصل على إشعارات للتذاكر والرسائل."
 
-#: templates/base.html:96 templates/base.html:494
+#: templates/base.html:96 templates/base.html:499
 msgid "Turn on"
 msgstr "تشغيل"
 
-#: templates/base.html:97 templates/base.html:498
+#: templates/base.html:97 templates/base.html:503
 msgid "Dismiss"
 msgstr "تجاهل"
 
-#: templates/base.html:98 templates/base.html:609
+#: templates/base.html:98 templates/base.html:614
 msgid "Allow notifications"
 msgstr "السماح بالإشعارات"
 
-#: templates/base.html:99 templates/base.html:625
+#: templates/base.html:99 templates/base.html:630
 msgid "Click the icon next to the address bar and turn Notifications on."
 msgstr "انقر على الأيقونة بجانب شريط العنوان وشغّل الإشعارات."
 
-#: templates/base.html:100 templates/base.html:628
+#: templates/base.html:105 templates/base.html:654
 msgid "OK"
 msgstr "حسنًا"
+
+#: templates/base.html:100
+msgid "Add to Home Screen"
+msgstr "إضافة إلى الشاشة الرئيسية"
+
+#: templates/base.html:101 templates/base.html:651
+msgid ""
+"Open the Share menu, then tap Add to Home Screen. Open the app from there to"
+" turn on notifications."
+msgstr "افتح قائمة المشاركة ثم اضغط إضافة إلى الشاشة الرئيسية. افتح التطبيق من هناك لتشغيل الإشعارات."
+
+#: templates/base.html:102 templates/base.html:640
+msgid "Open your device settings for this app and turn Notifications on."
+msgstr "افتح إعدادات هذا التطبيق على جهازك وشغّل الإشعارات."
+
+#: templates/base.html:103
+msgid "Notifications are blocked in your device settings."
+msgstr "الإشعارات محظورة في إعدادات جهازك."
+
+#: templates/base.html:104
+msgid "Add this app to your Home Screen to get notifications."
+msgstr "أضف هذا التطبيق إلى الشاشة الرئيسية للحصول على الإشعارات."
 
 #~ msgid "%(label)s must be at least %(min)s characters."
 #~ msgstr "%(label)s يجب أن يكون %(min)s أحرف على الأقل."

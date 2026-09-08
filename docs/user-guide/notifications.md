@@ -27,7 +27,13 @@ When browser notifications are not granted, a banner appears at the top of every
 - **Notifications are off** — with **Turn on** to request permission (or to show how to unblock them if the browser already blocked the site).
 - **X** dismisses the banner for this browser. You can still enable push from the bell dropdown.
 
-If notifications are blocked in site settings, **Turn on** opens a short **Allow notifications** guide: use the site-settings icon next to the address bar and turn Notifications on, then return to the app. The banner hides itself once permission is granted.
+If notifications are blocked, **Turn on** opens a short guide that depends on how you are using the app:
+
+- **Browser tab** — use the site-settings icon next to the address bar and turn Notifications on.
+- **Installed app** — open this app’s notification settings on the device and turn Notifications on.
+- **iPhone or iPad in Safari** — web push needs a Home Screen install first. Open the Share menu, tap **Add to Home Screen**, then open the app from there to turn notifications on.
+
+The banner hides itself once permission is granted.
 
 ### On-page toast
 
@@ -44,9 +50,11 @@ Email notifications depend on administrator Email Settings (SMTP and event toggl
 
 Web push delivers OS-level notifications when the app is in the background (browser and device permitting).
 
-1. If the **Notifications are off** banner is visible, click **Turn on** and allow the browser prompt.
+1. If the **Notifications are off** banner is visible, click **Turn on** and allow the prompt (or follow the guide if notifications are blocked).
 2. Or open the notification dropdown and click **Enable**.
-3. If the browser has already blocked notifications, follow the **Allow notifications** guide (site settings next to the address bar), then refresh or return to the app.
+3. **Browser tab:** if the site is blocked, use the site-settings icon next to the address bar.
+4. **Installed app:** if notifications are blocked, turn them on in this app’s device settings.
+5. **iPhone or iPad in Safari:** add the app to the Home Screen first, then open it from there and turn notifications on.
 
 Browsers require a user gesture to grant permission; use **Turn on** or **Enable** rather than expecting a silent subscribe on page load.
 

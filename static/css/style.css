@@ -1094,7 +1094,7 @@ tr:hover td {
   /* Sit below the fixed topbar (same as .sidebar) so title/close aren't clipped */
   top: 60px;
   bottom: 0;
-  left: -600px;
+  left: 0;
   width: 600px;
   max-width: 95vw;
   height: auto;
@@ -1106,14 +1106,16 @@ tr:hover td {
   /* Right-only shadow so it doesn't bleed up under the topbar */
   box-shadow: 16px 8px 28px -12px rgba(0, 0, 0, 0.22);
   z-index: 2000;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
   overflow-y: auto;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .ticket-offcanvas.open {
-  left: 0;
+  transform: translateX(0);
 }
 
 .ticket-offcanvas-header {
@@ -1144,14 +1146,14 @@ tr:hover td {
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
   z-index: 1999;
-  display: none;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
 .ticket-offcanvas-overlay.open {
-  display: block;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .ticket-offcanvas-body {

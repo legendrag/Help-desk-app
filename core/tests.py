@@ -65,6 +65,50 @@ class AppVersionTests(SimpleTestCase):
                 self.assertEqual(get_app_version(), "")
 
 
+class LanguageSwitchLoadingTests(SimpleTestCase):
+    def setUp(self):
+        base = Path(settings.BASE_DIR)
+        self.loading_js = (base / "static" / "js" / "loading.js").read_text(
+            encoding="utf-8"
+        )
+        self.base_html = (base / "templates" / "base.html").read_text(encoding="utf-8")
+
+    def test_exports_bar_only_progress_navigation(self):
+        self.assertIn("window.beginProgressNavigation", self.loading_js)
+        self.assertIn("options.skeleton === false", self.loading_js)
+        self.assertIn("beginFullPageNavigation(null, '', { skeleton: false })", self.loading_js)
+
+    def test_language_switch_starts_progress_then_submits(self):
+        self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
+        self.assertIn("window.beginProgressNavigation()", self.base_html)
+        self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.base_html)
+        self.assertIn("loading.js' %}?v=18", self.base_html)
+
+    def test_ordinary_full_page_nav_still_shows_skeleton(self):
+        self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
+        self.assertIn("setPageNavigating(true)", self.loading_js)
+        self.assertIn("if (withSkeleton)", self.loading_js)
+
+
+class LanguageSwitchRenderedTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="lang_switch_user",
+            email="langswitch@test.local",
+            password="testpassword123",
+        )
+        self.client.force_login(self.user)
+
+    def test_tickets_list_wires_progress_bar_on_language_switch(self):
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("window.beginProgressNavigation()", html)
+        self.assertIn("js/loading.js?v=18", html)
+        self.assertIn('id="lang-switch-form"', html)
+        self.assertIn("data-no-loading", html)
+
+
 class SidebarVersionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(

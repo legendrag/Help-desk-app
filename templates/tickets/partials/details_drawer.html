@@ -231,13 +231,15 @@
     }
 
     {% if auto_open %}
-    // Automatically open drawer if loaded via HTMX
-    setTimeout(function() {
-        const offcanvas = document.getElementById('ticket-offcanvas');
-        const overlay = document.getElementById('ticket-offcanvas-overlay');
-        if (offcanvas && overlay && !offcanvas.classList.contains('open')) {
-            toggleTicketDetails();
-        }
-    }, 50);
+    // Paint the closed state first so the slide-in transition can run
+    requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+            const offcanvas = document.getElementById('ticket-offcanvas');
+            const overlay = document.getElementById('ticket-offcanvas-overlay');
+            if (offcanvas && overlay && !offcanvas.classList.contains('open')) {
+                toggleTicketDetails();
+            }
+        });
+    });
     {% endif %}
 </script>

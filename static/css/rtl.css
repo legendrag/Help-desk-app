@@ -15,6 +15,19 @@ html[dir="rtl"] .sidebar.open {
   transform: translateX(0);
 }
 
+html[dir="rtl"] .ticket-offcanvas {
+  left: auto;
+  right: 0;
+  transform: translateX(100%);
+  border-right: none;
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 8px 28px -12px rgba(0, 0, 0, 0.22);
+}
+
+html[dir="rtl"] .ticket-offcanvas.open {
+  transform: translateX(0);
+}
+
 html[dir="rtl"] .topbar,
 html[dir="rtl"] .topbar-controls,
 html[dir="rtl"] .form-actions,

@@ -470,6 +470,16 @@ function updatePushPermissionPrompt() {
     const enableBtn = document.getElementById("notification-push-enable");
     if (!prompt || !text || !enableBtn) return;
 
+    const mode = pushGuideMode();
+    if (mode === "install") {
+        prompt.hidden = false;
+        prompt.classList.add("is-visible");
+        enableBtn.style.display = "";
+        text.textContent = (window.I18N && window.I18N.pushInstallPrompt) || "Add this app to your Home Screen to get notifications.";
+        enableBtn.textContent = (window.I18N && window.I18N.turnOn) || "Turn on";
+        return;
+    }
+
     if (!window.Notification) {
         prompt.hidden = true;
         prompt.classList.remove("is-visible");
@@ -487,7 +497,9 @@ function updatePushPermissionPrompt() {
     prompt.classList.add("is-visible");
     enableBtn.style.display = "";
     if (permission === "denied") {
-        text.textContent = (window.I18N && window.I18N.pushDenied) || "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
+        text.textContent = mode === "app-settings"
+            ? ((window.I18N && window.I18N.pushDeniedApp) || "Notifications are blocked in your device settings.")
+            : ((window.I18N && window.I18N.pushDenied) || "Browser notifications are blocked. Enable them in your browser site settings, then refresh.");
         enableBtn.textContent = (window.I18N && window.I18N.turnOn) || "Turn on";
     } else {
         text.textContent = (window.I18N && window.I18N.enablePush) || "Enable push notifications to stay updated.";
@@ -503,7 +515,7 @@ async function requestPushPermissionFromUi() {
         if (perm === "granted") {
             initWebPush();
         } else if (perm === "denied") {
-            openPushAllowModal();
+            openPushAllowModal(pushGuideMode() || "site-settings");
         }
         return perm;
     } catch (err) {
@@ -527,21 +539,59 @@ function setPushOffBannerDismissed() {
     } catch (e) { /* ignore quota / private mode */ }
 }
 
+function isStandaloneApp() {
+    return window.matchMedia("(display-mode: standalone)").matches
+        || window.navigator.standalone === true;
+}
+
+function isIosDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isPushSupported() {
+    return !!window.Notification && "serviceWorker" in navigator && "PushManager" in window;
+}
+
+function pushGuideMode() {
+    if (!isPushSupported()) {
+        return (isIosDevice() && !isStandaloneApp()) ? "install" : null;
+    }
+    if (Notification.permission === "denied") {
+        return isStandaloneApp() ? "app-settings" : "site-settings";
+    }
+    return null;
+}
+
 function syncPushOffUi() {
     updatePushPermissionPrompt();
     const banner = document.getElementById("push-off-banner");
     if (!banner) return;
 
-    if (!window.Notification || Notification.permission === "granted" || isPushOffBannerDismissed()) {
+    if (isPushOffBannerDismissed()) {
         banner.hidden = true;
         return;
     }
-    banner.hidden = false;
+    if (isPushSupported()) {
+        banner.hidden = Notification.permission === "granted";
+        return;
+    }
+    banner.hidden = pushGuideMode() !== "install";
 }
 
-function openPushAllowModal() {
+function openPushAllowModal(mode) {
     const modal = document.getElementById("push-allow-modal");
     if (!modal) return;
+    const active = mode || pushGuideMode() || "site-settings";
+    const title = document.getElementById("push-allow-title");
+    if (title) {
+        title.textContent = active === "install"
+            ? ((window.I18N && window.I18N.addToHomeScreen) || "Add to Home Screen")
+            : ((window.I18N && window.I18N.allowNotifications) || "Allow notifications");
+    }
+    modal.querySelectorAll("[data-push-guide]").forEach((block) => {
+        block.hidden = block.getAttribute("data-push-guide") !== active;
+    });
     modal.style.display = "flex";
     modal.setAttribute("aria-hidden", "false");
     const ok = document.getElementById("push-allow-ok");
@@ -562,11 +612,12 @@ function isPushAllowModalOpen() {
 }
 
 async function handleTurnOnNotifications() {
-    if (!window.Notification) return;
-    if (Notification.permission === "denied") {
-        openPushAllowModal();
+    const mode = pushGuideMode();
+    if (mode) {
+        openPushAllowModal(mode);
         return;
     }
+    if (!window.Notification) return;
     await requestPushPermissionFromUi();
 }
 

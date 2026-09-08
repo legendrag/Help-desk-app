@@ -1597,13 +1597,21 @@
   transition: none;
 }
 
-/* Preserve open/close motion for nav + notifications */
+/* Preserve open/close motion for nav, details drawer + notifications */
 [data-theme="dark"] .sidebar {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 [data-theme="dark"] .sidebar-overlay {
   transition: opacity 0.3s ease, backdrop-filter 0.3s ease, background-color 0.25s ease;
+}
+
+[data-theme="dark"] .ticket-offcanvas {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+[data-theme="dark"] .ticket-offcanvas-overlay {
+  transition: opacity 0.3s ease, background-color 0.25s ease;
 }
 
 [data-theme="dark"] .notification-dropdown {
@@ -1802,13 +1810,21 @@
   transition: none;
 }
 
-/* Preserve open/close motion for nav + notifications */
+/* Preserve open/close motion for nav, details drawer + notifications */
 [data-theme="dark"] .sidebar {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 [data-theme="dark"] .sidebar-overlay {
   transition: opacity 0.3s ease, backdrop-filter 0.3s ease, background-color 0.25s ease;
+}
+
+[data-theme="dark"] .ticket-offcanvas {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+[data-theme="dark"] .ticket-offcanvas-overlay {
+  transition: opacity 0.3s ease, background-color 0.25s ease;
 }
 
 [data-theme="dark"] .notification-dropdown {
@@ -2127,14 +2143,20 @@
   color: #e2e8f0;
 }
 
+[data-theme="dark"] .push-allow-overlay {
+  background: rgba(2, 6, 23, 0.62);
+}
+
 [data-theme="dark"] .push-allow-dialog {
-  background: #1e293b;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+  background: rgba(15, 23, 42, 0.38);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
 }
 
 [data-theme="dark"] .push-allow-arrow {
-  background: rgba(129, 140, 248, 0.18);
-  color: #a5b4fc;
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
 }
 
 [data-theme="dark"] .push-allow-title {
@@ -2146,7 +2168,8 @@
 }
 
 [data-theme="dark"] .push-allow-site-icon {
-  background: rgba(148, 163, 184, 0.16);
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.2);
   color: #e2e8f0;
 }
 

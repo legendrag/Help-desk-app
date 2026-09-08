@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.test import TestCase
 from django.conf import settings
 from accounts.models import User
@@ -678,6 +680,50 @@ class TicketNumberCopyButtonTests(TestCase):
         self.assertContains(response, 'class="ticket-copy-number-btn"', count=2)
         self.assertContains(response, 'data-copy-text="TK-COPY-1"')
         self.assertContains(response, 'data-copy-text="0501234567"')
+
+    def test_drawer_partial_starts_closed_and_opens_after_paint(self):
+        self.client.login(username="copy_branch", password="password123")
+        response = self.client.get(reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="ticket-offcanvas"')
+        self.assertNotContains(response, 'class="ticket-offcanvas open"')
+        self.assertContains(response, "requestAnimationFrame")
+
+
+class TicketDrawerAnimationTests(TestCase):
+    def test_offcanvas_slides_with_transform(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "style.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(
+            css,
+            r"\.ticket-offcanvas \{[^}]*transform:\s*translateX\(-100%\)",
+        )
+        self.assertRegex(
+            css,
+            r"\.ticket-offcanvas \{[^}]*transition:\s*transform",
+        )
+        self.assertRegex(
+            css,
+            r"\.ticket-offcanvas\.open \{[^}]*transform:\s*translateX\(0\)",
+        )
+        self.assertNotRegex(
+            css,
+            r"\.ticket-offcanvas-overlay \{[^}]*display:\s*none",
+        )
+
+    def test_dark_mode_preserves_offcanvas_transform_transition(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "dark-mode.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(
+            css,
+            r'\[data-theme="dark"\] \.ticket-offcanvas \{[^}]*transition:[^}]*transform',
+        )
+        self.assertRegex(
+            css,
+            r'\[data-theme="dark"\] \.ticket-offcanvas-overlay \{[^}]*transition:[^}]*opacity',
+        )
 
 
 class TicketDetailQueryOptimizationTests(TestCase):
