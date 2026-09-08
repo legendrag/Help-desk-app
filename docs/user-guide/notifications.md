@@ -20,6 +20,15 @@ Inside the dropdown you can:
 
 Empty state: **No notifications yet**.
 
+### Notifications-off banner
+
+When browser notifications are not granted, a banner appears at the top of every signed-in page:
+
+- **Notifications are off** — with **Turn on** to request permission (or to show how to unblock them if the browser already blocked the site).
+- **X** dismisses the banner for this browser. You can still enable push from the bell dropdown.
+
+If notifications are blocked in site settings, **Turn on** opens a short **Allow notifications** guide: use the site-settings icon next to the address bar and turn Notifications on, then return to the app. The banner hides itself once permission is granted.
+
 ### On-page toast
 
 When a new event arrives while you are using the app, a toast may appear. If you are **already viewing that ticket** (the ticket detail chat URL), the on-page toast for that ticket is **suppressed** so you are not interrupted while reading the same conversation. List pages (including announcements on the ticket list) still allow toasts.
@@ -35,11 +44,11 @@ Email notifications depend on administrator Email Settings (SMTP and event toggl
 
 Web push delivers OS-level notifications when the app is in the background (browser and device permitting).
 
-1. Open the notification dropdown.
-2. If prompted, click **Enable**.
-3. Allow notifications in the browser permission dialog.
+1. If the **Notifications are off** banner is visible, click **Turn on** and allow the browser prompt.
+2. Or open the notification dropdown and click **Enable**.
+3. If the browser has already blocked notifications, follow the **Allow notifications** guide (site settings next to the address bar), then refresh or return to the app.
 
-Browsers require a user gesture to grant permission; use **Enable** in the dropdown rather than expecting a silent subscribe on page load.
+Browsers require a user gesture to grant permission; use **Turn on** or **Enable** rather than expecting a silent subscribe on page load.
 
 ## Duplicate suppression
 
@@ -62,7 +71,7 @@ Exact wording follows the templates configured by administrators.
 ## Recommended setup
 
 1. Keep the bell visible while working tickets.
-2. Click **Enable** for web push on devices you use for support.
+2. Click **Turn on** on the banner (or **Enable** in the bell) for web push on devices you use for support.
 3. Confirm with an administrator that email is configured if you expect inbox alerts.
 4. Use **Mark all as read** at the end of a shift; use **Clear read** to tidy the dropdown.
 

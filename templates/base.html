@@ -44,9 +44,9 @@
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.86">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.83">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.45">
-    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.2">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.84">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.46">
+    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.3">
     <link rel="stylesheet" href="{% static 'vendor/tom-select.default.min.css' %}">
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'images/mlameh-icon-180.png' %}">
@@ -90,7 +90,14 @@
             thisField: "{% filter escapejs %}{% trans 'This field' %}{% endfilter %}",
             fieldRequired: "{% filter escapejs %}{% trans '%(label)s is required.' %}{% endfilter %}",
             fieldTooShort: "{% filter escapejs %}{% trans '%(label)s must be at least %(min)s characters.' %}{% endfilter %}",
-            fieldInvalid: "{% filter escapejs %}{% trans 'Enter a valid %(label)s.' %}{% endfilter %}"
+            fieldInvalid: "{% filter escapejs %}{% trans 'Enter a valid %(label)s.' %}{% endfilter %}",
+            notificationsOff: "{% filter escapejs %}{% trans 'Notifications are off' %}{% endfilter %}",
+            pushOffBody: "{% filter escapejs %}{% trans 'Get notifications for tickets and messages.' %}{% endfilter %}",
+            turnOn: "{% filter escapejs %}{% trans 'Turn on' %}{% endfilter %}",
+            dismiss: "{% filter escapejs %}{% trans 'Dismiss' %}{% endfilter %}",
+            allowNotifications: "{% filter escapejs %}{% trans 'Allow notifications' %}{% endfilter %}",
+            allowNotificationsHelp: "{% filter escapejs %}{% trans 'Click the icon next to the address bar and turn Notifications on.' %}{% endfilter %}",
+            ok: "{% filter escapejs %}{% trans 'OK' %}{% endfilter %}"
         };
 
         // Defeat browser bfcache: when the page is restored from
@@ -130,7 +137,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.20" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.21" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -468,6 +475,35 @@
         </div>
 
         <main class="content">
+            {% if user.is_authenticated %}
+            <div id="push-off-banner" class="push-off-banner" hidden role="region"
+                aria-label="{% trans 'Notifications are off' %}">
+                <div class="push-off-banner__icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </div>
+                <div class="push-off-banner__body">
+                    <p class="push-off-banner__title">{% trans "Notifications are off" %}</p>
+                    <p class="push-off-banner__text">
+                        {% trans "Get notifications for tickets and messages." %}
+                        <button type="button" class="push-off-banner__turn-on" id="push-off-turn-on"
+                            data-no-loading>{% trans "Turn on" %}</button>
+                    </p>
+                </div>
+                <button type="button" class="push-off-banner__dismiss" id="push-off-dismiss" data-no-loading
+                    aria-label="{% trans 'Dismiss' %}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            {% endif %}
             {% block content %}{% endblock content %}
         </main>
 
@@ -558,6 +594,41 @@
                 </div>
             </div>
         </div>
+
+        {% if user.is_authenticated %}
+        <div id="push-allow-modal" class="modal-overlay push-allow-overlay" role="dialog" aria-modal="true"
+            aria-labelledby="push-allow-title" aria-hidden="true">
+            <div class="push-allow-dialog">
+                <div class="push-allow-arrow" aria-hidden="true">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="17" y1="17" x2="7" y2="7"></line>
+                        <polyline points="7 15 7 7 15 7"></polyline>
+                    </svg>
+                </div>
+                <h2 id="push-allow-title" class="push-allow-title">{% trans "Allow notifications" %}</h2>
+                <p class="push-allow-body">
+                    <span class="push-allow-site-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14"></line>
+                            <line x1="4" y1="10" x2="4" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12" y2="3"></line>
+                            <line x1="20" y1="21" x2="20" y2="16"></line>
+                            <line x1="20" y1="12" x2="20" y2="3"></line>
+                            <line x1="1" y1="14" x2="7" y2="14"></line>
+                            <line x1="9" y1="8" x2="15" y2="8"></line>
+                            <line x1="17" y1="16" x2="23" y2="16"></line>
+                        </svg>
+                    </span>
+                    {% trans "Click the icon next to the address bar and turn Notifications on." %}
+                </p>
+                <button type="button" class="btn primary push-allow-ok" id="push-allow-ok"
+                    data-no-loading>{% trans "OK" %}</button>
+            </div>
+        </div>
+        {% endif %}
 
         <div id="overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 

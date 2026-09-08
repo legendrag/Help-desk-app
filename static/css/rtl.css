@@ -508,3 +508,9 @@ html[dir="rtl"] .announcement-card::before {
 html[dir="rtl"] .action-bar-group {
   flex-direction: row-reverse;
 }
+
+/* Browser chrome stays LTR — keep the instructional arrow pointing up-left. */
+html[dir="rtl"] .push-allow-arrow,
+html[dir="rtl"] .push-allow-arrow svg {
+  transform: none;
+}

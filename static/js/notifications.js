@@ -485,12 +485,13 @@ function updatePushPermissionPrompt() {
 
     prompt.hidden = false;
     prompt.classList.add("is-visible");
+    enableBtn.style.display = "";
     if (permission === "denied") {
         text.textContent = (window.I18N && window.I18N.pushDenied) || "Browser notifications are blocked. Enable them in your browser site settings, then refresh.";
-        enableBtn.style.display = "none";
+        enableBtn.textContent = (window.I18N && window.I18N.turnOn) || "Turn on";
     } else {
         text.textContent = (window.I18N && window.I18N.enablePush) || "Enable push notifications to stay updated.";
-        enableBtn.style.display = "";
+        enableBtn.textContent = (window.I18N && window.I18N.enable) || "Enable";
     }
 }
 
@@ -498,13 +499,133 @@ async function requestPushPermissionFromUi() {
     if (!window.Notification) return;
     try {
         const perm = await Notification.requestPermission();
-        updatePushPermissionPrompt();
+        syncPushOffUi();
         if (perm === "granted") {
             initWebPush();
+        } else if (perm === "denied") {
+            openPushAllowModal();
         }
+        return perm;
     } catch (err) {
         console.error("[WebPush] Permission request failed:", err);
     }
+}
+
+const PUSH_OFF_DISMISS_KEY = "mlamehticket_push_off_banner_dismissed";
+
+function isPushOffBannerDismissed() {
+    try {
+        return localStorage.getItem(PUSH_OFF_DISMISS_KEY) === "1";
+    } catch (e) {
+        return false;
+    }
+}
+
+function setPushOffBannerDismissed() {
+    try {
+        localStorage.setItem(PUSH_OFF_DISMISS_KEY, "1");
+    } catch (e) { /* ignore quota / private mode */ }
+}
+
+function syncPushOffUi() {
+    updatePushPermissionPrompt();
+    const banner = document.getElementById("push-off-banner");
+    if (!banner) return;
+
+    if (!window.Notification || Notification.permission === "granted" || isPushOffBannerDismissed()) {
+        banner.hidden = true;
+        return;
+    }
+    banner.hidden = false;
+}
+
+function openPushAllowModal() {
+    const modal = document.getElementById("push-allow-modal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+    const ok = document.getElementById("push-allow-ok");
+    if (ok) ok.focus();
+}
+
+function closePushAllowModal() {
+    const modal = document.getElementById("push-allow-modal");
+    if (!modal) return;
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+}
+
+function isPushAllowModalOpen() {
+    const modal = document.getElementById("push-allow-modal");
+    if (!modal) return false;
+    return modal.style.display === "flex";
+}
+
+async function handleTurnOnNotifications() {
+    if (!window.Notification) return;
+    if (Notification.permission === "denied") {
+        openPushAllowModal();
+        return;
+    }
+    await requestPushPermissionFromUi();
+}
+
+function initPushOffBanner() {
+    const turnOn = document.getElementById("push-off-turn-on");
+    const dismiss = document.getElementById("push-off-dismiss");
+    const modal = document.getElementById("push-allow-modal");
+    const ok = document.getElementById("push-allow-ok");
+
+    if (turnOn) {
+        turnOn.addEventListener("click", (event) => {
+            event.preventDefault();
+            handleTurnOnNotifications();
+        });
+    }
+
+    if (dismiss) {
+        dismiss.addEventListener("click", () => {
+            setPushOffBannerDismissed();
+            syncPushOffUi();
+        });
+    }
+
+    if (ok) {
+        ok.addEventListener("click", closePushAllowModal);
+    }
+
+    if (modal) {
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) closePushAllowModal();
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && isPushAllowModalOpen()) {
+            closePushAllowModal();
+        }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            syncPushOffUi();
+        }
+    });
+
+    window.addEventListener("focus", syncPushOffUi);
+
+    if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: "notifications" }).then((status) => {
+            status.addEventListener("change", () => {
+                syncPushOffUi();
+                if (window.Notification && Notification.permission === "granted") {
+                    initWebPush();
+                }
+            });
+        }).catch(() => {});
+    }
+
+    syncPushOffUi();
 }
 
 // ── Init UI ──
@@ -518,21 +639,16 @@ function initNotificationUI() {
 
     if (!button || !dropdown) return;
 
-    button.addEventListener("click", async (event) => {
+    button.addEventListener("click", (event) => {
         event.stopPropagation();
         toggleDropdown();
         updatePushPermissionPrompt();
-
-        // Ask for permissions on bell click if still undecided
-        if (window.Notification && Notification.permission === "default") {
-            await requestPushPermissionFromUi();
-        }
     });
 
     if (pushEnableBtn) {
         pushEnableBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
-            await requestPushPermissionFromUi();
+            await handleTurnOnNotifications();
         });
     }
 
@@ -595,7 +711,7 @@ function initNotificationUI() {
     });
 
     fetchNotifications();
-    updatePushPermissionPrompt();
+    initPushOffBanner();
 
     // Initialize Web Push subscription (only if already granted)
     initWebPush();
@@ -847,21 +963,6 @@ function bindWebPushLogoutCleanup() {
 }
 
 window.unsubscribeWebPush = unsubscribeWebPush;
-
-// ── Bootstrap ──
-if (window.Notification && Notification.permission === "default") {
-    // Browsers block requestPermission on page load without a user gesture.
-    // We bind it to the very first click anywhere on the document so it feels "automatic".
-    const requestOnInteraction = () => {
-        Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-                initWebPush();
-            }
-        });
-        document.removeEventListener("click", requestOnInteraction);
-    };
-    document.addEventListener("click", requestOnInteraction);
-}
 
 if (window.userIsAuthenticated) {
     initNotifications();

@@ -2,6 +2,7 @@
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from accounts.models import User
 from core.models import Branch, Category, Department, EmailSetting, EmailTemplate
@@ -613,3 +614,28 @@ class NewTicketInAppNotificationTests(TestCase):
         self.assertEqual(match["title"], row.title)
         self.assertEqual(match["title_ar"], row.title_ar)
         self.assertGreaterEqual(payload["unread_count"], 1)
+
+
+class PushOffBannerMarkupTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="POB", name="Push Off Branch")
+        self.user = User.objects.create_user(
+            username="push_off_user",
+            email="push_off@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+
+    def test_authenticated_page_includes_banner_and_modal(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="push-off-banner"')
+        self.assertContains(response, 'id="push-allow-modal"')
+
+    def test_login_page_omits_banner_and_modal(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="push-off-banner"')
+        self.assertNotContains(response, 'id="push-allow-modal"')
