@@ -19,14 +19,6 @@
         return out;
     }
 
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
     function isValidatable(field) {
         if (!field || field.disabled) return false;
         var type = (field.type || "").toLowerCase();
@@ -89,7 +81,7 @@
         field.setAttribute("aria-describedby", id);
         field.classList.add("is-invalid");
         if (field.tomselect && field.tomselect.wrapper) {
-            field.tomselect.wrapper.classList.add("invalid");
+            field.tomselect.wrapper.classList.add("is-invalid");
         }
     }
 
@@ -103,52 +95,8 @@
         field.removeAttribute("aria-invalid");
         field.classList.remove("is-invalid");
         if (field.tomselect && field.tomselect.wrapper) {
-            field.tomselect.wrapper.classList.remove("invalid");
+            field.tomselect.wrapper.classList.remove("is-invalid");
         }
-        refreshSummary(field.form);
-    }
-
-    function insertSummary(form, labels) {
-        var existing = form.querySelector(".js-form-error-summary, .form-error-summary");
-        if (existing) existing.remove();
-        if (!labels.length) return;
-
-        var el = document.createElement("div");
-        el.className = "notice notice-error form-error-summary js-form-error-summary";
-        el.setAttribute("role", "alert");
-        var heading = i18n("completeTheFollowing", "Please complete the following:");
-        el.innerHTML =
-            "<div><strong>" +
-            escapeHtml(heading) +
-            '</strong><ul class="form-error-summary__list">' +
-            labels
-                .map(function (label) {
-                    return "<li>" + escapeHtml(label) + "</li>";
-                })
-                .join("") +
-            "</ul></div>";
-
-        var actions = form.querySelector(".form-actions, .form-actions--end, .form-actions--spaced");
-        if (actions && actions.parentNode) {
-            actions.parentNode.insertBefore(el, actions);
-        } else {
-            var host = form.querySelector(".modal-body") || form.querySelector(".form-stack") || form;
-            host.insertBefore(el, host.firstChild);
-        }
-    }
-
-    function refreshSummary(form) {
-        if (!form) return;
-        var remaining = [];
-        var seen = {};
-        form.querySelectorAll(".js-field-error").forEach(function (el) {
-            var text = (el.textContent || "").trim();
-            if (text && !seen[text]) {
-                seen[text] = true;
-                remaining.push(text);
-            }
-        });
-        insertSummary(form, remaining);
     }
 
     function focusInvalid(field) {
@@ -184,17 +132,9 @@
                     var batch = form._jsInvalidBatch || [];
                     form._jsInvalidBatch = null;
                     if (!batch.length) return;
-                    var labels = [];
-                    var seen = {};
                     batch.forEach(function (item) {
-                        var msg = messageFor(item);
-                        showFieldError(item, msg);
-                        if (!seen[msg]) {
-                            seen[msg] = true;
-                            labels.push(msg);
-                        }
+                        showFieldError(item, messageFor(item));
                     });
-                    insertSummary(form, labels);
                     focusInvalid(batch[0]);
                 });
             }
@@ -223,7 +163,7 @@
         var scope = root && root.querySelectorAll ? root : document;
         scope.querySelectorAll("select[aria-invalid='true']").forEach(function (select) {
             if (select.tomselect && select.tomselect.wrapper) {
-                select.tomselect.wrapper.classList.add("invalid");
+                select.tomselect.wrapper.classList.add("is-invalid");
             }
         });
         scope.querySelectorAll(".form-control[aria-invalid='true']").forEach(function (el) {

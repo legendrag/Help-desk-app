@@ -90,6 +90,8 @@ Under **Preferences** in the sidebar, switch between English and Arabic. The cho
 
 Also under **Preferences**, toggle **Theme** between dark and light. The preference is stored in the browser (`localStorage`).
 
+The current app version appears in small type under those controls.
+
 ### Other sidebar links
 
 Depending on your role permissions, you may also see:

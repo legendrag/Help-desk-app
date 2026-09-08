@@ -1,11 +1,14 @@
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from django.conf import settings
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
+from accounts.models import User
 from core.management_views import CategoryListView
 from core.models import Category, Department
+from core.version import get_app_version
 
 
 class CategoryListQueryOptimizationTests(TestCase):
@@ -43,3 +46,43 @@ class ServiceWorkerViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"addEventListener('fetch'", response.content)
         self.assertEqual(response["Service-Worker-Allowed"], "/")
+
+
+class AppVersionTests(SimpleTestCase):
+    def tearDown(self):
+        get_app_version.cache_clear()
+
+    def test_reads_version_file(self):
+        get_app_version.cache_clear()
+        expected = (Path(settings.BASE_DIR) / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(get_app_version(), expected)
+        self.assertTrue(expected)
+
+    def test_missing_version_file_returns_empty(self):
+        with TemporaryDirectory() as tmp:
+            with override_settings(BASE_DIR=Path(tmp)):
+                get_app_version.cache_clear()
+                self.assertEqual(get_app_version(), "")
+
+
+class SidebarVersionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="version_user",
+            email="version@test.local",
+            password="testpassword123",
+        )
+        self.client.force_login(self.user)
+
+    def test_sidebar_shows_app_version_under_preferences(self):
+        get_app_version.cache_clear()
+        version = get_app_version()
+        self.assertTrue(version)
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 200)
+        prefs = response.content.decode()
+        prefs = prefs[prefs.index('class="sidebar-prefs"'):]
+        self.assertLess(prefs.index("Language"), prefs.index('class="sidebar-version"'))
+        snippet = prefs[prefs.index('class="sidebar-version"'):]
+        snippet = snippet[: snippet.find("</")]
+        self.assertIn(version, snippet)

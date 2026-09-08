@@ -1023,19 +1023,16 @@ class TicketCreateValidationTests(TestCase):
             label = str(form.fields[name].label)
             self.assertIn(label, str(form.errors[name]))
 
-    def test_create_page_lists_missing_fields(self):
+    def test_create_page_shows_named_field_errors(self):
         self.client.login(username="ticket_creator", password="password123")
         response = self.client.post(reverse("ticket_create"), {})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Please complete the following")
-        for label in ("Title", "Description", "Department", "Category", "Name", "Phone Number"):
-            self.assertContains(response, label)
         self.assertContains(response, "Title is required")
         self.assertContains(response, "Department is required")
+        self.assertNotContains(response, "Please complete the following")
 
     def test_create_page_includes_client_validation(self):
         self.client.login(username="ticket_creator", password="password123")
         response = self.client.get(reverse("ticket_create"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "form-validation.js")
-        self.assertContains(response, "completeTheFollowing")

@@ -53,8 +53,12 @@ html[dir="rtl"] .notification-dropdown {
   }
 }
 
-html[dir="rtl"] .form-error-summary__list {
-  margin: 0.35rem 1.15rem 0 0;
+html[dir="rtl"] .field-error,
+html[dir="rtl"] .notice,
+html[dir="rtl"] label,
+html[dir="rtl"] .auth-form,
+html[dir="rtl"] .form-group {
+  text-align: right;
 }
 
 html[dir="rtl"] .auth-form .form-group label {
@@ -174,6 +178,18 @@ html[dir="rtl"] .announcement-card::before {
   letter-spacing: 0.01em;
   color: var(--text-main, #0f172a);
   line-height: 1.2;
+}
+
+.sidebar-version {
+  margin: 0;
+  padding: 0.05rem 0.55rem 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-secondary, #94a3b8);
+  opacity: 0.7;
 }
 
 .lang-switch-form {

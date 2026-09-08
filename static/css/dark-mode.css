@@ -178,6 +178,11 @@
   color: #e2e8f0;
 }
 
+[data-theme="dark"] .sidebar-version {
+  color: #94a3b8;
+  opacity: 0.5;
+}
+
 [data-theme="dark"] .sidebar-overlay {
   background: rgba(0, 0, 0, 0.55);
 }
@@ -1287,9 +1292,13 @@
   box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15) !important;
 }
 
-[data-theme="dark"] .form-control.is-invalid,
-[data-theme="dark"] .form-control[aria-invalid="true"],
-[data-theme="dark"] .ts-wrapper.invalid .ts-control {
+[data-theme="dark"] input.form-control.is-invalid,
+[data-theme="dark"] textarea.form-control.is-invalid,
+[data-theme="dark"] select.form-control.is-invalid,
+[data-theme="dark"] input.form-control[aria-invalid="true"],
+[data-theme="dark"] textarea.form-control[aria-invalid="true"],
+[data-theme="dark"] select.form-control[aria-invalid="true"],
+[data-theme="dark"] .ts-wrapper.is-invalid .ts-control {
   border-color: #f87171 !important;
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.2) !important;
 }

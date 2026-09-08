@@ -493,10 +493,6 @@ msgstr "%(label)s يجب أن يكون %(min)s أحرف على الأقل."
 msgid "Enter a valid %(label)s."
 msgstr "أدخل %(label)s صحيحًا."
 
-#: templates/tickets/partials/form_error_summary.html templates/base.html
-msgid "Please complete the following:"
-msgstr "يرجى إكمال الحقول التالية:"
-
 # Ticket detail page
 #: core/models.py:73 templates/tickets/edit.html:4
 #: templates/tickets/edit.html:9 templates/tickets/edit_partial.html:3
