@@ -642,6 +642,43 @@ class PushOffBannerMarkupTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="push-off-banner"')
         self.assertNotContains(response, 'id="push-allow-modal"')
-        self.assertNotContains(response, 'data-push-guide="site-settings"')
-        self.assertNotContains(response, 'data-push-guide="app-settings"')
-        self.assertNotContains(response, 'data-push-guide="install"')
+
+
+class WebPushQueuedTests(TestCase):
+    def test_web_push_is_queued_after_in_app_notification(self):
+        user = User.objects.create_user(
+            username="push_user",
+            email="push@test.com",
+            password="password123",
+        )
+        order = []
+        sent = []
+
+        def fake_enqueue(func, **kwargs):
+            order.append("enqueue")
+            self.assertTrue(
+                InAppNotification.objects.filter(recipient=user, title="Hello").exists()
+            )
+            func(**kwargs)
+
+        with (
+            patch("notifications.services._broadcast_notification"),
+            patch("notifications.services._enqueue", side_effect=fake_enqueue),
+            patch("notifications.services.webpush") as wp,
+        ):
+            wp.send_user_notification = lambda **kwargs: sent.append(kwargs)
+            from notifications.services import _notify_users
+
+            _notify_users(
+                [user],
+                "Hello",
+                "Body",
+                "/tickets/1/",
+                notification_type="new_ticket",
+            )
+
+        self.assertEqual(order, ["enqueue"])
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["user"], user)
+        self.assertEqual(sent[0]["ttl"], 1000)
+        self.assertIn("Hello", sent[0]["payload"])

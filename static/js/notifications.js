@@ -549,13 +549,31 @@ function isIosDevice() {
         || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
+function iosVersion() {
+    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/);
+    if (!match) return null;
+    return { major: Number(match[1]), minor: Number(match[2]) };
+}
+
+function isIosWebPushCapableOs() {
+    // Home Screen web push exists only on iOS/iPadOS 16.4+.
+    const version = iosVersion();
+    if (!version) {
+        // iPad "Request Desktop Website" hides the iOS version. Do not
+        // promise install-will-enable-push on iPhone/iPod without a version.
+        return !/iPhone|iPod/.test(navigator.userAgent);
+    }
+    return version.major > 16 || (version.major === 16 && version.minor >= 4);
+}
+
 function isPushSupported() {
     return !!window.Notification && "serviceWorker" in navigator && "PushManager" in window;
 }
 
 function pushGuideMode() {
     if (!isPushSupported()) {
-        return (isIosDevice() && !isStandaloneApp()) ? "install" : null;
+        const canInstallForPush = isIosDevice() && !isStandaloneApp() && isIosWebPushCapableOs();
+        return canInstallForPush ? "install" : null;
     }
     if (Notification.permission === "denied") {
         return isStandaloneApp() ? "app-settings" : "site-settings";

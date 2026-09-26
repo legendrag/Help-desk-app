@@ -1082,3 +1082,120 @@ class TicketCreateValidationTests(TestCase):
         response = self.client.get(reverse("ticket_create"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "form-validation.js")
+
+
+class DashboardAggregateTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="AGG", name="Agg Branch")
+        self.department = Department.objects.create(name="Agg Department")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Agg Category",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.admin = User.objects.create_user(
+            username="agg_admin",
+            email="agg_admin@test.com",
+            password="password123",
+            is_superuser=True,
+            is_staff=True,
+        )
+        self.agent = User.objects.create_user(
+            username="agg_agent",
+            email="agg_agent@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+        self.slow_agent = User.objects.create_user(
+            username="agg_slow",
+            email="agg_slow@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+        )
+
+    def _ticket(self, number, **updates):
+        ticket = Ticket.objects.create(
+            ticket_number=number,
+            title=number,
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.admin,
+            client_name="Client",
+            client_phone="123",
+        )
+        Ticket.objects.filter(pk=ticket.pk).update(**updates)
+        return ticket
+
+    @override_settings(TIME_ZONE="Asia/Riyadh")
+    def test_chart_buckets_use_local_monday_weeks(self):
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        local_sunday = timezone.make_aware(datetime(2026, 3, 1, 13, 0))
+        local_monday = timezone.make_aware(datetime(2026, 3, 2, 1, 30))
+        self._ticket("TK-AGG-SUN", created_at=local_sunday)
+        self._ticket("TK-AGG-MON", created_at=local_monday)
+        self.client.force_login(self.admin)
+        params = {"start_date": "2026-02-01", "end_date": "2026-03-31"}
+
+        day = self.client.get(reverse("dashboard"), {**params, "date_view": "day"})
+        day_counts = {item["label"]: item["count"] for item in day.context["tickets_by_date"]}
+        self.assertEqual(day_counts["03/01/2026"], 1)
+        self.assertEqual(day_counts["03/02/2026"], 1)
+
+        week = self.client.get(reverse("dashboard"), {**params, "date_view": "week"})
+        week_counts = {item["label"]: item["count"] for item in week.context["tickets_by_date"]}
+        self.assertEqual(week_counts["Week of 02/23/2026"], 1)
+        self.assertEqual(week_counts["Week of 03/02/2026"], 1)
+
+        month = self.client.get(reverse("dashboard"), {**params, "date_view": "month"})
+        month_counts = {item["label"]: item["count"] for item in month.context["tickets_by_date"]}
+        self.assertEqual(month_counts["Mar 2026"], 2)
+        self.assertEqual(month_counts["Feb 2026"], 0)
+
+        year = self.client.get(reverse("dashboard"), {**params, "date_view": "year"})
+        year_counts = {item["label"]: item["count"] for item in year.context["tickets_by_date"]}
+        self.assertEqual(year_counts["2026"], 2)
+        self.assertNotIn("recent_activity", day.context)
+
+    @override_settings(TIME_ZONE="Asia/Riyadh")
+    def test_leaderboard_working_time_matches_clamped_formula(self):
+        from datetime import datetime, timedelta
+
+        from django.utils import timezone
+
+        created = timezone.make_aware(datetime(2026, 3, 10, 11, 0))
+        self._ticket(
+            "TK-AGG-WORK",
+            created_at=created,
+            picked_at=created + timedelta(hours=1),
+            closed_at=created + timedelta(hours=3),
+            status=Ticket.Status.CLOSED,
+            assigned_to=self.agent,
+            total_pending_duration_seconds=600,
+        )
+        self._ticket(
+            "TK-AGG-CLAMP",
+            created_at=created,
+            picked_at=created,
+            closed_at=created + timedelta(minutes=5),
+            status=Ticket.Status.CLOSED,
+            assigned_to=self.slow_agent,
+            total_pending_duration_seconds=1000,
+        )
+        self.client.force_login(self.admin)
+        response = self.client.get(
+            reverse("dashboard"),
+            {"start_date": "2026-03-01", "end_date": "2026-03-31", "date_view": "month"},
+        )
+        by_name = {row["name"]: row for row in response.context["agent_performance"]}
+        agent = by_name["agg_agent"]
+        self.assertEqual(agent["total_working_time"], "1h 50m")
+        self.assertEqual(agent["score"], 75)
+        self.assertEqual(agent["grade"], "B")
+        self.assertEqual(by_name["agg_slow"]["total_working_time"], "--")

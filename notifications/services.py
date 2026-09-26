@@ -185,7 +185,13 @@ def _notify_users(
                     "icon": "/static/images/mlameh-icon-fg.png",
                     "data": {"url": link}
                 }
-                webpush.send_user_notification(user=user, payload=json.dumps(payload), ttl=1000)
+                # Push HTTP stays off the request. The in-app row above is already saved.
+                _enqueue(
+                    webpush.send_user_notification,
+                    user=user,
+                    payload=json.dumps(payload),
+                    ttl=1000,
+                )
             except Exception as e:
                 logger.warning(f"Web push failed for user {user.id}: {e}")
 

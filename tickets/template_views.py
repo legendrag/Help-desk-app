@@ -13,8 +13,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
-from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg
-# TruncDate, TruncMonth, TruncWeek, TruncYear removed because DB-side timezone conversion crashes SQLite with USE_TZ=True
+from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg, Sum, Value
+from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
 from core.models import Branch, Category, Department
@@ -88,6 +88,40 @@ def _format_bucket_label(key, view):
     if view == "week":
         return f"Week of {datetime.strptime(key, '%Y-%m-%d').strftime('%m/%d/%Y')}"
     return datetime.strptime(key, "%Y-%m-%d").strftime("%m/%d/%Y")
+
+
+def _bucket_counts(queryset, view):
+    """Count tickets per chart bucket in the database.
+
+    Weeks start on Monday, matching Django's WEEKDAY truncation on SQLite and
+    MySQL. The active timezone is applied so local days do not drift to UTC.
+    """
+    truncators = {
+        "year": TruncYear,
+        "month": TruncMonth,
+        "week": TruncWeek,
+        "day": TruncDay,
+    }
+    rows = (
+        queryset.annotate(bucket=truncators[view]("created_at", tzinfo=tz.get_current_timezone()))
+        .values("bucket")
+        .annotate(count=Count("id"))
+    )
+    counts = {}
+    for row in rows:
+        bucket = row["bucket"]
+        if bucket is None:
+            continue
+        if tz.is_aware(bucket):
+            bucket = tz.localtime(bucket)
+        if view == "year":
+            key = f"{bucket.year:04d}"
+        elif view == "month":
+            key = f"{bucket.year:04d}-{bucket.month:02d}"
+        else:
+            key = bucket.strftime("%Y-%m-%d")
+        counts[key] = row["count"]
+    return counts
 
 
 def _status_breakdown_rows(queryset, group_field):
@@ -271,23 +305,7 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             } for item in category_items
         ]
 
-        def bucket_key(dt, view):
-            local_dt = tz.localtime(dt)
-            if view == "year":
-                return local_dt.strftime("%Y")
-            elif view == "month":
-                return local_dt.strftime("%Y-%m")
-            elif view == "week":
-                monday = local_dt.date() - timedelta(days=local_dt.weekday())
-                return monday.strftime("%Y-%m-%d")
-            else:
-                return local_dt.strftime("%Y-%m-%d")
-
-        raw_timestamps = filtered_queryset.values_list("created_at", flat=True)
-        bucket_counts = defaultdict(int)
-        for ts in raw_timestamps:
-            if ts:
-                bucket_counts[bucket_key(ts, filters["date_view"])] += 1
+        bucket_counts = _bucket_counts(filtered_queryset, filters["date_view"])
 
         view = filters["date_view"]
         if start_date and end_date:
@@ -360,21 +378,31 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 )
             ).order_by('-tickets_resolved')[:10]
 
-            # Working time = sum of (closed_at - picked_at - waiting) across resolved tickets.
-            # Computed in Python so pending seconds subtract cleanly on SQLite and MySQL.
-            working_totals = defaultdict(float)
-            for username, picked_at, closed_at, pending in resolved_tickets.exclude(
-                picked_at__isnull=True
-            ).exclude(closed_at__isnull=True).values_list(
-                "assigned_to__username",
-                "picked_at",
-                "closed_at",
-                "total_pending_duration_seconds",
-            ):
-                working_seconds = (closed_at - picked_at).total_seconds() - (pending or 0)
-                if working_seconds < 0:
-                    working_seconds = 0
-                working_totals[username] += working_seconds
+            # Working time = sum of (closed_at - picked_at - waiting), clamped at zero
+            # per ticket so a long wait cannot make the total negative.
+            pending_seconds = Cast(
+                F("total_pending_duration_seconds"),
+                fields.IntegerField(),
+            )
+            pending_duration = ExpressionWrapper(
+                pending_seconds * Value(timedelta(seconds=1), output_field=fields.DurationField()),
+                output_field=fields.DurationField(),
+            )
+            working_span = ExpressionWrapper(
+                F("closed_at") - F("picked_at") - pending_duration,
+                output_field=fields.DurationField(),
+            )
+            zero_duration = Value(timedelta(0), output_field=fields.DurationField())
+            working_rows = (
+                resolved_tickets.exclude(picked_at__isnull=True)
+                .exclude(closed_at__isnull=True)
+                .values("assigned_to__username")
+                .annotate(total_working=Sum(Greatest(working_span, zero_duration)))
+            )
+            working_totals = {
+                row["assigned_to__username"]: row["total_working"] or timedelta(0)
+                for row in working_rows
+            }
 
             def format_duration(duration):
                 if not duration:
@@ -390,10 +418,10 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 return f"{hours}h {minutes}m"
 
             def total_working_duration(username):
-                total_seconds = working_totals.get(username)
-                if not total_seconds:
+                total = working_totals.get(username)
+                if not total:
                     return None
-                return timedelta(seconds=total_seconds)
+                return total
 
             TARGET_VOLUME = 30 # Loosened volume baseline
             MAX_HOURS = 40 # Loosened worst acceptable avg resolution time
@@ -441,9 +469,6 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             # Sort by highest score first
             agent_performance.sort(key=lambda x: x['score'], reverse=True)
 
-        # Recent Activity Feed
-        recent_activity = base_queryset.order_by('-updated_at')[:5]
-
         context.update(
             {
                 "filter_values": filters,
@@ -466,7 +491,6 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 "drill_down_query": build_query(drill_down_view) if drill_down_view else "",
                 "drill_up_query": build_query(drill_up_view) if drill_up_view else "",
                 "agent_performance": agent_performance,
-                "recent_activity": recent_activity,
             }
         )
 

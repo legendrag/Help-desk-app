@@ -3081,23 +3081,6 @@ a.kb-article-card:hover {
   display: none;
 }
 
-/* Layout Grids */
-.kb-layout-grid,
-.kb-detail-grid {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 2rem;
-  align-items: start;
-}
-.kb-detail-grid {
-  grid-template-columns: 1fr 300px;
-}
-@media (max-width: 768px) {
-  .kb-layout-grid, .kb-detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Sidebar */
 .kb-sidebar {
   background: transparent;

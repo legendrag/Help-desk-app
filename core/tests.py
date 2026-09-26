@@ -72,6 +72,9 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
             encoding="utf-8"
         )
         self.base_html = (base / "templates" / "base.html").read_text(encoding="utf-8")
+        self.app_shell = (base / "static" / "js" / "app-shell.js").read_text(
+            encoding="utf-8"
+        )
 
     def test_exports_bar_only_progress_navigation(self):
         self.assertIn("window.beginProgressNavigation", self.loading_js)
@@ -80,14 +83,37 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("window.beginProgressNavigation()", self.base_html)
-        self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.base_html)
-        self.assertIn("loading.js' %}?v=18", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=1", self.base_html)
+        self.assertIn("window.beginProgressNavigation()", self.app_shell)
+        self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
+        self.assertIn("loading.js' %}?v=19", self.base_html)
 
     def test_ordinary_full_page_nav_still_shows_skeleton(self):
         self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
         self.assertIn("setPageNavigating(true)", self.loading_js)
         self.assertIn("if (withSkeleton)", self.loading_js)
+        self.assertIn("SKELETON_DELAY_MS = 200", self.loading_js)
+        self.assertIn("clearSkeletonDelayTimer()", self.loading_js)
+        # Skeleton is scheduled, not painted in the same turn as the click.
+        nav_fn = self.loading_js.split("function beginFullPageNavigation", 1)[1]
+        nav_fn = nav_fn.split("function reloadWithLoading", 1)[0]
+        self.assertNotIn("showNavSkeleton(", nav_fn.split("setTimeout", 1)[0])
+
+    def test_unchanged_ticket_poll_skips_dom_swap(self):
+        partial = (
+            Path(settings.BASE_DIR) / "templates" / "tickets" / "list_live_partial.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn("every 20s", partial)
+        self.assertIn("target.id !== 'tickets-live'", self.app_shell)
+        self.assertIn("evt.detail.shouldSwap = false", self.app_shell)
+
+    def test_sidebar_prefs_css_is_not_arabic_only(self):
+        base = Path(settings.BASE_DIR)
+        style = (base / "static" / "css" / "style.css").read_text(encoding="utf-8")
+        rtl = (base / "static" / "css" / "rtl.css").read_text(encoding="utf-8")
+        self.assertIn(".sidebar-prefs {", style)
+        self.assertIn(".lang-switch-track {", style)
+        self.assertNotIn(".sidebar-prefs {", rtl)
 
 
 class LanguageSwitchRenderedTests(TestCase):
@@ -103,10 +129,16 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("window.beginProgressNavigation()", html)
-        self.assertIn("js/loading.js?v=18", html)
+        self.assertIn("js/app-shell.js?v=1", html)
+        self.assertIn("js/loading.js?v=19", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
+        self.assertNotIn("rtl.css", html)
+
+    def test_arabic_pages_still_load_rtl_css(self):
+        response = self.client.get(reverse("tickets_list"), HTTP_ACCEPT_LANGUAGE="ar")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "rtl.css")
 
 
 class SidebarVersionTests(TestCase):

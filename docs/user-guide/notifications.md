@@ -31,7 +31,7 @@ If notifications are blocked, **Turn on** opens a short guide that depends on ho
 
 - **Browser tab** — use the site-settings icon next to the address bar and turn Notifications on.
 - **Installed app** — open this app’s notification settings on the device and turn Notifications on.
-- **iPhone or iPad in Safari** — web push needs a Home Screen install first. Open the Share menu, tap **Add to Home Screen**, then open the app from there to turn notifications on.
+- **iPhone or iPad in Safari** — web push needs **iOS 16.4 or newer** and a Home Screen install. Open the Share menu, tap **Add to Home Screen**, then open the app from the icon (not from Safari) and tap **Turn on**. Older iOS versions cannot receive web push; the banner is hidden there.
 
 The banner hides itself once permission is granted.
 
@@ -54,7 +54,7 @@ Web push delivers OS-level notifications when the app is in the background (brow
 2. Or open the notification dropdown and click **Enable**.
 3. **Browser tab:** if the site is blocked, use the site-settings icon next to the address bar.
 4. **Installed app:** if notifications are blocked, turn them on in this app’s device settings.
-5. **iPhone or iPad in Safari:** add the app to the Home Screen first, then open it from there and turn notifications on.
+5. **iPhone or iPad:** iOS 16.4 or newer, add the app to the Home Screen, then open it from that icon and tap **Turn on**. Safari tabs and older iOS cannot show the Allow popup.
 
 Browsers require a user gesture to grant permission; use **Turn on** or **Enable** rather than expecting a silent subscribe on page load.
 

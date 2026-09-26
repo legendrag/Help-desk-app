@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('global-progress-bar');
     const PAGE_LOADING_KEY = 'mlamehticket-page-loading';
     const NAV_STALL_MS = 10000;      // unlock if full-page nav never leaves
+    const SKELETON_DELAY_MS = 200;   // skip the overlay when the next page arrives first
     const DOWNLOAD_SAFETY_MS = 60000;
     const HTMX_STALL_MS = 30000;
     // Hard cap so a missed cleanup can never leave the bar parked at 80%
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let downloadWatchers = [];
     let navStallTimer = null;
     let navCancelTimer = null;
+    let skeletonDelayTimer = null;
     let htmxStallTimers = new WeakMap();
     let fullPageNavPending = false;
     // Track in-flight HTMX triggers so success/error/abort only clean up once
@@ -536,7 +538,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function clearSkeletonDelayTimer() {
+        if (skeletonDelayTimer) {
+            clearTimeout(skeletonDelayTimer);
+            skeletonDelayTimer = null;
+        }
+    }
+
     function clearLoadingUI() {
+        clearSkeletonDelayTimer();
         resetProgress();
         clearAllButtonLoading();
         clearFullPageLoadingFlag();
@@ -587,17 +597,21 @@ document.addEventListener('DOMContentLoaded', function() {
         fullPageNavPending = true;
         if (target) {
             target.classList.add('is-navigating');
-            // Nav bar / sidebar selection → close the drawer so the full-screen skeleton shows
-            if (withSkeleton && target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
-                window.closeSidebar();
-            }
         }
 
         if (withSkeleton) {
+            // Fast navigations unload before this fires, so the overlay never flashes.
             const destination = resolveSkeletonHref(target, href);
-            showNavSkeleton(classifyNavSkeleton(destination));
-            // Paint press state + full-screen skeleton before any navigation work
-            setPageNavigating(true);
+            clearSkeletonDelayTimer();
+            skeletonDelayTimer = setTimeout(function() {
+                skeletonDelayTimer = null;
+                if (!fullPageNavPending) return;
+                showNavSkeleton(classifyNavSkeleton(destination));
+                if (target && target.closest && target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
+                    window.closeSidebar();
+                }
+                setPageNavigating(true);
+            }, SKELETON_DELAY_MS);
         }
         markFullPageLoading();
         startProgress({ immediate: true });
@@ -867,6 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // pagehide also fires when a navigation is attempted then cancelled — in that
     // case the stall timer was cleared and the bar would stay at 80% forever.
     window.addEventListener('pagehide', function(evt) {
+        clearSkeletonDelayTimer();
         clearNavStallTimer();
         const wasNavigating = fullPageNavPending;
         fullPageNavPending = false;
