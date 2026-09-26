@@ -380,24 +380,33 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
             # Working time = sum of (closed_at - picked_at - waiting), clamped at zero
             # per ticket so a long wait cannot make the total negative.
-            pending_seconds = Cast(
-                F("total_pending_duration_seconds"),
-                fields.IntegerField(),
+            # Stay in integer microseconds. Mixing a duration into this
+            # subtraction makes MySQL emit "N * INTERVAL ... MICROSECOND",
+            # which is a syntax error (error 1064).
+            span_us = Cast(
+                ExpressionWrapper(
+                    F("closed_at") - F("picked_at"),
+                    output_field=fields.DurationField(),
+                ),
+                output_field=fields.BigIntegerField(),
             )
-            pending_duration = ExpressionWrapper(
-                pending_seconds * Value(timedelta(seconds=1), output_field=fields.DurationField()),
-                output_field=fields.DurationField(),
+            pending_us = ExpressionWrapper(
+                Cast(F("total_pending_duration_seconds"), fields.BigIntegerField())
+                * Value(1_000_000),
+                output_field=fields.BigIntegerField(),
             )
-            working_span = ExpressionWrapper(
-                F("closed_at") - F("picked_at") - pending_duration,
-                output_field=fields.DurationField(),
+            working_us = Greatest(
+                ExpressionWrapper(
+                    span_us - pending_us,
+                    output_field=fields.BigIntegerField(),
+                ),
+                Value(0),
             )
-            zero_duration = Value(timedelta(0), output_field=fields.DurationField())
             working_rows = (
                 resolved_tickets.exclude(picked_at__isnull=True)
                 .exclude(closed_at__isnull=True)
                 .values("assigned_to__username")
-                .annotate(total_working=Sum(Greatest(working_span, zero_duration)))
+                .annotate(total_working=Sum(working_us))
             )
             working_totals = {
                 row["assigned_to__username"]: row["total_working"] or timedelta(0)
@@ -421,7 +430,9 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 total = working_totals.get(username)
                 if not total:
                     return None
-                return total
+                if isinstance(total, timedelta):
+                    return total
+                return timedelta(microseconds=int(total))
 
             TARGET_VOLUME = 30 # Loosened volume baseline
             MAX_HOURS = 40 # Loosened worst acceptable avg resolution time

@@ -8,6 +8,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Log before helpers load. This script runs hidden; a failure here used to
+# surface only as Inno "exit code 1" with nothing written under logs\.
+$InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
+$preLogDir = Join-Path $InstallDir "logs"
+$preLog = Join-Path $preLogDir "preupgrade.log"
+New-Item -ItemType Directory -Force -Path $preLogDir | Out-Null
+function Write-PreLog {
+    param([string]$Message)
+    $line = "{0} {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Message
+    Add-Content -Path $preLog -Value $line -Encoding ASCII
+}
+Write-PreLog "Pre-upgrade starting. InstallDir=$InstallDir"
+
+try {
+
 $libDir = Join-Path $PSScriptRoot "lib"
 if (-not (Test-Path (Join-Path $libDir "common.ps1"))) {
     # When extracted flat by Inno to {tmp}, helpers may sit beside this script
@@ -21,8 +36,8 @@ if (-not (Test-Path (Join-Path $libDir "common.ps1"))) {
 . (Join-Path $libDir "common.ps1")
 . (Join-Path $libDir "service.ps1")
 
+$script:InstallDirForStatus = $InstallDir
 Assert-Administrator
-$InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
 
 if ([string]::IsNullOrWhiteSpace($OldVersion)) {
     $OldVersion = Get-InstalledVersion
@@ -74,9 +89,18 @@ if (Test-Path $venvPython) {
     Write-InstallStep "Running manage.py backup_db ..."
     Push-Location $InstallDir
     try {
-        & $venvPython manage.py backup_db --dir ./backups
-        if ($LASTEXITCODE -ne 0) {
-            throw "backup_db failed with exit code $LASTEXITCODE"
+        $mysqlBin = Join-Path $InstallDir "mysql\bin"
+        $dump = Join-Path $mysqlBin "mysqldump.exe"
+        if (Test-Path $dump) {
+            $env:PATH = "$mysqlBin;$env:PATH"
+            Write-PreLog "Prepended bundled MySQL tools: $mysqlBin"
+        }
+        $backupOutput = & $venvPython manage.py backup_db --dir ./backups 2>&1
+        $backupCode = $LASTEXITCODE
+        $backupText = ($backupOutput | Out-String).Trim()
+        Write-PreLog $backupText
+        if ($backupCode -ne 0) {
+            throw "backup_db failed with exit code $backupCode. $backupText"
         }
         # Tag latest backup with old version in a sidecar marker
         $latest = Get-ChildItem (Join-Path $InstallDir "backups") -Filter "backup_*" |
@@ -95,4 +119,15 @@ else {
 }
 
 Write-InstallStep "Pre-upgrade complete."
+Write-PreLog "Pre-upgrade complete."
 exit 0
+
+}
+catch {
+    $msg = $_.Exception.Message
+    Write-PreLog "ERROR: $msg"
+    if (Get-Command Write-InstallError -ErrorAction SilentlyContinue) {
+        Write-InstallError $msg
+    }
+    exit 1
+}

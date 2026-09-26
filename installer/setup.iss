@@ -509,9 +509,9 @@ begin
     ForceDirectories(TmpLib);
     // ExtractTemporaryFile drops files flat in tmp; copy helpers into lib\
     if FileExists(ExpandConstant('{tmp}\common.ps1')) then
-      FileCopy(ExpandConstant('{tmp}\common.ps1'), TmpLib + '\common.ps1', False);
+      CopyFile(ExpandConstant('{tmp}\common.ps1'), TmpLib + '\common.ps1', False);
     if FileExists(ExpandConstant('{tmp}\service.ps1')) then
-      FileCopy(ExpandConstant('{tmp}\service.ps1'), TmpLib + '\service.ps1', False);
+      CopyFile(ExpandConstant('{tmp}\service.ps1'), TmpLib + '\service.ps1', False);
 
     Params := '-NoProfile -ExecutionPolicy Bypass -File "' + TmpPre +
               '" -InstallDir "' + ExpandConstant('{app}') + '"';
@@ -522,7 +522,7 @@ begin
     end;
     if ResultCode <> 0 then
     begin
-      Result := 'Pre-upgrade failed (exit code ' + IntToStr(ResultCode) + '). Check backups\ and logs\ under the install directory.';
+      Result := 'Pre-upgrade failed (exit code ' + IntToStr(ResultCode) + '). See logs\preupgrade.log in the install directory.';
       Exit;
     end;
   end;
