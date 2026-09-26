@@ -86,18 +86,21 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
         self.assertIn("js/app-shell.js' %}?v=1", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
-        self.assertIn("loading.js' %}?v=19", self.base_html)
+        self.assertIn("loading.js' %}?v=20", self.base_html)
 
     def test_ordinary_full_page_nav_still_shows_skeleton(self):
         self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
         self.assertIn("setPageNavigating(true)", self.loading_js)
         self.assertIn("if (withSkeleton)", self.loading_js)
-        self.assertIn("SKELETON_DELAY_MS = 200", self.loading_js)
+        self.assertIn("SKELETON_DELAY_MS = 300", self.loading_js)
         self.assertIn("clearSkeletonDelayTimer()", self.loading_js)
-        # Skeleton is scheduled, not painted in the same turn as the click.
+        # Bar and skeleton are scheduled, not painted in the same turn as the click.
         nav_fn = self.loading_js.split("function beginFullPageNavigation", 1)[1]
         nav_fn = nav_fn.split("function reloadWithLoading", 1)[0]
-        self.assertNotIn("showNavSkeleton(", nav_fn.split("setTimeout", 1)[0])
+        before_timer = nav_fn.split("setTimeout", 1)[0]
+        self.assertNotIn("showNavSkeleton(", before_timer)
+        self.assertNotIn("startProgress(", before_timer)
+        self.assertNotIn("consumeFullPageLoadingFlag() || isReloadNavigation()", self.loading_js)
 
     def test_unchanged_ticket_poll_skips_dom_swap(self):
         partial = (
@@ -130,7 +133,7 @@ class LanguageSwitchRenderedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         self.assertIn("js/app-shell.js?v=1", html)
-        self.assertIn("js/loading.js?v=19", html)
+        self.assertIn("js/loading.js?v=20", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
         self.assertNotIn("rtl.css", html)

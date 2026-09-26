@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('global-progress-bar');
     const PAGE_LOADING_KEY = 'mlamehticket-page-loading';
     const NAV_STALL_MS = 10000;      // unlock if full-page nav never leaves
-    const SKELETON_DELAY_MS = 200;   // skip the overlay when the next page arrives first
+    const SKELETON_DELAY_MS = 300;   // bar and skeleton only if the next page is still pending
     const DOWNLOAD_SAFETY_MS = 60000;
     const HTMX_STALL_MS = 30000;
     // Hard cap so a missed cleanup can never leave the bar parked at 80%
@@ -205,15 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             return false;
         }
-    }
-
-    function isReloadNavigation() {
-        try {
-            const entries = performance.getEntriesByType('navigation');
-            if (entries && entries[0]) return entries[0].type === 'reload';
-            if (performance.navigation) return performance.navigation.type === 1;
-        } catch (e) { /* ignore */ }
-        return false;
     }
 
     function startProgress(options) {
@@ -599,22 +590,22 @@ document.addEventListener('DOMContentLoaded', function() {
             target.classList.add('is-navigating');
         }
 
-        if (withSkeleton) {
-            // Fast navigations unload before this fires, so the overlay never flashes.
-            const destination = resolveSkeletonHref(target, href);
-            clearSkeletonDelayTimer();
-            skeletonDelayTimer = setTimeout(function() {
-                skeletonDelayTimer = null;
-                if (!fullPageNavPending) return;
+        // Fast navigations unload before this fires, so neither indicator flashes.
+        const destination = resolveSkeletonHref(target, href);
+        clearSkeletonDelayTimer();
+        skeletonDelayTimer = setTimeout(function() {
+            skeletonDelayTimer = null;
+            if (!fullPageNavPending) return;
+            markFullPageLoading();
+            startProgress({ immediate: true });
+            if (withSkeleton) {
                 showNavSkeleton(classifyNavSkeleton(destination));
                 if (target && target.closest && target.closest('.sidebar') && typeof window.closeSidebar === 'function') {
                     window.closeSidebar();
                 }
                 setPageNavigating(true);
-            }, SKELETON_DELAY_MS);
-        }
-        markFullPageLoading();
-        startProgress({ immediate: true });
+            }
+        }, SKELETON_DELAY_MS);
 
         clearNavStallTimer();
         navStallTimer = setTimeout(function() {
@@ -661,29 +652,9 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    // --- Arrival loading after sidebar nav / refresh ---
-    // Finish once the document is usable — do NOT wait for window.load.
-    // Slow images/analytics/fonts can delay load forever and park the bar at 80%
-    // even though the page is already interactive.
-    if (consumeFullPageLoadingFlag() || isReloadNavigation()) {
-        startProgress({ immediate: true });
-        let arrivalFinished = false;
-        function completeArrivalProgress() {
-            if (arrivalFinished) return;
-            arrivalFinished = true;
-            finishProgress();
-        }
-        if (document.readyState === 'complete') {
-            completeArrivalProgress();
-        } else {
-            // Two frames: let the loading class paint, then complete to 100%.
-            requestAnimationFrame(function() {
-                requestAnimationFrame(completeArrivalProgress);
-            });
-            // Fallback if rAF is delayed/throttled in background tabs
-            setTimeout(completeArrivalProgress, 1500);
-        }
-    }
+    // This script runs at DOMContentLoaded, so the new page is already usable.
+    // A second progress bar here only stretches a click that already finished.
+    consumeFullPageLoadingFlag();
 
     // --- HTMX Hooks ---
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
