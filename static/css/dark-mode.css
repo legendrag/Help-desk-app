@@ -100,7 +100,7 @@
 }
 [data-theme="dark"] .menu-btn-universal:hover,
 [data-theme="dark"] .menu-btn-universal:active,
-[data-theme="dark"] .menu-btn-universal:focus,
+[data-theme="dark"] .menu-btn-universal:focus-visible,
 [data-theme="dark"] .menu-btn-universal.is-open {
   background: rgba(148, 163, 184, 0.15);
   border-color: rgba(148, 163, 184, 0.2);
@@ -113,7 +113,7 @@
 }
 [data-theme="dark"] .notification-btn:hover,
 [data-theme="dark"] .notification-btn:active,
-[data-theme="dark"] .notification-btn:focus,
+[data-theme="dark"] .notification-btn:focus-visible,
 [data-theme="dark"] .notification-btn.is-open {
   background: rgba(148, 163, 184, 0.15);
   border-color: rgba(148, 163, 184, 0.2);

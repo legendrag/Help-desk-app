@@ -130,7 +130,7 @@ body:has(.ticket-offcanvas.open) .topbar {
 }
 .menu-btn-universal:hover,
 .menu-btn-universal:active,
-.menu-btn-universal:focus,
+.menu-btn-universal:focus-visible,
 .menu-btn-universal.is-open {
   background: rgba(0, 0, 0, 0.05);
 }
@@ -141,7 +141,7 @@ body:has(.ticket-offcanvas.open) .topbar {
 }
 .notification-btn:hover,
 .notification-btn:active,
-.notification-btn:focus,
+.notification-btn:focus-visible,
 .notification-btn.is-open {
   background: rgba(0, 0, 0, 0.05);
 }
