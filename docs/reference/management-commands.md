@@ -180,7 +180,7 @@ The generated tickets vary in:
 - Age (1-240 hours old)
 - About 40% include follow-up messages
 
-Note: On SQLite, generating 500 tickets takes approximately 10-30 seconds depending on hardware.
+Note: On SQLite, generating 500 tickets takes about 2.5 minutes (~139-150 s).
 
 ---
 
