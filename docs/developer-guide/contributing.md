@@ -63,6 +63,16 @@ djlint templates --check
 - Run `python manage.py test` (and `test-local.ps1` when available).
 - Details: [testing.md](testing.md).
 
+## Performance testing
+
+For replicating production page-load behavior (especially dashboard and ticket-list queries), use **MySQL** instead of SQLite:
+
+- Full setup guide: [MySQL Performance Testing Setup](../reference/management-commands.md#mysql-performance-testing-setup)
+- Quick switch: Set `DB_ENGINE=mysql` in `.env`, create the database, migrate, and seed with `--ticket-count 500`
+- Seeding 500 tickets takes ~2.5 minutes on both SQLite and MySQL; the performance difference appears during browsing with the loaded dataset
+
+SQLite remains the default for local development when performance profiling is not needed.
+
 ## Documentation
 
 - User/operator docs live under `docs/user-guide/`, `docs/admin-guide/`, `docs/operations/`.
