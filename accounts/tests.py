@@ -234,6 +234,39 @@ class LoginHtmxTests(TestCase):
         self.assertContains(response, 'id="login-form"')
         self.assertContains(response, 'hx-post')
 
+    def test_inactive_status_cannot_sign_in(self):
+        # Deactivation stores status=inactive and leaves Django's is_active flag set.
+        User.objects.filter(pk=self.user.pk).update(
+            status=User.Status.INACTIVE,
+            is_active=True,
+        )
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_user", "password": "str0ng-Passw0rd!"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This account is inactive.")
+        self.assertNotIn("HX-Redirect", response.headers)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_saving_inactive_status_clears_is_active(self):
+        self.user.status = User.Status.INACTIVE
+        self.user.save(update_fields=["status"])
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertEqual(self.user.status, User.Status.INACTIVE)
+
+    def test_inactive_status_drops_existing_session(self):
+        self.client.force_login(self.user)
+        User.objects.filter(pk=self.user.pk).update(
+            status=User.Status.INACTIVE,
+            is_active=True,
+        )
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response["Location"])
+
 
 class VendorStaticTests(TestCase):
     def test_login_page_uses_local_vendor_assets(self):

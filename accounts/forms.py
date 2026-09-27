@@ -48,11 +48,27 @@ class CustomAuthenticationForm(AuthenticationForm):
             except forms.ValidationError as e:
                 # Increment attempts only on a failed auth error (not other random validation errors)
                 if e.code == 'invalid_login':
+                    password = self.cleaned_data.get("password")
+                    if password and self._inactive_account_with_password(username, password):
+                        raise forms.ValidationError(
+                            self.error_messages["inactive"],
+                            code="inactive",
+                        )
                     attempts += 1
                     cache.set(cache_key, attempts, TIMEOUT)
                 raise e
         else:
             return super().clean()
+
+    def _inactive_account_with_password(self, username, password):
+        user = (
+            User.objects.filter(username__iexact=username)
+            .order_by("id")
+            .first()
+        )
+        if user is None or not user.check_password(password):
+            return False
+        return not user.is_active or not user.is_active_user
 
 
 class CustomUserCreationForm(UserCreationForm):

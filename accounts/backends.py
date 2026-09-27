@@ -21,3 +21,14 @@ class CaseInsensitiveModelBackend(ModelBackend):
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None
+
+    def user_can_authenticate(self, user):
+        # Account deactivation is stored on status. Django's is_active flag is
+        # kept in sync on save, but existing rows may still have is_active=True.
+        if not super().user_can_authenticate(user):
+            return False
+        status = getattr(user, "status", None)
+        if status is None:
+            return True
+        active = getattr(getattr(user, "Status", None), "ACTIVE", "active")
+        return status == active

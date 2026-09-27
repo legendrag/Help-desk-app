@@ -90,6 +90,11 @@ class User(AbstractUser):
             self.username = self.username.strip().lower()
         if not self.email:
             self.email = None
+        # status is the account on/off switch used by user management.
+        self.is_active = self.status == self.Status.ACTIVE
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {"is_active"}
         super().save(*args, **kwargs)
 
 
