@@ -102,24 +102,40 @@
         mediaListener = null;
     }
 
-    function initVolumeTrendChart() {
-        destroyVolumeTrendChart();
-
+    function readVolumeItems() {
         var dataEl = document.getElementById("volume-trend-data");
-        var canvas = document.getElementById("ticket-volume-chart");
-        if (!dataEl || !canvas || typeof Chart === "undefined") {
-            return;
-        }
-
+        if (!dataEl) return null;
         var items;
         try {
             items = JSON.parse(dataEl.textContent);
         } catch (e) {
             console.error("Error parsing volume trend data:", e);
+            return null;
+        }
+        if (!Array.isArray(items) || !items.length) return null;
+        return items;
+    }
+
+    function updateVolumeTrendChart(chart, items) {
+        var labels = items.map(function (item) { return item.label; });
+        var counts = items.map(function (item) { return item.count; });
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = counts;
+        applyMobileChartOptions(chart, isMobileViewport());
+        chart.update("none");
+    }
+
+    function initVolumeTrendChart() {
+        var canvas = document.getElementById("ticket-volume-chart");
+        var items = readVolumeItems();
+        if (!items || !canvas || typeof Chart === "undefined") {
+            destroyVolumeTrendChart();
             return;
         }
 
-        if (!Array.isArray(items) || !items.length) {
+        var existing = Chart.getChart(canvas);
+        if (existing) {
+            updateVolumeTrendChart(existing, items);
             return;
         }
 
@@ -222,18 +238,26 @@
         initVolumeTrendChart();
     }
 
+    var parkedCanvas = null;
+
     document.body.addEventListener("htmx:beforeSwap", function (evt) {
         var target = evt.detail && evt.detail.target;
-        if (isDashboardLive(target)) {
-            destroyVolumeTrendChart();
-        }
+        if (!isDashboardLive(target)) return;
+        var canvas = document.getElementById("ticket-volume-chart");
+        if (!canvas || typeof Chart === "undefined" || !Chart.getChart(canvas)) return;
+        parkedCanvas = canvas;
+        canvas.remove();
     });
 
     document.body.addEventListener("htmx:afterSwap", function (evt) {
         var target = evt.detail && evt.detail.target;
         var elt = evt.detail && evt.detail.elt;
-        if (isDashboardLive(target) || isDashboardLive(elt)) {
-            initVolumeTrendChart();
+        if (!(isDashboardLive(target) || isDashboardLive(elt))) return;
+        var fresh = document.getElementById("ticket-volume-chart");
+        if (parkedCanvas && fresh && fresh !== parkedCanvas) {
+            fresh.replaceWith(parkedCanvas);
         }
+        parkedCanvas = null;
+        initVolumeTrendChart();
     });
 })();

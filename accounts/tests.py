@@ -270,4 +270,4 @@ class ProductionStaticConfigTests(SimpleTestCase):
 
     def test_production_uses_compressed_static_storage(self):
         source = self._settings_source()
-        self.assertIn("whitenoise.storage.CompressedStaticFilesStorage", source)
+        self.assertIn("whitenoise.storage.CompressedManifestStaticFilesStorage", source)

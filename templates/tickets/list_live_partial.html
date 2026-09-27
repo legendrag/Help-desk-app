@@ -3,7 +3,9 @@
      hx-get="{% url 'tickets_list' %}{% if filters_query %}?{{ filters_query }}{% endif %}"
      hx-trigger="every 20s [!document.body.classList.contains('pause-polling')], refreshTickets from:body"
      hx-swap="outerHTML"
-     data-no-progress>
+     data-no-progress
+     data-etag="{{ list_etag }}"
+     data-loaded-pages="{{ loaded_pages|default:1 }}">
     <div class="table-wrap tickets-table">
         <table>
             <thead>

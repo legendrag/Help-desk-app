@@ -327,7 +327,14 @@ function fetchNotifications() {
 }
 
 // ── Mark All Read ──
+let markAllReadPending = false;
+
 function markAllRead() {
+    if (markAllReadPending) return Promise.resolve();
+    markAllReadPending = true;
+    const markReadBtn = document.getElementById("notification-mark-read");
+    if (markReadBtn) markReadBtn.disabled = true;
+
     return fetch("/notifications/mark-read/", {
         method: "POST",
         headers: { "X-CSRFToken": getCsrfToken() },
@@ -343,7 +350,11 @@ function markAllRead() {
                 if (dot) dot.remove();
             });
         })
-        .catch((err) => console.error("[Notifications] Mark read error:", err));
+        .catch((err) => console.error("[Notifications] Mark read error:", err))
+        .finally(() => {
+            markAllReadPending = false;
+            if (markReadBtn) markReadBtn.disabled = false;
+        });
 }
 
 // ── Clear Read Notifications ──

@@ -582,11 +582,30 @@ document.addEventListener('DOMContentLoaded', () => {
         checkScrollLock();
     });
 
-    observer.observe(document.body, {
-        attributes: true,
-        subtree: true,
-        attributeFilter: ['style', 'class']
+    const overlaySelector = '.modal-overlay, .lightbox-modal, .ticket-offcanvas, #overlay';
+    const observeOverlay = (el) => {
+        if (!el || el.nodeType !== 1 || el.dataset.scrollLockObserved === '1') return;
+        el.dataset.scrollLockObserved = '1';
+        observer.observe(el, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: ['style', 'class']
+        });
+    };
+
+    document.querySelectorAll(overlaySelector).forEach(observeOverlay);
+
+    // Watch for new overlays only. Class/style changes elsewhere no longer wake this.
+    const overlayMounts = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (!node || node.nodeType !== 1) return;
+                if (node.matches && node.matches(overlaySelector)) observeOverlay(node);
+                if (node.querySelectorAll) node.querySelectorAll(overlaySelector).forEach(observeOverlay);
+            });
+        });
     });
+    overlayMounts.observe(document.body, { childList: true, subtree: true });
 
     checkScrollLock();
 });
@@ -614,6 +633,33 @@ document.body.addEventListener('htmx:load', (evt) => {
     }
 });
 
+document.body.addEventListener('htmx:configRequest', function (evt) {
+    var elt = evt.detail.elt;
+    if (!elt) return;
+    if (elt.classList && elt.classList.contains('tickets-filters')) {
+        document.body.classList.remove('pause-polling');
+    }
+    var live = document.getElementById('tickets-live');
+    if (!live || elt.id !== 'tickets-live') return;
+    var path = evt.detail.path || '';
+    if (path.indexOf('append=true') !== -1) return;
+    var etag = live.getAttribute('data-etag');
+    if (etag) evt.detail.headers['If-None-Match'] = etag;
+    var depth = live.getAttribute('data-loaded-pages') || '1';
+    if (depth !== '1') evt.detail.parameters.loaded_pages = depth;
+});
+
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var elt = evt.detail.elt;
+    if (!elt || !elt.classList || !elt.classList.contains('load-more-btn')) return;
+    var live = document.getElementById('tickets-live');
+    if (!live) return;
+    var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
+    if (!depth || depth < 1) depth = 1;
+    live.setAttribute('data-loaded-pages', String(depth + 1));
+    document.body.classList.remove('pause-polling');
+});
+
 function ticketsLiveSignature(el) {
     if (!el) return '';
     var rows = el.querySelectorAll('#tickets-tbody tr');
@@ -632,6 +678,11 @@ document.body.addEventListener('htmx:beforeSwap', function (evt) {
     var target = evt.detail.target;
     if (!target || target.id !== 'tickets-live') return;
     var xhr = evt.detail.xhr;
+    if (xhr && (xhr.status === 304 || xhr.status === 204)) {
+        evt.detail.shouldSwap = false;
+        evt.detail.isError = false;
+        return;
+    }
     if (!xhr || typeof xhr.responseText !== 'string') return;
     var doc = new DOMParser().parseFromString(xhr.responseText, 'text/html');
     var incoming = doc.getElementById('tickets-live');

@@ -2,7 +2,8 @@ import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
+from django.db.models import F
 from django.utils import timezone
 from django.utils.text import get_valid_filename
 from django.utils.translation import gettext_lazy as _
@@ -57,6 +58,12 @@ class Ticket(models.Model):
     priority = models.CharField(_("Priority"), max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
     client_name = models.CharField(_("Name"), max_length=255, default="")
     client_phone = models.CharField(_("Phone Number"), max_length=50, default="")
+    # Digits-only copy of client_phone using the same strip rules as ticket search.
+    client_phone_digits = models.CharField(max_length=50, blank=True, default="", db_index=True)
+    # True once a second message exists. Replaces messages.count() for reply audience.
+    has_followup_message = models.BooleanField(default=False)
+    # True once the unpicked-ticket auto reply has been posted.
+    unpicked_notice_sent = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -144,28 +151,10 @@ class Ticket(models.Model):
                 previous_status = self._previous.status
                 previous_last_change = self._previous.last_status_change_at
 
+        self.client_phone_digits = phone_digits(self.client_phone)
+
         if not self.ticket_number:
-            date_part = now.strftime("%Y%m%d")
-            branch_code = (self.branch.code or "BR").strip().upper()
-            prefix = f"{branch_code}-{date_part}-"
-
-            with transaction.atomic():
-                existing = (
-                    Ticket.objects.select_for_update()
-                    .filter(ticket_number__startswith=prefix)
-                    .values_list("ticket_number", flat=True)
-                )
-                max_seq = 0
-                for number in existing:
-                    try:
-                        seq_str = number.rsplit("-", 1)[-1]
-                        seq_val = int(seq_str)
-                        if seq_val > max_seq:
-                            max_seq = seq_val
-                    except (ValueError, AttributeError):
-                        continue
-
-                self.ticket_number = f"{prefix}{max_seq + 1:04d}"
+            self.ticket_number = _allocate_ticket_number(self.branch, now)
 
         if previous_status and previous_status != self.status:
             if previous_status == Ticket.Status.WAITING_FOR_BRANCH:
@@ -236,6 +225,7 @@ class TicketMessage(models.Model):
         ordering = ["created_at"]
         indexes = [
             models.Index(fields=["ticket", "created_at"]),
+            models.Index(fields=["ticket", "is_system_message"]),
         ]
 
     def clean(self):
@@ -249,6 +239,72 @@ class TicketMessage(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class TicketDailyCounter(models.Model):
+    """One locked row per branch per day for ticket number allocation."""
+
+    branch = models.ForeignKey("core.Branch", on_delete=models.CASCADE, related_name="ticket_daily_counters")
+    day = models.DateField()
+    last_seq = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["branch", "day"], name="uniq_branch_day_ticket_seq"),
+        ]
+
+
+def phone_digits(value):
+    """Strip the same separators ticket search used to remove in SQL."""
+    stripped = value or ""
+    for char in ("-", " ", "(", ")", ".", "+"):
+        stripped = stripped.replace(char, "")
+    return stripped
+
+
+def _max_ticket_seq(prefix):
+    max_seq = 0
+    numbers = Ticket.objects.filter(ticket_number__startswith=prefix).values_list(
+        "ticket_number", flat=True
+    )
+    for number in numbers:
+        try:
+            seq_val = int(number.rsplit("-", 1)[-1])
+        except (ValueError, AttributeError, TypeError):
+            continue
+        if seq_val > max_seq:
+            max_seq = seq_val
+    return max_seq
+
+
+def _allocate_ticket_number(branch, now):
+    """Return the next {BRANCH}-{YYYYMMDD}-{seq:04d} in O(1) after the first of the day."""
+    date_part = now.strftime("%Y%m%d")
+    branch_code = ((getattr(branch, "code", None) or "BR")).strip().upper()
+    prefix = f"{branch_code}-{date_part}-"
+    day = now.date()
+    with transaction.atomic():
+        counter = (
+            TicketDailyCounter.objects.select_for_update()
+            .filter(branch_id=branch.pk, day=day)
+            .first()
+        )
+        if counter is None:
+            seeded = _max_ticket_seq(prefix)
+            try:
+                counter = TicketDailyCounter.objects.create(
+                    branch_id=branch.pk,
+                    day=day,
+                    last_seq=seeded,
+                )
+            except IntegrityError:
+                counter = TicketDailyCounter.objects.select_for_update().get(
+                    branch_id=branch.pk,
+                    day=day,
+                )
+        TicketDailyCounter.objects.filter(pk=counter.pk).update(last_seq=F("last_seq") + 1)
+        counter.refresh_from_db(fields=["last_seq"])
+        return f"{prefix}{counter.last_seq:04d}"
 
 
 class TicketMergeHistory(models.Model):

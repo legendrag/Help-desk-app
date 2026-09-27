@@ -7100,3 +7100,20 @@ body.kb-preview-open {
     padding: 1.5rem 1.15rem 1.15rem;
   }
 }
+
+/* Cross-document fade. The top bar stays in place; unsupported browsers skip this. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

@@ -1,15 +1,32 @@
 import logging
 import time
 
+from django.core.cache import cache
 from django.core.mail import EmailMessage, EmailMultiAlternatives, get_connection
 
 from core.models import EmailSetting
 
 logger = logging.getLogger(__name__)
 
+_EMAIL_SETTING_CACHE_KEY = "active_email_setting"
+
+
+def clear_email_setting_cache():
+    cache.delete(_EMAIL_SETTING_CACHE_KEY)
+
 
 def _get_active_email_setting():
-    return EmailSetting.objects.filter(is_active=True).order_by("-updated_at").first()
+    cached = cache.get(_EMAIL_SETTING_CACHE_KEY)
+    if isinstance(cached, dict) and "setting" in cached:
+        setting = cached["setting"]
+        if setting is None:
+            if not EmailSetting.objects.filter(is_active=True).exists():
+                return None
+        elif EmailSetting.objects.filter(pk=setting.pk, is_active=True).exists():
+            return setting
+    setting = EmailSetting.objects.filter(is_active=True).order_by("-updated_at").first()
+    cache.set(_EMAIL_SETTING_CACHE_KEY, {"setting": setting}, 60)
+    return setting
 
 
 def is_email_event_enabled(flag_name: str) -> bool:

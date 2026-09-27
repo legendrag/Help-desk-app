@@ -577,6 +577,12 @@ body:has(.ticket-offcanvas.open) .topbar {
   color: var(--primary);
 }
 
+.notif-action-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ── Scrollable List ── */
 .notification-list {
   max-height: 400px;

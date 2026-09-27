@@ -176,6 +176,17 @@ class EmailSetting(TimeStampedModel):
     def __str__(self) -> str:
         return f"SMTP {self.smtp_host}:{self.smtp_port}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from notifications.email_service import clear_email_setting_cache
+        clear_email_setting_cache()
+
+    def delete(self, *args, **kwargs):
+        result = super().delete(*args, **kwargs)
+        from notifications.email_service import clear_email_setting_cache
+        clear_email_setting_cache()
+        return result
+
 
 class EmailTemplate(TimeStampedModel):
     """Per-event subject/body for notification emails (plain text + merge tokens)."""

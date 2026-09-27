@@ -3,12 +3,12 @@ from datetime import timedelta
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import User
 from tickets.models import Ticket, TicketMessage
-from .utils import get_branch_users, get_department_users
 from .models import InAppNotification
 from .text import bilingual as _bilingual
 from django.utils.translation import gettext_noop
@@ -99,10 +99,34 @@ def _broadcast_notification(notification: InAppNotification):
 
 
 
-def _get_admin_users():
-    return User.objects.filter(
-        status=User.Status.ACTIVE,
-    ).filter(Q(is_superuser=True) | Q(role__name__iexact="admin"))
+_NOTIFY_CHUNK = 500
+
+
+def _admin_q():
+    return Q(status=User.Status.ACTIVE) & (
+        Q(is_superuser=True) | Q(role__name__iexact="admin")
+    )
+
+
+def _audience_users(ticket, *, include_org, extras=None):
+    """Active admins, plus branch and department users when include_org is set. One query."""
+    q = _admin_q()
+    if include_org and ticket.branch_id:
+        q = q | Q(
+            user_type=User.UserType.BRANCH,
+            branch_id=ticket.branch_id,
+            status=User.Status.ACTIVE,
+            is_superuser=False,
+        )
+    if include_org and ticket.department_id:
+        q = q | Q(
+            user_type=User.UserType.SUPPORT,
+            department_id=ticket.department_id,
+            status=User.Status.ACTIVE,
+            is_superuser=False,
+        )
+    users = list(User.objects.filter(q).distinct())
+    return _unique_users(extra_users=list(extras or []) + users)
 
 
 def _unique_users(*querysets, extra_users=None):
@@ -123,6 +147,94 @@ def _unique_users(*querysets, extra_users=None):
     return users
 
 
+def _enqueue_web_push(user, title, message, link):
+    if not webpush or not getattr(webpush, "send_user_notification", None):
+        return
+    try:
+        import json
+        payload = {
+            "title": title,
+            "head": title,
+            "body": message,
+            "message": message,
+            "icon": "/static/images/mlameh-icon-fg.png",
+            "data": {"url": link},
+        }
+        _enqueue(
+            webpush.send_user_notification,
+            user=user,
+            payload=json.dumps(payload),
+            ttl=1000,
+        )
+    except Exception as exc:
+        logger.warning("Web push failed for user %s: %s", getattr(user, "id", None), exc)
+
+
+def _deliver_notification(notification):
+    if not notification.pk:
+        return
+    _broadcast_notification(notification)
+    _enqueue_web_push(
+        notification.recipient,
+        notification.title,
+        notification.message,
+        notification.link,
+    )
+
+
+def _notification_row(user, title, message, link, notification_type, title_ar, message_ar):
+    now = timezone.now()
+    return InAppNotification(
+        recipient=user,
+        title=title,
+        message=message,
+        title_ar=title_ar or "",
+        message_ar=message_ar or "",
+        params={
+            "title_ar": title_ar or "",
+            "message_ar": message_ar or "",
+        },
+        link=link,
+        notification_type=notification_type,
+        created_at=now,
+    )
+
+
+def _create_notification_rows(rows):
+    """Insert rows in chunks. If a chunk fails, insert that chunk one row at a time."""
+    created = []
+    for start in range(0, len(rows), _NOTIFY_CHUNK):
+        chunk = rows[start:start + _NOTIFY_CHUNK]
+        try:
+            with transaction.atomic():
+                created.extend(InAppNotification.objects.bulk_create(chunk))
+        except Exception:
+            logger.exception("Bulk notification insert failed; falling back to per-user creates")
+            for row in chunk:
+                try:
+                    with transaction.atomic():
+                        created.append(
+                            InAppNotification.objects.create(
+                                recipient=row.recipient,
+                                title=row.title,
+                                message=row.message,
+                                title_ar=row.title_ar,
+                                message_ar=row.message_ar,
+                                params=row.params,
+                                link=row.link,
+                                notification_type=row.notification_type,
+                                created_at=row.created_at,
+                            )
+                        )
+                except Exception:
+                    logger.exception(
+                        "Failed to create in-app notification for user %s (title=%r)",
+                        getattr(row.recipient, "id", None),
+                        row.title,
+                    )
+    return created
+
+
 def _notify_users(
     users,
     title,
@@ -140,60 +252,36 @@ def _notify_users(
     """
     dedup_window = timezone.now() - timedelta(seconds=60)
     exclude_id = getattr(exclude_user, "id", None) if exclude_user is not None else None
+    recipients = []
+    seen = set()
     for user in users:
+        if not user or user.id in seen:
+            continue
         if exclude_id is not None and user.id == exclude_id:
             continue
-        # Deduplication: skip if an identical notification was created in the last 60s
-        if notification_type != "message" and InAppNotification.objects.filter(
-            recipient=user,
-            title=title,
-            link=link,
-            created_at__gte=dedup_window,
-        ).exists():
-            continue
-        try:
-            notification = InAppNotification.objects.create(
-                recipient=user,
+        seen.add(user.id)
+        recipients.append(user)
+    if not recipients:
+        return
+
+    skip = set()
+    if notification_type != "message":
+        skip = set(
+            InAppNotification.objects.filter(
+                recipient_id__in=[user.id for user in recipients],
                 title=title,
-                message=message,
-                title_ar=title_ar or "",
-                message_ar=message_ar or "",
-                params={
-                    "title_ar": title_ar or "",
-                    "message_ar": message_ar or "",
-                },
                 link=link,
-                notification_type=notification_type,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to create in-app notification for user %s (title=%r)",
-                getattr(user, "id", None),
-                title,
-            )
-            continue
-        _broadcast_notification(notification)
-        
-        if webpush and getattr(webpush, "send_user_notification", None):
-            try:
-                import json
-                payload = {
-                    "title": title,
-                    "head": title,
-                    "body": message,
-                    "message": message,
-                    "icon": "/static/images/mlameh-icon-fg.png",
-                    "data": {"url": link}
-                }
-                # Push HTTP stays off the request. The in-app row above is already saved.
-                _enqueue(
-                    webpush.send_user_notification,
-                    user=user,
-                    payload=json.dumps(payload),
-                    ttl=1000,
-                )
-            except Exception as e:
-                logger.warning(f"Web push failed for user {user.id}: {e}")
+                created_at__gte=dedup_window,
+            ).values_list("recipient_id", flat=True)
+        )
+
+    rows = [
+        _notification_row(user, title, message, link, notification_type, title_ar, message_ar)
+        for user in recipients
+        if user.id not in skip
+    ]
+    for notification in _create_notification_rows(rows):
+        _deliver_notification(notification)
 
 
 
@@ -207,10 +295,7 @@ def _enqueue(func, *args, **kwargs):
 
 
 def notify_new_ticket(ticket: Ticket):
-    branch_users = get_branch_users(ticket)
-    dept_users = get_department_users(ticket)
-    admin_users = _get_admin_users()
-    users = _unique_users(branch_users, dept_users, extra_users=admin_users)
+    users = _audience_users(ticket, include_org=True)
 
     params = {
         "number": ticket.ticket_number,
@@ -239,10 +324,7 @@ def notify_new_ticket(ticket: Ticket):
 
 
 def notify_ticket_picked(ticket: Ticket, actor: User):
-    branch_users = get_branch_users(ticket)
-    dept_users = get_department_users(ticket)
-    admin_users = _get_admin_users()
-    users = _unique_users(branch_users, dept_users, extra_users=admin_users)
+    users = _audience_users(ticket, include_org=True)
 
     params = {
         "number": ticket.ticket_number,
@@ -282,19 +364,12 @@ def notify_ticket_update(
         from accounts.models import User
         assigned_user = User.objects.filter(id=ticket.assigned_to_id).first() if ticket.assigned_to_id else None
         creator_user = User.objects.filter(id=ticket.created_by_id).first() if ticket.created_by_id else None
-        
-        if assigned_user:
-            extra = [u for u in [creator_user, assigned_user] if u]
-            users = _unique_users(_get_admin_users(), extra_users=extra)
+        extras = [user for user in (creator_user, assigned_user) if user]
+
+        if assigned_user or ticket.has_followup_message:
+            users = _audience_users(ticket, include_org=False, extras=extras)
         else:
-            if ticket.messages.count() <= 1:
-                branch_users = get_branch_users(ticket)
-                dept_users = get_department_users(ticket)
-                extra = [creator_user] if creator_user else []
-                users = _unique_users(branch_users, dept_users, _get_admin_users(), extra_users=extra)
-            else:
-                extra = [creator_user] if creator_user else []
-                users = _unique_users(_get_admin_users(), extra_users=extra)
+            users = _audience_users(ticket, include_org=True, extras=extras)
         params = {"number": ticket.ticket_number, "actor": actor.username}
         title, message_text, title_ar, message_ar = bilingual(
             gettext_noop("New Reply: #%(number)s"),
@@ -304,10 +379,7 @@ def notify_ticket_update(
         )
         n_type = "message"
     elif status_changed and new_status:
-        branch_users = get_branch_users(ticket)
-        dept_users = get_department_users(ticket)
-        admin_users = _get_admin_users()
-        users = _unique_users(branch_users, dept_users, extra_users=admin_users)
+        users = _audience_users(ticket, include_org=True)
         params = {"number": ticket.ticket_number, "actor": actor.username}
         title, message_text, title_ar, message_ar = bilingual(
             gettext_noop("Status Changed: #%(number)s"),
@@ -318,10 +390,7 @@ def notify_ticket_update(
         )
         n_type = "status_change"
     else:
-        branch_users = get_branch_users(ticket)
-        dept_users = get_department_users(ticket)
-        admin_users = _get_admin_users()
-        users = _unique_users(branch_users, dept_users, extra_users=admin_users)
+        users = _audience_users(ticket, include_org=True)
         params = {"number": ticket.ticket_number, "actor": actor.username}
         title, message_text, title_ar, message_ar = bilingual(
             gettext_noop("Ticket Updated: #%(number)s"),
@@ -457,16 +526,32 @@ def notify_announcement_created(announcement, actor=None):
             {},
         )
 
-    _notify_users(
-        list(users_qs),
-        title,
-        message,
-        "/tickets/",
-        notification_type="announcement",
-        exclude_user=actor,
-        title_ar=title_ar,
-        message_ar=message_ar,
-    )
+    chunk = []
+    for user in users_qs.iterator(chunk_size=_NOTIFY_CHUNK):
+        chunk.append(user)
+        if len(chunk) >= _NOTIFY_CHUNK:
+            _notify_users(
+                chunk,
+                title,
+                message,
+                "/tickets/",
+                notification_type="announcement",
+                exclude_user=actor,
+                title_ar=title_ar,
+                message_ar=message_ar,
+            )
+            chunk = []
+    if chunk:
+        _notify_users(
+            chunk,
+            title,
+            message,
+            "/tickets/",
+            notification_type="announcement",
+            exclude_user=actor,
+            title_ar=title_ar,
+            message_ar=message_ar,
+        )
 
     _enqueue(
         send_announcement_email,

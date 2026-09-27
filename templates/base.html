@@ -43,8 +43,8 @@
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.90">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.90">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.91">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.91">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.50">
     {% if LANGUAGE_CODE == 'ar' %}
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.5">
@@ -145,7 +145,23 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.23" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.24" defer></script>
+    <script type="speculationrules">
+    {
+      "prefetch": [{
+        "where": {
+          "and": [
+            { "href_matches": "/*" },
+            { "not": { "href_matches": "/accounts/logout*" } },
+            { "not": { "href_matches": "/*export*" } },
+            { "not": { "href_matches": "/core/maintenance/*" } },
+            { "not": { "selector_matches": "[data-no-prefetch], [download], [hx-get], [hx-post]" } }
+          ]
+        },
+        "eagerness": "moderate"
+      }]
+    }
+    </script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -772,7 +788,7 @@
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>
-    <script src="{% static 'js/loading.js' %}?v=20"></script>
+    <script src="{% static 'js/loading.js' %}?v=20" defer></script>
 </body>
 
 </html>

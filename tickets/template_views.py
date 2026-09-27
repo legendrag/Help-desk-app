@@ -1,7 +1,8 @@
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotModified
 from datetime import datetime, timedelta, time
 from collections import defaultdict
+import hashlib
 import os
 from django.utils import timezone as tz
 from django.utils.encoding import force_str
@@ -318,12 +319,21 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             for key in ordered_keys
         ]
 
-        total_tickets = base_queryset.count()
-        total_users = User.objects.filter(
-            Q(created_tickets__in=base_queryset) | Q(assigned_tickets__in=base_queryset)
-        ).distinct().count()
-        branches_count = base_queryset.values("branch_id").distinct().count()
-        departments_count = base_queryset.values("department_id").distinct().count()
+        kpi = base_queryset.aggregate(
+            total_tickets=Count("id"),
+            branches_count=Count("branch_id", distinct=True),
+            departments_count=Count("department_id", distinct=True),
+        )
+        total_tickets = kpi["total_tickets"]
+        branches_count = kpi["branches_count"]
+        departments_count = kpi["departments_count"]
+        creator_ids = set(base_queryset.values_list("created_by_id", flat=True).distinct())
+        assignee_ids_for_users = set(
+            base_queryset.exclude(assigned_to_id__isnull=True)
+            .values_list("assigned_to_id", flat=True)
+            .distinct()
+        )
+        total_users = len(creator_ids | assignee_ids_for_users)
 
         if user.is_superuser:
             departments = Department.objects.all()
@@ -571,7 +581,7 @@ class ExportDashboardExcelView(DashboardView):
         ws_tickets.title = "Tickets"
         make_header(ws_tickets, 1, ['Ticket Number', 'Title', 'Branch', 'Department', 'Category', 'Status', 'Priority', 'Created By', 'Assigned To', 'Created At', 'Closed At'])
         
-        for row, ticket in enumerate(qs, 2):
+        for row, ticket in enumerate(qs.iterator(chunk_size=500), 2):
             ws_tickets.cell(row=row, column=1, value=ticket.ticket_number)
             ws_tickets.cell(row=row, column=2, value=ticket.title)
             ws_tickets.cell(row=row, column=3, value=ticket.branch.name if ticket.branch else '')
@@ -792,6 +802,51 @@ class TicketListView(LoginRequiredMixin, ListView):
     template_name = "tickets/list.html"
     context_object_name = "tickets"
     paginate_by = 10
+    max_loaded_pages = 50
+
+    def _loaded_depth(self):
+        if self.request.GET.get("append") == "true":
+            return 1
+        try:
+            depth = int(self.request.GET.get("loaded_pages") or "1")
+        except (TypeError, ValueError):
+            depth = 1
+        return max(1, min(depth, self.max_loaded_pages))
+
+    def get_paginate_by(self, queryset):
+        if self.request.GET.get("append") == "true":
+            return self.paginate_by
+        return self.paginate_by * self._loaded_depth()
+
+    def _list_etag(self):
+        queryset = self.get_queryset()
+        size = self.get_paginate_by(queryset)
+        rows = list(queryset.values_list("pk", "updated_at")[:size])
+        parts = [str(size), str(len(rows))]
+        for pk, updated in rows:
+            stamp = updated.isoformat() if updated else ""
+            parts.append(f"{pk}:{stamp}")
+        digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
+        return f'"{digest}"'
+
+    def get(self, request, *args, **kwargs):
+        etag = None
+        if request.GET.get("append") != "true":
+            etag = self._list_etag()
+            self._list_etag_value = etag
+            if (
+                request.headers.get("HX-Request")
+                and request.headers.get("If-None-Match") == etag
+            ):
+                response = HttpResponseNotModified()
+                response["ETag"] = etag
+                response["Cache-Control"] = "private, no-cache"
+                return response
+        response = super().get(request, *args, **kwargs)
+        if etag:
+            response["ETag"] = etag
+            response["Cache-Control"] = "private, no-cache"
+        return response
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
@@ -866,7 +921,17 @@ class TicketListView(LoginRequiredMixin, ListView):
 
         params = self.request.GET.copy()
         params.pop("page", None)
+        params.pop("loaded_pages", None)
+        params.pop("append", None)
         context["filters_query"] = params.urlencode()
+        depth = self._loaded_depth()
+        context["loaded_pages"] = depth
+        context["list_etag"] = getattr(self, "_list_etag_value", "")
+        page_obj = context.get("page_obj")
+        if self.request.GET.get("append") == "true" and page_obj is not None and page_obj.has_next:
+            context["append_page"] = page_obj.next_page_number()
+        else:
+            context["append_page"] = depth + 1
 
         from news.models import Announcement
         from django.utils import timezone

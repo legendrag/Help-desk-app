@@ -42,6 +42,7 @@ class InAppNotification(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["recipient", "is_read", "-created_at"]),
+            models.Index(fields=["recipient", "title", "link", "created_at"]),
         ]
 
     def arabic_title(self):

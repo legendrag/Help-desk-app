@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('global-progress-bar');
     const PAGE_LOADING_KEY = 'mlamehticket-page-loading';
     const NAV_STALL_MS = 10000;      // unlock if full-page nav never leaves
-    const SKELETON_DELAY_MS = 300;   // bar and skeleton only if the next page is still pending
+    const SKELETON_DELAY_MS = 450;   // bar and skeleton only if the next page is still pending
     const DOWNLOAD_SAFETY_MS = 60000;
     const HTMX_STALL_MS = 30000;
     // Hard cap so a missed cleanup can never leave the bar parked at 80%

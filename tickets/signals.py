@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 import logging
@@ -7,24 +9,84 @@ from tickets.realtime import broadcast_ticket_message, broadcast_ticket_list_eve
 from notifications.services import notify_new_ticket, notify_ticket_update
 
 logger = logging.getLogger(__name__)
+
+
+def _mark_followup_message(ticket, message):
+    """Set has_followup_message once a second message exists. Matches messages.count() > 1."""
+    if ticket.has_followup_message:
+        return
+    prior = (
+        TicketMessage.objects.filter(ticket_id=ticket.pk)
+        .exclude(pk=message.pk)
+        .exists()
+    )
+    if not prior:
+        return
+    Ticket.objects.filter(pk=ticket.pk, has_followup_message=False).update(has_followup_message=True)
+    ticket.has_followup_message = True
+
+
+def _maybe_unpicked_notice(instance):
+    ticket = instance.ticket
+    if instance.sender.user_type != "branch":
+        return
+    if ticket.assigned_to_id or ticket.unpicked_notice_sent:
+        return
+    if ticket.status in (Ticket.Status.CLOSED, Ticket.Status.MERGED):
+        return
+    prior_branch = (
+        TicketMessage.objects.filter(
+            ticket_id=ticket.pk,
+            sender__user_type="branch",
+            is_system_message=False,
+        )
+        .exclude(pk=instance.pk)
+        .exists()
+    )
+    if not prior_branch:
+        return
+    message_text = getattr(
+        settings,
+        "TICKET_UNPICKED_SYSTEM_MESSAGE",
+        "Someone will help you soon.",
+    )
+    updated = Ticket.objects.filter(pk=ticket.pk, unpicked_notice_sent=False).update(
+        unpicked_notice_sent=True
+    )
+    if not updated:
+        ticket.unpicked_notice_sent = True
+        return
+    ticket.unpicked_notice_sent = True
+    from tickets.system_text import create_system_message
+
+    try:
+        create_system_message(ticket, ticket.created_by, message_text)
+    except Exception:
+        Ticket.objects.filter(pk=ticket.pk).update(unpicked_notice_sent=False)
+        ticket.unpicked_notice_sent = False
+        raise
+
+
 @receiver(post_save, sender=TicketMessage)
 def broadcast_new_message(sender, instance, created, **kwargs):
     if created:
         try:
             reply_to = instance.reply_to
-            
+            ticket = instance.ticket
+            _mark_followup_message(ticket, instance)
+
             sender_username = getattr(instance.sender, "username", "Unknown")
-            if instance.sender.user_type == "branch" and instance.sender.branch_id == instance.ticket.branch_id and instance.ticket.client_name:
-                sender_username = f"{sender_username} - {instance.ticket.client_name}"
-                
+            if instance.sender.user_type == "branch" and instance.sender.branch_id == ticket.branch_id and ticket.client_name:
+                sender_username = f"{sender_username} - {ticket.client_name}"
+
             payload = {
                 "id": instance.id,
                 "ticket": instance.ticket_id,
                 "sender": instance.sender_id,
                 "sender_username": sender_username,
-            "message": instance.message,
-            "message_ar": getattr(instance, "message_ar", "") or "",
-            "is_system_message": getattr(instance, "is_system_message", False),
+                "message": instance.message,
+                "message_ar": getattr(instance, "message_ar", "") or "",
+                "is_system_message": getattr(instance, "is_system_message", False),
                 "attachment_url": instance.attachment.url if instance.attachment else None,
                 "attachment_name": __import__("os").path.basename(instance.attachment.name) if instance.attachment else None,
                 "created_at": instance.created_at.isoformat() if instance.created_at else None,
@@ -36,42 +98,18 @@ def broadcast_new_message(sender, instance, created, **kwargs):
                 } if reply_to else None,
             }
             broadcast_ticket_message(instance.ticket_id, payload)
-            # Notify owner/assignee about the reply (exclude system messages)
             if not getattr(instance, "is_system_message", False):
-                notify_ticket_update(instance.ticket, instance.sender, message=instance)
+                message_id = instance.id
 
-                # Check if the branch user sends more than one message on an unpicked ticket
-                if instance.sender.user_type == "branch":
-                    ticket = instance.ticket
-                    if not ticket.assigned_to and ticket.status not in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
-                        branch_msgs_count = TicketMessage.objects.filter(
-                            ticket=ticket,
-                            sender__user_type="branch",
-                            is_system_message=False
-                        ).count()
+                def _notify_after_commit():
+                    try:
+                        message = TicketMessage.objects.select_related("ticket", "sender").get(pk=message_id)
+                    except TicketMessage.DoesNotExist:
+                        return
+                    notify_ticket_update(message.ticket, message.sender, message=message)
 
-                        if branch_msgs_count > 1:
-                            from django.conf import settings
-                            from tickets.system_text import create_system_message
-
-                            message_text = getattr(
-                                settings,
-                                "TICKET_UNPICKED_SYSTEM_MESSAGE",
-                                "Someone will help you soon.",
-                            )
-
-                            already_sent = TicketMessage.objects.filter(
-                                ticket=ticket,
-                                is_system_message=True,
-                                message=message_text,
-                            ).exists()
-
-                            if not already_sent:
-                                create_system_message(
-                                    ticket,
-                                    ticket.created_by,
-                                    message_text,
-                                )
+                transaction.on_commit(_notify_after_commit)
+                _maybe_unpicked_notice(instance)
         except Exception:
             logger.exception("Error broadcasting message / notifying for TicketMessage %s", getattr(instance, "id", None))
 

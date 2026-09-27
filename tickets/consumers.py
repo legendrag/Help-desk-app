@@ -21,6 +21,7 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4403)
             return
 
+        await self._cache_sender(user.id)
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
@@ -51,12 +52,10 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         user = self.scope.get("user")
-        allowed = await self._user_can_send_message(user.id)
-        if not allowed:
+        payload = await self._create_message(self.ticket_id, user.id, message_text, reply_to_id)
+        if payload == "denied":
             await self.send_json({"error": "Permission denied."})
             return
-
-        payload = await self._create_message(self.ticket_id, user.id, message_text, reply_to_id)
         if not payload:
             await self.send_json({"error": "Cannot send message on this ticket."})
             return
@@ -68,21 +67,41 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         })
 
     @database_sync_to_async
-    def _user_can_send_message(self, user_id):
+    def _cache_sender(self, user_id):
+        self._cache_sender_sync(user_id)
+
+    def _permission_changed(self, role_id, is_superuser):
+        return role_id != getattr(self, "sender_role_id", None) or bool(is_superuser) != bool(getattr(self, "sender_is_superuser", False))
+
+    def _cache_sender_sync(self, user_id):
         from accounts.models import User
 
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return False
+        user = User.objects.select_related("role").filter(pk=user_id).first()
+        if not user:
+            self.sender_role_id = None
+            self.sender_is_superuser = False
+            self.sender_can_send = False
+            self.sender_user_type = ""
+            self.sender_branch_id = None
+            self.sender_department_id = None
+            self.sender_username = ""
+            return
+        self.sender_role_id = user.role_id
+        self.sender_is_superuser = user.is_superuser
+        self.sender_can_send = bool(user.is_superuser or (user.role_id and user.role.can_send_message))
+        self.sender_user_type = user.user_type
+        self.sender_branch_id = user.branch_id
+        self.sender_department_id = user.department_id
+        self.sender_username = user.username
 
-        if user.is_superuser:
+    def _cached_in_org(self, ticket):
+        if self.sender_is_superuser:
             return True
-
-        if not user.role_id:
-            return False
-
-        return bool(user.role.can_send_message)
+        if self.sender_user_type == "branch":
+            return bool(self.sender_branch_id) and ticket.branch_id == self.sender_branch_id
+        if self.sender_user_type == "support":
+            return bool(self.sender_department_id) and ticket.department_id == self.sender_department_id
+        return False
 
     @database_sync_to_async
     def _user_can_access_ticket(self, user_id, ticket_id):
@@ -100,15 +119,23 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
     def _create_message(self, ticket_id, user_id, message_text, reply_to_id=None):
         from accounts.models import User
 
+        current = User.objects.filter(pk=user_id).values_list("role_id", "is_superuser").first()
+        if current is None:
+            return "denied"
+        role_id, is_superuser = current
+        if self._permission_changed(role_id, is_superuser):
+            self._cache_sender_sync(user_id)
+        if not self.sender_can_send:
+            return "denied"
+
         try:
             ticket = Ticket.objects.get(id=ticket_id)
-            user = User.objects.get(id=user_id)
-        except (Ticket.DoesNotExist, User.DoesNotExist):
+        except Ticket.DoesNotExist:
             return None
 
-        if not user_in_ticket_org(user, ticket):
+        if not self._cached_in_org(ticket):
             return None
-        if user.user_type == "support" and not user.is_superuser and ticket.assigned_to_id != user.id:
+        if self.sender_user_type == "support" and not self.sender_is_superuser and ticket.assigned_to_id != user_id:
             return None
 
         if ticket.status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
@@ -117,12 +144,17 @@ class TicketChatConsumer(AsyncJsonWebsocketConsumer):
         reply_to = None
         if reply_to_id:
             reply_to = TicketMessage.objects.filter(id=reply_to_id, ticket=ticket).first()
-        message = TicketMessage.objects.create(ticket=ticket, sender=user, message=message_text, reply_to=reply_to)
+        message = TicketMessage.objects.create(
+            ticket=ticket,
+            sender_id=user_id,
+            message=message_text,
+            reply_to=reply_to,
+        )
         return {
             "id": message.id,
             "ticket": ticket.id,
-            "sender": user.id,
-            "sender_username": user.username,
+            "sender": user_id,
+            "sender_username": self.sender_username,
             "message": message.message,
             "message_ar": getattr(message, "message_ar", "") or "",
             "is_system_message": message.is_system_message,

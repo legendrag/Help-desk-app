@@ -100,7 +100,12 @@ class AnnouncementNotificationTests(TestCase):
         self.assertIn(self.support_user.id, recipients)
         self.assertNotIn(self.creator.id, recipients)
         self.assertNotIn(self.inactive_user.id, recipients)
-        _enqueue.assert_called_once()
+        email_calls = [
+            call
+            for call in _enqueue.call_args_list
+            if call.args and getattr(call.args[0], "__name__", "") == "send_announcement_email"
+        ]
+        self.assertEqual(len(email_calls), 1)
 
     @patch("notifications.services._enqueue")
     def test_branch_announcement_skips_other_branch_and_support(self, _enqueue):

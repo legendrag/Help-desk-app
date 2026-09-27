@@ -92,7 +92,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
         self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
         self.assertIn("setPageNavigating(true)", self.loading_js)
         self.assertIn("if (withSkeleton)", self.loading_js)
-        self.assertIn("SKELETON_DELAY_MS = 300", self.loading_js)
+        self.assertIn("SKELETON_DELAY_MS = 450", self.loading_js)
         self.assertIn("clearSkeletonDelayTimer()", self.loading_js)
         # Bar and skeleton are scheduled, not painted in the same turn as the click.
         nav_fn = self.loading_js.split("function beginFullPageNavigation", 1)[1]

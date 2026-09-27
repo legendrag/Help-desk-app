@@ -7,7 +7,8 @@ from datetime import timedelta
 from django.core.cache import cache
 from django.utils import timezone
 from django.conf import settings
-from django.http import HttpResponse, FileResponse
+from django.db.models import Prefetch
+from django.http import HttpResponse, FileResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib import messages
@@ -57,6 +58,102 @@ def _set_rate_limit(user, action_key):
     )
 
 
+def _iter_ticket_export(user):
+    """Yield the tickets export. Same line breaks as the old joined string."""
+    lines = []
+    started = False
+
+    def push(line):
+        lines.append(line)
+
+    def flush():
+        nonlocal started
+        if not lines:
+            return None
+        text = "\n".join(lines)
+        lines.clear()
+        if started:
+            text = "\n" + text
+        started = True
+        return text
+
+    push("=" * 80)
+    push("MlamehTicket — TICKETS & MESSAGES EXPORT")
+    push(f"Exported on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    push(f"Exported by: {user.username}")
+    push("=" * 80)
+
+    message_qs = TicketMessage.objects.select_related("sender").order_by("created_at")
+    base = Ticket.objects.order_by("-created_at")
+    push(f"\nTotal tickets: {base.count()}\n")
+    header = flush()
+    if header:
+        yield header
+
+    ids = list(base.values_list("pk", flat=True))
+    chunk_size = 200
+    for start in range(0, len(ids), chunk_size):
+        chunk_ids = ids[start:start + chunk_size]
+        tickets = (
+            Ticket.objects.filter(pk__in=chunk_ids)
+            .select_related(
+                "branch", "department", "category",
+                "created_by", "assigned_to",
+            )
+            .prefetch_related(Prefetch("messages", queryset=message_qs))
+        )
+        by_id = {ticket.pk: ticket for ticket in tickets}
+        for ticket_id in chunk_ids:
+            ticket = by_id.get(ticket_id)
+            if ticket is None:
+                continue
+            push("\n" + "-" * 80)
+            push(f"Ticket:      {ticket.ticket_number}")
+            push(f"Title:       {ticket.title}")
+            push(f"Status:      {ticket.get_status_display()}")
+            push(f"Priority:    {ticket.get_priority_display()}")
+            push(f"Branch:      {ticket.branch}")
+            push(f"Department:  {ticket.department}")
+            push(f"Category:    {ticket.category}")
+            push(f"Client:      {ticket.client_name} ({ticket.client_phone})")
+            push(f"Created by:  {ticket.created_by.username}")
+            assigned = ticket.assigned_to.username if ticket.assigned_to else "Unassigned"
+            push(f"Assigned to: {assigned}")
+            push(f"Created:     {ticket.created_at.strftime('%Y-%m-%d %H:%M')}")
+            push(f"Updated:     {ticket.updated_at.strftime('%Y-%m-%d %H:%M')}")
+            if ticket.closed_at:
+                push(f"Closed:      {ticket.closed_at.strftime('%Y-%m-%d %H:%M')}")
+            push(f"\nDescription:\n  {ticket.description}")
+
+            msgs = list(ticket.messages.all())
+            if msgs:
+                push(f"\n  --- Messages ({len(msgs)}) ---")
+                for msg in msgs:
+                    sender = msg.sender.username
+                    time = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                    tag = " [SYSTEM]" if msg.is_system_message else ""
+                    attachment = (
+                        f"  [Attachment: {os.path.basename(msg.attachment.name)}]"
+                        if msg.attachment else ""
+                    )
+                    push(f"\n  [{time}] {sender}{tag}:")
+                    if msg.message:
+                        for line in msg.message.splitlines():
+                            push(f"    {line}")
+                    if attachment:
+                        push(f"    {attachment}")
+            chunk = flush()
+            if chunk:
+                yield chunk
+
+    push("\n" + "=" * 80)
+    push("END OF EXPORT")
+    push("=" * 80 + "\n")
+    tail = flush()
+    if tail:
+        yield tail
+
+
 # ---------------------------------------------------------------------------
 # Backup views
 # ---------------------------------------------------------------------------
@@ -73,75 +170,18 @@ class ExportTicketsView(MaintenancePermissionMixin, View):
             )
 
         try:
-            lines = []
-            lines.append("=" * 80)
-            lines.append("MlamehTicket — TICKETS & MESSAGES EXPORT")
-            lines.append(f"Exported on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
-            lines.append(f"Exported by: {request.user.username}")
-            lines.append("=" * 80)
-
-            tickets = (
-                Ticket.objects
-                .select_related(
-                    "branch", "department", "category",
-                    "created_by", "assigned_to",
-                )
-                .prefetch_related("messages__sender")
-                .order_by("-created_at")
-            )
-
-            lines.append(f"\nTotal tickets: {tickets.count()}\n")
-
-            for ticket in tickets.iterator(chunk_size=2000) if hasattr(tickets, 'iterator') else tickets:
-                lines.append("\n" + "-" * 80)
-                lines.append(f"Ticket:      {ticket.ticket_number}")
-                lines.append(f"Title:       {ticket.title}")
-                lines.append(f"Status:      {ticket.get_status_display()}")
-                lines.append(f"Priority:    {ticket.get_priority_display()}")
-                lines.append(f"Branch:      {ticket.branch}")
-                lines.append(f"Department:  {ticket.department}")
-                lines.append(f"Category:    {ticket.category}")
-                lines.append(f"Client:      {ticket.client_name} ({ticket.client_phone})")
-                lines.append(f"Created by:  {ticket.created_by.username}")
-                lines.append(f"Assigned to: {ticket.assigned_to.username if ticket.assigned_to else 'Unassigned'}")
-                lines.append(f"Created:     {ticket.created_at.strftime('%Y-%m-%d %H:%M')}")
-                lines.append(f"Updated:     {ticket.updated_at.strftime('%Y-%m-%d %H:%M')}")
-                if ticket.closed_at:
-                    lines.append(f"Closed:      {ticket.closed_at.strftime('%Y-%m-%d %H:%M')}")
-                lines.append(f"\nDescription:\n  {ticket.description}")
-
-                ticket_msgs = ticket.messages.select_related("sender").order_by("created_at")
-                if ticket_msgs.exists():
-                    lines.append(f"\n  --- Messages ({ticket_msgs.count()}) ---")
-                    for msg in ticket_msgs:
-                        sender = msg.sender.username
-                        time = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                        tag = " [SYSTEM]" if msg.is_system_message else ""
-                        attachment = f"  [Attachment: {os.path.basename(msg.attachment.name)}]" if msg.attachment else ""
-                        lines.append(f"\n  [{time}] {sender}{tag}:")
-                        if msg.message:
-                            # Indent each line of the message body
-                            for line in msg.message.splitlines():
-                                lines.append(f"    {line}")
-                        if attachment:
-                            lines.append(f"    {attachment}")
-
-            lines.append("\n" + "=" * 80)
-            lines.append("END OF EXPORT")
-            lines.append("=" * 80 + "\n")
-
-            content = "\n".join(lines)
             timestamp = timezone.now().strftime("%Y%m%d_%H%M")
-            response = HttpResponse(content, content_type="text/plain; charset=utf-8")
+            response = StreamingHttpResponse(
+                _iter_ticket_export(request.user),
+                content_type="text/plain; charset=utf-8",
+            )
             response["Content-Disposition"] = f'attachment; filename="tickets_export_{timestamp}.txt"'
-
             _set_rate_limit(request.user, "export_tickets")
             logger.warning(
                 "Tickets export downloaded by user '%s' (id=%s) from %s",
                 request.user.username, request.user.pk,
                 request.META.get("REMOTE_ADDR", "unknown"),
             )
-
             response.set_cookie('fileDownload', 'true', path='/')
             return response
         except Exception as e:
