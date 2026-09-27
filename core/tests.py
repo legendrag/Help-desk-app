@@ -83,7 +83,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=1", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=3", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=20", self.base_html)
@@ -132,7 +132,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=1", html)
+        self.assertIn("js/app-shell.js?v=3", html)
         self.assertIn("js/loading.js?v=20", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)

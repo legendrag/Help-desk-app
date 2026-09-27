@@ -57,6 +57,96 @@ function setMenuButtonOpen(isOpen) {
     menuBtn.setAttribute('aria-label', isOpen ? (window.I18N && window.I18N.closeMenu) || 'Close menu' : (window.I18N && window.I18N.openMenu) || 'Open menu');
 }
 
+const NAV_PREFETCH_ORDER = ["tickets", "dashboard", "news", "kb"];
+let navPrefetchStarted = false;
+
+function navPrefetchKey(pathname) {
+    const path = (pathname || "").replace(/\/+$/, "") || "/";
+    if (path === "/tickets") return "tickets";
+    if (path === "/tickets/dashboard") return "dashboard";
+    if (path === "/news") return "news";
+    if (path === "/kb") return "kb";
+    return null;
+}
+
+function prefetchUrl(url, done) {
+    const script = document.createElement("script");
+    script.type = "speculationrules";
+    script.textContent = JSON.stringify({
+        prefetch: [{ urls: [url], eagerness: "immediate" }]
+    });
+    let finished = false;
+    let timer = null;
+    let observer = null;
+    const finish = () => {
+        if (finished) return;
+        finished = true;
+        if (observer) observer.disconnect();
+        clearTimeout(timer);
+        done();
+    };
+    observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+            let entryPath = "";
+            try {
+                entryPath = new URL(entry.name).pathname;
+            } catch (e) {
+                continue;
+            }
+            if (entryPath === url || entryPath + "/" === url || entryPath === url + "/") {
+                finish();
+                return;
+            }
+        }
+    });
+    // Speculation prefetches do not show up in resource timing, so this gap
+    // is what actually starts the next page. Keep it short enough that the
+    // rest of the menu is requested before a normal click.
+    timer = setTimeout(finish, 400);
+    observer.observe({ type: "resource", buffered: true });
+    document.head.appendChild(script);
+}
+
+function startNavPrefetch() {
+    if (navPrefetchStarted) return;
+    if (!window.HTMLScriptElement || !HTMLScriptElement.supports || !HTMLScriptElement.supports("speculationrules")) {
+        return;
+    }
+    navPrefetchStarted = true;
+
+    const here = (location.pathname || "").replace(/\/+$/, "") || "/";
+    const byKey = {};
+    document.querySelectorAll("#sidebar .sidebar-nav a[href]").forEach((anchor) => {
+        if (anchor.hasAttribute("hx-get") || anchor.hasAttribute("hx-post") || anchor.hasAttribute("download")) return;
+        const href = anchor.getAttribute("href");
+        if (!href || href.charAt(0) === "#") return;
+        let url;
+        try {
+            url = new URL(href, location.origin);
+        } catch (e) {
+            return;
+        }
+        if (url.origin !== location.origin) return;
+        const key = navPrefetchKey(url.pathname);
+        if (!key) return;
+        const path = url.pathname.replace(/\/+$/, "") || "/";
+        if (path === here) return;
+        byKey[key] = url.pathname + url.search;
+    });
+
+    const queue = [];
+    NAV_PREFETCH_ORDER.forEach((key) => {
+        if (byKey[key]) queue.push(byKey[key]);
+    });
+
+    const prefetchNext = () => {
+        const next = queue.shift();
+        if (!next) return;
+        prefetchUrl(next, prefetchNext);
+    };
+    prefetchNext();
+}
+
 function openSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -65,6 +155,7 @@ function openSidebar() {
     overlay.classList.add('open');
     document.body.classList.add('sidebar-open');
     setMenuButtonOpen(true);
+    startNavPrefetch();
 }
 
 function closeSidebar() {
