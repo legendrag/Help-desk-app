@@ -1,7 +1,9 @@
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
@@ -9,6 +11,7 @@ from accounts.models import User
 from core.management_views import CategoryListView
 from core.models import Category, Department
 from core.version import get_app_version
+from tickets.models import Ticket
 
 
 class CategoryListQueryOptimizationTests(TestCase):
@@ -165,3 +168,38 @@ class SidebarVersionTests(TestCase):
         snippet = prefs[prefs.index('class="sidebar-version"'):]
         snippet = snippet[: snippet.find("</")]
         self.assertIn(version, snippet)
+
+
+class SeedDemoDataTests(TestCase):
+    def test_seed_demo_data_without_ticket_count_creates_curated_tickets(self):
+        out = StringIO()
+        call_command("seed_demo_data", "--clear", stdout=out)
+        
+        ticket_count = Ticket.objects.count()
+        self.assertEqual(ticket_count, 8)
+        
+        self.assertTrue(Ticket.objects.filter(title__contains="Printer not responding").exists())
+        self.assertTrue(Ticket.objects.filter(title__contains="VPN disconnects").exists())
+
+    def test_seed_demo_data_with_ticket_count_creates_additional_tickets(self):
+        out = StringIO()
+        call_command("seed_demo_data", "--clear", "--ticket-count", "10", stdout=out)
+        
+        ticket_count = Ticket.objects.count()
+        self.assertGreaterEqual(ticket_count, 18)
+        self.assertLessEqual(ticket_count, 20)
+        
+        self.assertTrue(Ticket.objects.filter(title__contains="Printer not responding").exists())
+
+    def test_seed_demo_data_ticket_count_varies_attributes(self):
+        out = StringIO()
+        call_command("seed_demo_data", "--clear", "--ticket-count", "20", stdout=out)
+        
+        statuses = set(Ticket.objects.values_list("status", flat=True))
+        self.assertGreater(len(statuses), 1)
+        
+        priorities = set(Ticket.objects.values_list("priority", flat=True))
+        self.assertGreater(len(priorities), 1)
+        
+        branches = set(Ticket.objects.values_list("branch__code", flat=True))
+        self.assertGreater(len(branches), 1)
