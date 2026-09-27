@@ -369,7 +369,7 @@ def _generate_bulk_ticket_spec(index, branches, departments_list):
         "status": status_choice,
         "creator": creator_choice,
         "assignee": assignee_choice,
-        "client_name": random.choice(["Operations Team", "Staff", "Department Head", "Admin", ""]),
+        "client_name": random.choice(["Operations Team", "Staff", "Department Head", "Admin", "Support", "Client"]),
         "client_phone": f"+20111111{random.randint(1000, 9999)}",
         "messages": tuple(messages),
         "age_hours": age_hours,
