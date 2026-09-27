@@ -518,10 +518,32 @@ function updatePushPermissionPrompt() {
     }
 }
 
+function requestNotificationPermission() {
+    if (!window.Notification || typeof Notification.requestPermission !== "function") {
+        return Promise.resolve("");
+    }
+    try {
+        const result = Notification.requestPermission();
+        if (result && typeof result.then === "function") {
+            return result;
+        }
+    } catch (err) {
+        console.warn("[WebPush] Promise permission request failed, trying callback:", err);
+    }
+    return new Promise((resolve) => {
+        try {
+            Notification.requestPermission((perm) => resolve(perm));
+        } catch (err) {
+            console.error("[WebPush] Permission request failed:", err);
+            resolve("");
+        }
+    });
+}
+
 async function requestPushPermissionFromUi() {
     if (!window.Notification) return;
     try {
-        const perm = await Notification.requestPermission();
+        const perm = await requestNotificationPermission();
         syncPushOffUi();
         if (perm === "granted") {
             initWebPush();
@@ -706,6 +728,20 @@ function initPushOffBanner() {
     }
 
     syncPushOffUi();
+    bindFirstInteractionPushPrompt();
+}
+
+function bindFirstInteractionPushPrompt() {
+    if (!window.userIsAuthenticated) return;
+    if (!isPushSupported() || Notification.permission !== "default") return;
+
+    const requestOnInteraction = () => {
+        document.removeEventListener("click", requestOnInteraction, true);
+        document.removeEventListener("pointerdown", requestOnInteraction, true);
+        requestPushPermissionFromUi();
+    };
+    document.addEventListener("click", requestOnInteraction, true);
+    document.addEventListener("pointerdown", requestOnInteraction, true);
 }
 
 // ── Init UI ──
@@ -719,10 +755,13 @@ function initNotificationUI() {
 
     if (!button || !dropdown) return;
 
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", async (event) => {
         event.stopPropagation();
         toggleDropdown();
         updatePushPermissionPrompt();
+        if (isPushSupported() && Notification.permission === "default") {
+            await requestPushPermissionFromUi();
+        }
     });
 
     if (pushEnableBtn) {

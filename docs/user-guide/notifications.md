@@ -56,7 +56,7 @@ Web push delivers OS-level notifications when the app is in the background (brow
 4. **Installed app:** if notifications are blocked, turn them on in this app’s device settings.
 5. **iPhone or iPad:** iOS 16.4 or newer, add the app to the Home Screen, then open it from that icon and tap **Turn on**. Safari tabs and older iOS cannot show the Allow popup.
 
-Browsers require a user gesture to grant permission; use **Turn on** or **Enable** rather than expecting a silent subscribe on page load.
+Browsers require a user gesture to grant permission. The first tap or click on a signed-in page also asks, when the browser still has not decided. Use **Turn on** or **Enable** if that prompt was dismissed. On iPhone this native Allow popup only appears after you open the Home Screen app (iOS 16.4+).
 
 ## Duplicate suppression
 

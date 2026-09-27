@@ -2293,6 +2293,17 @@ td.mgmt-empty-cell {
     grid-template-columns: repeat(2, 1fr);
   }
   .col-span-2, .col-span-3 { grid-column: span 2; }
+
+  /* iOS Safari resolves height:100% against an auto grid row as 0, then
+     overflow:hidden clips the card. Phone widths stack cards into their own
+     rows, so size them from content. flex:1 is basis 0% and collapses too. */
+  .dashboard-card {
+    height: auto;
+  }
+
+  .dashboard-card > div:not(.card-header):not(.table-wrap) {
+    flex: 1 1 auto;
+  }
 }
 
 @media (max-width: 768px) {
