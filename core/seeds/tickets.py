@@ -389,7 +389,6 @@ def seed_tickets(organization, users, ticket_count=None, stdout=None):
         branches = list(organization["branches"].keys())
         departments_list = list(organization["departments"].keys())
         
-        bulk_tickets = []
         for i in range(ticket_count):
             spec = _generate_bulk_ticket_spec(i, branches, departments_list)
             
@@ -402,7 +401,7 @@ def seed_tickets(organization, users, ticket_count=None, stdout=None):
             now = timezone.now()
             created_at = now - timedelta(hours=spec.get("age_hours", 1))
             
-            ticket = Ticket(
+            ticket = Ticket.objects.create(
                 title=spec["title"],
                 description=spec["description"],
                 branch=branch,
@@ -414,13 +413,6 @@ def seed_tickets(organization, users, ticket_count=None, stdout=None):
                 client_name=spec.get("client_name", ""),
                 client_phone=spec.get("client_phone", ""),
             )
-            
-            bulk_tickets.append((ticket, spec, created_at, assignee))
-        
-        created_tickets = Ticket.objects.bulk_create([t[0] for t in bulk_tickets])
-        
-        for idx, ticket in enumerate(created_tickets):
-            _, spec, created_at, assignee = bulk_tickets[idx]
             
             Ticket.objects.filter(pk=ticket.pk).update(created_at=created_at, updated_at=created_at)
             ticket.refresh_from_db()
@@ -472,6 +464,6 @@ def seed_tickets(organization, users, ticket_count=None, stdout=None):
                 Ticket.objects.filter(pk=ticket.pk).update(closed_at=closed_at, last_status_change_at=closed_at)
         
         if stdout:
-            stdout.write(f"  Created {len(created_tickets)} bulk tickets.")
+            stdout.write(f"  Created {ticket_count} bulk tickets.")
     
     return tickets
