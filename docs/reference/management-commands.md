@@ -127,6 +127,7 @@ Seed demo roles, users, organization data, tickets, KB articles, news, and notif
 | `--password` | `demo1234` | Password for demo users. |
 | `--skip-tickets` | off | Skip ticket and message seeding. |
 | `--skip-notifications` | off | Skip in-app notification seeding. |
+| `--ticket-count` | none | Generate approximately N additional tickets for performance testing. Curated demo tickets are always created first. Use with `--clear` for a fresh bulk seed. |
 
 ### Passwords
 
@@ -144,6 +145,7 @@ python manage.py seed_demo_data
 python manage.py seed_demo_data --clear
 python manage.py seed_demo_data --password "LocalDemo!2026"
 python manage.py seed_demo_data --clear --skip-tickets --skip-notifications
+python manage.py seed_demo_data --clear --ticket-count 500
 ```
 
 Bash:
@@ -153,7 +155,32 @@ python manage.py seed_demo_data
 python manage.py seed_demo_data --clear
 python manage.py seed_demo_data --password 'LocalDemo!2026'
 python manage.py seed_demo_data --clear --skip-tickets --skip-notifications
+python manage.py seed_demo_data --clear --ticket-count 500
 ```
+
+### Performance Seeding
+
+For performance testing with ~500 tickets, use:
+
+```bash
+python manage.py seed_demo_data --clear --ticket-count 500
+```
+
+This will:
+- Clear existing demo data
+- Create the standard curated demo tickets (8 tickets)
+- Generate approximately 500 additional varied tickets
+- Total tickets: ~508
+
+The generated tickets vary in:
+- Status (Open, In Progress, Waiting, Closed)
+- Priority (Low, Medium, High, Urgent)
+- Branch (Main, North, South, East)
+- Department and Category
+- Age (1-240 hours old)
+- About 40% include follow-up messages
+
+Note: On SQLite, generating 500 tickets takes about 2.5 minutes (~139-150 s).
 
 ---
 

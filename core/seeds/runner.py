@@ -74,6 +74,7 @@ def run_seed(
     password=None,
     skip_tickets=False,
     skip_notifications=False,
+    ticket_count=None,
     stdout=None,
     style=None,
 ):
@@ -99,7 +100,7 @@ def run_seed(
     tickets = {}
     if not skip_tickets:
         write("Seeding tickets...")
-        tickets = seed_tickets(organization, users, stdout=stdout)
+        tickets = seed_tickets(organization, users, ticket_count=ticket_count, stdout=stdout)
 
     write("Seeding knowledge base...")
     seed_kb(users, tickets=tickets, stdout=stdout)

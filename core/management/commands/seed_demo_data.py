@@ -27,6 +27,12 @@ class Command(BaseCommand):
             action="store_true",
             help="Skip in-app notification seeding.",
         )
+        parser.add_argument(
+            "--ticket-count",
+            type=int,
+            default=None,
+            help="Generate approximately N tickets for performance testing (in addition to curated demos).",
+        )
 
     def handle(self, *args, **options):
         if options["clear"]:
@@ -37,6 +43,7 @@ class Command(BaseCommand):
             password=options["password"],
             skip_tickets=options["skip_tickets"],
             skip_notifications=options["skip_notifications"],
+            ticket_count=options["ticket_count"],
             stdout=self.stdout,
             style=self.style,
         )
