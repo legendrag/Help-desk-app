@@ -194,7 +194,7 @@ For local performance testing with MySQL (recommended for replicating production
 
 ### Prerequisites
 
-- MySQL 8.0+ installed and running locally
+- MySQL 8.0+ (or MariaDB 10.5+) installed and running locally
 - PyMySQL already in requirements.txt (no additional packages needed)
 
 ### Quick setup
