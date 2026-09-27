@@ -21,6 +21,7 @@ English documentation for the mlamehticket help-desk platform. Pick the section 
 | Run locally for the first time | [Installation](operations/installation.md) |
 | Configure `.env` | [Configuration](operations/configuration.md) |
 | Deploy with MySQL + Daphne | [Deployment](operations/deployment.md) |
+| Set up MySQL for performance testing | [MySQL Performance Testing Setup](reference/management-commands.md#mysql-performance-testing-setup) |
 | Set up Gmail for notification emails | [Gmail app password](admin-guide/gmail-app-password.md) |
 | Back up / restore the database | [Backup & restore](operations/backup-restore.md) |
 | Understand roles and permissions | [Users and roles](admin-guide/users-and-roles.md) · [Permissions matrix](reference/permissions-matrix.md) |

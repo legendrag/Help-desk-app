@@ -83,8 +83,11 @@ Without a usable `SITE_URL`, email clients often cannot open ticket links. Alway
 ### MySQL (`DB_ENGINE=mysql`)
 
 - Required for the Windows installer post-setup (`install.ps1` forces `DB_ENGINE=mysql`).
+- Recommended for **local performance testing** — replicates production page-load behavior more accurately than SQLite.
 - Create the schema with **utf8mb4** before migrate — see [Deployment](deployment.md).
 - Connection uses PyMySQL; `DB_CONN_MAX_AGE` defaults to **600** seconds.
+
+For step-by-step local MySQL setup with performance seeding, see **[MySQL Performance Testing Setup](../reference/management-commands.md#mysql-performance-testing-setup)** in the management commands reference.
 
 Example production fragment:
 

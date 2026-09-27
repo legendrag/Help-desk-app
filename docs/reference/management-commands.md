@@ -180,7 +180,103 @@ The generated tickets vary in:
 - Age (1-240 hours old)
 - About 40% include follow-up messages
 
-Note: On SQLite, generating 500 tickets takes about 2.5 minutes (~139-150 s).
+**Timing:**
+- **SQLite:** ~2.5 minutes (139-150 s)
+- **MySQL:** ~2.5 minutes (148 s)
+
+For MySQL performance testing setup, see [MySQL Performance Testing Setup](#mysql-performance-testing-setup) below.
+
+---
+
+## MySQL Performance Testing Setup
+
+For local performance testing with MySQL (recommended for replicating production page-load behavior):
+
+### Prerequisites
+
+- MySQL 8.0+ installed and running locally
+- PyMySQL already in requirements.txt (no additional packages needed)
+
+### Quick setup
+
+1. **Create the database:**
+
+```bash
+# Log in to MySQL as root or admin user
+mysql -u root -p
+
+# Create database and user
+CREATE DATABASE mlamehticket CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'mlamehticket_user'@'localhost' IDENTIFIED BY 'your_password_here';
+GRANT ALL PRIVILEGES ON mlamehticket.* TO 'mlamehticket_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+2. **Configure `.env` for MySQL:**
+
+```env
+DB_ENGINE=mysql
+DB_NAME=mlamehticket
+DB_USER=mlamehticket_user
+DB_PASSWORD=your_password_here
+DB_HOST=localhost
+DB_PORT=3306
+```
+
+3. **Migrate and seed:**
+
+```bash
+python manage.py migrate
+python manage.py seed_demo_data --clear --ticket-count 500
+```
+
+4. **Run the development server:**
+
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+### Switching back to SQLite
+
+Update `.env`:
+
+```env
+DB_ENGINE=sqlite
+```
+
+Then migrate and optionally re-seed:
+
+```bash
+python manage.py migrate
+python manage.py seed_demo_data --clear --ticket-count 500
+```
+
+### Optional: Docker MySQL
+
+If you prefer not to install MySQL directly:
+
+```bash
+# Start MySQL in Docker
+docker run --name mlameh-mysql \
+  -e MYSQL_ROOT_PASSWORD=rootpass \
+  -e MYSQL_DATABASE=mlamehticket \
+  -e MYSQL_USER=mlamehticket_user \
+  -e MYSQL_PASSWORD=your_password_here \
+  -p 3306:3306 \
+  -d mysql:8.0 \
+  --character-set-server=utf8mb4 \
+  --collation-server=utf8mb4_unicode_ci
+
+# Wait for MySQL to start (~10-30 seconds)
+docker logs -f mlameh-mysql
+# (Press Ctrl+C once you see "ready for connections")
+
+# Use the same .env settings as above, then migrate and seed
+```
+
+Stop the container when done: `docker stop mlameh-mysql` (data persists).  
+Remove it entirely: `docker rm -v mlameh-mysql`.
 
 ---
 
