@@ -1113,17 +1113,35 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
 
     def get(self, request, *args, **kwargs):
         # The list Details button fetches this into #drawer-container.
-        # A refresh, shared link, cold load, or history restore must not
-        # become the document: this template has no shell and no CSS.
-        if request.headers.get("HX-Request") and not request.headers.get("HX-History-Restore-Request"):
+        # Any document load of this URL — F5, Ctrl+F5, address-bar Enter,
+        # a shared link, or history restore — must not become the document:
+        # this template has no shell and no CSS.
+        if self._is_drawer_fragment(request):
             return super().get(request, *args, **kwargs)
         url = reverse("ticket_detail", kwargs={"ticket_id": self.kwargs["ticket_id"]})
         url = f"{url}?show_details=true"
-        if request.headers.get("HX-Request"):
+        # History restore is an XHR and follows HX-Redirect. A real
+        # navigation, including one that also sends HX-Request, needs a
+        # 302 or the browser would keep this response as the document.
+        if request.headers.get("HX-Request") and not self._is_document_navigation(request):
             response = HttpResponse(status=204)
             response["HX-Redirect"] = url
             return response
         return redirect(url)
+
+    @staticmethod
+    def _is_document_navigation(request):
+        dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
+        mode = (request.headers.get("Sec-Fetch-Mode") or "").lower()
+        return dest == "document" or mode == "navigate"
+
+    @classmethod
+    def _is_drawer_fragment(cls, request):
+        if not request.headers.get("HX-Request"):
+            return False
+        if request.headers.get("HX-History-Restore-Request"):
+            return False
+        return not cls._is_document_navigation(request)
 
     def get_queryset(self):
         return Ticket.objects.select_related(
@@ -1161,7 +1179,7 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
     def render_to_response(self, context, **response_kwargs):
         response = super().render_to_response(context, **response_kwargs)
         # The list row sets hx-push-url, and htmx inherits that onto this
-        # button. Pushing /drawer/ makes a hard refresh load this partial
+        # button. Pushing /drawer/ makes F5 or Ctrl+F5 load this partial
         # as the document. Never publish that URL.
         response["HX-Push-Url"] = "false"
         patch_vary_headers(response, ["HX-Request"])

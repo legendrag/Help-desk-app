@@ -697,7 +697,11 @@ class TicketNumberCopyButtonTests(TestCase):
 
 
 class TicketDrawerRefreshTests(TestCase):
-    """A document load of the drawer URL must not be the naked partial."""
+    """A document load of the drawer URL must not be the naked partial.
+
+    F5, Ctrl+F5, address-bar Enter, and a shared link are the same GET:
+    no HTMX fragment, full page or a redirect onto one.
+    """
 
     def setUp(self):
         self.branch = Branch.objects.create(code="DRW", name="Drawer Branch")
@@ -736,6 +740,31 @@ class TicketDrawerRefreshTests(TestCase):
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "MOA-20260925-0001")
         self.assertContains(response, "show_details=true")
+
+    def test_document_reload_of_drawer_url_redirects_like_f5(self):
+        response = self.client.get(
+            self.drawer_url,
+            follow=True,
+            HTTP_SEC_FETCH_DEST="document",
+            HTTP_SEC_FETCH_MODE="navigate",
+            HTTP_SEC_FETCH_USER="?1",
+        )
+        self.assertEqual(response.redirect_chain, [(self.ticket_url, 302)])
+        self.assertContains(response, "<html")
+        self.assertContains(response, "css/style.css")
+        self.assertContains(response, 'id="shell-content"')
+
+    def test_document_navigation_never_returns_the_partial_even_with_hx_request(self):
+        response = self.client.get(
+            self.drawer_url,
+            HTTP_HX_REQUEST="true",
+            HTTP_SEC_FETCH_DEST="document",
+            HTTP_SEC_FETCH_MODE="navigate",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], self.ticket_url)
+        self.assertNotContains(response, "ticket-offcanvas", status_code=302)
+        self.assertNotContains(response, "<html", status_code=302)
 
     def test_history_restore_of_drawer_url_redirects_instead_of_swapping_the_partial(self):
         response = self.client.get(
