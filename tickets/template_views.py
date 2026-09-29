@@ -818,29 +818,90 @@ class TicketListView(LoginRequiredMixin, ListView):
             return self.paginate_by
         return self.paginate_by * self._loaded_depth()
 
-    def _list_etag(self, queryset):
+    def _list_etag_lightweight(self, base_queryset):
         """
-        Calculate ETag from the queryset that will be used for rendering.
-        Reusing the same queryset avoids duplicate queries.
+        Calculate ETag using lightweight aggregates (count + max timestamp).
+        
+        This avoids loading rows on the 304 path. We use:
+        - Paginate size (from URL params)
+        - Count of tickets in filtered set
+        - Max updated_at timestamp
+        - Filter parameters (to bust on filter change)
+        
+        Correctness: Any data change (new ticket, update, delete) changes
+        count or max timestamp, busting the ETag.
         """
-        size = self.get_paginate_by(queryset)
-        rows = list(queryset.values_list("pk", "updated_at")[:size])
-        parts = [str(size), str(len(rows))]
-        for pk, updated in rows:
-            stamp = updated.isoformat() if updated else ""
-            parts.append(f"{pk}:{stamp}")
+        size = self.get_paginate_by(base_queryset)
+        from django.db.models import Count, Max
+        
+        stats = base_queryset.aggregate(
+            count=Count("id"),
+            max_updated=Max("updated_at")
+        )
+        
+        count = stats["count"] or 0
+        max_updated = stats["max_updated"]
+        max_stamp = max_updated.isoformat() if max_updated else ""
+        
+        # Include filter params to bust ETag on filter change
+        filter_sig = "|".join([
+            self.request.GET.get("q", ""),
+            self.request.GET.get("branch", ""),
+            self.request.GET.get("status", ""),
+            self.request.GET.get("assignment", ""),
+        ])
+        
+        parts = [str(size), str(count), max_stamp, filter_sig]
         digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
         return f'"{digest}"'
 
     def get(self, request, *args, **kwargs):
         etag = None
-        if request.GET.get("append") != "true":
-            # Get queryset once and reuse for both ETag and rendering
-            queryset = self.get_queryset()
-            etag = self._list_etag(queryset)
+        is_append = request.GET.get("append") == "true"
+        
+        if not is_append:
+            # For 304 optimization, check ETag before expensive get_queryset()
+            # Build base queryset (filters only, no row loading)
+            user = request.user
+            queryset = Ticket.objects.select_related(
+                "branch", "department", "category", "created_by", "assigned_to"
+            ).all()
+
+            if user.is_superuser:
+                base_queryset = queryset
+            elif user.user_type == "branch":
+                base_queryset = queryset.filter(branch_id=user.branch_id)
+            elif user.user_type == "support":
+                base_queryset = queryset.filter(department_id=user.department_id)
+            else:
+                base_queryset = queryset.none()
+
+            # Apply filters (but don't load rows yet)
+            branch_filter = request.GET.get("branch")
+            if branch_filter and branch_filter != "all":
+                base_queryset = base_queryset.filter(branch_id=branch_filter)
+
+            status_filter = request.GET.get("status")
+            if status_filter and status_filter != "all":
+                base_queryset = base_queryset.filter(status=status_filter)
+
+            assignment_filter = request.GET.get("assignment")
+            if assignment_filter and assignment_filter != "all":
+                if assignment_filter == "unassigned":
+                    base_queryset = base_queryset.filter(assigned_to__isnull=True)
+                else:
+                    base_queryset = base_queryset.filter(assigned_to_id=assignment_filter)
+
+            search_query = request.GET.get("q", "").strip()
+            if search_query:
+                from .search import apply_ticket_search
+                base_queryset = apply_ticket_search(base_queryset, search_query)
+            
+            # Calculate lightweight ETag (just COUNT + MAX, no row loading)
+            etag = self._list_etag_lightweight(base_queryset)
             self._list_etag_value = etag
-            # Cache the queryset so get_queryset() returns the same instance
-            self._cached_queryset = queryset
+            
+            # Check ETag match and return 304 early if possible
             if (
                 request.headers.get("HX-Request")
                 and request.headers.get("If-None-Match") == etag
@@ -849,6 +910,10 @@ class TicketListView(LoginRequiredMixin, ListView):
                 response["ETag"] = etag
                 response["Cache-Control"] = "private, no-cache"
                 return response
+            
+            # ETag miss: rows will be loaded by super().get() via get_queryset()
+            # No need to cache queryset since we'll rebuild it anyway
+        
         response = super().get(request, *args, **kwargs)
         if etag:
             response["ETag"] = etag
@@ -856,12 +921,6 @@ class TicketListView(LoginRequiredMixin, ListView):
         return response
     
     def get_queryset(self):
-        # Return cached queryset if available (set during ETag calculation)
-        if hasattr(self, '_cached_queryset'):
-            queryset = self._cached_queryset
-            delattr(self, '_cached_queryset')
-            return queryset
-            
         user = self.request.user
         queryset = Ticket.objects.select_related(
             "branch", "department", "category", "created_by", "assigned_to"

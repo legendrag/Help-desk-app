@@ -751,14 +751,21 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
 });
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {
-    var elt = evt.detail.elt;
-    if (!elt || !elt.classList || !elt.classList.contains('load-more-btn')) return;
-    var live = document.getElementById('tickets-live');
-    if (!live) return;
-    var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
-    if (!depth || depth < 1) depth = 1;
-    live.setAttribute('data-loaded-pages', String(depth + 1));
-    document.body.classList.remove('pause-polling');
+    // Check if this was a load-more request by checking the URL
+    var pathInfo = evt.detail.pathInfo;
+    if (!pathInfo || !pathInfo.requestPath) return;
+    
+    // If this was an append=true request (load-more), update depth and resume polling
+    if (pathInfo.requestPath.indexOf('append=true') !== -1) {
+        var live = document.getElementById('tickets-live');
+        if (!live) return;
+        var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
+        if (!depth || depth < 1) depth = 1;
+        live.setAttribute('data-loaded-pages', String(depth + 1));
+        
+        // Resume polling after successful load-more
+        document.body.classList.remove('pause-polling');
+    }
 });
 
 function ticketsLiveSignature(el) {

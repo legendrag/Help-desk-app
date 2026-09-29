@@ -1308,8 +1308,18 @@ class TicketListPerformanceTests(TestCase):
         self.assertTrue(is_append)
         self.assertFalse(is_live_poll, "append request should NOT be a live poll")
     
-    def test_etag_reuses_queryset(self):
-        """Task 2: ETag calculation should reuse the same queryset for rendering."""
+    def test_etag_lightweight_calculation(self):
+        """
+        Fix 1: ETag uses lightweight aggregates (COUNT + MAX) on 304 path.
+        
+        This avoids loading all rows when returning 304. The ETag is based on:
+        - Count of tickets
+        - Max updated_at timestamp
+        - Filter parameters
+        
+        Any data change (new ticket, update, delete) changes count or timestamp,
+        busting the ETag correctly.
+        """
         self.client.force_login(self.support_user)
         
         # First request calculates ETag
@@ -1325,7 +1335,7 @@ class TicketListPerformanceTests(TestCase):
         )
         self.assertEqual(response.status_code, 304)
         
-        # Modify a ticket to bust the ETag
+        # Modify a ticket to bust the ETag (changes updated_at)
         ticket = Ticket.objects.first()
         ticket.title = "Modified title"
         ticket.save()
@@ -1339,9 +1349,27 @@ class TicketListPerformanceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         etag2 = response['ETag']
         self.assertNotEqual(etag1, etag2)
+        
+        # Create a new ticket to bust ETag (changes count)
+        Ticket.objects.create(
+            ticket_number="TK-9999",
+            title="New ticket",
+            description="Test",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.branch_user,
+            client_name="Test",
+            client_phone="123"
+        )
+        
+        # ETag should change due to count change
+        response = self.client.get('/tickets/')
+        etag3 = response['ETag']
+        self.assertNotEqual(etag2, etag3)
     
     def test_etag_not_calculated_for_append(self):
-        """Task 2: ETag should not be calculated for append requests."""
+        """Fix 1: ETag should not be calculated for append requests."""
         self.client.force_login(self.support_user)
         
         # First page has tickets, load second page
@@ -1364,6 +1392,22 @@ class TicketListPerformanceTests(TestCase):
         # The key condition: if request.GET.get("append") == "true", skip ETag
         should_skip_etag = request.GET.get("append") == "true"
         self.assertTrue(should_skip_etag, "append requests should skip ETag calculation")
+    
+    def test_etag_busts_on_filter_change(self):
+        """Fix 1: ETag includes filter params, so filter change busts ETag."""
+        self.client.force_login(self.support_user)
+        
+        # Get ETag with no filters
+        response = self.client.get('/tickets/')
+        etag_all = response['ETag']
+        
+        # Get ETag with status filter
+        response = self.client.get('/tickets/?status=open')
+        etag_filtered = response['ETag']
+        
+        # ETags should differ because filter signature changed
+        self.assertNotEqual(etag_all, etag_filtered,
+                          "ETag should change when filters change")
     
     def test_poll_depth_reset_on_loaded_pages_param(self):
         """Task 3: Server should handle depth=1 when loaded_pages param is omitted."""
