@@ -737,17 +737,16 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
     var etag = live.getAttribute('data-etag');
     if (etag) evt.detail.headers['If-None-Match'] = etag;
     
-    // On live poll (every 20s), always reset to page 1 depth
-    // to avoid re-fetching hundreds of rows after load-more.
-    // Load-more rows stay in DOM until full page reload.
-    // Omitting loaded_pages param means depth=1 on the server.
-    // Only pass loaded_pages when triggered by filter change (not timer).
-    var trigger = evt.detail.triggerSpec;
-    var isTimerPoll = trigger && trigger.trigger === 'every';
-    if (!isTimerPoll) {
-        var depth = live.getAttribute('data-loaded-pages') || '1';
-        if (depth !== '1') evt.detail.parameters.loaded_pages = depth;
-    }
+    // Rule A: Requests from #tickets-live always omit loaded_pages.
+    // When elt.id === 'tickets-live', the request is either:
+    // - Timer poll (every 20s) → should fetch page 1 only (bounded depth)
+    // - refreshTickets event (manual dispatch) → should reset to page 1
+    //
+    // By omitting loaded_pages, server defaults to depth=1, avoiding re-fetch of
+    // hundreds of rows after load-more. Load-more rows stay in DOM until full reload.
+    //
+    // Filter form (.tickets-filters) is a different element, handled earlier in this
+    // handler. It also omits loaded_pages, resetting to page 1 on filter change.
 });
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {

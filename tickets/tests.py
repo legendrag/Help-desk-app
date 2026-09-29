@@ -1410,14 +1410,29 @@ class TicketListPerformanceTests(TestCase):
                           "ETag should change when filters change")
     
     def test_poll_depth_reset_on_loaded_pages_param(self):
-        """Task 3: Server should handle depth=1 when loaded_pages param is omitted."""
+        """
+        Rule A: Timer polls omit loaded_pages param (bounded depth).
+        
+        JavaScript handler ensures requests from #tickets-live (timer polls and
+        refreshTickets events) never include loaded_pages parameter.
+        
+        Server defaults to depth=1 when param is omitted, fetching only first page
+        even after load-more. This avoids re-fetching hundreds of rows on every poll.
+        """
         self.client.force_login(self.support_user)
         
         # Request without loaded_pages should default to depth 1
         response = self.client.get('/tickets/')
         self.assertEqual(response.context['loaded_pages'], 1)
         
-        # Request with loaded_pages=3 should use that depth
+        # Simulate poll after load-more: no loaded_pages param
+        # (JS ensures this by never adding it for #tickets-live requests)
+        response = self.client.get('/tickets/', HTTP_HX_REQUEST='true')
+        self.assertEqual(response.context['loaded_pages'], 1,
+                        "Timer poll should always use depth=1 (Rule A)")
+        
+        # Server still SUPPORTS loaded_pages if explicitly provided
+        # (e.g., for testing or manual URLs), but JS never sends it for polls
         response = self.client.get('/tickets/?loaded_pages=3')
         self.assertEqual(response.context['loaded_pages'], 3)
         
