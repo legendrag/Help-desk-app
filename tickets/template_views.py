@@ -818,22 +818,90 @@ class TicketListView(LoginRequiredMixin, ListView):
             return self.paginate_by
         return self.paginate_by * self._loaded_depth()
 
-    def _list_etag(self):
-        queryset = self.get_queryset()
-        size = self.get_paginate_by(queryset)
-        rows = list(queryset.values_list("pk", "updated_at")[:size])
-        parts = [str(size), str(len(rows))]
-        for pk, updated in rows:
-            stamp = updated.isoformat() if updated else ""
-            parts.append(f"{pk}:{stamp}")
+    def _list_etag_lightweight(self, base_queryset):
+        """
+        Calculate ETag using lightweight aggregates (count + max timestamp).
+        
+        This avoids loading rows on the 304 path. We use:
+        - Paginate size (from URL params)
+        - Count of tickets in filtered set
+        - Max updated_at timestamp
+        - Filter parameters (to bust on filter change)
+        
+        Correctness: Any data change (new ticket, update, delete) changes
+        count or max timestamp, busting the ETag.
+        """
+        size = self.get_paginate_by(base_queryset)
+        from django.db.models import Count, Max
+        
+        stats = base_queryset.aggregate(
+            count=Count("id"),
+            max_updated=Max("updated_at")
+        )
+        
+        count = stats["count"] or 0
+        max_updated = stats["max_updated"]
+        max_stamp = max_updated.isoformat() if max_updated else ""
+        
+        # Include filter params to bust ETag on filter change
+        filter_sig = "|".join([
+            self.request.GET.get("q", ""),
+            self.request.GET.get("branch", ""),
+            self.request.GET.get("status", ""),
+            self.request.GET.get("assignment", ""),
+        ])
+        
+        parts = [str(size), str(count), max_stamp, filter_sig]
         digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
         return f'"{digest}"'
 
     def get(self, request, *args, **kwargs):
         etag = None
-        if request.GET.get("append") != "true":
-            etag = self._list_etag()
+        is_append = request.GET.get("append") == "true"
+        
+        if not is_append:
+            # For 304 optimization, check ETag before expensive get_queryset()
+            # Build base queryset (filters only, no row loading)
+            user = request.user
+            queryset = Ticket.objects.select_related(
+                "branch", "department", "category", "created_by", "assigned_to"
+            ).all()
+
+            if user.is_superuser:
+                base_queryset = queryset
+            elif user.user_type == "branch":
+                base_queryset = queryset.filter(branch_id=user.branch_id)
+            elif user.user_type == "support":
+                base_queryset = queryset.filter(department_id=user.department_id)
+            else:
+                base_queryset = queryset.none()
+
+            # Apply filters (but don't load rows yet)
+            branch_filter = request.GET.get("branch")
+            if branch_filter and branch_filter != "all":
+                base_queryset = base_queryset.filter(branch_id=branch_filter)
+
+            status_filter = request.GET.get("status")
+            if status_filter and status_filter != "all":
+                base_queryset = base_queryset.filter(status=status_filter)
+
+            assignment_filter = request.GET.get("assignment")
+            if assignment_filter and assignment_filter != "all":
+                if assignment_filter == "unassigned":
+                    base_queryset = base_queryset.filter(assigned_to__isnull=True)
+                else:
+                    base_queryset = base_queryset.filter(assigned_to_id=assignment_filter)
+
+            search_query = request.GET.get("q", "").strip()
+            if search_query:
+                from .search import apply_ticket_search
+                base_queryset = apply_ticket_search(base_queryset, search_query)
+            
+            # Calculate lightweight ETag (just COUNT + MAX, no row loading)
+            etag = self._list_etag_lightweight(base_queryset)
             self._list_etag_value = etag
+            
+            # Check ETag match and return 304 early if possible
             if (
                 request.headers.get("HX-Request")
                 and request.headers.get("If-None-Match") == etag
@@ -842,19 +910,16 @@ class TicketListView(LoginRequiredMixin, ListView):
                 response["ETag"] = etag
                 response["Cache-Control"] = "private, no-cache"
                 return response
+            
+            # ETag miss: rows will be loaded by super().get() via get_queryset()
+            # No need to cache queryset since we'll rebuild it anyway
+        
         response = super().get(request, *args, **kwargs)
         if etag:
             response["ETag"] = etag
             response["Cache-Control"] = "private, no-cache"
         return response
-
-    def get_template_names(self):
-        if self.request.headers.get('HX-Request'):
-            if self.request.GET.get('append') == 'true':
-                return ["tickets/list_append.html"]
-            return ["tickets/list_live_partial.html"]
-        return [self.template_name]
-
+    
     def get_queryset(self):
         user = self.request.user
         queryset = Ticket.objects.select_related(
@@ -891,10 +956,21 @@ class TicketListView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get("q", "").strip()
         return apply_ticket_search(base_queryset, search_query)
 
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request'):
+            if self.request.GET.get('append') == 'true':
+                return ["tickets/list_append.html"]
+            return ["tickets/list_live_partial.html"]
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        context["is_htmx"] = bool(self.request.headers.get("HX-Request"))
+        is_htmx = bool(self.request.headers.get("HX-Request"))
+        is_append = self.request.GET.get("append") == "true"
+        is_live_poll = is_htmx and not is_append
+        
+        context["is_htmx"] = is_htmx
 
         context["filter_values"] = {
             "q": self.request.GET.get("q", ""),
@@ -903,20 +979,24 @@ class TicketListView(LoginRequiredMixin, ListView):
             "assignment": self.request.GET.get("assignment", "all"),
         }
 
-        if user.is_superuser:
-            branches = Branch.objects.all()
-        elif user.user_type == "branch" and user.branch_id:
-            branches = Branch.objects.filter(id=user.branch_id)
-        elif user.user_type == "support" and user.department_id:
-            branches = Branch.objects.filter(tickets__department_id=user.department_id).distinct()
-        else:
-            branches = Branch.objects.none()
+        # Skip expensive context items on HTMX live poll (every 20s refresh)
+        # The live partial doesn't render filters or announcements
+        if not is_live_poll:
+            if user.is_superuser:
+                branches = Branch.objects.all()
+            elif user.user_type == "branch" and user.branch_id:
+                branches = Branch.objects.filter(id=user.branch_id)
+            elif user.user_type == "support" and user.department_id:
+                branches = Branch.objects.filter(tickets__department_id=user.department_id).distinct()
+            else:
+                branches = Branch.objects.none()
 
-        base_queryset = getattr(self, "base_queryset", Ticket.objects.none())
-        assignee_ids = base_queryset.exclude(assigned_to__isnull=True).values_list("assigned_to_id", flat=True).distinct()
+            base_queryset = getattr(self, "base_queryset", Ticket.objects.none())
+            assignee_ids = base_queryset.exclude(assigned_to__isnull=True).values_list("assigned_to_id", flat=True).distinct()
 
-        context["branches"] = branches
-        context["assignees"] = User.objects.filter(id__in=assignee_ids).order_by("username")
+            context["branches"] = branches
+            context["assignees"] = User.objects.filter(id__in=assignee_ids).order_by("username")
+        
         context["status_choices"] = Ticket.Status.choices
 
         params = self.request.GET.copy()
@@ -928,30 +1008,32 @@ class TicketListView(LoginRequiredMixin, ListView):
         context["loaded_pages"] = depth
         context["list_etag"] = getattr(self, "_list_etag_value", "")
         page_obj = context.get("page_obj")
-        if self.request.GET.get("append") == "true" and page_obj is not None and page_obj.has_next:
+        if is_append and page_obj is not None and page_obj.has_next:
             context["append_page"] = page_obj.next_page_number()
         else:
             context["append_page"] = depth + 1
 
-        from news.models import Announcement
-        from django.utils import timezone
-        
-        now = timezone.now()
-        announcements = Announcement.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-        )
-        
-        if not user.is_superuser:
-            if user.user_type == "branch":
-                announcements = announcements.filter(
-                    Q(target_branch__isnull=True) | Q(target_branch=user.branch)
-                )
-            elif user.user_type == "support":
-                announcements = announcements.filter(
-                    target_branch__isnull=True
-                )
-                
-        context["active_announcements"] = announcements.order_by('-created_at')
+        # Skip announcements on HTMX live poll - not rendered in the partial
+        if not is_live_poll:
+            from news.models import Announcement
+            from django.utils import timezone
+            
+            now = timezone.now()
+            announcements = Announcement.objects.filter(is_active=True).filter(
+                Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+            )
+            
+            if not user.is_superuser:
+                if user.user_type == "branch":
+                    announcements = announcements.filter(
+                        Q(target_branch__isnull=True) | Q(target_branch=user.branch)
+                    )
+                elif user.user_type == "support":
+                    announcements = announcements.filter(
+                        target_branch__isnull=True
+                    )
+                    
+            context["active_announcements"] = announcements.order_by('-created_at')
 
         return context
 

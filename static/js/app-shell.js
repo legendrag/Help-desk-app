@@ -736,19 +736,35 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
     if (path.indexOf('append=true') !== -1) return;
     var etag = live.getAttribute('data-etag');
     if (etag) evt.detail.headers['If-None-Match'] = etag;
-    var depth = live.getAttribute('data-loaded-pages') || '1';
-    if (depth !== '1') evt.detail.parameters.loaded_pages = depth;
+    
+    // Rule A: Requests from #tickets-live always omit loaded_pages.
+    // When elt.id === 'tickets-live', the request is either:
+    // - Timer poll (every 20s) → should fetch page 1 only (bounded depth)
+    // - refreshTickets event (manual dispatch) → should reset to page 1
+    //
+    // By omitting loaded_pages, server defaults to depth=1, avoiding re-fetch of
+    // hundreds of rows after load-more. Load-more rows stay in DOM until full reload.
+    //
+    // Filter form (.tickets-filters) is a different element, handled earlier in this
+    // handler. It also omits loaded_pages, resetting to page 1 on filter change.
 });
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {
-    var elt = evt.detail.elt;
-    if (!elt || !elt.classList || !elt.classList.contains('load-more-btn')) return;
-    var live = document.getElementById('tickets-live');
-    if (!live) return;
-    var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
-    if (!depth || depth < 1) depth = 1;
-    live.setAttribute('data-loaded-pages', String(depth + 1));
-    document.body.classList.remove('pause-polling');
+    // Check if this was a load-more request by checking the URL
+    var pathInfo = evt.detail.pathInfo;
+    if (!pathInfo || !pathInfo.requestPath) return;
+    
+    // If this was an append=true request (load-more), update depth and resume polling
+    if (pathInfo.requestPath.indexOf('append=true') !== -1) {
+        var live = document.getElementById('tickets-live');
+        if (!live) return;
+        var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
+        if (!depth || depth < 1) depth = 1;
+        live.setAttribute('data-loaded-pages', String(depth + 1));
+        
+        // Resume polling after successful load-more
+        document.body.classList.remove('pause-polling');
+    }
 });
 
 function ticketsLiveSignature(el) {

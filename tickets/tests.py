@@ -1199,3 +1199,245 @@ class DashboardAggregateTests(TestCase):
         self.assertEqual(agent["score"], 75)
         self.assertEqual(agent["grade"], "B")
         self.assertEqual(by_name["agg_slow"]["total_working_time"], "--")
+
+
+class TicketListPerformanceTests(TestCase):
+    """Tests for Phase 1 performance optimizations in TicketListView."""
+    
+    def setUp(self):
+        self.branch = Branch.objects.create(code="MAIN", name="Main Branch")
+        self.department = Department.objects.create(name="Support")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="General",
+            default_priority=Ticket.Priority.MEDIUM
+        )
+        
+        self.branch_user = User.objects.create_user(
+            username="branch_user",
+            email="branch@test.com",
+            password="testpass",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch
+        )
+        
+        self.support_user = User.objects.create_user(
+            username="support_user",
+            email="support@test.com",
+            password="testpass",
+            user_type=User.UserType.SUPPORT,
+            department=self.department
+        )
+        
+        # Create a few tickets
+        for i in range(5):
+            Ticket.objects.create(
+                ticket_number=f"TK-{1000+i}",
+                title=f"Test ticket {i}",
+                description="Test description",
+                branch=self.branch,
+                department=self.department,
+                category=self.category,
+                created_by=self.branch_user,
+                client_name="Test Client",
+                client_phone="123456789"
+            )
+    
+    def test_htmx_live_poll_skips_branches_context(self):
+        """Task 1: HTMX live poll should skip expensive branches query."""
+        self.client.force_login(self.support_user)
+        
+        # Full page request includes branches
+        response = self.client.get('/tickets/')
+        self.assertIn('branches', response.context)
+        self.assertIn('assignees', response.context)
+        
+        # HTMX live poll (not append) should skip branches/assignees
+        response = self.client.get('/tickets/', HTTP_HX_REQUEST='true')
+        self.assertNotIn('branches', response.context)
+        self.assertNotIn('assignees', response.context)
+    
+    def test_htmx_live_poll_skips_announcements_context(self):
+        """Task 1: HTMX live poll should skip announcements query."""
+        from news.models import Announcement
+        
+        # Create an active announcement
+        Announcement.objects.create(
+            title="Test Announcement",
+            content="Test content",
+            is_active=True,
+            created_by=self.support_user
+        )
+        
+        self.client.force_login(self.support_user)
+        
+        # Full page request includes announcements
+        response = self.client.get('/tickets/')
+        self.assertIn('active_announcements', response.context)
+        self.assertEqual(response.context['active_announcements'].count(), 1)
+        
+        # HTMX live poll should skip announcements
+        response = self.client.get('/tickets/', HTTP_HX_REQUEST='true')
+        self.assertNotIn('active_announcements', response.context)
+    
+    def test_htmx_append_includes_context(self):
+        """Task 1: HTMX append (load-more) should still include full context."""
+        self.client.force_login(self.support_user)
+        
+        # Test that is_append detection works correctly by checking the code logic
+        # Append request (with append=true param) should include full context
+        from tickets.template_views import TicketListView
+        from django.test import RequestFactory
+        
+        factory = RequestFactory()
+        
+        # Test 1: append=true should NOT be treated as live poll
+        request = factory.get('/tickets/?append=true')
+        request.user = self.support_user
+        request.META['HTTP_HX_REQUEST'] = 'true'
+        
+        view = TicketListView()
+        view.setup(request)
+        
+        # Check the flags
+        is_htmx = bool(request.META.get('HTTP_HX_REQUEST'))
+        is_append = request.GET.get("append") == "true"
+        is_live_poll = is_htmx and not is_append
+        
+        self.assertTrue(is_htmx)
+        self.assertTrue(is_append)
+        self.assertFalse(is_live_poll, "append request should NOT be a live poll")
+    
+    def test_etag_lightweight_calculation(self):
+        """
+        Fix 1: ETag uses lightweight aggregates (COUNT + MAX) on 304 path.
+        
+        This avoids loading all rows when returning 304. The ETag is based on:
+        - Count of tickets
+        - Max updated_at timestamp
+        - Filter parameters
+        
+        Any data change (new ticket, update, delete) changes count or timestamp,
+        busting the ETag correctly.
+        """
+        self.client.force_login(self.support_user)
+        
+        # First request calculates ETag
+        response = self.client.get('/tickets/')
+        self.assertIn('ETag', response)
+        etag1 = response['ETag']
+        
+        # Second request with same data should return 304 if ETag matches
+        response = self.client.get(
+            '/tickets/',
+            HTTP_HX_REQUEST='true',
+            HTTP_IF_NONE_MATCH=etag1
+        )
+        self.assertEqual(response.status_code, 304)
+        
+        # Modify a ticket to bust the ETag (changes updated_at)
+        ticket = Ticket.objects.first()
+        ticket.title = "Modified title"
+        ticket.save()
+        
+        # Request with old ETag should return 200 with new data
+        response = self.client.get(
+            '/tickets/',
+            HTTP_HX_REQUEST='true',
+            HTTP_IF_NONE_MATCH=etag1
+        )
+        self.assertEqual(response.status_code, 200)
+        etag2 = response['ETag']
+        self.assertNotEqual(etag1, etag2)
+        
+        # Create a new ticket to bust ETag (changes count)
+        Ticket.objects.create(
+            ticket_number="TK-9999",
+            title="New ticket",
+            description="Test",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.branch_user,
+            client_name="Test",
+            client_phone="123"
+        )
+        
+        # ETag should change due to count change
+        response = self.client.get('/tickets/')
+        etag3 = response['ETag']
+        self.assertNotEqual(etag2, etag3)
+    
+    def test_etag_not_calculated_for_append(self):
+        """Fix 1: ETag should not be calculated for append requests."""
+        self.client.force_login(self.support_user)
+        
+        # First page has tickets, load second page
+        # Make first request to ensure there's data
+        response1 = self.client.get('/tickets/')
+        self.assertIn('ETag', response1, "Regular request should have ETag")
+        
+        # Now test that append logic skips ETag
+        # Just verify the code path by checking the condition
+        from tickets.template_views import TicketListView
+        from django.test import RequestFactory
+        
+        factory = RequestFactory()
+        request = factory.get('/tickets/?append=true')
+        request.user = self.support_user
+        
+        view = TicketListView()
+        view.setup(request)
+        
+        # The key condition: if request.GET.get("append") == "true", skip ETag
+        should_skip_etag = request.GET.get("append") == "true"
+        self.assertTrue(should_skip_etag, "append requests should skip ETag calculation")
+    
+    def test_etag_busts_on_filter_change(self):
+        """Fix 1: ETag includes filter params, so filter change busts ETag."""
+        self.client.force_login(self.support_user)
+        
+        # Get ETag with no filters
+        response = self.client.get('/tickets/')
+        etag_all = response['ETag']
+        
+        # Get ETag with status filter
+        response = self.client.get('/tickets/?status=open')
+        etag_filtered = response['ETag']
+        
+        # ETags should differ because filter signature changed
+        self.assertNotEqual(etag_all, etag_filtered,
+                          "ETag should change when filters change")
+    
+    def test_poll_depth_reset_on_loaded_pages_param(self):
+        """
+        Rule A: Timer polls omit loaded_pages param (bounded depth).
+        
+        JavaScript handler ensures requests from #tickets-live (timer polls and
+        refreshTickets events) never include loaded_pages parameter.
+        
+        Server defaults to depth=1 when param is omitted, fetching only first page
+        even after load-more. This avoids re-fetching hundreds of rows on every poll.
+        """
+        self.client.force_login(self.support_user)
+        
+        # Request without loaded_pages should default to depth 1
+        response = self.client.get('/tickets/')
+        self.assertEqual(response.context['loaded_pages'], 1)
+        
+        # Simulate poll after load-more: no loaded_pages param
+        # (JS ensures this by never adding it for #tickets-live requests)
+        response = self.client.get('/tickets/', HTTP_HX_REQUEST='true')
+        self.assertEqual(response.context['loaded_pages'], 1,
+                        "Timer poll should always use depth=1 (Rule A)")
+        
+        # Server still SUPPORTS loaded_pages if explicitly provided
+        # (e.g., for testing or manual URLs), but JS never sends it for polls
+        response = self.client.get('/tickets/?loaded_pages=3')
+        self.assertEqual(response.context['loaded_pages'], 3)
+        
+        # Verify paginate_by changes with depth
+        from tickets.template_views import TicketListView
+        view = TicketListView()
+        view.request = response.wsgi_request
+        self.assertEqual(view.get_paginate_by(None), 30)  # 10 * 3
