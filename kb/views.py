@@ -3,6 +3,7 @@ from django.db.models import Q, Count, Case, When, Value, IntegerField
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
+from django.utils.cache import patch_vary_headers
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from core.management_views import BaseManagementView, BaseDeleteView
@@ -66,12 +67,23 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     paginate_by = 8
 
     def get_template_names(self):
+        # Load-more appends rows. Shell navigation and back/forward need the
+        # whole knowledge-base pane, not that fragment.
         if (
             self.request.headers.get("HX-Request")
             and self.request.GET.get("append") == "true"
+            and not self.request.headers.get("HX-History-Restore-Request")
         ):
             return ["kb/partials/results_append.html"]
+        if self.request.headers.get("HX-Request"):
+            return ["kb/list_shell_partial.html"]
         return [self.template_name]
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        if self.request.headers.get("HX-Request"):
+            patch_vary_headers(response, ["HX-Request"])
+        return response
 
     def get_queryset(self):
         status_filter = self.request.GET.get("status", "published")

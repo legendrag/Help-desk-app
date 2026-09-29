@@ -3,8 +3,12 @@
 {% load ticket_extras %}
 {% get_current_language as LANGUAGE_CODE %}
 <script>
+document.body.classList.remove("kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page");
 document.body.classList.add("ticket-detail-page");
 document.documentElement.classList.add("ticket-detail-html");
+if (window.unmountTicketListWS) window.unmountTicketListWS();
+if (window.unmountKbSearch) window.unmountKbSearch();
+if (window.updateActiveNav) window.updateActiveNav();
 </script>
 <div id="ticket-shell-pane" data-ticket-id="{{ ticket.id }}">
 <div class="kb-back-navigation" style="margin-bottom: 1.25rem;">

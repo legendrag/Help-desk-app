@@ -672,18 +672,55 @@
                 {% endif %}
             </div>
             <nav class="sidebar-nav">
-                <a href="{% url 'tickets_list' %}">{% trans "Tickets" %}</a>
+                <a href="{% url 'tickets_list' %}"
+                   data-nav-key="tickets"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'tickets_list' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if request.resolver_match.url_name == 'tickets_list' or request.resolver_match.url_name == 'ticket_detail' %}class="active" aria-current="page"{% endif %}>{% trans "Tickets" %}</a>
                 {% if user.is_superuser or user.role.can_manage_news %}
-                <a href="{% url 'news_list' %}">{% trans "News" %}</a>
+                <a href="{% url 'news_list' %}"
+                   data-nav-key="news"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'news_list' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if request.resolver_match.url_name == 'news_list' %}class="active" aria-current="page"{% endif %}>{% trans "News" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_kb %}
-                <a href="{% url 'kb_list' %}">{% trans "Knowledge Base" %}</a>
+                <a href="{% url 'kb_list' %}"
+                   data-nav-key="kb"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'kb_list' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if '/kb/' in request.path %}class="active" aria-current="page"{% endif %}>{% trans "Knowledge Base" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_dashboard %}
-                <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
+                <a href="{% url 'dashboard' %}" data-nav-key="dashboard"
+                   {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}>{% trans "Dashboard" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_settings %}
-                <a href="{% url 'settings' %}">{% trans "Settings Hub" %}</a>
+                <a href="{% url 'settings' %}"
+                   data-nav-key="settings"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'settings' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if request.resolver_match.url_name == 'settings' %}class="active" aria-current="page"{% endif %}>{% trans "Settings Hub" %}</a>
                 {% endif %}
                 <hr>
                 <a href="#" hx-get="{% url 'password_change' %}" hx-target="#modal-content" hx-trigger="click"
@@ -770,8 +807,13 @@
         </aside>
     </div>
 
+    {% if user.is_authenticated %}
+    <script src="{% static 'js/chat.js' %}?v=15" defer></script>
+    <script src="{% static 'js/kb-search.js' %}?v=1.1" defer></script>
+    <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
+    {% endif %}
     {% block extra_js %}{% endblock extra_js %}
-    <script src="{% static 'js/app-shell.js' %}?v=5" defer></script>
+    <script src="{% static 'js/app-shell.js' %}?v=6" defer></script>
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>

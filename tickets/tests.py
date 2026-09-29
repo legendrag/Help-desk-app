@@ -1763,6 +1763,7 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "toggleTicketDetails")
         self.assertContains(response, "js/chat.js?v=15")
+        self.assertEqual(response.content.decode().count("js/chat.js?v=15"), 1)
         cache_control = response["Cache-Control"]
         self.assertIn("no-store", cache_control)
         self.assertIn("private", cache_control)
@@ -1794,3 +1795,106 @@ class TicketShellNavigationTests(TestCase):
         self.assertIn("no-store", cache_control)
         self.assertIn("private", cache_control)
         self.assertIn("HX-Request", response.get("Vary", ""))
+
+    def test_sidebar_tickets_link_swaps_the_shell_on_plain_clicks(self):
+        response = self.client.get(reverse("tickets_list"))
+        html = response.content.decode()
+        tag = _opening_tag(html, reverse("tickets_list"))
+        self.assertIn('data-shell-nav="1"', tag)
+        self.assertIn('hx-target="#shell-content"', tag)
+        self.assertIn('hx-push-url="true"', tag)
+        self.assertIn('hx-trigger="shell-nav"', tag)
+        shell_js = (
+            Path(settings.BASE_DIR) / "static" / "js" / "app-shell.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("event.metaKey || event.ctrlKey || event.shiftKey || event.altKey", shell_js)
+        self.assertIn('document.body.classList.contains("dashboard-page")', shell_js)
+
+    def test_shell_nav_returns_list_pane_not_poll_fragment(self):
+        full = self.client.get(reverse("tickets_list"))
+        response = self.client.get(
+            reverse("tickets_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="shell-content",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/list_shell_partial.html")
+        self.assertTemplateUsed(response, "tickets/list_content.html")
+        self.assertContains(response, 'class="tickets-filters"')
+        self.assertContains(response, 'id="tickets-live"')
+        self.assertContains(response, "unmountTicketChat")
+        self.assertNotContains(response, "<html")
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertEqual(response["Cache-Control"], full["Cache-Control"])
+        self.assertIn("HX-Request", response.get("Vary", ""))
+
+
+class SidebarMenuShellTests(TestCase):
+    """Menu destinations swap the shell. Dashboard stays a full document."""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser(
+            username="menu_shell",
+            email="menu_shell@test.com",
+            password="password123",
+        )
+        self.client.login(username="menu_shell", password="password123")
+
+    def _tag(self, html, href):
+        return _opening_tag(html, href)
+
+    def test_menu_routes_split_shell_and_full_document(self):
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        for name in ("news_list", "kb_list", "settings"):
+            tag = self._tag(html, reverse(name))
+            self.assertIn('data-shell-nav="1"', tag, name)
+            self.assertIn('hx-target="#shell-content"', tag, name)
+            self.assertIn('hx-push-url="true"', tag, name)
+            self.assertIn('hx-trigger="shell-nav"', tag, name)
+        dashboard = self._tag(html, reverse("dashboard"))
+        self.assertNotIn("hx-get", dashboard)
+        self.assertNotIn("data-shell-nav", dashboard)
+        self.assertIn('data-nav-key="dashboard"', dashboard)
+        self.assertEqual(html.count("js/chat.js?v=15"), 1)
+
+    def test_settings_htmx_is_pane_only_and_still_private(self):
+        full = self.client.get(reverse("settings"))
+        response = self.client.get(reverse("settings"), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(full, "<html")
+        self.assertContains(full, "settings-page")
+        self.assertContains(full, "js/email_templates.js?v=12")
+        self.assertTemplateUsed(response, "core/settings_shell_partial.html")
+        self.assertContains(response, 'id="settings-shell-pane"')
+        self.assertContains(response, 'id="settings-content"')
+        self.assertContains(response, "unmountTicketListWS")
+        self.assertNotContains(response, "<html")
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertEqual(response["Cache-Control"], full["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertIn("private", response["Cache-Control"])
+        self.assertIn("HX-Request", response.get("Vary", ""))
+
+    def test_settings_history_restore_returns_pane(self):
+        response = self.client.get(
+            reverse("settings"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+        )
+        self.assertTemplateUsed(response, "core/settings_shell_partial.html")
+        self.assertContains(response, 'id="settings-shell-pane"')
+        self.assertNotContains(response, "<html")
+
+
+def _opening_tag(html, href):
+    nav_at = html.find('class="sidebar-nav"')
+    nav = html[nav_at:] if nav_at >= 0 else html
+    marker = 'href="%s"' % href
+    start = nav.find(marker)
+    if start < 0:
+        return ""
+    open_at = nav.rfind("<a", 0, start)
+    close_at = nav.find(">", start)
+    return nav[open_at:close_at + 1]
