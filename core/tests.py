@@ -86,7 +86,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=3", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=4", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=20", self.base_html)
@@ -113,6 +113,19 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
         self.assertIn("target.id !== 'tickets-live'", self.app_shell)
         self.assertIn("evt.detail.shouldSwap = false", self.app_shell)
 
+    def test_nav_prefetch_lists_every_target_in_one_immediate_rule(self):
+        # Authenticated HTML is Cache-Control: no-store. Chrome can still
+        # serve a speculation-rules prefetch from its in-memory prefetch
+        # cache, but only if that prefetch finished before the click.
+        # A per-URL 400ms gap never observes those prefetches, so only the
+        # first menu target starts in time and the rest are wasted work.
+        self.assertIn("js/app-shell.js' %}?v=4", self.base_html)
+        self.assertIn('eagerness: "immediate"', self.app_shell)
+        self.assertIn("urls: urls", self.app_shell)
+        self.assertNotIn("setTimeout(finish, 400)", self.app_shell)
+        self.assertNotIn("prefetchUrl(next, prefetchNext)", self.app_shell)
+        self.assertNotIn("new PerformanceObserver", self.app_shell)
+
     def test_sidebar_prefs_css_is_not_arabic_only(self):
         base = Path(settings.BASE_DIR)
         style = (base / "static" / "css" / "style.css").read_text(encoding="utf-8")
@@ -135,7 +148,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=3", html)
+        self.assertIn("js/app-shell.js?v=4", html)
         self.assertIn("js/loading.js?v=20", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)

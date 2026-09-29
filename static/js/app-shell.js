@@ -69,44 +69,6 @@ function navPrefetchKey(pathname) {
     return null;
 }
 
-function prefetchUrl(url, done) {
-    const script = document.createElement("script");
-    script.type = "speculationrules";
-    script.textContent = JSON.stringify({
-        prefetch: [{ urls: [url], eagerness: "immediate" }]
-    });
-    let finished = false;
-    let timer = null;
-    let observer = null;
-    const finish = () => {
-        if (finished) return;
-        finished = true;
-        if (observer) observer.disconnect();
-        clearTimeout(timer);
-        done();
-    };
-    observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-            let entryPath = "";
-            try {
-                entryPath = new URL(entry.name).pathname;
-            } catch (e) {
-                continue;
-            }
-            if (entryPath === url || entryPath + "/" === url || entryPath === url + "/") {
-                finish();
-                return;
-            }
-        }
-    });
-    // Speculation prefetches do not show up in resource timing, so this gap
-    // is what actually starts the next page. Keep it short enough that the
-    // rest of the menu is requested before a normal click.
-    timer = setTimeout(finish, 400);
-    observer.observe({ type: "resource", buffered: true });
-    document.head.appendChild(script);
-}
-
 function startNavPrefetch() {
     if (navPrefetchStarted) return;
     if (!window.HTMLScriptElement || !HTMLScriptElement.supports || !HTMLScriptElement.supports("speculationrules")) {
@@ -134,17 +96,23 @@ function startNavPrefetch() {
         byKey[key] = url.pathname + url.search;
     });
 
-    const queue = [];
+    const urls = [];
     NAV_PREFETCH_ORDER.forEach((key) => {
-        if (byKey[key]) queue.push(byKey[key]);
+        if (byKey[key]) urls.push(byKey[key]);
     });
+    if (!urls.length) return;
 
-    const prefetchNext = () => {
-        const next = queue.shift();
-        if (!next) return;
-        prefetchUrl(next, prefetchNext);
-    };
-    prefetchNext();
+    // no-store HTML is not stored in the HTTP cache, but Chrome still keeps a
+    // speculation-rules prefetch in a short-lived in-memory cache and will use
+    // it for the next navigation. One immediate list starts every menu target
+    // together. A per-URL delay only prefetched the first link before a click,
+    // so the page the user opened was usually fetched again anyway.
+    const script = document.createElement("script");
+    script.type = "speculationrules";
+    script.textContent = JSON.stringify({
+        prefetch: [{ urls: urls, eagerness: "immediate" }]
+    });
+    document.head.appendChild(script);
 }
 
 function openSidebar() {
