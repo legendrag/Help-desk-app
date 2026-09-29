@@ -121,7 +121,7 @@ Do not assume horizontal scaling “just works” with the default channel layer
 SESSION_COOKIE_AGE=259200
 ```
 
-Default **259200 seconds (3 days)**. Sessions are saved on every request (`SESSION_SAVE_EVERY_REQUEST`), so active users keep sliding renewal. They do not expire solely because the browser closed.
+Default **259200 seconds (3 days)**. Sessions are saved on every request (`SESSION_SAVE_EVERY_REQUEST`), so active users keep sliding renewal. An unmodified ticket-list live poll that returns 304 renews that same expiry at most once a minute instead of on every poll. Sessions do not expire solely because the browser closed.
 
 Shorten this value for higher-security environments; balance against help-desk usability (agents stay logged in across shifts).
 

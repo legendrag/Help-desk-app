@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
-from django.db.models import Count, Q, F, ExpressionWrapper, fields, Avg, Sum, Value
+from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
@@ -832,8 +832,6 @@ class TicketListView(LoginRequiredMixin, ListView):
         count or max timestamp, busting the ETag.
         """
         size = self.get_paginate_by(base_queryset)
-        from django.db.models import Count, Max
-        
         stats = base_queryset.aggregate(
             count=Count("id"),
             max_updated=Max("updated_at")
@@ -860,59 +858,22 @@ class TicketListView(LoginRequiredMixin, ListView):
         is_append = request.GET.get("append") == "true"
         
         if not is_append:
-            # For 304 optimization, check ETag before expensive get_queryset()
-            # Build base queryset (filters only, no row loading)
-            user = request.user
-            queryset = Ticket.objects.select_related(
-                "branch", "department", "category", "created_by", "assigned_to"
-            ).all()
-
-            if user.is_superuser:
-                base_queryset = queryset
-            elif user.user_type == "branch":
-                base_queryset = queryset.filter(branch_id=user.branch_id)
-            elif user.user_type == "support":
-                base_queryset = queryset.filter(department_id=user.department_id)
-            else:
-                base_queryset = queryset.none()
-
-            # Apply filters (but don't load rows yet)
-            branch_filter = request.GET.get("branch")
-            if branch_filter and branch_filter != "all":
-                base_queryset = base_queryset.filter(branch_id=branch_filter)
-
-            status_filter = request.GET.get("status")
-            if status_filter and status_filter != "all":
-                base_queryset = base_queryset.filter(status=status_filter)
-
-            assignment_filter = request.GET.get("assignment")
-            if assignment_filter and assignment_filter != "all":
-                if assignment_filter == "unassigned":
-                    base_queryset = base_queryset.filter(assigned_to__isnull=True)
-                else:
-                    base_queryset = base_queryset.filter(assigned_to_id=assignment_filter)
-
-            search_query = request.GET.get("q", "").strip()
-            if search_query:
-                from .search import apply_ticket_search
-                base_queryset = apply_ticket_search(base_queryset, search_query)
-            
-            # Calculate lightweight ETag (just COUNT + MAX, no row loading)
-            etag = self._list_etag_lightweight(base_queryset)
+            # COUNT + MAX only. Row joins belong on get_queryset(), not here.
+            filtered = self._apply_list_filters(self._scoped_list_queryset(for_rows=False))
+            etag = self._list_etag_lightweight(filtered)
             self._list_etag_value = etag
-            
-            # Check ETag match and return 304 early if possible
+
             if (
                 request.headers.get("HX-Request")
                 and request.headers.get("If-None-Match") == etag
             ):
+                # Opt in to skipping an unmodified session rewrite. The
+                # middleware still saves when the sliding expiry is due.
+                request.ticket_list_304_defer_session_save = True
                 response = HttpResponseNotModified()
                 response["ETag"] = etag
                 response["Cache-Control"] = "private, no-cache"
                 return response
-            
-            # ETag miss: rows will be loaded by super().get() via get_queryset()
-            # No need to cache queryset since we'll rebuild it anyway
         
         response = super().get(request, *args, **kwargs)
         if etag:
@@ -920,41 +881,52 @@ class TicketListView(LoginRequiredMixin, ListView):
             response["Cache-Control"] = "private, no-cache"
         return response
     
-    def get_queryset(self):
+    def _scoped_list_queryset(self, *, for_rows):
+        """Permission-scoped tickets. Row fetches join the columns the list renders."""
         user = self.request.user
-        queryset = Ticket.objects.select_related(
-            "branch", "department", "category", "created_by", "assigned_to"
-        ).all()
+        queryset = Ticket.objects.all()
+        if for_rows:
+            queryset = queryset.select_related(
+                "branch",
+                "department",
+                "category",
+                "created_by",
+                "assigned_to",
+            )
 
         if user.is_superuser:
-            base_queryset = queryset
-        elif user.user_type == "branch":
-            base_queryset = queryset.filter(branch_id=user.branch_id)
-        elif user.user_type == "support":
-            base_queryset = queryset.filter(department_id=user.department_id)
-        else:
-            base_queryset = queryset.none()
+            return queryset
+        if user.user_type == "branch":
+            return queryset.filter(branch_id=user.branch_id)
+        if user.user_type == "support":
+            return queryset.filter(department_id=user.department_id)
+        return queryset.none()
 
-        self.base_queryset = base_queryset
-
+    def _apply_list_filters(self, queryset):
         branch_filter = self.request.GET.get("branch")
         if branch_filter and branch_filter != "all":
-            base_queryset = base_queryset.filter(branch_id=branch_filter)
+            queryset = queryset.filter(branch_id=branch_filter)
 
         status_filter = self.request.GET.get("status")
         if status_filter and status_filter != "all":
-            base_queryset = base_queryset.filter(status=status_filter)
+            queryset = queryset.filter(status=status_filter)
 
         assignment_filter = self.request.GET.get("assignment")
         if assignment_filter and assignment_filter != "all":
             if assignment_filter == "unassigned":
-                base_queryset = base_queryset.filter(assigned_to__isnull=True)
+                queryset = queryset.filter(assigned_to__isnull=True)
             else:
-                base_queryset = base_queryset.filter(assigned_to_id=assignment_filter)
+                queryset = queryset.filter(assigned_to_id=assignment_filter)
 
         # Apply search last so relevance ordering wins over default created_at order.
         search_query = self.request.GET.get("q", "").strip()
-        return apply_ticket_search(base_queryset, search_query)
+        return apply_ticket_search(queryset, search_query)
+
+    def get_queryset(self):
+        scoped = self._scoped_list_queryset(for_rows=True)
+        # Assignees are drawn from the permission scope, before list filters.
+        self.base_queryset = scoped
+        return self._apply_list_filters(scoped)
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
@@ -1033,7 +1005,9 @@ class TicketListView(LoginRequiredMixin, ListView):
                         target_branch__isnull=True
                     )
                     
-            context["active_announcements"] = announcements.order_by('-created_at')
+            context["active_announcements"] = announcements.select_related(
+                "created_by"
+            ).order_by("-created_at")
 
         return context
 

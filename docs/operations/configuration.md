@@ -144,7 +144,7 @@ If `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` are blank, the app can generate and 
 SESSION_COOKIE_AGE=259200
 ```
 
-Default is **3 days**. Sessions are refreshed on each request (`SESSION_SAVE_EVERY_REQUEST = True`) and do not expire solely because the browser closed (`SESSION_EXPIRE_AT_BROWSER_CLOSE = False`).
+Default is **3 days**. Sessions are refreshed on each request (`SESSION_SAVE_EVERY_REQUEST = True`), except an unmodified ticket-list live poll that returns 304: that poll renews the same sliding expiry at most once a minute, so an open ticket list does not rewrite the session every 20 seconds. Sessions do not expire solely because the browser closed (`SESSION_EXPIRE_AT_BROWSER_CLOSE = False`).
 
 ---
 
