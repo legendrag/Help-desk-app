@@ -1111,6 +1111,20 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
     context_object_name = "ticket"
     pk_url_kwarg = "ticket_id"
 
+    def get(self, request, *args, **kwargs):
+        # The list Details button fetches this into #drawer-container.
+        # A refresh, shared link, cold load, or history restore must not
+        # become the document: this template has no shell and no CSS.
+        if request.headers.get("HX-Request") and not request.headers.get("HX-History-Restore-Request"):
+            return super().get(request, *args, **kwargs)
+        url = reverse("ticket_detail", kwargs={"ticket_id": self.kwargs["ticket_id"]})
+        url = f"{url}?show_details=true"
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=204)
+            response["HX-Redirect"] = url
+            return response
+        return redirect(url)
+
     def get_queryset(self):
         return Ticket.objects.select_related(
             "branch", "department", "category", "assigned_to"
@@ -1143,6 +1157,15 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
         context['auto_open'] = True
 
         return context
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        # The list row sets hx-push-url, and htmx inherits that onto this
+        # button. Pushing /drawer/ makes a hard refresh load this partial
+        # as the document. Never publish that URL.
+        response["HX-Push-Url"] = "false"
+        patch_vary_headers(response, ["HX-Request"])
+        return response
 
 # PermissionDenied imported at the top
 
