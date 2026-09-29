@@ -1,12 +1,7 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% load static %}
 
 {% block title %}{% trans "Tickets" %} - MlamehTicket{% endblock title %}
-
-{% block extra_js %}
-<script src="{% static 'js/chat.js' %}?v=15" defer></script>
-{% endblock extra_js %}
 
 {% block content %}
 {% include "tickets/list_content.html" %}

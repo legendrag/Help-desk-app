@@ -124,6 +124,36 @@ class KnowledgeBasePolishTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "kb/partials/results_append.html")
+        self.assertNotContains(response, 'id="kb-shell-pane"')
+        self.assertNotContains(response, "<html")
+
+    def test_htmx_kb_list_is_pane_only_and_still_private(self):
+        full = self.client.get(reverse("kb_list"))
+        response = self.client.get(reverse("kb_list"), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "kb/list_shell_partial.html")
+        self.assertContains(response, 'id="kb-shell-pane"')
+        self.assertContains(response, "mountKbSearch")
+        self.assertContains(response, "unmountTicketListWS")
+        self.assertContains(full, "js/kb-search.js?v=1.1")
+        self.assertContains(full, "<html")
+        self.assertContains(full, "kb-search-page")
+        self.assertNotContains(response, "<html")
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertEqual(response["Cache-Control"], full["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertIn("private", response["Cache-Control"])
+        self.assertIn("HX-Request", response.get("Vary", ""))
+
+    def test_history_restore_returns_kb_pane(self):
+        response = self.client.get(
+            reverse("kb_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+        )
+        self.assertTemplateUsed(response, "kb/list_shell_partial.html")
+        self.assertContains(response, 'id="kb-shell-pane"')
+        self.assertNotContains(response, "<html")
 
     def test_create_form_page_layout(self):
         response = self.client.get(reverse("kb_create"))

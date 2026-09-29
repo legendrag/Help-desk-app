@@ -2,6 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
+from django.utils.cache import patch_vary_headers
 from notifications.services import notify_announcement_created
 from .models import Announcement
 from .forms import AnnouncementForm
@@ -20,6 +21,17 @@ class NewsListView(LoginRequiredMixin, NewsPermissionMixin, ListView):
 
     def get_queryset(self):
         return super().get_queryset().select_related("created_by")
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request"):
+            return ["news/list_shell_partial.html"]
+        return [self.template_name]
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        if self.request.headers.get("HX-Request"):
+            patch_vary_headers(response, ["HX-Request"])
+        return response
 
 
 class NewsCreateView(LoginRequiredMixin, NewsPermissionMixin, CreateView):

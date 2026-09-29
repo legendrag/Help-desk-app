@@ -1,10 +1,6 @@
 {% extends "base.html" %}
-{% load static %}
 {% block body_class %}ticket-detail-page{% endblock body_class %}
 {% block html_class %}ticket-detail-html{% endblock html_class %}
-{% block extra_js %}
-<script src="{% static 'js/chat.js' %}?v=15" defer></script>
-{% endblock extra_js %}
 {% block content %}
 {% include "tickets/detail_pane.html" %}
 {% endblock content %}

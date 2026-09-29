@@ -1,10 +1,20 @@
 {% load i18n %}
 <script>
-document.body.classList.remove("ticket-detail-page");
+document.body.classList.remove(
+    "ticket-detail-page",
+    "kb-page",
+    "kb-search-page",
+    "kb-detail-page",
+    "kb-form-page",
+    "settings-page",
+    "dashboard-page"
+);
 document.documentElement.classList.remove("ticket-detail-html");
 if (window.unmountTicketChat) window.unmountTicketChat();
+if (window.unmountKbSearch) window.unmountKbSearch();
 // List markup is back (first paint no-ops; history restore remounts).
 if (window.mountTicketListWS) window.mountTicketListWS();
+if (window.updateActiveNav) window.updateActiveNav();
 </script>
 <div class="tickets-page">
 

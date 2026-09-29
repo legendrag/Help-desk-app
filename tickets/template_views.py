@@ -183,6 +183,19 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             return True
         return user.role and user.role.can_access_settings
 
+    def get_template_names(self):
+        # Sidebar swaps the settings pane into #shell-content. A normal GET
+        # keeps the full document for refresh, shared links, and new tabs.
+        if self.request.headers.get("HX-Request"):
+            return ["core/settings_shell_partial.html"]
+        return [self.template_name]
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        if self.request.headers.get("HX-Request"):
+            patch_vary_headers(response, ["HX-Request"])
+        return response
+
 class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Ticket
     template_name = "tickets/dashboard.html"
@@ -880,6 +893,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         if etag:
             response["ETag"] = etag
             response["Cache-Control"] = "private, no-cache"
+        if request.headers.get("HX-Request"):
+            patch_vary_headers(response, ["HX-Request"])
         return response
     
     def _scoped_list_queryset(self, *, for_rows):
@@ -930,10 +945,13 @@ class TicketListView(LoginRequiredMixin, ListView):
         return self._apply_list_filters(scoped)
 
     def get_template_names(self):
-        # Browser back/forward cache miss asks for the whole list shell, not the
-        # 20s poll fragment. Polls stay on the live partial.
-        if self.request.headers.get("HX-History-Restore-Request"):
-            return ["tickets/list_content.html"]
+        # Browser back/forward cache miss and sidebar navigation ask for the
+        # whole list pane. Polls and filters target #tickets-live and stay on
+        # the live partial.
+        history = self.request.headers.get("HX-History-Restore-Request")
+        shell = self.request.headers.get("HX-Target") == "shell-content"
+        if history or shell:
+            return ["tickets/list_shell_partial.html"]
         if self.request.headers.get('HX-Request'):
             if self.request.GET.get('append') == 'true':
                 return ["tickets/list_append.html"]

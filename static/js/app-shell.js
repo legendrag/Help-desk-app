@@ -710,36 +710,136 @@ document.addEventListener('DOMContentLoaded', () => {
     checkScrollLock();
 });
 
+var SHELL_PAGE_CLASSES = [
+    "ticket-detail-page",
+    "kb-page",
+    "kb-search-page",
+    "kb-detail-page",
+    "kb-form-page",
+    "settings-page",
+    "dashboard-page"
+];
+
+function shellPageKindFromHtml(html) {
+    if (!html) return "";
+    if (html.indexOf('id="ticket-shell-pane"') !== -1) return "ticket";
+    if (html.indexOf('id="tickets-live"') !== -1) return "tickets";
+    if (html.indexOf('id="kb-shell-pane"') !== -1) return "kb";
+    if (html.indexOf('id="settings-shell-pane"') !== -1) return "settings";
+    if (html.indexOf('id="news-shell-pane"') !== -1) return "news";
+    return "";
+}
+
+function shellPageKindFromDom() {
+    if (document.getElementById("ticket-shell-pane")) return "ticket";
+    if (document.getElementById("tickets-live")) return "tickets";
+    if (document.getElementById("kb-shell-pane")) return "kb";
+    if (document.getElementById("settings-shell-pane")) return "settings";
+    if (document.getElementById("news-shell-pane")) return "news";
+    if (document.body.classList.contains("dashboard-page")) return "dashboard";
+    return "";
+}
+
+function applyShellChrome(kind) {
+    SHELL_PAGE_CLASSES.forEach(function (cls) {
+        document.body.classList.remove(cls);
+    });
+    document.documentElement.classList.remove("ticket-detail-html");
+    if (kind === "ticket") {
+        document.body.classList.add("ticket-detail-page");
+        document.documentElement.classList.add("ticket-detail-html");
+    } else if (kind === "kb") {
+        document.body.classList.add("kb-page", "kb-search-page");
+    } else if (kind === "settings") {
+        document.body.classList.add("settings-page");
+    } else if (kind === "dashboard") {
+        document.body.classList.add("dashboard-page");
+    }
+}
+
+function updateActiveNav() {
+    var path = (location.pathname || "/").replace(/\/+$/, "") || "/";
+    var key = "";
+    if (path === "/tickets/dashboard" || path.indexOf("/tickets/dashboard/") === 0) key = "dashboard";
+    else if (path === "/tickets/settings" || path.indexOf("/tickets/settings/") === 0) key = "settings";
+    else if (path === "/news" || path.indexOf("/news/") === 0) key = "news";
+    else if (path === "/kb" || path.indexOf("/kb/") === 0) key = "kb";
+    else if (path === "/tickets" || path.indexOf("/tickets/") === 0) key = "tickets";
+    document.querySelectorAll("#sidebar .sidebar-nav a[data-nav-key]").forEach(function (anchor) {
+        var on = anchor.getAttribute("data-nav-key") === key;
+        anchor.classList.toggle("active", on);
+        if (on) anchor.setAttribute("aria-current", "page");
+        else anchor.removeAttribute("aria-current");
+    });
+}
+window.updateActiveNav = updateActiveNav;
+updateActiveNav();
+
+// Plain left-clicks on menu links swap #shell-content. Modified clicks keep
+// the real href so new tabs and no-JS still load a full document.
+document.addEventListener("click", function (event) {
+    var link = event.target && event.target.closest ? event.target.closest("a[data-shell-nav]") : null;
+    if (!link) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!window.htmx || !document.getElementById("shell-content")) return;
+    // Dashboard stays a full document, including Back from a later menu page.
+    if (document.body.classList.contains("dashboard-page")) return;
+    var data = link["htmx-internal-data"];
+    if (!data || !data.listenerInfos || !data.listenerInfos.length) return;
+    event.preventDefault();
+    if (typeof window.closeSidebar === "function") window.closeSidebar();
+    window.htmx.trigger(link, "shell-nav");
+});
+
+function remountShellPage(kind) {
+    if (kind === "ticket") return;
+    if (kind === "tickets" && typeof window.mountTicketListWS === "function") {
+        window.mountTicketListWS();
+    }
+    if (kind === "kb" && typeof window.mountKbSearch === "function") {
+        window.mountKbSearch();
+    }
+}
+
 window.addEventListener("pageshow", function (evt) {
     if (!evt.persisted) return;
-    if (document.getElementById("ticket-shell-pane") && typeof window.mountTicketChat === "function") {
+    updateActiveNav();
+    var kind = shellPageKindFromDom();
+    if (kind === "ticket" && typeof window.mountTicketChat === "function") {
         window.mountTicketChat();
-    } else if (document.getElementById("tickets-live") && typeof window.mountTicketListWS === "function") {
-        window.mountTicketListWS();
+        return;
     }
+    remountShellPage(kind);
 });
 
-document.body.addEventListener('htmx:beforeSwap', function (evt) {
+document.body.addEventListener("htmx:beforeSwap", function (evt) {
     var target = evt.detail && evt.detail.target;
-    if (!target || target.id !== 'shell-content') return;
+    if (!target || target.id !== "shell-content") return;
     if (!evt.detail.shouldSwap) return;
-    var html = evt.detail.serverResponse || '';
-    var openingTicket = html.indexOf('id="ticket-shell-pane"') !== -1;
-    document.body.classList.toggle('ticket-detail-page', openingTicket);
-    document.documentElement.classList.toggle('ticket-detail-html', openingTicket);
-    if (typeof window.unmountTicketChat === 'function') window.unmountTicketChat();
+    var html = evt.detail.serverResponse || "";
+    var kind = shellPageKindFromHtml(html);
+    applyShellChrome(kind);
+    if (typeof window.unmountTicketChat === "function") window.unmountTicketChat();
     // The list socket lives in this document. Replacing the list must not
     // leave its onclose handler reconnecting into an empty shell.
-    if (openingTicket && typeof window.unmountTicketListWS === 'function') {
+    if (kind !== "tickets" && typeof window.unmountTicketListWS === "function") {
         window.unmountTicketListWS();
+    }
+    if (kind !== "kb" && typeof window.unmountKbSearch === "function") {
+        window.unmountKbSearch();
     }
 });
 
-document.body.addEventListener('htmx:historyRestore', function () {
-    if (document.getElementById('ticket-shell-pane')) return;
-    if (document.getElementById('tickets-live') && typeof window.mountTicketListWS === 'function') {
-        window.mountTicketListWS();
-    }
+document.body.addEventListener("htmx:pushedIntoHistory", function () {
+    updateActiveNav();
+});
+
+document.body.addEventListener("htmx:historyRestore", function () {
+    var kind = shellPageKindFromDom();
+    if (kind) applyShellChrome(kind);
+    updateActiveNav();
+    // Ticket pane script mounts chat. List and KB mounts are idempotent.
+    remountShellPage(kind);
 });
 
 document.body.addEventListener('htmx:beforeSwap', (evt) => {

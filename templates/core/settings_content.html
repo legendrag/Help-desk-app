@@ -1,0 +1,122 @@
+{% load i18n %}
+<script>
+(function () {
+    var drop = ["ticket-detail-page", "kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page"];
+    drop.forEach(function (cls) { document.body.classList.remove(cls); });
+    document.documentElement.classList.remove("ticket-detail-html");
+    document.body.classList.add("settings-page");
+    if (window.unmountTicketChat) window.unmountTicketChat();
+    if (window.unmountTicketListWS) window.unmountTicketListWS();
+    if (window.unmountKbSearch) window.unmountKbSearch();
+    if (window.updateActiveNav) window.updateActiveNav();
+})();
+</script>
+<div id="settings-shell-pane" class="settings-hub">
+    <div class="panel settings-hero">
+        <div class="settings-hero-text">
+            <h1>{% trans "Administrative Settings" %}</h1>
+            <p>{% trans "Configure and manage system entities from a unified interface." %}</p>
+        </div>
+
+        <div class="settings-tabs">
+            <button class="settings-tab active"
+                    hx-get="{% url 'branch_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Branches" %}
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'department_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Departments" %}
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'category_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Categories" %}
+            </button>
+            {% if request.user.is_superuser or request.user.role.can_manage_kb %}
+            <button class="settings-tab"
+                    hx-get="{% url 'kb_category_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "KB Categories" %}
+            </button>
+            {% endif %}
+            <button class="settings-tab"
+                    hx-get="{% url 'role_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Roles" %}
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'user_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Users" %}
+            </button>
+            <button class="settings-tab"
+                    hx-get="{% url 'email_setting_list' %}"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Email Settings" %}
+            </button>
+            {% if request.user.is_superuser or request.user.role.can_manage_maintenance %}
+            <button class="settings-tab"
+                    hx-get="{% url 'maintenance' %}?nocache=1"
+                    hx-target="#settings-content"
+                    onclick="switchTab(this)"
+                    role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
+                {% trans "Maintenance" %}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load" hx-get="{% url 'branch_list' %}" data-no-progress>
+        <div class="skeleton-placeholder" aria-busy="true">
+            <div class="skeleton-table">
+                <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+                <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(el) {
+    document.querySelectorAll('.settings-tab').forEach(function (b) { b.classList.remove('active'); });
+    el.classList.add('active');
+
+    var target = document.getElementById('settings-content');
+    var url = el.getAttribute('hx-get');
+    if (target && url) {
+        target.dataset.currentUrl = url;
+    }
+}
+
+if (!window.__settingsRefreshBound) {
+    window.__settingsRefreshBound = true;
+    document.body.addEventListener('refreshSettings', function () {
+        var target = document.getElementById('settings-content');
+        if (!target) return;
+        var url = target.dataset.currentUrl || target.getAttribute('hx-get');
+        if (url && window.htmx) {
+            // source keeps data-no-progress so the top bar stays off for silent refresh
+            window.htmx.ajax('GET', url, { target: '#settings-content', source: target });
+        }
+    });
+}
+</script>
