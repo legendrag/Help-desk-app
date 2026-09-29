@@ -5,6 +5,7 @@ from collections import defaultdict
 import hashlib
 import os
 from django.utils import timezone as tz
+from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_str
 from django.utils.translation import gettext as _
 
@@ -929,6 +930,10 @@ class TicketListView(LoginRequiredMixin, ListView):
         return self._apply_list_filters(scoped)
 
     def get_template_names(self):
+        # Browser back/forward cache miss asks for the whole list shell, not the
+        # 20s poll fragment. Polls stay on the live partial.
+        if self.request.headers.get("HX-History-Restore-Request"):
+            return ["tickets/list_content.html"]
         if self.request.headers.get('HX-Request'):
             if self.request.GET.get('append') == 'true':
                 return ["tickets/list_append.html"]
@@ -1066,6 +1071,20 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         context['supporters'] = supporters
 
         return context
+
+    def get_template_names(self):
+        # In-shell opens send HX-Request and receive the chat pane only.
+        # A normal GET (refresh, shared link, cold entry) keeps the full document.
+        if self.request.headers.get("HX-Request"):
+            return ["tickets/detail_shell_partial.html"]
+        return [self.template_name]
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        # Authenticated HTML stays no-store via middleware. Vary so a partial
+        # can never be reused as a full document.
+        patch_vary_headers(response, ["HX-Request"])
+        return response
 
 
 class TicketDrawerPartialView(LoginRequiredMixin, DetailView):

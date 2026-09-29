@@ -5543,6 +5543,20 @@ body.ticket-detail-page .content {
   flex-direction: column !important;
 }
 
+/* In-shell ticket opens swap #shell-content. It has to carry the same
+   column flex the chat grid used to get as a direct child of .content. */
+body.ticket-detail-page #shell-content,
+body.ticket-detail-page #ticket-shell-pane {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
 body.ticket-detail-page .kb-back-navigation {
   flex-shrink: 0 !important;
 }

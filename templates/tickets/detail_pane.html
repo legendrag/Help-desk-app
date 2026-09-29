@@ -1,0 +1,859 @@
+{% load static %}
+{% load i18n %}
+{% load ticket_extras %}
+{% get_current_language as LANGUAGE_CODE %}
+<script>
+document.body.classList.add("ticket-detail-page");
+document.documentElement.classList.add("ticket-detail-html");
+</script>
+<div id="ticket-shell-pane" data-ticket-id="{{ ticket.id }}">
+<div class="kb-back-navigation" style="margin-bottom: 1.25rem;">
+    <a href="{% url 'tickets_list' %}" class="ticket-back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round" class="kb-back-icon">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {% trans "Back to Tickets" %}
+    </a>
+</div>
+<div class="ticket-detail-grid">
+
+    <!-- Main: Chat & History (Now on Top) -->
+    <main class="panel chat-panel">
+        <h3 class="panel-header chat-header-layout" style="margin-bottom: 1.25rem; margin-top: 0; padding: 0;">
+            <div class="chat-header-title">
+                {% trans "Chat Support" %} <span class="status-live">● {% trans "Live" %}</span>
+            </div>
+
+            <div class="chat-header-details">
+                <button type="button" class="btn secondary btn--sm" onclick="toggleTicketDetails()"
+                    aria-label="{% trans 'View Details' %}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    {% trans "Details" %}
+                </button>
+            </div>
+        </h3>
+
+        {% if ticket.status == 'merged' %}
+        <div class="merged-ticket-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" class="merged-icon">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                <path d="M8 12h8"></path>
+                <path d="M12 8v8"></path>
+            </svg>
+            {% url 'ticket_detail' ticket.merged_into.id as merged_ticket_url %}
+            <span>{% blocktrans trimmed with ticket_number=ticket.merged_into.ticket_number ticket_url=merged_ticket_url %}This ticket has been merged into <a href="{{ ticket_url }}"
+                    class="merged-link">#{{ ticket_number }}</a>.{% endblocktrans %}</span>
+        </div>
+        {% endif %}
+
+        {% if ticket.pending_transfer_to %}
+        <div class="pending-transfer-banner">
+            <div class="transfer-banner-left">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" class="transfer-banner-icon">
+                    <path d="M17 3v18"></path>
+                    <path d="M10 14l7 7 7-7"></path>
+                    <path d="M7 21V3"></path>
+                    <path d="M14 10L7 3 0 10"></path>
+                </svg>
+                {% if user == ticket.pending_transfer_to %}
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_by.username %}<strong>{{ username }}</strong> has requested to transfer this ticket to you.{% endblocktrans %}</span>
+                {% elif user == ticket.pending_transfer_by %}
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_to.username %}Waiting for <strong>{{ username }}</strong> to accept the transfer.{% endblocktrans %}</span>
+                {% else %}
+                <span>{% blocktrans trimmed with username=ticket.pending_transfer_to.username %}Transfer to <strong>{{ username }}</strong> is pending.{% endblocktrans %}</span>
+                {% endif %}
+            </div>
+            <div class="transfer-banner-actions">
+                {% if user == ticket.pending_transfer_to %}
+                <form hx-post="{% url 'accept_transfer' ticket.id %}" class="transfer-form-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn primary btn--sm">{% trans "Accept" %}</button>
+                </form>
+                <form hx-post="{% url 'deny_transfer' ticket.id %}" class="transfer-form-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn secondary btn--sm">{% trans "Deny" %}</button>
+                </form>
+                {% endif %}
+                {% if user == ticket.pending_transfer_by or user.is_superuser %}
+                <form hx-post="{% url 'cancel_transfer' ticket.id %}" class="transfer-form-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn secondary btn--sm">{% trans "Cancel Request" %}</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="chat-box" id="chat-box">
+            {% if ticket.messages.all %}
+            {% for message in ticket.messages.all %}
+            {% if message.is_system_message %}
+            <div class="chat-system-message-row" id="message-{{ message.id }}" data-message-id="{{ message.id }}">
+                <div class="chat-system-message-content">
+                    <span>{% if LANGUAGE_CODE == 'ar' and message.message_ar %}{{ message.message_ar }}{% else %}{{ message.message }}{% endif %}</span>
+                </div>
+            </div>
+            {% else %}
+            <article class="chat-item {% if message.sender == user %}me{% endif %}" id="message-{{ message.id }}"
+                data-message-id="{{ message.id }}">
+                <div class="chat-row">
+                    <div class="chat-bubble">
+                        <header>
+                            <strong>{{ message.sender.username }}{% if ticket.client_name and message.sender.user_type == 'branch' and message.sender.branch_id == ticket.branch_id %} - {{ ticket.client_name }}{% endif %}</strong>
+                        </header>
+
+                        <div id="msg-display-{{ message.id }}">
+                            {% if message.reply_to %}
+                            <div class="message-reply-quote">
+                                <div class="reply-quote-meta">
+                                    <span class="reply-quote-sender">{{ message.reply_to.sender.username }}</span>
+                                </div>
+                                <div class="reply-quote-text">{{ message.reply_to.message }}</div>
+                            </div>
+                            {% endif %}
+                            <div class="chat-bubble-text">{{ message.message }}</div>
+                            {% if message.attachment %}
+                            <div class="chat-bubble-attachment-wrap">
+                                {% if message.attachment.name|is_image %}
+                                <img src="{{ message.attachment.url }}" alt="Attachment" width="300" height="200"
+                                    class="chat-image-preview" tabindex="0" role="button"
+                                    onclick="openLightbox(this.src)"
+                                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); openLightbox(this.src);}">
+                                {% else %}
+                                <a href="{{ message.attachment.url }}" target="_blank" download
+                                    class="attachment-link attachment-link-dynamic">
+                                    📎 {{ message.attachment.name|basename|default:"View Attachment" }}
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="chat-actions-outside">
+                        <div class="chat-time" title="{{ message.created_at|date:'Y-m-d H:i' }}">{{ message.created_at|time:"H:i" }}</div>
+                            <button type="button" class="message-reply-btn" data-preview="{{ message.message|escape }}"
+                            data-sender="{{ message.sender.username|escape }}" onclick="replyToMessage(this)"
+                            aria-label="{% trans 'Reply' %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 17 4 12 9 7"></polyline>
+                                <path d="M4 12h11a4 4 0 0 1 0 8h-1"></path>
+                            </svg>
+                        </button>
+                        <div class="message-menu-wrapper">
+                            <button type="button" class="message-menu-btn" onclick="toggleMessageMenu({{ message.id }})"
+                                aria-label="{% trans 'Message options' %}">
+                                <span><!-- dot --></span><span><!-- dot --></span><span><!-- dot --></span>
+                            </button>
+                            <div class="message-menu" id="message-menu-{{ message.id }}">
+                                {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_edit_message and message.sender == user %}
+                                <button type="button" class="message-menu-item"
+                                    onclick="toggleEdit({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    {% trans "Edit" %}
+                                </button>
+                                {% endif %}
+                                {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_delete_message and message.sender == user %}
+                                <button type="button" class="message-menu-item danger"
+                                    onclick="openDeleteModal({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
+                                    {% trans "Delete" %}
+                                </button>
+                                {% endif %}
+                                <button type="button" class="message-menu-item"
+                                    onclick="toggleMessageDetails({{ message.id }}); closeMessageMenu({{ message.id }});">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    {% trans "Details" %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="message-details" id="message-details-{{ message.id }}">
+                    <span>{% trans "Sender" %}: {{ message.sender.username }}</span>
+                    <span>{% trans "Time" %}: {{ message.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+
+                {% if user.is_superuser or user.user_type != 'branch' and user.role and user.role.can_edit_message and message.sender == user %}
+                <form id="msg-edit-{{ message.id }}" hx-post="{% url 'edit_message' message.id %}" hx-swap="none"
+                    class="msg-edit-form">
+                    {% csrf_token %}
+                    <textarea name="message" rows="2" class="chat-textarea-no-resize">{{ message.message }}</textarea>
+                    <div class="msg-edit-actions">
+                        <button type="button" class="btn-edit-cancel" onclick="toggleEdit({{ message.id }})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            {% trans "Cancel" %}
+                        </button>
+                        <button type="submit" class="btn-edit-save">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            {% trans "Save" %}
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </article>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            <p class="no-messages-text">{% trans "No messages yet." %}</p>
+            {% endif %}
+        </div>
+
+        {% if ticket.status != 'closed' and ticket.status != 'merged' %}
+        <div class="typing-indicator typing-indicator-initially-hidden" id="typing-indicator">
+            <span class="typing-username" id="typing-username"></span>
+            <span class="typing-text">{% trans "is typing" %}</span>
+            <span class="typing-dots"><span><!-- dot --></span><span><!-- dot --></span><span><!-- dot --></span></span>
+        </div>
+        {% if user.is_superuser or can_chat and user.role and user.role.can_send_message %}
+        <form hx-post="{% url 'post_message' ticket.id %}" hx-swap="none" method="post" enctype="multipart/form-data"
+            class="chat-form" id="chat-message-form">
+            <div class="drop-zone-overlay" id="drop-zone-overlay">
+                <div class="drop-zone-content">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>{% trans "Drop file here" %}</span>
+                </div>
+            </div>
+            <div class="reply-preview reply-preview-hidden" id="reply-preview">
+                <div class="reply-preview-bar"></div>
+                <div class="reply-preview-content">
+                    <div class="reply-preview-meta">
+                        <span class="reply-label">{% trans "Replying to" %}</span>
+                        <span class="reply-sender" id="reply-to-sender"></span>
+                    </div>
+                    <div class="reply-preview-text" id="reply-to-text"></div>
+                </div>
+                <button type="button" class="reply-cancel" onclick="clearReply()" aria-label="{% trans 'Cancel reply' %}"><svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg></button>
+            </div>
+            <input type="hidden" name="reply_to" id="reply-to-id">
+            {% csrf_token %}
+            <textarea name="message" rows="3" placeholder="{% trans 'Type your message or paste/drop a file...' %}"
+                class="chat-textarea-no-resize"></textarea>
+            <div class="file-preview-bar file-preview-hidden" id="file-preview-bar">
+                <div class="file-preview-info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span id="file-preview-name"></span>
+                    <span id="file-preview-size" class="file-preview-size-text"></span>
+                </div>
+                <button type="button" class="file-preview-remove" onclick="clearFilePreview()"
+                    aria-label="{% trans 'Remove file' %}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg></button>
+            </div>
+            <div class="chat-actions">
+                <!-- Action Bar (Left) -->
+                <div class="chat-actions-left">
+                    {% if ticket.status == 'merged' %}
+                    <div class="action-bar">
+                        <span class="action-bar-closed-badge merged-badge-styling">{% trans "Ticket is Merged" %}</span>
+                    </div>
+                    {% elif ticket.status != 'closed' %}
+                    <div class="action-bar" id="action-bar">
+                        {# ── Accept Button (only if unassigned) ── #}
+                        {% if not ticket.assigned_to %}
+                        {% if user.is_superuser or user.role.can_pick_ticket %}
+                        <button type="submit" class="action-bar-accept" form="pick-ticket-form">{% trans "Accept" %}</button>
+                        {% endif %}
+                        {% endif %}
+
+                        {# ── Action + Dropdown Group ── #}
+                        {% if user.is_superuser or ticket.assigned_to == user %}
+                        <div class="action-bar-group">
+                            <button type="button" class="action-bar-execute" id="action-bar-execute"
+                                data-action="closed" data-confirm="close" onclick="executeActionBar()">{% trans "Close" %}</button>
+                            <button type="button" class="action-bar-toggle" id="action-bar-toggle"
+                                onclick="toggleActionMenu()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <div class="action-bar-menu" id="action-bar-menu">
+                                <button type="button" class="action-bar-menu-item active" data-action="closed"
+                                    data-label="{% trans 'Close' %}" data-confirm="close" onclick="selectAction(this)">{% trans "Close" %}</button>
+                                {% if ticket.status != 'waiting_for_branch' %}
+                                <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch"
+                                    data-label="{% trans 'Wait for User' %}" onclick="selectAction(this)">{% trans "Wait for User" %}</button>
+                                {% endif %}
+                                {% if ticket.status != 'in_progress' %}
+                                <button type="button" class="action-bar-menu-item" data-action="in_progress"
+                                    data-label="{% trans 'In Progress' %}" onclick="selectAction(this)">{% trans "In Progress" %}</button>
+                                {% endif %}
+                                <button type="button" class="action-bar-menu-item" data-action="merge"
+                                    data-label="{% trans 'Merge' %}" data-confirm="merge" onclick="selectAction(this)">{% trans "Merge Ticket" %}</button>
+                                {% if user.is_superuser or ticket.assigned_to == user %}
+                                {% if not ticket.pending_transfer_to %}
+                                <button type="button" class="action-bar-menu-item" data-action="transfer"
+                                    data-label="{% trans 'Transfer' %}" data-confirm="transfer" onclick="selectAction(this)">{% trans "Transfer Ticket" %}</button>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Attach and Send (Right) -->
+                <div class="chat-actions-right">
+                    <div class="chat-attach-container">
+                        <input type="file" name="attachment" id="file-upload" class="file-preview-hidden"
+                            accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+                            onchange="showFilePreview(this)" form="chat-message-form">
+                        <label for="file-upload" id="file-label" class="chat-attach-icon-btn" title="{% trans 'Attach File' %}">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                                </path>
+                            </svg>
+                        </label>
+                    </div>
+                    <button type="submit" class="chat-send-btn" aria-label="{% trans 'Send Message' %}" form="chat-message-form">
+                        <span>{% trans "Send" %}</span>
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13" stroke="currentColor"></path>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        {% if not ticket.assigned_to %}
+        {% if user.is_superuser or user.role and user.role.can_pick_ticket %}
+        <div class="chat-actions chat-actions-closed">
+            <div class="action-bar">
+                <button type="submit" class="action-bar-accept" form="pick-ticket-form">{% trans "Accept" %}</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="chat-no-permission-alert">
+            {% trans "You do not have permission to send messages." %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="chat-no-permission-alert">
+            {% trans "You do not have permission to send messages." %}
+        </div>
+        {% endif %}
+        {% endif %}
+        {% endif %}
+
+        {% if ticket.status == 'closed' %}
+        {% if user.is_superuser or user.user_type == 'support' %}
+        <div class="chat-actions chat-actions-closed">
+            <div class="action-bar">
+                <button type="submit" class="action-bar-reopen" form="reopen-ticket-form">{% trans "Reopen" %}</button>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Hidden Forms for Action Bar -->
+        <div class="hidden-action-forms d-none">
+            {% if not ticket.assigned_to %}
+            {% if user.is_superuser or user.role.can_pick_ticket %}
+            <form id="pick-ticket-form" action="{% url 'pick_ticket' ticket.id %}" method="post">{% csrf_token %}</form>
+            {% endif %}
+            {% endif %}
+
+            {% if user.is_superuser or ticket.assigned_to == user %}
+            <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="status" id="action-bar-status" value="closed">
+            </form>
+            {% endif %}
+
+            {% if user.is_superuser or user.user_type == 'support' %}
+            <form id="reopen-ticket-form" action="{% url 'update_status' ticket.id %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="in_progress">
+            </form>
+            {% endif %}
+        </div>
+    </main>
+    {% include "tickets/partials/details_drawer.html" %}
+</div>
+
+<script>
+    window.currentTicketId = "{{ ticket.id }}";
+    window.ticketStatus = "{{ ticket.status|escapejs }}";
+    window.chatUrlTemplates = {
+        deleteMessage: "{% url 'delete_message' 0 %}",
+        editMessage: "{% url 'edit_message' 0 %}"
+    };
+    window.chatPermissions = {
+        canEdit: '{% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_edit_message|yesno:"true,false" }}{% else %}false{% endif %}' === 'true',
+        canDelete: '{% if user.is_superuser %}true{% elif user.role %}{{ user.role.can_delete_message|yesno:"true,false" }}{% else %}false{% endif %}' === 'true'
+    };
+    // Re-running this script (another in-shell open, or back/forward) must not
+    // redeclare lexical bindings or stack document listeners.
+    var bindTicketPaneListeners = !window.__ticketPaneListenersBound;
+    if (bindTicketPaneListeners) window.__ticketPaneListenersBound = true;
+    // Scroll chat to bottom
+    var chatBox = document.getElementById('chat-box');
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Offcanvas logic is now loaded dynamically from details_drawer.html partial
+
+    // Auto-open if query param exists (after a paint so the slide animates)
+    if (window.location.search.includes('show_details=true')) {
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                toggleTicketDetails();
+            });
+        });
+    }
+
+    function selectTicketForMerge(ticketNumber) {
+        document.getElementById('target_ticket_number').value = ticketNumber;
+        document.getElementById('merge-submit-btn').disabled = false;
+        const container = document.getElementById('search-results-container');
+        if (container) {
+            container.outerHTML = '<div id="search-results-container"></div>';
+        }
+    }
+
+    function closeAllMessageMenus() {
+        document.querySelectorAll('.message-menu').forEach(menu => menu.classList.remove('open'));
+    }
+
+    function toggleMessageMenu(id) {
+        const menu = document.getElementById('message-menu-' + id);
+        if (!menu) return;
+        const isOpen = menu.classList.contains('open');
+        closeAllMessageMenus();
+        if (!isOpen) {
+            menu.classList.remove('open-up');
+            menu.classList.add('open');
+            const rect = menu.getBoundingClientRect();
+            const container = document.getElementById('chat-box');
+            if (container) {
+                const containerRect = container.getBoundingClientRect();
+                if (rect.bottom > containerRect.bottom) {
+                    menu.classList.add('open-up');
+                }
+            }
+        }
+    }
+
+    function closeMessageMenu(id) {
+        const menu = document.getElementById('message-menu-' + id);
+        if (menu) menu.classList.remove('open');
+    }
+
+    function replyToMessage(buttonEl) {
+        const previewBox = document.getElementById('reply-preview');
+        const textEl = document.getElementById('reply-to-text');
+        const senderEl = document.getElementById('reply-to-sender');
+        const idInput = document.getElementById('reply-to-id');
+        const textarea = document.querySelector('.chat-form textarea[name="message"]');
+        if (!previewBox || !textEl || !senderEl || !textarea) return;
+        const snippet = (buttonEl?.dataset?.preview || '').trim();
+        const shortText = snippet.length > 120 ? snippet.slice(0, 117) + '...' : snippet;
+        const sender = buttonEl?.dataset?.sender || '';
+        const card = buttonEl?.closest('.chat-item');
+        const messageId = card ? card.dataset.messageId : '';
+        previewBox.style.display = 'flex';
+        textEl.textContent = shortText || 'Message';
+        senderEl.textContent = sender;
+        if (idInput) idInput.value = messageId || '';
+        textarea.focus();
+    }
+
+    function clearReply() {
+        const previewBox = document.getElementById('reply-preview');
+        const textEl = document.getElementById('reply-to-text');
+        const senderEl = document.getElementById('reply-to-sender');
+        const idInput = document.getElementById('reply-to-id');
+        if (previewBox) previewBox.style.display = 'none';
+        if (textEl) textEl.textContent = '';
+        if (senderEl) senderEl.textContent = '';
+        if (idInput) idInput.value = '';
+    }
+
+    function toggleMessageDetails(id) {
+        const panel = document.getElementById('message-details-' + id);
+        if (!panel) return;
+        panel.classList.toggle('open');
+    }
+
+    if (bindTicketPaneListeners) document.addEventListener('click', function (event) {
+        if (!event.target.closest('.message-menu-wrapper')) {
+            closeAllMessageMenus();
+        }
+    });
+
+    function toggleEdit(id) {
+        const displayDiv = document.getElementById('msg-display-' + id);
+        const editForm = document.getElementById('msg-edit-' + id);
+        const detailsPanel = document.getElementById('message-details-' + id);
+        if (!editForm || !displayDiv) return;
+
+        if (editForm.style.display === 'none' || editForm.style.display === '') {
+            editForm.style.display = 'block';
+            displayDiv.style.display = 'none';
+            if (detailsPanel) detailsPanel.classList.remove('open');
+        } else {
+            editForm.style.display = 'none';
+            displayDiv.style.display = 'block';
+        }
+    }
+
+    if (bindTicketPaneListeners) document.addEventListener('keydown', function (e) {
+        const isMsgTextarea = e.target && e.target.matches('.chat-form textarea[name="message"], form[id^="msg-edit-"] textarea[name="message"]');
+        if (isMsgTextarea) {
+            if (e.key === 'Enter' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
+                e.preventDefault();
+                const form = e.target.closest('form');
+                if (form) {
+                    // Try requestSubmit first for full event bubbling including HTMX
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                }
+            } else if (e.key === 'Enter' && e.altKey) {
+                e.preventDefault();
+                const start = e.target.selectionStart;
+                const end = e.target.selectionEnd;
+                e.target.value = e.target.value.substring(0, start) + "\n" + e.target.value.substring(end);
+                e.target.selectionStart = e.target.selectionEnd = start + 1;
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+    });
+
+    /* ── Action Bar: Split-Button Logic ── */
+    /* Menu is portaled to <body> while open so chat-panel overflow/transform cannot clip it. */
+    function positionActionMenu() {
+        const menu = document.getElementById('action-bar-menu');
+        const group = document.querySelector('.action-bar-group');
+        if (!menu || !group) return;
+
+        const rect = group.getBoundingClientRect();
+        const padding = 12;
+        const menuWidth = Math.min(
+            Math.max(rect.width, 160),
+            window.innerWidth - padding * 2
+        );
+        let left = rect.left;
+        if (left + menuWidth > window.innerWidth - padding) {
+            left = window.innerWidth - padding - menuWidth;
+        }
+        if (left < padding) left = padding;
+
+        menu.style.width = menuWidth + 'px';
+        menu.style.left = left + 'px';
+        menu.style.right = 'auto';
+        menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        menu.style.top = 'auto';
+    }
+
+    function toggleActionMenu() {
+        const menu = document.getElementById('action-bar-menu');
+        const toggle = document.getElementById('action-bar-toggle');
+        const group = document.querySelector('.action-bar-group');
+        if (!menu || !toggle || !group) return;
+        const isOpen = menu.classList.contains('open');
+        if (!isOpen) {
+            document.body.appendChild(menu);
+            positionActionMenu();
+            menu.classList.add('open');
+            toggle.classList.add('open');
+        } else {
+            closeActionMenu();
+        }
+    }
+
+    function closeActionMenu() {
+        const menu = document.getElementById('action-bar-menu');
+        const toggle = document.getElementById('action-bar-toggle');
+        const group = document.querySelector('.action-bar-group');
+        if (menu) {
+            menu.classList.remove('open');
+            menu.style.width = '';
+            menu.style.left = '';
+            menu.style.right = '';
+            menu.style.bottom = '';
+            menu.style.top = '';
+            if (group && menu.parentElement === document.body) {
+                group.appendChild(menu);
+            }
+        }
+        if (toggle) toggle.classList.remove('open');
+    }
+
+    if (bindTicketPaneListeners) window.addEventListener('resize', function () {
+        const menu = document.getElementById('action-bar-menu');
+        if (menu && menu.classList.contains('open')) {
+            positionActionMenu();
+        }
+    });
+
+    function selectAction(itemEl) {
+        const action = itemEl.dataset.action;
+        const label = itemEl.dataset.label;
+        const confirm = itemEl.dataset.confirm || '';
+        const execBtn = document.getElementById('action-bar-execute');
+        const statusInput = document.getElementById('action-bar-status');
+        if (!execBtn || !action || !label) return;
+
+        // Update execute button
+        execBtn.textContent = label;
+        execBtn.dataset.action = action;
+        execBtn.dataset.confirm = confirm;
+        if (statusInput) statusInput.value = action;
+
+        // Toggle danger styling (removed to prevent red close button)
+        // execBtn.classList.toggle('danger-action', action === 'closed');
+
+        // Mark active item
+        document.querySelectorAll('.action-bar-menu-item').forEach(i => i.classList.remove('active'));
+        itemEl.classList.add('active');
+
+        closeActionMenu();
+    }
+
+    function executeActionBar() {
+        const execBtn = document.getElementById('action-bar-execute');
+        const form = document.getElementById('action-bar-form');
+        const statusInput = document.getElementById('action-bar-status');
+        if (!execBtn || !form || !statusInput) return;
+
+        const action = execBtn.dataset.action;
+        statusInput.value = action;
+
+        // If close, show confirmation modal
+        if (execBtn.dataset.confirm === 'close') {
+            document.getElementById('custom-close-modal').style.display = 'flex';
+            return;
+        }
+
+        if (execBtn.dataset.confirm === 'merge') {
+            document.getElementById('custom-merge-modal').style.display = 'flex';
+            return;
+        }
+
+        if (execBtn.dataset.confirm === 'transfer') {
+            document.getElementById('custom-transfer-modal').style.display = 'flex';
+            return;
+        }
+
+        // Otherwise submit directly
+        form.submit();
+    }
+
+    // Close dropdown on outside click (menu may be portaled to <body>)
+    if (bindTicketPaneListeners) document.addEventListener('click', function (e) {
+        if (!e.target.closest('.action-bar-group') && !e.target.closest('#action-bar-menu')) {
+            closeActionMenu();
+        }
+    });
+
+    if (typeof window.mountTicketChat === 'function') window.mountTicketChat();
+</script>
+
+<!-- Lightbox Modal -->
+<div id="lightbox-modal" class="lightbox-modal" onclick="closeLightbox()">
+    <span class="lightbox-close"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg></span>
+    <img id="lightbox-image" class="lightbox-content" src="" alt="Enlarged image" width="800" height="600">
+</div>
+
+<!-- Custom Close Ticket Modal -->
+<div id="custom-close-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-close-modal').style.display='none'">
+    <div class="modal-content modal-close-ticket">
+        <div class="modal-header">
+            <h2 class="modal-title-text">{% trans "Close Ticket" %}</h2>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-close-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form action="{% url 'update_status' ticket.id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="closed">
+            <div class="modal-body">
+                <p class="modal-description-text-close">{% trans "Are you sure you want to close this ticket? You will not be able to send new messages." %}</p>
+            </div>
+            <div class="form-actions modal-actions-flex">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-close-modal').style.display='none'">{% trans "Cancel" %}</button>
+                <button type="submit" class="btn danger">{% trans "Yes, Close" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+<!-- Custom Merge Ticket Modal -->
+<div id="custom-merge-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-merge-modal').style.display='none'">
+    <div class="modal-content modal-merge-ticket">
+        <div class="modal-header">
+            <h2 class="modal-title-text">{% trans "Merge Ticket" %}</h2>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-merge-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form action="{% url 'merge_ticket' ticket.id %}" method="post">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p class="modal-description-text-merge">{% trans "Search and select the ticket you want to absorb into this one." %}</p>
+                <div class="form-group full modal-form-group-merge">
+                    <label for="target_ticket_number">{% trans "Search Ticket to Merge" %}</label>
+                    <div class="position-relative">
+                        <input type="text" name="target_ticket_number" id="target_ticket_number" class="form-control"
+                            placeholder="{% trans 'Type ticket number or title...' %}" required autocomplete="off"
+                            oninput="document.getElementById('merge-submit-btn').disabled = true; document.getElementById('selected-ticket-preview').innerHTML = '';"
+                            hx-get="{% url 'ticket_search_options' %}?exclude={{ ticket.id }}"
+                            hx-trigger="input changed delay:150ms, search" hx-target="#search-results-container"
+                            hx-swap="outerHTML">
+                        <div id="search-results-container"></div>
+                    </div>
+                </div>
+                <!-- Selected Ticket Preview Container -->
+                <div id="selected-ticket-preview" class="margin-bottom-medium"></div>
+            </div>
+            <div class="form-actions modal-form-actions-merge">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-merge-modal').style.display='none'">{% trans "Cancel" %}</button>
+                <button type="submit" id="merge-submit-btn" class="btn primary" disabled>{% trans "Merge Ticket" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+<!-- Custom Transfer Ticket Modal -->
+<div id="custom-transfer-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) document.getElementById('custom-transfer-modal').style.display='none'">
+    <div class="modal-content modal-transfer-ticket">
+        <div class="modal-header">
+            <h2 class="modal-title-text">{% trans "Transfer Ticket" %}</h2>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('custom-transfer-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form hx-post="{% url 'transfer_ticket' ticket.id %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p class="modal-description-text-transfer">{% trans "Select a support agent to transfer this ticket to." %}</p>
+                <div class="form-group full modal-form-group-transfer">
+                    <label for="new_assignee">{% trans "New Assignee" %}</label>
+                    <select name="new_assignee" id="new_assignee" class="form-control" required>
+                        <option value="">{% trans "-- Select Agent --" %}</option>
+                        {% for supporter in supporters %}
+                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions modal-form-actions-transfer">
+                <button type="button" class="btn secondary"
+                    onclick="document.getElementById('custom-transfer-modal').style.display='none'">{% trans "Cancel" %}</button>
+                <button type="submit" class="btn primary">{% trans "Transfer Ticket" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+<script>
+    function openDeleteModal(messageId) {
+        if (window.chatUrlTemplates && window.chatUrlTemplates.deleteMessage) {
+            const url = window.chatUrlTemplates.deleteMessage.replace('/0/', '/' + messageId + '/');
+            showConfirmModal({
+                title: 'Delete Message',
+                message: 'Are you sure you want to delete this message?',
+                yesText: 'Yes, Delete',
+                onConfirm: function () {
+                    const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    htmx.ajax('POST', url, {
+                        headers: {
+                            'X-CSRFToken': token
+                        },
+                        swap: 'none'
+                    });
+                }
+            });
+        }
+    }
+</script>
+
+<script>
+    window.ticketAssigneeId = "{{ ticket.assigned_to_id|default_if_none:'' }}";
+    window.currentUsername = "{{ user.username|escapejs }}{% if user.user_type == 'branch' and user.branch_id == ticket.branch_id and ticket.client_name %} - {{ ticket.client_name|escapejs }}{% endif %}";
+</script>
+</div>

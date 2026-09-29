@@ -767,11 +767,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Plain list-row clicks open the ticket inside #shell-content. Do not
+    // start a full-document skeleton for that path. Modified clicks and
+    // every other link still use the full navigation.
+    function isShellTicketRowClick(evt, target) {
+        if (!target || evt.button !== 0) return false;
+        if (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return false;
+        var row = target.classList.contains('clickable-row') ? target : target.closest('.clickable-row');
+        if (!row || row.getAttribute('hx-target') !== '#shell-content' || !row.getAttribute('hx-get')) return false;
+        if (evt.target.closest('button, input, select, textarea, form, .action-cell')) return false;
+        return true;
+    }
+
     // --- Standard Navigation Hooks (including sidebar / cards / back links) ---
     // Capture phase so we can block spam before other handlers (e.g. row → location.href)
     document.addEventListener('click', function(evt) {
         const target = evt.target.closest('a[href], .clickable-row');
         if (!target) return;
+
+        if (isShellTicketRowClick(evt, target)) return;
 
         if (target.classList.contains('clickable-row')) {
             const interactive = evt.target.closest('button, input, select, textarea, form, .action-cell');

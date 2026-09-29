@@ -43,7 +43,7 @@
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.91">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.92">
     <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.92">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.50">
     {% if LANGUAGE_CODE == 'ar' %}
@@ -512,7 +512,9 @@
                 </button>
             </div>
             {% endif %}
-            {% block content %}{% endblock content %}
+            <div id="shell-content" hx-history-elt>
+                {% block content %}{% endblock content %}
+            </div>
         </main>
 
         <!-- Global Modal Container -->
@@ -768,11 +770,12 @@
         </aside>
     </div>
 
-    <script src="{% static 'js/app-shell.js' %}?v=3" defer></script>
+    {% block extra_js %}{% endblock extra_js %}
+    <script src="{% static 'js/app-shell.js' %}?v=5" defer></script>
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>
-    <script src="{% static 'js/loading.js' %}?v=20" defer></script>
+    <script src="{% static 'js/loading.js' %}?v=21" defer></script>
 </body>
 
 </html>

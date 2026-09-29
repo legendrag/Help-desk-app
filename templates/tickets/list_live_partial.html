@@ -23,7 +23,13 @@
             </thead>
             <tbody id="tickets-tbody">
                 {% for ticket in tickets %}
-                <tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}">
+                <tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}"
+                    hx-get="{% url 'ticket_detail' ticket.id %}"
+                    hx-target="#shell-content"
+                    hx-swap="innerHTML show:window:top settle:0"
+                    hx-push-url="true"
+                    hx-trigger="ticket-open"
+                    hx-sync="#shell-content:replace">
                     <td data-col="ticket-id" data-label="{% trans 'Ticket ID' %}"><strong><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.ticket_number }}</a></strong></td>
                     <td data-col="title" data-label="{% trans 'Title' %}"><a href="{% url 'ticket_detail' ticket.id %}">{{ ticket.title }}</a></td>
                     <td data-col="branch" data-label="{% trans 'Branch' %}"><span>{{ ticket.branch.name }}</span></td>

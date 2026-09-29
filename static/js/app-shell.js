@@ -1,3 +1,12 @@
+// History snapshots used to be the whole body. Drop any of those so a back
+// navigation cannot inject a full document into #shell-content.
+try {
+    if (localStorage.getItem("htmx-history-elt") !== "shell-content") {
+        localStorage.removeItem("htmx-history-cache");
+        localStorage.setItem("htmx-history-elt", "shell-content");
+    }
+} catch (e) {}
+
 // Dark mode toggle
 function toggleDarkMode() {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -699,6 +708,38 @@ document.addEventListener('DOMContentLoaded', () => {
     overlayMounts.observe(document.body, { childList: true, subtree: true });
 
     checkScrollLock();
+});
+
+window.addEventListener("pageshow", function (evt) {
+    if (!evt.persisted) return;
+    if (document.getElementById("ticket-shell-pane") && typeof window.mountTicketChat === "function") {
+        window.mountTicketChat();
+    } else if (document.getElementById("tickets-live") && typeof window.mountTicketListWS === "function") {
+        window.mountTicketListWS();
+    }
+});
+
+document.body.addEventListener('htmx:beforeSwap', function (evt) {
+    var target = evt.detail && evt.detail.target;
+    if (!target || target.id !== 'shell-content') return;
+    if (!evt.detail.shouldSwap) return;
+    var html = evt.detail.serverResponse || '';
+    var openingTicket = html.indexOf('id="ticket-shell-pane"') !== -1;
+    document.body.classList.toggle('ticket-detail-page', openingTicket);
+    document.documentElement.classList.toggle('ticket-detail-html', openingTicket);
+    if (typeof window.unmountTicketChat === 'function') window.unmountTicketChat();
+    // The list socket lives in this document. Replacing the list must not
+    // leave its onclose handler reconnecting into an empty shell.
+    if (openingTicket && typeof window.unmountTicketListWS === 'function') {
+        window.unmountTicketListWS();
+    }
+});
+
+document.body.addEventListener('htmx:historyRestore', function () {
+    if (document.getElementById('ticket-shell-pane')) return;
+    if (document.getElementById('tickets-live') && typeof window.mountTicketListWS === 'function') {
+        window.mountTicketListWS();
+    }
 });
 
 document.body.addEventListener('htmx:beforeSwap', (evt) => {
