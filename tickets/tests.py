@@ -1441,3 +1441,228 @@ class TicketListPerformanceTests(TestCase):
         view = TicketListView()
         view.request = response.wsgi_request
         self.assertEqual(view.get_paginate_by(None), 30)  # 10 * 3
+
+    def _session_key(self):
+        return self.client.cookies[settings.SESSION_COOKIE_NAME].value
+
+    def _session_updates(self, queries):
+        return [
+            query
+            for query in queries
+            if "django_session" in query["sql"]
+            and query["sql"].lstrip().upper().startswith("UPDATE")
+        ]
+
+    def _prime_list_etag(self):
+        self.client.force_login(self.support_user)
+        response = self.client.get("/tickets/")
+        self.assertEqual(response.status_code, 200)
+        return response["ETag"]
+
+    def test_idle_304_skips_session_write_while_expiry_is_fresh(self):
+        """Unmodified ticket-list 304s do not rewrite a freshly saved session."""
+        from django.contrib.sessions.models import Session
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        etag = self._prime_list_etag()
+        key = self._session_key()
+        before = Session.objects.get(session_key=key).expire_date
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(
+                "/tickets/",
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=etag,
+            )
+
+        self.assertEqual(response.status_code, 304)
+        self.assertEqual(self._session_updates(ctx.captured_queries), [])
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
+        self.assertEqual(Session.objects.get(session_key=key).expire_date, before)
+
+        # The same cookie still authenticates. A normal page load still slides.
+        with CaptureQueriesContext(connection) as ctx:
+            followup = self.client.get("/tickets/")
+        self.assertEqual(followup.status_code, 200)
+        self.assertTrue(self._session_updates(ctx.captured_queries))
+        self.assertGreater(
+            Session.objects.get(session_key=key).expire_date,
+            before,
+        )
+
+    def test_304_still_slides_session_when_refresh_interval_elapsed(self):
+        """A due sliding window is written on the next ticket-list 304."""
+        from datetime import timedelta
+
+        from django.contrib.sessions.models import Session
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from django.utils import timezone
+
+        from core.session_middleware import TICKET_LIST_304_SESSION_REFRESH_SECONDS
+
+        etag = self._prime_list_etag()
+        key = self._session_key()
+        row = Session.objects.get(session_key=key)
+        stale = timezone.now() + timedelta(
+            seconds=settings.SESSION_COOKIE_AGE
+            - TICKET_LIST_304_SESSION_REFRESH_SECONDS
+            - 5
+        )
+        row.expire_date = stale
+        row.save(update_fields=["expire_date"])
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(
+                "/tickets/",
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=etag,
+            )
+
+        self.assertEqual(response.status_code, 304)
+        self.assertTrue(self._session_updates(ctx.captured_queries))
+        self.assertIn(settings.SESSION_COOKIE_NAME, response.cookies)
+        self.assertGreater(Session.objects.get(session_key=key).expire_date, stale)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.support_user.pk)
+
+    def test_logout_still_clears_session_after_deferred_304(self):
+        etag = self._prime_list_etag()
+        response = self.client.get(
+            "/tickets/",
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        self.assertEqual(response.status_code, 304)
+
+        logged_out = self.client.post(reverse("logout"))
+        self.assertEqual(logged_out.status_code, 302)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        followup = self.client.get("/tickets/")
+        self.assertEqual(followup.status_code, 302)
+        self.assertIn(reverse("login"), followup["Location"])
+
+    def test_modified_session_on_304_is_still_saved(self):
+        from django.contrib.sessions.backends.db import SessionStore as DjangoSessionStore
+        from django.http import HttpResponseNotModified
+        from django.test import RequestFactory
+
+        from core.session_backend import SessionStore
+        from core.session_middleware import TicketListPollSessionMiddleware
+
+        etag = self._prime_list_etag()
+        key = self._session_key()
+
+        def get_response(request):
+            request.ticket_list_304_defer_session_save = True
+            request.session["phase2_marker"] = "kept"
+            response = HttpResponseNotModified()
+            response["ETag"] = etag
+            return response
+
+        request = RequestFactory().get("/tickets/", HTTP_HX_REQUEST="true")
+        request.COOKIES[settings.SESSION_COOKIE_NAME] = key
+        response = TicketListPollSessionMiddleware(get_response)(request)
+        self.assertEqual(response.status_code, 304)
+
+        stored = SessionStore(key)
+        self.assertEqual(stored.get("phase2_marker"), "kept")
+        # The store class used above is the project engine, not a one-off.
+        self.assertTrue(issubclass(SessionStore, DjangoSessionStore))
+
+    def test_custom_session_expiry_is_not_deferred(self):
+        from django.contrib.sessions.models import Session
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.client.force_login(self.support_user)
+        session = self.client.session
+        session.set_expiry(3600)
+        session.save()
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+
+        response = self.client.get("/tickets/")
+        etag = response["ETag"]
+        key = self._session_key()
+        before = Session.objects.get(session_key=key).expire_date
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(
+                "/tickets/",
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=etag,
+            )
+        self.assertEqual(response.status_code, 304)
+        self.assertTrue(self._session_updates(ctx.captured_queries))
+        self.assertGreater(Session.objects.get(session_key=key).expire_date, before)
+
+    def test_304_aggregate_does_not_join_related_tables(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        etag = self._prime_list_etag()
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(
+                "/tickets/",
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=etag,
+            )
+        self.assertEqual(response.status_code, 304)
+        ticket_sql = [
+            query["sql"]
+            for query in ctx.captured_queries
+            if "tickets_ticket" in query["sql"]
+        ]
+        self.assertTrue(ticket_sql)
+        for sql in ticket_sql:
+            self.assertNotIn("JOIN", sql.upper())
+
+    def test_list_rows_use_select_related_for_rendered_fks(self):
+        ticket = Ticket.objects.filter(created_by=self.branch_user).first()
+        ticket.assigned_to = self.support_user
+        ticket.save(update_fields=["assigned_to"])
+
+        self.client.force_login(self.support_user)
+        response = self.client.get("/tickets/")
+        self.assertEqual(response.status_code, 200)
+        rows = list(response.context["tickets"])
+        self.assertGreaterEqual(len(rows), 1)
+        with self.assertNumQueries(0):
+            for row in rows:
+                self.assertTrue(row.branch.name)
+                self.assertTrue(row.department.name)
+                self.assertTrue(row.category.name)
+                self.assertTrue(row.created_by.username)
+                if row.assigned_to_id:
+                    self.assertTrue(row.assigned_to.username)
+
+    def test_full_page_announcement_authors_are_prefetched(self):
+        from news.models import Announcement
+
+        authors = []
+        for index in range(3):
+            author = User.objects.create_user(
+                username=f"announce_{index}",
+                email=f"announce_{index}@test.com",
+                password="testpass",
+                user_type=User.UserType.SUPPORT,
+                department=self.department,
+            )
+            authors.append(author)
+            Announcement.objects.create(
+                title=f"Notice {index}",
+                content="Hello",
+                is_active=True,
+                created_by=author,
+            )
+
+        self.client.force_login(self.support_user)
+        response = self.client.get("/tickets/")
+        self.assertEqual(response.status_code, 200)
+        announcements = list(response.context["active_announcements"])
+        self.assertEqual(len(announcements), 3)
+        with self.assertNumQueries(0):
+            names = {item.created_by.username for item in announcements}
+        self.assertEqual(names, {author.username for author in authors})
+        self.assertContains(response, "announce_0")
+        self.assertContains(response, "announce_2")

@@ -43,7 +43,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "core.session_middleware.TicketListPollSessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -170,7 +170,11 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # 3 days = 259200 seconds
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 259200))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+# Sliding expiry. Unmodified ticket-list 304 polls renew it at most once a
+# minute instead of rewriting the session on every 20s poll.
+# See core.session_middleware.TicketListPollSessionMiddleware.
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_ENGINE = "core.session_backend"
 
 # Finders are for local DEBUG only — they scan app static dirs on every request.
 WHITENOISE_USE_FINDERS = DEBUG
