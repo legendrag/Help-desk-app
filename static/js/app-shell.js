@@ -736,8 +736,18 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
     if (path.indexOf('append=true') !== -1) return;
     var etag = live.getAttribute('data-etag');
     if (etag) evt.detail.headers['If-None-Match'] = etag;
-    var depth = live.getAttribute('data-loaded-pages') || '1';
-    if (depth !== '1') evt.detail.parameters.loaded_pages = depth;
+    
+    // On live poll (every 20s), always reset to page 1 depth
+    // to avoid re-fetching hundreds of rows after load-more.
+    // Load-more rows stay in DOM until full page reload.
+    // Omitting loaded_pages param means depth=1 on the server.
+    // Only pass loaded_pages when triggered by filter change (not timer).
+    var trigger = evt.detail.triggerSpec;
+    var isTimerPoll = trigger && trigger.trigger === 'every';
+    if (!isTimerPoll) {
+        var depth = live.getAttribute('data-loaded-pages') || '1';
+        if (depth !== '1') evt.detail.parameters.loaded_pages = depth;
+    }
 });
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {
