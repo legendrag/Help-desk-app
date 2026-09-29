@@ -3,7 +3,7 @@ from pathlib import Path
 from django.test import TestCase
 from django.conf import settings
 from accounts.models import User
-from core.models import Branch, Department, Category
+from core.models import Branch, Department, Category, Role
 from tickets.models import Ticket, TicketMessage
 
 
@@ -1666,3 +1666,128 @@ class TicketListPerformanceTests(TestCase):
         self.assertEqual(names, {author.username for author in authors})
         self.assertContains(response, "announce_0")
         self.assertContains(response, "announce_2")
+
+
+class TicketShellNavigationTests(TestCase):
+    """List → chat stays in the current shell. Cold URLs stay full documents."""
+
+    def setUp(self):
+        self.branch = Branch.objects.create(code="SHELL", name="Shell Branch")
+        self.department = Department.objects.create(name="Shell Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Shell Cat",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.role = Role.objects.create(
+            name="Shell Branch",
+            can_send_message=True,
+            can_create_ticket=True,
+        )
+        self.user = User.objects.create_user(
+            username="shell_branch",
+            email="shell@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+            role=self.role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-SHELL-1",
+            title="Shell open",
+            description="Open from the list",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.user,
+            client_name="Client",
+            client_phone="0500000000",
+            status=Ticket.Status.OPEN,
+        )
+        TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.user,
+            message="Hello from the thread",
+        )
+        self.client.login(username="shell_branch", password="password123")
+
+    def test_list_rows_open_chat_inside_shell(self):
+        response = self.client.get(reverse("tickets_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="shell-content"')
+        self.assertContains(response, "hx-history-elt")
+        self.assertContains(response, 'hx-target="#shell-content"')
+        self.assertContains(response, 'hx-trigger="ticket-open"')
+        self.assertContains(response, 'hx-push-url="true"')
+        self.assertContains(response, 'htmx.trigger(row, "ticket-open")')
+        self.assertContains(response, "window.__ticketListShellBooted")
+
+    def test_list_poll_stays_a_table_partial(self):
+        response = self.client.get(reverse("tickets_list"), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/list_live_partial.html")
+        self.assertContains(response, 'hx-trigger="ticket-open"')
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertNotContains(response, "<html")
+
+    def test_history_restore_returns_list_shell_not_poll_fragment(self):
+        response = self.client.get(
+            reverse("tickets_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/list_content.html")
+        self.assertContains(response, 'class="tickets-filters"')
+        self.assertContains(response, 'id="tickets-live"')
+        self.assertContains(response, 'hx-trigger="ticket-open"')
+        self.assertContains(response, "unmountTicketChat")
+        self.assertNotContains(response, "<html")
+
+    def test_cold_ticket_url_is_full_document(self):
+        response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/detail.html")
+        self.assertContains(response, "<html")
+        self.assertContains(response, "ticket-detail-page")
+        self.assertContains(response, 'id="ticket-shell-pane"')
+        self.assertContains(response, 'id="shell-content"')
+        self.assertContains(response, "Hello from the thread")
+        self.assertContains(response, 'id="chat-box"')
+        self.assertContains(response, 'id="chat-message-form"')
+        self.assertContains(response, 'id="file-upload"')
+        self.assertContains(response, 'id="custom-transfer-modal"')
+        self.assertContains(response, 'id="ticket-offcanvas"')
+        self.assertContains(response, "toggleTicketDetails")
+        self.assertContains(response, "js/chat.js?v=15")
+        cache_control = response["Cache-Control"]
+        self.assertIn("no-store", cache_control)
+        self.assertIn("private", cache_control)
+
+    def test_htmx_ticket_open_is_pane_only_and_still_private(self):
+        full = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        response = self.client.get(
+            reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/detail_shell_partial.html")
+        self.assertNotContains(response, "<html")
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertNotContains(response, "js/app-shell.js")
+        self.assertContains(response, 'id="ticket-shell-pane"')
+        self.assertContains(response, "Hello from the thread")
+        self.assertContains(response, 'id="chat-box"')
+        self.assertContains(response, 'id="chat-message-form"')
+        self.assertContains(response, 'name="message"')
+        self.assertContains(response, 'id="file-upload"')
+        self.assertContains(response, 'id="custom-transfer-modal"')
+        self.assertContains(response, 'id="ticket-offcanvas"')
+        self.assertContains(response, "toggleTicketDetails")
+        self.assertContains(response, "mountTicketChat")
+        self.assertContains(response, "<title>MlamehTicket</title>")
+        self.assertLess(len(response.content), len(full.content))
+        cache_control = response["Cache-Control"]
+        self.assertIn("no-store", cache_control)
+        self.assertIn("private", cache_control)
+        self.assertIn("HX-Request", response.get("Vary", ""))

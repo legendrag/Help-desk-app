@@ -1,0 +1,164 @@
+{% load i18n %}
+<script>
+document.body.classList.remove("ticket-detail-page");
+document.documentElement.classList.remove("ticket-detail-html");
+if (window.unmountTicketChat) window.unmountTicketChat();
+</script>
+<div class="tickets-page">
+
+    {% include "news/announcement_card.html" %}
+    <div class="panel tickets-panel">
+        <div class="tickets-toolbar">
+            <div class="tickets-title">
+                <h2>{% trans "Support Tickets" %}</h2>
+                {% if user.is_superuser or user.role.can_create_ticket %}
+                <button type="button"
+                        hx-get="{% url 'ticket_create' %}"
+                        hx-target="#modal-content"
+                        hx-trigger="click"
+                        onclick="openModal()"
+                        class="tickets-new-btn">{% trans "+ New Ticket" %}</button>
+                {% endif %}
+            </div>
+
+            <form class="tickets-filters" method="get" autocomplete="off"
+                  hx-get="{% url 'tickets_list' %}"
+                  hx-trigger="submit, change from:select, keyup changed delay:300ms from:#search-q, search from:#search-q"
+                  hx-target="#tickets-live"
+                  hx-swap="outerHTML"
+                  hx-sync="this:abort"
+                  hx-push-url="true">
+                <div class="search-field">
+                    <span class="search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="search" name="q" id="search-q" class="search-input"
+                           placeholder="{% trans 'Search ID, title, client, phone, branch…' %}"
+                           value="{{ filter_values.q }}"
+                           aria-label="{% trans 'Search tickets' %}">
+                </div>
+                <div class="filter-row">
+                    {% if not user.user_type == 'branch' %}
+                    <select name="branch">
+                        <option value="all">{% trans "All Branches" %}</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}"{% if filter_values.branch|stringformat:"s" == branch.id|stringformat:"s" %} selected{% endif %}>{{ branch.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                    
+                    <select name="status">
+                        <option value="all">{% trans "All Statuses" %}</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}"{% if filter_values.status == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="assignment">
+                        <option value="all">{% trans "All Assignments" %}</option>
+                        <option value="unassigned"{% if filter_values.assignment == "unassigned" %} selected{% endif %}>{% trans "Unassigned" %}</option>
+                        {% for assignee in assignees %}
+                        <option value="{{ assignee.id }}"{% if filter_values.assignment|stringformat:"s" == assignee.id|stringformat:"s" %} selected{% endif %}>{{ assignee.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="visually-hidden">{% trans "Apply" %}</button>
+            </form>
+        </div>
+
+        {% include "tickets/list_live_partial.html" %}
+    </div>
+
+    {% include "tickets/load_more_button.html" %}
+
+    <div id="drawer-container"></div>
+</div>
+
+<script>
+(function () {
+    if (window.__ticketListShellBooted) return;
+    window.__ticketListShellBooted = true;
+
+    var navType = "navigate";
+    if (performance && performance.getEntriesByType) {
+        var entries = performance.getEntriesByType("navigation");
+        if (entries && entries.length) {
+            navType = entries[0].type;
+        } else if (performance.navigation) {
+            navType = performance.navigation.type === 1 ? "reload" : "navigate";
+        }
+    }
+
+    if (navType === "reload" && window.location.search) {
+        window.location.replace(window.location.pathname);
+        return;
+    }
+
+    document.addEventListener("click", function (event) {
+        var row = event.target.closest(".clickable-row");
+        if (!row) return;
+        var interactive = event.target.closest("button, input, select, textarea, form, .action-cell");
+        if (interactive) return;
+        var href = row.getAttribute("data-href");
+        if (!href) return;
+
+        var plainClick = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+        var shellRow = row.getAttribute("hx-target") === "#shell-content" && row.getAttribute("hx-get");
+        if (plainClick && shellRow && window.htmx && document.getElementById("shell-content")) {
+            // Keep the real href for new-tab / no-JS. Plain clicks stay in this shell.
+            if (event.target.closest("a")) event.preventDefault();
+            window.htmx.trigger(row, "ticket-open");
+            return;
+        }
+        // Modified clicks on the ticket link use the browser (new tab).
+        if (!plainClick && event.target.closest("a")) return;
+
+        if (document.body.classList.contains("is-page-navigating") && !row.classList.contains("is-navigating")) {
+            return;
+        }
+
+        requestAnimationFrame(function () {
+            window.location.href = href;
+        });
+    });
+
+    // WebSocket connection for real-time ticket list updates
+    function initTicketListWS() {
+        var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        var host = window.location.host;
+        var socket = new WebSocket(protocol + "//" + host + "/ws/tickets/");
+
+        socket.onopen = function() {
+            console.log("[Ticket List WS] Connected");
+        };
+
+        socket.onmessage = function(e) {
+            var data = JSON.parse(e.data);
+            console.log("[Ticket List WS] event:", data);
+
+            if (data.event === "ticket_status_changed" || data.event === "ticket_picked" || data.event === "ticket_created") {
+                // Trigger HTMX refresh of the tickets table
+                document.body.dispatchEvent(new CustomEvent("refreshTickets"));
+            }
+        };
+
+        socket.onclose = function() {
+            console.log("[Ticket List WS] Closed. Reconnecting in 3s...");
+            setTimeout(initTicketListWS, 3000);
+        };
+
+        socket.onerror = function(err) {
+            console.error("[Ticket List WS] Error:", err);
+        };
+    }
+
+    if (window.userIsAuthenticated) {
+        initTicketListWS();
+    }
+})();
+</script>
+
+

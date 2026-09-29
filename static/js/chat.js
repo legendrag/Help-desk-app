@@ -33,10 +33,43 @@ function getCsrfToken() {
 const pendingMessages = {};
 const PENDING_CONFIRM_TIMEOUT_MS = 8000; // Promote to "Sent" if WS doesn't confirm in 8s
 
+// One ticket socket for the shell. Closing it must not schedule a reconnect.
+var chatSocketGen = 0;
+var activeChatSocket = null;
+
+function closeChatSocket() {
+    chatSocketGen += 1;
+    if (!activeChatSocket) return;
+    var sock = activeChatSocket;
+    activeChatSocket = null;
+    sock.onclose = null;
+    sock.onmessage = null;
+    sock.onerror = null;
+    try { sock.close(); } catch (err) {}
+}
+
+function unmountTicketChat() {
+    closeChatSocket();
+    window.currentTicketId = "";
+    if (typeof window.closeActionMenu === "function") {
+        try { window.closeActionMenu(); } catch (err) {}
+    }
+    var menu = document.getElementById("action-bar-menu");
+    if (menu && menu.parentElement === document.body) {
+        menu.classList.remove("open");
+        menu.remove();
+    }
+    document.documentElement.classList.remove("modal-open");
+    document.documentElement.style.removeProperty("--scrollbar-width");
+}
+
 function initChat(ticketId) {
+    closeChatSocket();
+    var generation = chatSocketGen;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const socket = new WebSocket(`${protocol}//${host}/ws/tickets/${ticketId}/`);
+    activeChatSocket = socket;
 
     const chatBox = document.getElementById('chat-box');
 
@@ -500,8 +533,13 @@ function initChat(ticketId) {
     }
 
     socket.onclose = function(e) {
+        if (generation !== chatSocketGen) return;
         console.log("[Chat WS] Closed. Reconnecting...");
-        setTimeout(() => initChat(ticketId), 3000);
+        setTimeout(function () {
+            if (generation !== chatSocketGen) return;
+            if (String(window.currentTicketId) !== String(ticketId)) return;
+            initChat(ticketId);
+        }, 3000);
     };
 
     socket.onerror = function(err) {
@@ -688,7 +726,8 @@ function markPendingAsFailed(pendingKey, retryFn) {
  */
 function initChatFormInterception() {
     const chatForm = document.querySelector('.chat-form');
-    if (!chatForm) return;
+    if (!chatForm || chatForm.dataset.chatBound === '1') return;
+    chatForm.dataset.chatBound = '1';
 
     // Before the HTMX request fires, render the optimistic message
     chatForm.addEventListener('htmx:beforeRequest', function(evt) {
@@ -779,12 +818,19 @@ function closeLightbox() {
     if (modal) modal.classList.remove('open');
 }
 
-if (window.currentTicketId) {
+function mountTicketChat() {
+    if (!window.currentTicketId) return;
     initChat(window.currentTicketId);
+    initChatFormInterception();
+    initChatAttachments();
 }
 
-// Initialize optimistic UI form interception
-document.addEventListener('DOMContentLoaded', initChatFormInterception);
+window.mountTicketChat = mountTicketChat;
+window.unmountTicketChat = unmountTicketChat;
+
+if (window.currentTicketId) {
+    mountTicketChat();
+}
 
 // --- Drag-and-drop, paste, and file preview ---
 function formatFileSize(bytes) {
@@ -826,20 +872,24 @@ function setFileOnInput(file) {
 
 // Drag-and-drop on the chat form
 // Mobile Chat Actions Toggle (Event Delegation)
-document.addEventListener('click', function(e) {
-    const bubble = e.target.closest('.chat-bubble');
-    if (bubble) {
-        const chatItem = bubble.closest('.chat-item');
-        if (chatItem) {
-            chatItem.classList.toggle('active-mobile-actions');
+if (!window.__chatBubbleToggleBound) {
+    window.__chatBubbleToggleBound = true;
+    document.addEventListener('click', function(e) {
+        const bubble = e.target.closest('.chat-bubble');
+        if (bubble) {
+            const chatItem = bubble.closest('.chat-item');
+            if (chatItem) {
+                chatItem.classList.toggle('active-mobile-actions');
+            }
         }
-    }
-});
+    });
+}
 
-document.addEventListener('DOMContentLoaded', function() {
+function initChatAttachments() {
     const chatForm = document.querySelector('.chat-form');
     const overlay = document.getElementById('drop-zone-overlay');
-    if (!chatForm || !overlay) return;
+    if (!chatForm || !overlay || chatForm.dataset.dropBound === '1') return;
+    chatForm.dataset.dropBound = '1';
 
     let dragCounter = 0;
 
@@ -884,4 +934,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}
