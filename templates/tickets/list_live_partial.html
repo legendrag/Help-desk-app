@@ -76,7 +76,9 @@
                             <button type="button" class="btn secondary btn--sm btn-details-list" aria-label="{% trans 'Details' %}" title="{% trans 'Details' %}"
                                     hx-get="{% url 'ticket_drawer' ticket.id %}"
                                     hx-target="#drawer-container"
-                                    hx-swap="innerHTML">
+                                    hx-swap="innerHTML"
+                                    hx-push-url="false"
+                                    hx-sync="this">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             </button>
                         </div>

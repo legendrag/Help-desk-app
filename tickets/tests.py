@@ -675,7 +675,10 @@ class TicketNumberCopyButtonTests(TestCase):
 
     def test_drawer_partial_has_copy_buttons_for_ticket_and_phone(self):
         self.client.login(username="copy_branch", password="password123")
-        response = self.client.get(reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}))
+        response = self.client.get(
+            reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="ticket-copy-number-btn"', count=2)
         self.assertContains(response, 'data-copy-text="TK-COPY-1"')
@@ -683,11 +686,128 @@ class TicketNumberCopyButtonTests(TestCase):
 
     def test_drawer_partial_starts_closed_and_opens_after_paint(self):
         self.client.login(username="copy_branch", password="password123")
-        response = self.client.get(reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}))
+        response = self.client.get(
+            reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="ticket-offcanvas"')
         self.assertNotContains(response, 'class="ticket-offcanvas open"')
         self.assertContains(response, "requestAnimationFrame")
+
+
+class TicketDrawerRefreshTests(TestCase):
+    """A document load of the drawer URL must not be the naked partial.
+
+    F5, Ctrl+F5, address-bar Enter, and a shared link are the same GET:
+    no HTMX fragment, full page or a redirect onto one.
+    """
+
+    def setUp(self):
+        self.branch = Branch.objects.create(code="DRW", name="Drawer Branch")
+        self.department = Department.objects.create(name="Drawer Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Drawer Cat", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.user = User.objects.create_user(
+            username="drawer_branch",
+            email="drawer@test.com",
+            password="password123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="MOA-20260925-0001",
+            title="Drawer refresh",
+            description="desc",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.user,
+            client_name="Client",
+            client_phone="0501234567",
+        )
+        self.client.login(username="drawer_branch", password="password123")
+        self.drawer_url = reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id})
+        self.ticket_url = reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}) + "?show_details=true"
+
+    def test_cold_drawer_url_redirects_into_the_full_ticket_page(self):
+        response = self.client.get(self.drawer_url, follow=True)
+        self.assertEqual(response.redirect_chain, [(self.ticket_url, 302)])
+        self.assertContains(response, "<html")
+        self.assertContains(response, 'id="shell-content"')
+        self.assertContains(response, "css/style.css")
+        self.assertContains(response, 'id="ticket-offcanvas"')
+        self.assertContains(response, "MOA-20260925-0001")
+        self.assertContains(response, "show_details=true")
+
+    def test_document_reload_of_drawer_url_redirects_like_f5(self):
+        response = self.client.get(
+            self.drawer_url,
+            follow=True,
+            HTTP_SEC_FETCH_DEST="document",
+            HTTP_SEC_FETCH_MODE="navigate",
+            HTTP_SEC_FETCH_USER="?1",
+        )
+        self.assertEqual(response.redirect_chain, [(self.ticket_url, 302)])
+        self.assertContains(response, "<html")
+        self.assertContains(response, "css/style.css")
+        self.assertContains(response, 'id="shell-content"')
+
+    def test_document_navigation_never_returns_the_partial_even_with_hx_request(self):
+        response = self.client.get(
+            self.drawer_url,
+            HTTP_HX_REQUEST="true",
+            HTTP_SEC_FETCH_DEST="document",
+            HTTP_SEC_FETCH_MODE="navigate",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], self.ticket_url)
+        self.assertNotContains(response, "ticket-offcanvas", status_code=302)
+        self.assertNotContains(response, "<html", status_code=302)
+
+    def test_history_restore_of_drawer_url_redirects_instead_of_swapping_the_partial(self):
+        response = self.client.get(
+            self.drawer_url,
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], self.ticket_url)
+        self.assertNotContains(response, "ticket-offcanvas", status_code=204)
+        self.assertNotContains(response, "<html", status_code=204)
+
+    def test_htmx_drawer_fetch_stays_a_partial_and_does_not_push_the_url(self):
+        full = self.client.get(self.ticket_url)
+        response = self.client.get(self.drawer_url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tickets/partials/details_drawer.html")
+        self.assertNotContains(response, "<html")
+        self.assertNotContains(response, 'id="shell-content"')
+        self.assertContains(response, 'id="ticket-offcanvas"')
+        self.assertEqual(response["HX-Push-Url"], "false")
+        self.assertIn("HX-Request", response.get("Vary", ""))
+        self.assertEqual(response["Cache-Control"], full["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])
+
+    def test_list_details_button_does_not_inherit_row_history(self):
+        response = self.client.get(reverse("tickets_list"))
+        html = response.content.decode()
+        start = html.find("btn-details-list")
+        self.assertGreater(start, 0)
+        tag_start = html.rfind("<button", 0, start)
+        tag_end = html.find(">", start)
+        tag = html[tag_start:tag_end + 1]
+        self.assertIn(self.drawer_url, tag)
+        self.assertIn('hx-target="#drawer-container"', tag)
+        self.assertIn('hx-push-url="false"', tag)
+        self.assertIn('hx-sync="this"', tag)
+        for name in ("list_live_partial.html", "list_append.html"):
+            source = (
+                Path(settings.BASE_DIR) / "templates" / "tickets" / name
+            ).read_text(encoding="utf-8")
+            self.assertIn('hx-push-url="false"', source, name)
+            self.assertIn('hx-sync="this"', source, name)
 
 
 class TicketDrawerAnimationTests(TestCase):
