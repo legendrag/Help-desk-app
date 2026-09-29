@@ -1721,6 +1721,9 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'hx-push-url="true"')
         self.assertContains(response, 'htmx.trigger(row, "ticket-open")')
         self.assertContains(response, "window.__ticketListShellBooted")
+        self.assertContains(response, "unmountTicketListWS")
+        self.assertContains(response, "mountTicketListWS")
+        self.assertContains(response, "listSocketGen")
 
     def test_list_poll_stays_a_table_partial(self):
         response = self.client.get(reverse("tickets_list"), HTTP_HX_REQUEST="true")

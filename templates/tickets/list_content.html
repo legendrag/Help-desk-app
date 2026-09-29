@@ -3,6 +3,8 @@
 document.body.classList.remove("ticket-detail-page");
 document.documentElement.classList.remove("ticket-detail-html");
 if (window.unmountTicketChat) window.unmountTicketChat();
+// List markup is back (first paint no-ops; history restore remounts).
+if (window.mountTicketListWS) window.mountTicketListWS();
 </script>
 <div class="tickets-page">
 
@@ -125,11 +127,33 @@ if (window.unmountTicketChat) window.unmountTicketChat();
         });
     });
 
-    // WebSocket connection for real-time ticket list updates
-    function initTicketListWS() {
+    // One list socket for this document. Closing it on purpose must not reconnect.
+    var listSocketGen = 0;
+    var activeListSocket = null;
+
+    function unmountTicketListWS() {
+        listSocketGen += 1;
+        if (!activeListSocket) return;
+        var sock = activeListSocket;
+        activeListSocket = null;
+        sock.onclose = null;
+        sock.onmessage = null;
+        sock.onerror = null;
+        try { sock.close(); } catch (err) {}
+    }
+
+    function mountTicketListWS() {
+        if (!window.userIsAuthenticated) return;
+        if (!document.getElementById("tickets-live")) return;
+        if (activeListSocket && (activeListSocket.readyState === WebSocket.CONNECTING || activeListSocket.readyState === WebSocket.OPEN)) {
+            return;
+        }
+        listSocketGen += 1;
+        var generation = listSocketGen;
         var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         var host = window.location.host;
         var socket = new WebSocket(protocol + "//" + host + "/ws/tickets/");
+        activeListSocket = socket;
 
         socket.onopen = function() {
             console.log("[Ticket List WS] Connected");
@@ -140,14 +164,19 @@ if (window.unmountTicketChat) window.unmountTicketChat();
             console.log("[Ticket List WS] event:", data);
 
             if (data.event === "ticket_status_changed" || data.event === "ticket_picked" || data.event === "ticket_created") {
-                // Trigger HTMX refresh of the tickets table
                 document.body.dispatchEvent(new CustomEvent("refreshTickets"));
             }
         };
 
         socket.onclose = function() {
+            if (generation !== listSocketGen) return;
+            if (activeListSocket === socket) activeListSocket = null;
             console.log("[Ticket List WS] Closed. Reconnecting in 3s...");
-            setTimeout(initTicketListWS, 3000);
+            setTimeout(function () {
+                if (generation !== listSocketGen) return;
+                if (!document.getElementById("tickets-live")) return;
+                mountTicketListWS();
+            }, 3000);
         };
 
         socket.onerror = function(err) {
@@ -155,8 +184,11 @@ if (window.unmountTicketChat) window.unmountTicketChat();
         };
     }
 
+    window.unmountTicketListWS = unmountTicketListWS;
+    window.mountTicketListWS = mountTicketListWS;
+
     if (window.userIsAuthenticated) {
-        initTicketListWS();
+        mountTicketListWS();
     }
 })();
 </script>
