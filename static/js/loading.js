@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let skeletonDelayTimer = null;
     let htmxStallTimers = new WeakMap();
     let fullPageNavPending = false;
+    // In-shell #shell-content swaps reuse the nav skeleton without taking the
+    // full-document lock, so Dashboard can still leave the page.
+    let shellSwapSkeleton = false;
+    let shellSkeletonTimer = null;
     // Track in-flight HTMX triggers so success/error/abort only clean up once
     const inFlight = new WeakSet();
 
@@ -536,8 +540,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function clearShellSkeletonTimer() {
+        if (shellSkeletonTimer) {
+            clearTimeout(shellSkeletonTimer);
+            shellSkeletonTimer = null;
+        }
+    }
+
     function clearLoadingUI() {
         clearSkeletonDelayTimer();
+        shellSwapSkeleton = false;
+        clearShellSkeletonTimer();
         resetProgress();
         clearAllButtonLoading();
         clearFullPageLoadingFlag();
@@ -586,6 +599,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const withSkeleton = !(options && options.skeleton === false);
 
         fullPageNavPending = true;
+        // A document navigation owns the overlay. Drop a pending shell skeleton.
+        shellSwapSkeleton = false;
+        clearShellSkeletonTimer();
         if (target) {
             target.classList.add('is-navigating');
         }
@@ -634,6 +650,26 @@ document.addEventListener('DOMContentLoaded', function() {
     window.isPageNavigating = function() { return fullPageNavPending; };
     window.beginProgressNavigation = function () {
         return beginFullPageNavigation(null, '', { skeleton: false });
+    };
+    // Same destination skeletons as a full navigation. Does not set
+    // fullPageNavPending, so a Dashboard click can still load a document.
+    window.armShellSwapSkeleton = function(href) {
+        if (fullPageNavPending) return;
+        shellSwapSkeleton = true;
+        clearShellSkeletonTimer();
+        shellSkeletonTimer = setTimeout(function() {
+            shellSkeletonTimer = null;
+            if (!shellSwapSkeleton || fullPageNavPending) return;
+            showNavSkeleton(classifyNavSkeleton(href || window.location.href));
+            setPageNavigating(true);
+        }, SKELETON_DELAY_MS);
+    };
+    window.clearShellSwapSkeleton = function() {
+        var was = shellSwapSkeleton;
+        shellSwapSkeleton = false;
+        clearShellSkeletonTimer();
+        if (!was || fullPageNavPending) return;
+        setPageNavigating(false);
     };
 
     function shouldTrackElement(elt) {

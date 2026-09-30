@@ -86,10 +86,10 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=6", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=7", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
-        self.assertIn("loading.js' %}?v=21", self.base_html)
+        self.assertIn("loading.js' %}?v=22", self.base_html)
 
     def test_ordinary_full_page_nav_still_shows_skeleton(self):
         self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
@@ -104,6 +104,31 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
         self.assertNotIn("showNavSkeleton(", before_timer)
         self.assertNotIn("startProgress(", before_timer)
         self.assertNotIn("consumeFullPageLoadingFlag() || isReloadNavigation()", self.loading_js)
+
+    def test_shell_swap_locks_extra_menu_and_ticket_clicks(self):
+        self.assertIn("function armShellSwapLock", self.app_shell)
+        self.assertIn("htmx:afterSettle", self.app_shell)
+        self.assertIn("htmx:responseError", self.app_shell)
+        self.assertIn("htmx:sendError", self.app_shell)
+        self.assertIn("htmx:sendAbort", self.app_shell)
+        self.assertIn("htmx:swapError", self.app_shell)
+        self.assertIn("htmx:timeout", self.app_shell)
+        self.assertIn('node.id === "shell-content"', self.app_shell)
+        self.assertIn('a[data-shell-nav]', self.app_shell)
+        self.assertIn('hx-target") !== "#shell-content"', self.app_shell)
+        self.assertIn("armShellSwapSkeleton", self.app_shell)
+        self.assertIn("clearShellSwapSkeleton", self.app_shell)
+        # Modifier clicks are not locked; Dashboard is not a shell-nav link.
+        lock_fn = self.app_shell.split("document.addEventListener(\"click\", function (event) {", 1)[1]
+        lock_fn = lock_fn.split("document.addEventListener(\"click\"", 1)[0]
+        self.assertIn("if (!activeShellSwap || !isPlainPrimaryClick(event)) return;", lock_fn)
+        self.assertIn("action-cell", lock_fn)
+        self.assertNotIn("data-nav-key=\"dashboard\"", lock_fn)
+        skeleton = self.loading_js.split("window.armShellSwapSkeleton", 1)[1]
+        skeleton = skeleton.split("window.clearShellSwapSkeleton", 1)[0]
+        self.assertIn("fullPageNavPending", skeleton)
+        self.assertNotIn("fullPageNavPending = true", skeleton)
+        self.assertIn("showNavSkeleton(classifyNavSkeleton", skeleton)
 
     def test_unchanged_ticket_poll_skips_dom_swap(self):
         partial = (
@@ -135,8 +160,8 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=6", html)
-        self.assertIn("js/loading.js?v=21", html)
+        self.assertIn("js/app-shell.js?v=7", html)
+        self.assertIn("js/loading.js?v=22", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
         self.assertNotIn("rtl.css", html)
