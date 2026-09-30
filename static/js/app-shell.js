@@ -977,6 +977,11 @@ document.body.addEventListener("htmx:beforeSwap", function (evt) {
     if (!evt.detail.shouldSwap) return;
     var html = evt.detail.serverResponse || "";
     var kind = shellPageKindFromHtml(html);
+    // Leaving the locked chat layout: htmx's smooth show:window:top scroll and
+    // the document's smooth scroll-behavior run after the swap and flash the list.
+    if (kind !== "ticket" && document.body.classList.contains("ticket-detail-page")) {
+        useInstantShellScroll();
+    }
     applyShellChrome(kind);
     if (typeof window.unmountTicketChat === "function") window.unmountTicketChat();
     // The list socket lives in this document. Replacing the list must not
@@ -998,7 +1003,22 @@ document.body.addEventListener("htmx:pushedIntoHistory", function () {
     updateActiveNav();
 });
 
+function useInstantShellScroll() {
+    var root = document.documentElement;
+    var prevCss = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    var prevHtmx = window.htmx ? window.htmx.config.scrollBehavior : null;
+    if (window.htmx) window.htmx.config.scrollBehavior = "auto";
+    setTimeout(function () {
+        root.style.scrollBehavior = prevCss;
+        if (window.htmx && prevHtmx !== null) window.htmx.config.scrollBehavior = prevHtmx;
+    }, 0);
+}
+
 document.body.addEventListener("htmx:historyRestore", function () {
+    // htmx queues scrollTo(saved) on a timeout. Smooth scrolling animates that
+    // restore and flickers the list in under the old chat scroll position.
+    useInstantShellScroll();
     var kind = shellPageKindFromDom();
     if (kind) applyShellChrome(kind);
     updateActiveNav();

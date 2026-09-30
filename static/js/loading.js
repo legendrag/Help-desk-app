@@ -700,6 +700,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isAutomaticHtmxRequest(elt, evt)) return;
         if (elt && inFlight.has(elt)) return;
         if (elt) inFlight.add(elt);
+        // HTMX overwrites detail.elt when it re-dispatches afterRequest on a
+        // surviving ancestor. Ticket rows live inside #shell-content, so the
+        // swap detaches them and the bar would otherwise run until the cap.
+        if (evt.detail && evt.detail.xhr) evt.detail.xhr.__loadingElt = elt;
         startProgress();
         if (shouldDisableElement(elt)) {
             disableButton(elt);
@@ -717,6 +721,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function onHtmxSettled(evt) {
+        const xhr = evt.detail && evt.detail.xhr;
+        const tracked = xhr && xhr.__loadingElt;
+        if (tracked) {
+            xhr.__loadingElt = null;
+            cleanupRequest(tracked);
+            return;
+        }
         const elt = evt.detail.elt;
         if (!shouldTrackElement(elt)) return;
         if (isAutomaticHtmxRequest(elt, evt)) return;

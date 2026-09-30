@@ -7117,6 +7117,12 @@ body.kb-preview-open {
   navigation: auto;
 }
 
+/* html { scroll-behavior: smooth } animates scroll restoration during the
+   snapshot and flashes when a full-page chat (overflow locked) returns to Tickets. */
+html:active-view-transition {
+  scroll-behavior: auto;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 160ms;
