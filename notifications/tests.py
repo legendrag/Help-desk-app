@@ -1,5 +1,5 @@
 ﻿import json
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -705,9 +705,10 @@ class WebPushQueuedTests(TestCase):
 
         with (
             patch.object(
-                connection.features,
+                type(connection.features),
                 "can_return_rows_from_bulk_insert",
-                False,
+                new_callable=PropertyMock,
+                return_value=False,
             ),
             patch(
                 "notifications.services._broadcast_notification",
