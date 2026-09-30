@@ -36,6 +36,7 @@ class NewsListView(LoginRequiredMixin, NewsPermissionMixin, ListView):
                 "is_active",
                 "expires_at",
                 "created_at",
+                "updated_at",
                 "target_branch",
                 "target_branch__name",
                 "created_by",
@@ -64,16 +65,41 @@ class NewsListView(LoginRequiredMixin, NewsPermissionMixin, ListView):
         )
 
     def get(self, request, *args, **kwargs):
-        etag = self._list_etag()
-        self._shell_etag_value = etag
-        if htmx_revalidation_match(request, etag):
-            return htmx_not_modified(etag)
+        # The aggregate is only for a repeat view that sent If-None-Match.
+        # A first paint loads the rows once and derives the same ETag from them.
+        etag = None
+        if request.headers.get("If-None-Match"):
+            etag = self._list_etag()
+            self._shell_etag_value = etag
+            if htmx_revalidation_match(request, etag):
+                return htmx_not_modified(etag)
         response = super().get(request, *args, **kwargs)
+        if etag is None:
+            etag = getattr(self, "_shell_etag_value", None)
         return apply_read_etag(response, etag, request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        if not getattr(self, "_shell_etag_value", None):
+            announcements = list(context["announcements"])
+            max_updated = None
+            expired = 0
+            for announcement in announcements:
+                if announcement.updated_at and (
+                    max_updated is None or announcement.updated_at > max_updated
+                ):
+                    max_updated = announcement.updated_at
+                if announcement.is_expired:
+                    expired += 1
+            self._shell_etag_value = etag_digest(
+                [
+                    get_language(),
+                    len(announcements),
+                    expired,
+                    max_updated.isoformat() if max_updated else "",
+                ]
+            )
+        context["shell_etag"] = self._shell_etag_value
         return context
 
     def get_template_names(self):

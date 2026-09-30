@@ -23,6 +23,7 @@ from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
+from core.pagination import KnownCountPaginator
 from kb.models import Article
 from .search import apply_ticket_search
 from .services import merge_tickets
@@ -882,6 +883,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         )
         
         count = stats["count"] or 0
+        # The page query would COUNT this same set again. Keep the integer.
+        self._list_count = count
         max_updated = stats["max_updated"]
         max_stamp = max_updated.isoformat() if max_updated else ""
         
@@ -927,11 +930,11 @@ class TicketListView(LoginRequiredMixin, ListView):
         user = self.request.user
         queryset = Ticket.objects.all()
         if for_rows:
+            # The table paints branch, department, and assignee. Category and
+            # author are not on this pane, so they stay off the join.
             queryset = queryset.select_related(
                 "branch",
                 "department",
-                "category",
-                "created_by",
                 "assigned_to",
             )
 
@@ -963,11 +966,43 @@ class TicketListView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get("q", "").strip()
         return apply_ticket_search(queryset, search_query)
 
+    def get_paginator(self, queryset, per_page, orphans=0, allow_empty_first_page=True, **kwargs):
+        known = getattr(self, "_list_count", None)
+        if self.request.GET.get("append") == "true":
+            known = None
+        return KnownCountPaginator(
+            queryset,
+            per_page,
+            orphans=orphans,
+            allow_empty_first_page=allow_empty_first_page,
+            known_count=known,
+        )
+
     def get_queryset(self):
         # Assignees are drawn from the permission scope, before list filters.
         # Keep that queryset free of select_related joins.
         self.base_queryset = self._scoped_list_queryset(for_rows=False)
-        return self._apply_list_filters(self._scoped_list_queryset(for_rows=True))
+        queryset = self._apply_list_filters(self._scoped_list_queryset(for_rows=True))
+        # Description and client text are not on the list. only() also keeps the
+        # branch, department, and assignee joins to the columns the table paints
+        # (not the assignee's password and profile columns).
+        if "search_rank" in queryset.query.annotations:
+            return queryset.defer(
+                "description",
+                "client_name",
+                "client_phone",
+                "client_phone_digits",
+            )
+        return queryset.only(
+            "ticket_number",
+            "title",
+            "status",
+            "priority",
+            "created_at",
+            "branch__name",
+            "department__name",
+            "assigned_to__username",
+        )
 
     def get_template_names(self):
         # Browser back/forward cache miss and sidebar navigation ask for the
@@ -1019,10 +1054,11 @@ class TicketListView(LoginRequiredMixin, ListView):
                 branches = Branch.objects.none()
 
             base_queryset = getattr(self, "base_queryset", Ticket.objects.none())
+            # Distinct assignee ids with no select_related join, then a narrow user fetch.
             assignee_ids = base_queryset.exclude(assigned_to__isnull=True).values_list("assigned_to_id", flat=True).distinct()
 
-            context["branches"] = branches
-            context["assignees"] = User.objects.filter(id__in=assignee_ids).order_by("username")
+            context["branches"] = branches.only("id", "name")
+            context["assignees"] = User.objects.filter(id__in=assignee_ids).only("id", "username").order_by("username")
         
         context["status_choices"] = Ticket.Status.choices
 
@@ -1062,6 +1098,13 @@ class TicketListView(LoginRequiredMixin, ListView):
                     
             context["active_announcements"] = announcements.select_related(
                 "created_by"
+            ).only(
+                "id",
+                "title",
+                "content",
+                "created_at",
+                "created_by",
+                "created_by__username",
             ).order_by("-created_at")
 
         return context
@@ -1073,15 +1116,44 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     pk_url_kwarg = "ticket_id"
 
     def get_queryset(self):
-        # The chat pane includes the details drawer. Prefetch the drawer
-        # relations with the columns that drawer paints, not article HTML.
+        # The chat pane includes the details drawer. Each relation is one
+        # query: messages carry sender and reply in that same SELECT, and
+        # history carries the author. Article HTML stays deferred.
+        messages = TicketMessage.objects.select_related(
+            "sender", "reply_to", "reply_to__sender"
+        ).only(
+            "id",
+            "ticket",
+            "message",
+            "message_ar",
+            "is_system_message",
+            "attachment",
+            "created_at",
+            "sender",
+            "sender__username",
+            "sender__user_type",
+            "sender__branch",
+            "reply_to",
+            "reply_to__message",
+            "reply_to__sender",
+            "reply_to__sender__username",
+        )
+        history = TicketStatusHistory.objects.select_related("changed_by").only(
+            "id",
+            "ticket",
+            "status",
+            "event_type",
+            "detail",
+            "created_at",
+            "changed_by",
+            "changed_by__username",
+        )
         return Ticket.objects.select_related(
-            "branch", "department", "category", "created_by", "assigned_to",
+            "branch", "department", "category", "assigned_to",
             "merged_into", "pending_transfer_to", "pending_transfer_by",
         ).prefetch_related(
-            "messages", "messages__sender",
-            "messages__reply_to", "messages__reply_to__sender",
-            "status_history", "status_history__changed_by",
+            Prefetch("messages", queryset=messages),
+            Prefetch("status_history", queryset=history),
             Prefetch(
                 "merged_tickets",
                 queryset=Ticket.objects.only("id", "ticket_number", "merged_into"),
@@ -1133,7 +1205,9 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         ).filter(
             Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
             Q(is_superuser=True)
-        ).exclude(id=ticket.assigned_to_id).select_related("department")
+        ).exclude(id=ticket.assigned_to_id).select_related("department").only(
+            "id", "username", "department", "department__name"
+        )
 
         context['supporters'] = supporters
 

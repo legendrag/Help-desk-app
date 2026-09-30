@@ -8,6 +8,7 @@ from django.utils.translation import get_language
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
+from core.pagination import KnownCountPaginator
 from core.management_views import BaseManagementView, BaseDeleteView
 from tickets.models import Ticket
 from tickets.search import apply_ticket_search
@@ -103,19 +104,13 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         )
         return "".join("1" if getattr(role, flag, False) else "0" for flag in flags)
 
-    def _category_signature(self):
-        rows = list(
-            Category.objects.order_by("id").values_list(
-                "id", "name", "description", "icon"
-            )
-        )
-        return etag_digest([repr(rows)])
-
-    def _list_etag(self):
-        request = self.request
-        user = request.user
-        search_query, category_ids, status_filter, sort = self._filter_state()
-        stats_qs = _base_articles_qs(user, status_filter)
+    def _article_stats(self):
+        if hasattr(self, "_article_count"):
+            return self._article_count, self._article_max
+        user = self.request.user
+        search_query, category_ids, status_filter, _sort = self._filter_state()
+        # No select_related: COUNT/MAX does not need category or author joins.
+        stats_qs = _base_articles_qs(user, status_filter).select_related(None)
         if search_query:
             stats_qs = stats_qs.filter(
                 Q(title__icontains=search_query) | Q(content__icontains=search_query)
@@ -123,12 +118,39 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         if category_ids:
             stats_qs = stats_qs.filter(category_id__in=category_ids)
         stats = stats_qs.aggregate(count=Count("id"), max_updated=Max("updated_at"))
-        max_updated = stats["max_updated"]
+        self._article_count = stats["count"] or 0
+        self._article_max = stats["max_updated"]
+        return self._article_count, self._article_max
+
+    def _category_signature(self, categories=None):
+        if categories is None:
+            rows = list(
+                Category.objects.order_by("id").values_list(
+                    "id", "name", "description", "icon"
+                )
+            )
+        else:
+            rows = sorted(
+                (
+                    (category.id, category.name, category.description, category.icon)
+                    for category in categories
+                ),
+                key=lambda row: row[0],
+            )
+        return etag_digest([repr(rows)])
+
+    def _list_etag(self, categories=None):
+        request = self.request
+        user = request.user
+        search_query, _category_ids, status_filter, sort = self._filter_state()
+        count, max_updated = self._article_stats()
         can_manage = _user_can_manage_kb(user)
         draft_count = 0
         if can_manage:
-            draft_count = Article.objects.filter(is_published=False).count()
-            self._draft_count = draft_count
+            draft_count = getattr(self, "_draft_count", None)
+            if draft_count is None:
+                draft_count = Article.objects.filter(is_published=False).count()
+                self._draft_count = draft_count
         return etag_digest(
             [
                 get_language(),
@@ -136,24 +158,44 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
                 search_query,
                 status_filter,
                 sort,
-                ",".join(category_ids),
+                ",".join(_category_ids),
                 request.GET.get("page", ""),
-                stats["count"] or 0,
+                count,
                 max_updated.isoformat() if max_updated else "",
                 draft_count,
-                self._category_signature(),
+                self._category_signature(categories),
             ]
         )
 
     def get(self, request, *args, **kwargs):
         etag = None
-        if request.GET.get("append") != "true":
-            etag = self._list_etag()
-            self._shell_etag_value = etag
-            if htmx_revalidation_match(request, etag):
-                return htmx_not_modified(etag)
+        is_append = request.GET.get("append") == "true"
+        if not is_append:
+            # Repeat views can 304 off the aggregate. First paint skips the
+            # category-signature query and hashes the categories it already loads.
+            if request.headers.get("If-None-Match"):
+                etag = self._list_etag()
+                self._shell_etag_value = etag
+                if htmx_revalidation_match(request, etag):
+                    return htmx_not_modified(etag)
+            else:
+                self._article_stats()
         response = super().get(request, *args, **kwargs)
+        if etag is None and not is_append:
+            etag = getattr(self, "_shell_etag_value", None)
         return apply_read_etag(response, etag, request)
+
+    def get_paginator(self, queryset, per_page, orphans=0, allow_empty_first_page=True, **kwargs):
+        known = None
+        if not self._skip_page_rows():
+            known = getattr(self, "_article_count", None)
+        return KnownCountPaginator(
+            queryset,
+            per_page,
+            orphans=orphans,
+            allow_empty_first_page=allow_empty_first_page,
+            known_count=known,
+        )
 
     def get_template_names(self):
         # Load-more appends rows. Shell navigation and back/forward need the
@@ -251,11 +293,15 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ctx["is_browse_home"] = is_browse_home
 
         if can_manage:
-            ctx["draft_count"] = getattr(
-                self,
-                "_draft_count",
-                Article.objects.filter(is_published=False).count(),
-            )
+            draft_count = getattr(self, "_draft_count", None)
+            if draft_count is None:
+                draft_count = Article.objects.filter(is_published=False).count()
+                self._draft_count = draft_count
+            ctx["draft_count"] = draft_count
+
+        if not getattr(self, "_shell_etag_value", None):
+            self._shell_etag_value = self._list_etag(ctx["categories"])
+        ctx["shell_etag"] = self._shell_etag_value
 
         if is_browse_home:
             ctx["recent_articles"] = list(

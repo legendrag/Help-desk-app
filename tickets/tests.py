@@ -1021,10 +1021,26 @@ class TicketDetailQueryOptimizationTests(TestCase):
             merged_into=self.ticket,
         )
         self.client.login(username="qo_branch", password="password123")
-        response = self.client.get(
-            reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
-            HTTP_HX_REQUEST="true",
-        )
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(
+                reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
+                HTTP_HX_REQUEST="true",
+            )
+        message_sql = [
+            query["sql"]
+            for query in ctx.captured_queries
+            if "tickets_ticketmessage" in query["sql"]
+        ]
+        history_sql = [
+            query["sql"]
+            for query in ctx.captured_queries
+            if "ticketstatushistory" in query["sql"].lower()
+        ]
+        self.assertEqual(len(message_sql), 1)
+        self.assertEqual(len(history_sql), 1)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "mountTicketChat")
         self.assertContains(response, "Drawer article")
@@ -1794,10 +1810,12 @@ class TicketListPerformanceTests(TestCase):
             for row in rows:
                 self.assertTrue(row.branch.name)
                 self.assertTrue(row.department.name)
-                self.assertTrue(row.category.name)
-                self.assertTrue(row.created_by.username)
                 if row.assigned_to_id:
                     self.assertTrue(row.assigned_to.username)
+                deferred = row.get_deferred_fields()
+                self.assertIn("description", deferred)
+                self.assertIn("category_id", deferred)
+                self.assertIn("created_by_id", deferred)
 
     def test_full_page_announcement_authors_are_prefetched(self):
         from news.models import Announcement
@@ -2108,6 +2126,17 @@ class PhaseDShellPaneTests(TestCase):
         self.assertEqual(full.status_code, 200)
         self.assertContains(full, "Phase D Branch")
         self.assertContains(full, "Shell announcement")
+        ticket_counts = [
+            query["sql"]
+            for query in ctx.captured_queries
+            if "COUNT(" in query["sql"].upper() and "tickets_ticket" in query["sql"]
+        ]
+        self.assertEqual(len(ticket_counts), 1)
+        for query in ctx.captured_queries:
+            sql = query["sql"].lower()
+            if "tickets_ticket" in sql and "limit " in sql:
+                self.assertNotIn("description", sql)
+                self.assertNotIn("core_category", sql)
         assignee_sql = [
             query["sql"]
             for query in ctx.captured_queries

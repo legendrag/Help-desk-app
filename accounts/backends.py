@@ -22,6 +22,18 @@ class CaseInsensitiveModelBackend(ModelBackend):
             return user
         return None
 
+    def get_user(self, user_id):
+        UserModel = get_user_model()
+        try:
+            # Role, branch, and department are read on every shell pane.
+            # One join here replaces a follow-up query per relation.
+            user = UserModel._default_manager.select_related(
+                "role", "branch", "department"
+            ).get(pk=user_id)
+        except UserModel.DoesNotExist:
+            return None
+        return user if self.user_can_authenticate(user) else None
+
     def user_can_authenticate(self, user):
         # Account deactivation is stored on status. Django's is_active flag is
         # kept in sync on save, but existing rows may still have is_active=True.
