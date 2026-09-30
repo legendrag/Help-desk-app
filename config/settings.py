@@ -81,6 +81,23 @@ LOGOUT_REDIRECT_URL = "login"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+def mysql_connect_host(raw_host, platform_name=None):
+    """Host Django should dial for MySQL.
+
+    On Windows, ``localhost`` resolves to ``::1`` before ``127.0.0.1``. The
+    installer MySQL listens on IPv4, so that first attempt can sit for
+    ``connect_timeout`` (5s) on every new connection. Daphne closes the
+    request thread when the response finishes, so ``CONN_MAX_AGE`` does not
+    carry the connection to the next pane. Linux ``localhost`` is a unix
+    socket and must stay as written.
+    """
+    host = (raw_host or "").strip() or "localhost"
+    name = os.name if platform_name is None else platform_name
+    if name == "nt" and host.lower() == "localhost":
+        return "127.0.0.1"
+    return host
+
+
 _db_engine = os.getenv("DB_ENGINE", "sqlite").lower()
 
 if _db_engine == "mysql":
@@ -90,7 +107,7 @@ if _db_engine == "mysql":
             "NAME": os.getenv("DB_NAME", "mlamehticket"),
             "USER": os.getenv("DB_USER", "root"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.getenv("DB_HOST", "localhost"),
+            "HOST": mysql_connect_host(os.getenv("DB_HOST", "localhost")),
             "PORT": os.getenv("DB_PORT", "3306"),
             "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 600)),
             "CONN_HEALTH_CHECKS": True,

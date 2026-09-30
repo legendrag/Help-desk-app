@@ -8,10 +8,28 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import User
+from config.settings import mysql_connect_host
 from core.management_views import CategoryListView
 from core.models import Category, Department
 from core.version import get_app_version
 from tickets.models import Ticket
+
+
+class MysqlConnectHostTests(SimpleTestCase):
+    def test_windows_localhost_uses_ipv4(self):
+        self.assertEqual(mysql_connect_host("localhost", "nt"), "127.0.0.1")
+        self.assertEqual(mysql_connect_host(" LocalHost ", "nt"), "127.0.0.1")
+        self.assertEqual(mysql_connect_host("", "nt"), "127.0.0.1")
+        self.assertEqual(mysql_connect_host(None, "nt"), "127.0.0.1")
+
+    def test_posix_localhost_stays_socket_name(self):
+        self.assertEqual(mysql_connect_host("localhost", "posix"), "localhost")
+        self.assertEqual(mysql_connect_host("  localhost  ", "posix"), "localhost")
+
+    def test_explicit_hosts_are_unchanged(self):
+        self.assertEqual(mysql_connect_host("127.0.0.1", "nt"), "127.0.0.1")
+        self.assertEqual(mysql_connect_host("db.internal", "nt"), "db.internal")
+        self.assertEqual(mysql_connect_host("db.internal", "posix"), "db.internal")
 
 
 class CategoryListQueryOptimizationTests(TestCase):
