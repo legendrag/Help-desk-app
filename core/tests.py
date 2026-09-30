@@ -104,10 +104,10 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=7", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=8", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
-        self.assertIn("loading.js' %}?v=22", self.base_html)
+        self.assertIn("loading.js' %}?v=23", self.base_html)
 
     def test_ordinary_full_page_nav_still_shows_skeleton(self):
         self.assertIn("showNavSkeleton(classifyNavSkeleton(destination))", self.loading_js)
@@ -122,6 +122,29 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
         self.assertNotIn("showNavSkeleton(", before_timer)
         self.assertNotIn("startProgress(", before_timer)
         self.assertNotIn("consumeFullPageLoadingFlag() || isReloadNavigation()", self.loading_js)
+
+    def test_replaced_shell_trigger_still_finishes_the_progress_bar(self):
+        self.assertIn("xhr.__loadingElt = elt", self.loading_js)
+        settled = self.loading_js.split("function onHtmxSettled", 1)[1]
+        settled = settled.split("document.body.addEventListener('htmx:afterRequest'", 1)[0]
+        self.assertIn("xhr.__loadingElt", settled)
+        self.assertIn("cleanupRequest(tracked)", settled)
+
+    def test_leaving_chat_does_not_smooth_scroll_the_shell(self):
+        self.assertIn("function useInstantShellScroll()", self.app_shell)
+        self.assertIn('scrollBehavior = "auto"', self.app_shell)
+        self.assertIn("htmx:historyRestore", self.app_shell)
+        notifications = (
+            Path(settings.BASE_DIR) / "static" / "js" / "notifications.js"
+        ).read_text(encoding="utf-8")
+        ready = notifications.split("navigator.serviceWorker.register(swUrl)", 1)[1]
+        ready = ready.split("pushManager.subscribe", 1)[0]
+        self.assertIn("navigator.serviceWorker.ready", ready)
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "modern.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("html:active-view-transition", css)
+        self.assertIn("scroll-behavior: auto", css)
 
     def test_shell_swap_locks_extra_menu_and_ticket_clicks(self):
         self.assertIn("function armShellSwapLock", self.app_shell)
@@ -178,8 +201,8 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=7", html)
-        self.assertIn("js/loading.js?v=22", html)
+        self.assertIn("js/app-shell.js?v=8", html)
+        self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
         self.assertNotIn("rtl.css", html)

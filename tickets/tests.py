@@ -1970,6 +1970,10 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "toggleTicketDetails")
         self.assertContains(response, "mountTicketChat")
+        self.assertContains(response, 'class="ticket-back-btn"')
+        self.assertContains(response, 'data-shell-nav="1"')
+        self.assertContains(response, 'hx-target="#shell-content"')
+        self.assertContains(response, 'hx-trigger="shell-nav"')
         self.assertContains(response, "<title>MlamehTicket</title>")
         self.assertLess(len(response.content), len(full.content))
         cache_control = response["Cache-Control"]

@@ -881,8 +881,14 @@ function initWebPush() {
     const vapidKey = vapidMeta.content;
     const saveUrl = saveUrlMeta.content;
 
-    navigator.serviceWorker.register(swUrl).then(async (reg) => {
-        console.log("[WebPush] Service Worker registered:", reg);
+    // register() resolves while the worker is still installing. Desktop tabs
+    // then subscribe against a registration with no active worker and the
+    // push subscription never sticks. An installed PWA already has an active
+    // worker, which is why OS toasts worked only there.
+    navigator.serviceWorker.register(swUrl).then(function () {
+        return navigator.serviceWorker.ready;
+    }).then(async (reg) => {
+        console.log("[WebPush] Service Worker active:", reg);
 
         if (Notification.permission !== "granted") {
             console.warn("[WebPush] Notification permissions not granted.");
