@@ -687,3 +687,50 @@ class WebPushQueuedTests(TestCase):
         self.assertEqual(sent[0]["user"], user)
         self.assertEqual(sent[0]["ttl"], 1000)
         self.assertIn("Hello", sent[0]["payload"])
+
+    def test_web_push_still_queues_when_bulk_insert_cannot_return_ids(self):
+        """Oracle MySQL bulk_create leaves pk empty, which used to skip push."""
+        from django.db import connection
+
+        user = User.objects.create_user(
+            username="push_mysql_user",
+            email="push-mysql@test.com",
+            password="password123",
+        )
+        sent = []
+        broadcasts = []
+
+        def fake_enqueue(func, **kwargs):
+            func(**kwargs)
+
+        with (
+            patch.object(
+                connection.features,
+                "can_return_rows_from_bulk_insert",
+                False,
+            ),
+            patch(
+                "notifications.services._broadcast_notification",
+                side_effect=broadcasts.append,
+            ),
+            patch("notifications.services._enqueue", side_effect=fake_enqueue),
+            patch("notifications.services.webpush") as wp,
+        ):
+            wp.send_user_notification = lambda **kwargs: sent.append(kwargs)
+            from notifications.services import _notify_users
+
+            _notify_users(
+                [user],
+                "Hello",
+                "Body",
+                "/tickets/1/",
+                notification_type="new_ticket",
+            )
+
+        row = InAppNotification.objects.get(recipient=user, title="Hello")
+        self.assertIsNotNone(row.pk)
+        self.assertEqual(len(broadcasts), 1)
+        self.assertEqual(broadcasts[0].pk, row.pk)
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["user"], user)
+        self.assertIn("Hello", sent[0]["payload"])
