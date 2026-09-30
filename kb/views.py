@@ -1,11 +1,13 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Q, Count, Case, When, Value, IntegerField
+from django.db.models import Q, Count, Case, When, Value, IntegerField, Max
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils.cache import patch_vary_headers
+from django.utils.translation import get_language
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
+from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.management_views import BaseManagementView, BaseDeleteView
 from tickets.models import Ticket
 from tickets.search import apply_ticket_search
@@ -66,6 +68,93 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     context_object_name = "articles"
     paginate_by = 8
 
+    def _filter_state(self):
+        request = self.request
+        search_query = (request.GET.get("q") or "").strip()
+        category_ids = [
+            c for c in request.GET.getlist("category") if str(c).isdigit()
+        ]
+        status_filter = request.GET.get("status", "published")
+        sort = request.GET.get("sort", "relevance" if search_query else "newest")
+        return search_query, category_ids, status_filter, sort
+
+    def _is_browse_home(self):
+        search_query, category_ids, status_filter, _sort = self._filter_state()
+        return not search_query and not category_ids and status_filter != "draft"
+
+    def _skip_page_rows(self):
+        # Browse home paints category tiles and six recent titles. The page
+        # of article bodies is not in that template.
+        if self.request.GET.get("append") == "true":
+            return False
+        return self._is_browse_home()
+
+    def _perm_signature(self, user):
+        if user.is_superuser:
+            return "su"
+        role = getattr(user, "role", None)
+        if not role:
+            return "none"
+        flags = (
+            "can_manage_kb",
+            "can_access_settings",
+            "can_create_ticket",
+            "can_access_kb",
+        )
+        return "".join("1" if getattr(role, flag, False) else "0" for flag in flags)
+
+    def _category_signature(self):
+        rows = list(
+            Category.objects.order_by("id").values_list(
+                "id", "name", "description", "icon"
+            )
+        )
+        return etag_digest([repr(rows)])
+
+    def _list_etag(self):
+        request = self.request
+        user = request.user
+        search_query, category_ids, status_filter, sort = self._filter_state()
+        stats_qs = _base_articles_qs(user, status_filter)
+        if search_query:
+            stats_qs = stats_qs.filter(
+                Q(title__icontains=search_query) | Q(content__icontains=search_query)
+            )
+        if category_ids:
+            stats_qs = stats_qs.filter(category_id__in=category_ids)
+        stats = stats_qs.aggregate(count=Count("id"), max_updated=Max("updated_at"))
+        max_updated = stats["max_updated"]
+        can_manage = _user_can_manage_kb(user)
+        draft_count = 0
+        if can_manage:
+            draft_count = Article.objects.filter(is_published=False).count()
+            self._draft_count = draft_count
+        return etag_digest(
+            [
+                get_language(),
+                self._perm_signature(user),
+                search_query,
+                status_filter,
+                sort,
+                ",".join(category_ids),
+                request.GET.get("page", ""),
+                stats["count"] or 0,
+                max_updated.isoformat() if max_updated else "",
+                draft_count,
+                self._category_signature(),
+            ]
+        )
+
+    def get(self, request, *args, **kwargs):
+        etag = None
+        if request.GET.get("append") != "true":
+            etag = self._list_etag()
+            self._shell_etag_value = etag
+            if htmx_revalidation_match(request, etag):
+                return htmx_not_modified(etag)
+        response = super().get(request, *args, **kwargs)
+        return apply_read_etag(response, etag, request)
+
     def get_template_names(self):
         # Load-more appends rows. Shell navigation and back/forward need the
         # whole knowledge-base pane, not that fragment.
@@ -85,7 +174,22 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
             patch_vary_headers(response, ["HX-Request"])
         return response
 
+    def paginate_queryset(self, queryset, page_size):
+        # An empty stand-in queryset has no page 2. Browse home ignores the
+        # page list, so a ?page= request must stay a 200 of that home.
+        if self._skip_page_rows():
+            paginator = self.get_paginator(
+                queryset,
+                page_size,
+                orphans=self.get_paginate_orphans(),
+                allow_empty_first_page=self.get_allow_empty(),
+            )
+            return (paginator, None, queryset, False)
+        return super().paginate_queryset(queryset, page_size)
+
     def get_queryset(self):
+        if self._skip_page_rows():
+            return Article.objects.none().only("id")
         status_filter = self.request.GET.get("status", "published")
         qs = _base_articles_qs(self.request.user, status_filter)
 
@@ -107,19 +211,28 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         request = self.request
-        can_manage = _user_can_manage_kb(request.user)
-        status_filter = request.GET.get("status", "published")
-        search_query = (request.GET.get("q") or "").strip()
-        category_ids = [
-            c for c in request.GET.getlist("category") if str(c).isdigit()
-        ]
-        sort = request.GET.get("sort", "relevance" if search_query else "newest")
+        search_query, category_ids, status_filter, sort = self._filter_state()
+        is_append = (
+            request.headers.get("HX-Request")
+            and request.GET.get("append") == "true"
+            and not request.headers.get("HX-History-Restore-Request")
+        )
 
+        ctx["search_query"] = search_query
+        ctx["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        params = request.GET.copy()
+        params.pop("page", None)
+        params.pop("append", None)
+        ctx["filter_query"] = params.urlencode()
+        # Load-more only appends result rows and the next button.
+        if is_append:
+            return ctx
+
+        can_manage = _user_can_manage_kb(request.user)
         published_filter = _published_filter_for_status(status_filter, can_manage)
         ctx["categories"] = Category.objects.annotate(
             article_count=Count("articles", filter=published_filter)
         )
-        ctx["search_query"] = search_query
         ctx["current_categories"] = category_ids
         ctx["current_status"] = status_filter
         ctx["current_sort"] = sort
@@ -130,33 +243,34 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
         ctx["can_create_ticket"] = request.user.is_superuser or (
             request.user.role and getattr(request.user.role, "can_create_ticket", False)
         )
-        ctx["all_articles_count"] = _base_articles_qs(
-            request.user, status_filter
-        ).count()
 
         paginator = ctx.get("paginator")
         ctx["article_count"] = paginator.count if paginator else len(ctx["articles"])
 
-        is_browse_home = not search_query and not category_ids and status_filter != "draft"
+        is_browse_home = self._is_browse_home()
         ctx["is_browse_home"] = is_browse_home
-        ctx["has_active_filters"] = bool(
-            search_query
-            or category_ids
-            or (can_manage and status_filter == "draft")
-        )
 
         if can_manage:
-            ctx["draft_count"] = Article.objects.filter(is_published=False).count()
+            ctx["draft_count"] = getattr(
+                self,
+                "_draft_count",
+                Article.objects.filter(is_published=False).count(),
+            )
 
         if is_browse_home:
             ctx["recent_articles"] = list(
-                _base_articles_qs(request.user, status_filter).order_by("-updated_at")[:6]
+                Article.objects.filter(is_published=True)
+                .select_related("category")
+                .only(
+                    "title",
+                    "updated_at",
+                    "category",
+                    "category__name",
+                    "category__icon",
+                )
+                .order_by("-updated_at")[:6]
             )
 
-        params = request.GET.copy()
-        params.pop("page", None)
-        params.pop("append", None)
-        ctx["filter_query"] = params.urlencode()
         params_no_q = request.GET.copy()
         params_no_q.pop("page", None)
         params_no_q.pop("append", None)

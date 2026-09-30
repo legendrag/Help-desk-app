@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.http import HttpResponse, HttpResponseNotModified
+from django.http import HttpResponse
 from datetime import datetime, timedelta, time
 from collections import defaultdict
 import hashlib
@@ -15,13 +15,15 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
-from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Q, Sum, Value, fields
+from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
+from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
+from kb.models import Article
 from .search import apply_ticket_search
 from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
@@ -182,6 +184,34 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         if user.is_superuser:
             return True
         return user.role and user.role.can_access_settings
+
+    def _shell_etag(self):
+        # The hub shell is the tab row plus a skeleton. Only the permission
+        # bits that add tabs, and the active language, change that HTML.
+        from django.utils.translation import get_language
+
+        user = self.request.user
+        if user.is_superuser:
+            perm = "su"
+        else:
+            role = getattr(user, "role", None)
+            kb = "1" if role and role.can_manage_kb else "0"
+            maintenance = "1" if role and role.can_manage_maintenance else "0"
+            perm = kb + maintenance
+        return etag_digest([get_language(), perm])
+
+    def get(self, request, *args, **kwargs):
+        etag = self._shell_etag()
+        self._shell_etag_value = etag
+        if htmx_revalidation_match(request, etag):
+            return htmx_not_modified(etag)
+        response = super().get(request, *args, **kwargs)
+        return apply_read_etag(response, etag, request)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        return context
 
     def get_template_names(self):
         # Sidebar swaps the settings pane into #shell-content. A normal GET
@@ -877,25 +907,20 @@ class TicketListView(LoginRequiredMixin, ListView):
             etag = self._list_etag_lightweight(filtered)
             self._list_etag_value = etag
 
+            # The live poll swaps #tickets-live. A shell swap and history
+            # restore render filters and announcements, so they need a body
+            # even when the ticket aggregate has not changed.
             if (
-                request.headers.get("HX-Request")
-                and request.headers.get("If-None-Match") == etag
+                htmx_revalidation_match(request, etag)
+                and request.headers.get("HX-Target") != "shell-content"
             ):
                 # Opt in to skipping an unmodified session rewrite. The
                 # middleware still saves when the sliding expiry is due.
                 request.ticket_list_304_defer_session_save = True
-                response = HttpResponseNotModified()
-                response["ETag"] = etag
-                response["Cache-Control"] = "private, no-cache"
-                return response
+                return htmx_not_modified(etag)
         
         response = super().get(request, *args, **kwargs)
-        if etag:
-            response["ETag"] = etag
-            response["Cache-Control"] = "private, no-cache"
-        if request.headers.get("HX-Request"):
-            patch_vary_headers(response, ["HX-Request"])
-        return response
+        return apply_read_etag(response, etag, request)
     
     def _scoped_list_queryset(self, *, for_rows):
         """Permission-scoped tickets. Row fetches join the columns the list renders."""
@@ -939,10 +964,10 @@ class TicketListView(LoginRequiredMixin, ListView):
         return apply_ticket_search(queryset, search_query)
 
     def get_queryset(self):
-        scoped = self._scoped_list_queryset(for_rows=True)
         # Assignees are drawn from the permission scope, before list filters.
-        self.base_queryset = scoped
-        return self._apply_list_filters(scoped)
+        # Keep that queryset free of select_related joins.
+        self.base_queryset = self._scoped_list_queryset(for_rows=False)
+        return self._apply_list_filters(self._scoped_list_queryset(for_rows=True))
 
     def get_template_names(self):
         # Browser back/forward cache miss and sidebar navigation ask for the
@@ -966,6 +991,13 @@ class TicketListView(LoginRequiredMixin, ListView):
         is_live_poll = is_htmx and not is_append
         
         context["is_htmx"] = is_htmx
+        is_shell = (
+            self.request.headers.get("HX-Target") == "shell-content"
+            or bool(self.request.headers.get("HX-History-Restore-Request"))
+        )
+        # Live poll swaps the table only. Shell and history restore render
+        # the filter bar and announcement cards, so they keep that context.
+        skip_pane_context = is_live_poll and not is_shell
 
         context["filter_values"] = {
             "q": self.request.GET.get("q", ""),
@@ -976,7 +1008,7 @@ class TicketListView(LoginRequiredMixin, ListView):
 
         # Skip expensive context items on HTMX live poll (every 20s refresh)
         # The live partial doesn't render filters or announcements
-        if not is_live_poll:
+        if not skip_pane_context:
             if user.is_superuser:
                 branches = Branch.objects.all()
             elif user.user_type == "branch" and user.branch_id:
@@ -1009,7 +1041,7 @@ class TicketListView(LoginRequiredMixin, ListView):
             context["append_page"] = depth + 1
 
         # Skip announcements on HTMX live poll - not rendered in the partial
-        if not is_live_poll:
+        if not skip_pane_context:
             from news.models import Announcement
             from django.utils import timezone
             
@@ -1041,6 +1073,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     pk_url_kwarg = "ticket_id"
 
     def get_queryset(self):
+        # The chat pane includes the details drawer. Prefetch the drawer
+        # relations with the columns that drawer paints, not article HTML.
         return Ticket.objects.select_related(
             "branch", "department", "category", "created_by", "assigned_to",
             "merged_into", "pending_transfer_to", "pending_transfer_by",
@@ -1048,6 +1082,21 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             "messages", "messages__sender",
             "messages__reply_to", "messages__reply_to__sender",
             "status_history", "status_history__changed_by",
+            Prefetch(
+                "merged_tickets",
+                queryset=Ticket.objects.only("id", "ticket_number", "merged_into"),
+            ),
+            Prefetch(
+                "kb_articles",
+                queryset=Article.objects.select_related("created_by").only(
+                    "title",
+                    "related_ticket",
+                    "created_by",
+                    "created_by__username",
+                    "created_by__first_name",
+                    "created_by__last_name",
+                ),
+            ),
         )
 
     def get_object(self, queryset=None):

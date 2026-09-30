@@ -812,9 +812,51 @@ window.addEventListener("pageshow", function (evt) {
     remountShellPage(kind);
 });
 
+function canonicalShellPath(path) {
+    try {
+        var url = new URL(path, location.origin);
+        var pathname = url.pathname.replace(/\/+$/, "") || "/";
+        return pathname + url.search;
+    } catch (e) {
+        return "";
+    }
+}
+
+function shellPaneEtag(kind) {
+    var ids = {
+        news: "news-shell-pane",
+        kb: "kb-shell-pane",
+        settings: "settings-shell-pane"
+    };
+    var id = ids[kind];
+    if (!id) return "";
+    var el = document.getElementById(id);
+    return el ? (el.getAttribute("data-etag") || "") : "";
+}
+
+// Revalidate the pane already on screen. A different destination must not
+// send If-None-Match: a 304 would keep the previous pane's HTML.
+function attachShellPaneEtag(evt) {
+    var target = evt.detail && evt.detail.target;
+    if (!target || target.id !== "shell-content") return;
+    var headers = evt.detail.headers;
+    if (!headers || headers["HX-History-Restore-Request"]) return;
+    var requested = canonicalShellPath(evt.detail.path || "");
+    var here = canonicalShellPath(location.pathname + location.search);
+    if (!requested || requested !== here) return;
+    var etag = shellPaneEtag(shellPageKindFromDom());
+    if (etag) headers["If-None-Match"] = etag;
+}
+
 document.body.addEventListener("htmx:beforeSwap", function (evt) {
     var target = evt.detail && evt.detail.target;
     if (!target || target.id !== "shell-content") return;
+    var xhr = evt.detail.xhr;
+    if (xhr && xhr.status === 304) {
+        evt.detail.shouldSwap = false;
+        evt.detail.isError = false;
+        return;
+    }
     if (!evt.detail.shouldSwap) return;
     var html = evt.detail.serverResponse || "";
     var kind = shellPageKindFromHtml(html);
@@ -868,6 +910,7 @@ document.body.addEventListener('htmx:load', (evt) => {
 document.body.addEventListener('htmx:configRequest', function (evt) {
     var elt = evt.detail.elt;
     if (!elt) return;
+    attachShellPaneEtag(evt);
     if (elt.classList && elt.classList.contains('tickets-filters')) {
         document.body.classList.remove('pause-polling');
     }

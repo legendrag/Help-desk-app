@@ -155,6 +155,98 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertContains(response, 'id="kb-shell-pane"')
         self.assertNotContains(response, "<html")
 
+    def test_browse_home_skips_article_bodies(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.article_a1.content = "<p>SECRET-ARTICLE-HTML</p>" * 20
+        self.article_a1.save(update_fields=["content"])
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("kb_list"), HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("all_articles_count", response.context)
+        self.assertNotIn("has_active_filters", response.context)
+        self.assertEqual(list(response.context["articles"]), [])
+        recent = list(response.context["recent_articles"])
+        self.assertIn(self.article_a1, recent)
+        self.assertIn("content", recent[0].get_deferred_fields())
+        with self.assertNumQueries(0):
+            self.assertTrue(recent[0].category.name)
+            self.assertTrue(recent[0].category.icon)
+        for query in ctx.captured_queries:
+            if "kb_article" in query["sql"]:
+                self.assertNotIn("content", query["sql"].lower())
+        self.assertContains(response, "Browse by category")
+        self.assertContains(response, "Recently updated")
+        self.assertContains(response, "mountKbSearch")
+        self.assertNotContains(response, "SECRET-ARTICLE-HTML")
+        self.assertContains(response, 'data-etag="')
+
+        paged = self.client.get(reverse("kb_list"), {"page": "2"})
+        self.assertEqual(paged.status_code, 200)
+        self.assertContains(paged, "Browse by category")
+
+    def test_search_still_loads_snippets_and_etag_tracks_filters(self):
+        home = self.client.get(reverse("kb_list"))
+        found = self.client.get(reverse("kb_list"), {"q": "password"})
+        self.assertEqual(found.status_code, 200)
+        self.assertNotEqual(found["ETag"], home["ETag"])
+        article = found.context["articles"][0]
+        self.assertNotIn("content", article.get_deferred_fields())
+        self.assertContains(found, "Reset password")
+        self.assertIn("no-store", found["Cache-Control"])
+        self.assertIn("private", found["Cache-Control"])
+
+        cached = self.client.get(
+            reverse("kb_list"),
+            {"q": "password"},
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=found["ETag"],
+        )
+        self.assertEqual(cached.status_code, 304)
+        self.assertIn("HX-Request", cached.get("Vary", ""))
+        self.assertIn("no-store", cached["Cache-Control"])
+        self.assertEqual(cached.content, b"")
+
+        restore = self.client.get(
+            reverse("kb_list"),
+            {"q": "password"},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+            HTTP_IF_NONE_MATCH=found["ETag"],
+        )
+        self.assertEqual(restore.status_code, 200)
+        self.assertContains(restore, "Reset password")
+        self.assertContains(restore, 'id="kb-shell-pane"')
+
+    def test_load_more_skips_category_context_and_etag(self):
+        for i in range(10):
+            Article.objects.create(
+                title=f"Paged article {i}",
+                category=self.cat_b,
+                content="<p>Paged body.</p>",
+                is_published=True,
+                created_by=self.user,
+            )
+        listed = self.client.get(
+            reverse("kb_list"),
+            {"category": str(self.cat_b.id)},
+        )
+        response = self.client.get(
+            reverse("kb_list"),
+            {"category": str(self.cat_b.id), "page": "2", "append": "true"},
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=listed["ETag"],
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("ETag", response)
+        self.assertNotIn("categories", response.context)
+        self.assertNotIn("recent_articles", response.context)
+        self.assertContains(response, "Paged article")
+        self.assertNotContains(response, 'id="kb-shell-pane"')
+
     def test_create_form_page_layout(self):
         response = self.client.get(reverse("kb_create"))
         self.assertEqual(response.status_code, 200)

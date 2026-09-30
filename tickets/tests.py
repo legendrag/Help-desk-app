@@ -995,6 +995,49 @@ class TicketDetailQueryOptimizationTests(TestCase):
         self.assertContains(response, "qo_branch")
         self.assertContains(response, "Reply to first")
 
+    def test_chat_pane_prefetches_drawer_relations_without_article_html(self):
+        from kb.models import Article, Category as KBCategory
+
+        kb_category = KBCategory.objects.create(name="Chat KB", icon="book")
+        article = Article.objects.create(
+            title="Drawer article",
+            category=kb_category,
+            content="<p>SECRET-KB-HTML</p>",
+            is_published=True,
+            created_by=self.support_user,
+            related_ticket=self.ticket,
+        )
+        Ticket.objects.create(
+            ticket_number="TK-QO-CHILD",
+            title="Merged child",
+            description="Child",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.branch_user,
+            client_name="Client",
+            client_phone="0500000002",
+            status=Ticket.Status.MERGED,
+            merged_into=self.ticket,
+        )
+        self.client.login(username="qo_branch", password="password123")
+        response = self.client.get(
+            reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "mountTicketChat")
+        self.assertContains(response, "Drawer article")
+        self.assertNotContains(response, "SECRET-KB-HTML")
+        ticket = response.context["ticket"]
+        with self.assertNumQueries(0):
+            merged = list(ticket.merged_tickets.all())
+            self.assertEqual(merged[0].ticket_number, "TK-QO-CHILD")
+            articles = list(ticket.kb_articles.all())
+            self.assertEqual(articles[0].pk, article.pk)
+            self.assertIn("content", articles[0].get_deferred_fields())
+            self.assertEqual(articles[0].created_by.username, "qo_support")
+
 
 class DashboardFilterPartialTests(TestCase):
     def setUp(self):
@@ -2006,6 +2049,180 @@ class SidebarMenuShellTests(TestCase):
         self.assertTemplateUsed(response, "core/settings_shell_partial.html")
         self.assertContains(response, 'id="settings-shell-pane"')
         self.assertNotContains(response, "<html")
+
+
+class PhaseDShellPaneTests(TestCase):
+    """Shell first paint keeps what the pane renders, and 304 stays narrow."""
+
+    def setUp(self):
+        self.branch = Branch.objects.create(code="PHD", name="Phase D Branch")
+        self.department = Department.objects.create(name="Phase D Dept")
+        self.category = Category.objects.create(
+            department=self.department,
+            name="Phase D Cat",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.role = Role.objects.create(
+            name="Phase D Settings",
+            can_access_settings=True,
+            can_access_dashboard=True,
+            can_manage_kb=False,
+            can_manage_maintenance=False,
+        )
+        self.user = User.objects.create_user(
+            username="phase_d",
+            email="phase_d@test.com",
+            password="password123",
+            user_type=User.UserType.SUPPORT,
+            department=self.department,
+            role=self.role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-PHD-1",
+            title="Phase D ticket",
+            description="Listed",
+            branch=self.branch,
+            department=self.department,
+            category=self.category,
+            created_by=self.user,
+            client_name="Client",
+            client_phone="0500000099",
+            assigned_to=self.user,
+        )
+        self.client.login(username="phase_d", password="password123")
+
+    def test_ticket_shell_includes_filters_live_poll_stays_slim(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from news.models import Announcement
+
+        Announcement.objects.create(
+            title="Shell announcement",
+            content="Shown on the ticket pane",
+            is_active=True,
+            created_by=self.user,
+        )
+        with CaptureQueriesContext(connection) as ctx:
+            full = self.client.get(reverse("tickets_list"))
+        self.assertEqual(full.status_code, 200)
+        self.assertContains(full, "Phase D Branch")
+        self.assertContains(full, "Shell announcement")
+        assignee_sql = [
+            query["sql"]
+            for query in ctx.captured_queries
+            if "assigned_to_id" in query["sql"] and "DISTINCT" in query["sql"].upper()
+        ]
+        self.assertTrue(assignee_sql)
+        for sql in assignee_sql:
+            self.assertNotIn(" JOIN ", sql.upper())
+
+        shell = self.client.get(
+            reverse("tickets_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="shell-content",
+            HTTP_IF_NONE_MATCH=full["ETag"],
+        )
+        self.assertEqual(shell.status_code, 200)
+        self.assertTemplateUsed(shell, "tickets/list_shell_partial.html")
+        self.assertContains(shell, "Phase D Branch")
+        self.assertContains(shell, "Shell announcement")
+        self.assertContains(shell, "unmountTicketChat")
+        self.assertContains(shell, "mountTicketListWS")
+        self.assertIn("branches", shell.context)
+        self.assertIn("no-store", shell["Cache-Control"])
+        self.assertEqual(shell["Cache-Control"], full["Cache-Control"])
+
+        poll = self.client.get(
+            reverse("tickets_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=full["ETag"],
+        )
+        self.assertEqual(poll.status_code, 304)
+        self.assertIn("HX-Request", poll.get("Vary", ""))
+        self.assertIn("no-store", poll["Cache-Control"])
+
+        restore = self.client.get(
+            reverse("tickets_list"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+            HTTP_IF_NONE_MATCH=full["ETag"],
+        )
+        self.assertEqual(restore.status_code, 200)
+        self.assertContains(restore, "Phase D Branch")
+        self.assertContains(restore, "Shell announcement")
+
+    def test_settings_etag_tracks_tabs_and_dashboard_drawer_stay_put(self):
+        full = self.client.get(reverse("settings"))
+        etag = full["ETag"]
+        self.assertIn("no-store", full["Cache-Control"])
+        self.assertContains(full, "skeleton-placeholder")
+        self.assertNotContains(full, "KB Categories")
+        self.assertContains(full, 'data-etag="')
+
+        cached = self.client.get(
+            reverse("settings"),
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        self.assertEqual(cached.status_code, 304)
+        self.assertEqual(cached.content, b"")
+        self.assertIn("HX-Request", cached.get("Vary", ""))
+        self.assertIn("no-store", cached["Cache-Control"])
+        self.assertIn("private", cached["Cache-Control"])
+
+        restore = self.client.get(
+            reverse("settings"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        self.assertEqual(restore.status_code, 200)
+        self.assertContains(restore, 'id="settings-shell-pane"')
+        self.assertContains(restore, "skeleton-placeholder")
+
+        self.role.can_manage_kb = True
+        self.role.save(update_fields=["can_manage_kb"])
+        changed = self.client.get(reverse("settings"))
+        self.assertNotEqual(changed["ETag"], etag)
+        self.assertContains(changed, "KB Categories")
+
+        dashboard = self.client.get(
+            reverse("dashboard"),
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn("ETag", dashboard)
+        self.assertTemplateUsed(dashboard, "tickets/partials/dashboard_live.html")
+        self.assertNotContains(dashboard, 'id="settings-shell-pane"')
+
+        drawer_url = reverse("ticket_drawer", kwargs={"ticket_id": self.ticket.id})
+        drawer = self.client.get(
+            drawer_url,
+            HTTP_HX_REQUEST="true",
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        self.assertEqual(drawer.status_code, 200)
+        self.assertTemplateUsed(drawer, "tickets/partials/details_drawer.html")
+        self.assertEqual(drawer["HX-Push-Url"], "false")
+        self.assertContains(drawer, 'id="ticket-offcanvas"')
+        document = self.client.get(
+            drawer_url,
+            HTTP_IF_NONE_MATCH=etag,
+            HTTP_SEC_FETCH_DEST="document",
+            HTTP_SEC_FETCH_MODE="navigate",
+        )
+        self.assertEqual(document.status_code, 302)
+        self.assertIn("show_details=true", document["Location"])
+
+        shell_js = (Path(settings.BASE_DIR) / "static" / "js" / "app-shell.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function attachShellPaneEtag", shell_js)
+        self.assertIn("requested !== here", shell_js)
+        self.assertIn('xhr.status === 304', shell_js)
+        self.assertIn("settings-shell-pane", shell_js)
 
 
 def _opening_tag(html, href):
