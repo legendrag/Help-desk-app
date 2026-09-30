@@ -117,6 +117,12 @@ class Ticket(models.Model):
             models.Index(fields=["assigned_to", "status"]),
             models.Index(fields=["created_at"]),
             models.Index(fields=["updated_at"]),
+            # Default list is scoped by branch or department and ordered by
+            # created_at. ETag checks use MAX(updated_at) on that same scope.
+            models.Index(fields=["department", "-created_at"], name="tkt_dept_created_idx"),
+            models.Index(fields=["branch", "-created_at"], name="tkt_branch_created_idx"),
+            models.Index(fields=["department", "-updated_at"], name="tkt_dept_updated_idx"),
+            models.Index(fields=["branch", "-updated_at"], name="tkt_branch_updated_idx"),
         ]
 
     def __str__(self):

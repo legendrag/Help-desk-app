@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.http import HttpResponse, HttpResponseNotModified
+from django.http import HttpResponse
 from datetime import datetime, timedelta, time
 from collections import defaultdict
 import hashlib
@@ -15,13 +15,16 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
-from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Q, Sum, Value, fields
+from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
+from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
+from core.pagination import KnownCountPaginator
+from kb.models import Article
 from .search import apply_ticket_search
 from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
@@ -182,6 +185,34 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         if user.is_superuser:
             return True
         return user.role and user.role.can_access_settings
+
+    def _shell_etag(self):
+        # The hub shell is the tab row plus a skeleton. Only the permission
+        # bits that add tabs, and the active language, change that HTML.
+        from django.utils.translation import get_language
+
+        user = self.request.user
+        if user.is_superuser:
+            perm = "su"
+        else:
+            role = getattr(user, "role", None)
+            kb = "1" if role and role.can_manage_kb else "0"
+            maintenance = "1" if role and role.can_manage_maintenance else "0"
+            perm = kb + maintenance
+        return etag_digest([get_language(), perm])
+
+    def get(self, request, *args, **kwargs):
+        etag = self._shell_etag()
+        self._shell_etag_value = etag
+        if htmx_revalidation_match(request, etag):
+            return htmx_not_modified(etag)
+        response = super().get(request, *args, **kwargs)
+        return apply_read_etag(response, etag, request)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        return context
 
     def get_template_names(self):
         # Sidebar swaps the settings pane into #shell-content. A normal GET
@@ -852,6 +883,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         )
         
         count = stats["count"] or 0
+        # The page query would COUNT this same set again. Keep the integer.
+        self._list_count = count
         max_updated = stats["max_updated"]
         max_stamp = max_updated.isoformat() if max_updated else ""
         
@@ -877,36 +910,31 @@ class TicketListView(LoginRequiredMixin, ListView):
             etag = self._list_etag_lightweight(filtered)
             self._list_etag_value = etag
 
+            # The live poll swaps #tickets-live. A shell swap and history
+            # restore render filters and announcements, so they need a body
+            # even when the ticket aggregate has not changed.
             if (
-                request.headers.get("HX-Request")
-                and request.headers.get("If-None-Match") == etag
+                htmx_revalidation_match(request, etag)
+                and request.headers.get("HX-Target") != "shell-content"
             ):
                 # Opt in to skipping an unmodified session rewrite. The
                 # middleware still saves when the sliding expiry is due.
                 request.ticket_list_304_defer_session_save = True
-                response = HttpResponseNotModified()
-                response["ETag"] = etag
-                response["Cache-Control"] = "private, no-cache"
-                return response
+                return htmx_not_modified(etag)
         
         response = super().get(request, *args, **kwargs)
-        if etag:
-            response["ETag"] = etag
-            response["Cache-Control"] = "private, no-cache"
-        if request.headers.get("HX-Request"):
-            patch_vary_headers(response, ["HX-Request"])
-        return response
+        return apply_read_etag(response, etag, request)
     
     def _scoped_list_queryset(self, *, for_rows):
         """Permission-scoped tickets. Row fetches join the columns the list renders."""
         user = self.request.user
         queryset = Ticket.objects.all()
         if for_rows:
+            # The table paints branch, department, and assignee. Category and
+            # author are not on this pane, so they stay off the join.
             queryset = queryset.select_related(
                 "branch",
                 "department",
-                "category",
-                "created_by",
                 "assigned_to",
             )
 
@@ -938,11 +966,43 @@ class TicketListView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get("q", "").strip()
         return apply_ticket_search(queryset, search_query)
 
+    def get_paginator(self, queryset, per_page, orphans=0, allow_empty_first_page=True, **kwargs):
+        known = getattr(self, "_list_count", None)
+        if self.request.GET.get("append") == "true":
+            known = None
+        return KnownCountPaginator(
+            queryset,
+            per_page,
+            orphans=orphans,
+            allow_empty_first_page=allow_empty_first_page,
+            known_count=known,
+        )
+
     def get_queryset(self):
-        scoped = self._scoped_list_queryset(for_rows=True)
         # Assignees are drawn from the permission scope, before list filters.
-        self.base_queryset = scoped
-        return self._apply_list_filters(scoped)
+        # Keep that queryset free of select_related joins.
+        self.base_queryset = self._scoped_list_queryset(for_rows=False)
+        queryset = self._apply_list_filters(self._scoped_list_queryset(for_rows=True))
+        # Description and client text are not on the list. only() also keeps the
+        # branch, department, and assignee joins to the columns the table paints
+        # (not the assignee's password and profile columns).
+        if "search_rank" in queryset.query.annotations:
+            return queryset.defer(
+                "description",
+                "client_name",
+                "client_phone",
+                "client_phone_digits",
+            )
+        return queryset.only(
+            "ticket_number",
+            "title",
+            "status",
+            "priority",
+            "created_at",
+            "branch__name",
+            "department__name",
+            "assigned_to__username",
+        )
 
     def get_template_names(self):
         # Browser back/forward cache miss and sidebar navigation ask for the
@@ -966,6 +1026,13 @@ class TicketListView(LoginRequiredMixin, ListView):
         is_live_poll = is_htmx and not is_append
         
         context["is_htmx"] = is_htmx
+        is_shell = (
+            self.request.headers.get("HX-Target") == "shell-content"
+            or bool(self.request.headers.get("HX-History-Restore-Request"))
+        )
+        # Live poll swaps the table only. Shell and history restore render
+        # the filter bar and announcement cards, so they keep that context.
+        skip_pane_context = is_live_poll and not is_shell
 
         context["filter_values"] = {
             "q": self.request.GET.get("q", ""),
@@ -976,7 +1043,7 @@ class TicketListView(LoginRequiredMixin, ListView):
 
         # Skip expensive context items on HTMX live poll (every 20s refresh)
         # The live partial doesn't render filters or announcements
-        if not is_live_poll:
+        if not skip_pane_context:
             if user.is_superuser:
                 branches = Branch.objects.all()
             elif user.user_type == "branch" and user.branch_id:
@@ -987,10 +1054,11 @@ class TicketListView(LoginRequiredMixin, ListView):
                 branches = Branch.objects.none()
 
             base_queryset = getattr(self, "base_queryset", Ticket.objects.none())
+            # Distinct assignee ids with no select_related join, then a narrow user fetch.
             assignee_ids = base_queryset.exclude(assigned_to__isnull=True).values_list("assigned_to_id", flat=True).distinct()
 
-            context["branches"] = branches
-            context["assignees"] = User.objects.filter(id__in=assignee_ids).order_by("username")
+            context["branches"] = branches.only("id", "name")
+            context["assignees"] = User.objects.filter(id__in=assignee_ids).only("id", "username").order_by("username")
         
         context["status_choices"] = Ticket.Status.choices
 
@@ -1009,7 +1077,7 @@ class TicketListView(LoginRequiredMixin, ListView):
             context["append_page"] = depth + 1
 
         # Skip announcements on HTMX live poll - not rendered in the partial
-        if not is_live_poll:
+        if not skip_pane_context:
             from news.models import Announcement
             from django.utils import timezone
             
@@ -1030,6 +1098,13 @@ class TicketListView(LoginRequiredMixin, ListView):
                     
             context["active_announcements"] = announcements.select_related(
                 "created_by"
+            ).only(
+                "id",
+                "title",
+                "content",
+                "created_at",
+                "created_by",
+                "created_by__username",
             ).order_by("-created_at")
 
         return context
@@ -1041,13 +1116,59 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     pk_url_kwarg = "ticket_id"
 
     def get_queryset(self):
+        # The chat pane includes the details drawer. Each relation is one
+        # query: messages carry sender and reply in that same SELECT, and
+        # history carries the author. Article HTML stays deferred.
+        messages = TicketMessage.objects.select_related(
+            "sender", "reply_to", "reply_to__sender"
+        ).only(
+            "id",
+            "ticket",
+            "message",
+            "message_ar",
+            "is_system_message",
+            "attachment",
+            "created_at",
+            "sender",
+            "sender__username",
+            "sender__user_type",
+            "sender__branch",
+            "reply_to",
+            "reply_to__message",
+            "reply_to__sender",
+            "reply_to__sender__username",
+        )
+        history = TicketStatusHistory.objects.select_related("changed_by").only(
+            "id",
+            "ticket",
+            "status",
+            "event_type",
+            "detail",
+            "created_at",
+            "changed_by",
+            "changed_by__username",
+        )
         return Ticket.objects.select_related(
-            "branch", "department", "category", "created_by", "assigned_to",
+            "branch", "department", "category", "assigned_to",
             "merged_into", "pending_transfer_to", "pending_transfer_by",
         ).prefetch_related(
-            "messages", "messages__sender",
-            "messages__reply_to", "messages__reply_to__sender",
-            "status_history", "status_history__changed_by",
+            Prefetch("messages", queryset=messages),
+            Prefetch("status_history", queryset=history),
+            Prefetch(
+                "merged_tickets",
+                queryset=Ticket.objects.only("id", "ticket_number", "merged_into"),
+            ),
+            Prefetch(
+                "kb_articles",
+                queryset=Article.objects.select_related("created_by").only(
+                    "title",
+                    "related_ticket",
+                    "created_by",
+                    "created_by__username",
+                    "created_by__first_name",
+                    "created_by__last_name",
+                ),
+            ),
         )
 
     def get_object(self, queryset=None):
@@ -1084,7 +1205,9 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         ).filter(
             Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
             Q(is_superuser=True)
-        ).exclude(id=ticket.assigned_to_id).select_related("department")
+        ).exclude(id=ticket.assigned_to_id).select_related("department").only(
+            "id", "username", "department", "department__name"
+        )
 
         context['supporters'] = supporters
 

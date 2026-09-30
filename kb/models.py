@@ -62,6 +62,9 @@ class Article(TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_published", "-updated_at"], name="kb_pub_updated_idx"),
+        ]
 
     def __str__(self):
         return self.title

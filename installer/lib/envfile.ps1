@@ -98,6 +98,9 @@ function New-ProductionEnv {
     }
 
     $siteUrl = "http://${ServerAddress}:${Port}"
+    # 127.0.0.1, not localhost. Windows resolves localhost to ::1 first, and
+    # the bundled MySQL is IPv4-only, so each Daphne request can wait out
+    # connect_timeout before falling back. The app user is granted for both.
     $values = @{
         DEBUG                         = "0"
         SECRET_KEY                    = (New-UrlSafeSecret)
@@ -108,7 +111,7 @@ function New-ProductionEnv {
         DB_NAME                       = $DbName
         DB_USER                       = $DbUser
         DB_PASSWORD                   = $DbPassword
-        DB_HOST                       = "localhost"
+        DB_HOST                       = "127.0.0.1"
         DB_PORT                       = "3306"
         DEFAULT_SUPERADMIN_USERNAME   = "admin"
         DEFAULT_SUPERADMIN_EMAIL      = $AdminEmail

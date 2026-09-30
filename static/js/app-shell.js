@@ -775,15 +775,129 @@ function updateActiveNav() {
 window.updateActiveNav = updateActiveNav;
 updateActiveNav();
 
+// One in-shell swap into #shell-content at a time. A second menu or ticket
+// click while that request is open used to start another hop and leave a
+// half-swapped pane. Modified clicks and Dashboard are not part of this lock.
+var activeShellSwap = 0;
+var shellSwapSerial = 0;
+var shellSwapTimer = null;
+var SHELL_SWAP_STALL_MS = 30000;
+
+function eventElement(event) {
+    var node = event && event.target;
+    if (!node) return null;
+    if (node.nodeType === 1) return node;
+    return node.parentElement || null;
+}
+
+function isPlainPrimaryClick(event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+    return event.button === 0;
+}
+
+function isShellContentTarget(evt) {
+    var target = evt && evt.detail && evt.detail.target;
+    return !!(target && target.id === "shell-content");
+}
+
+function shellSwapHref(elt) {
+    if (!elt || !elt.getAttribute) return "";
+    return elt.getAttribute("hx-get") || elt.getAttribute("href") || elt.getAttribute("data-href") || "";
+}
+
+function releaseShellSwap(token) {
+    if (!token || token !== activeShellSwap) return;
+    activeShellSwap = 0;
+    if (shellSwapTimer) {
+        clearTimeout(shellSwapTimer);
+        shellSwapTimer = null;
+    }
+    if (typeof window.clearShellSwapSkeleton === "function") window.clearShellSwapSkeleton();
+}
+
+function releaseShellSwapFromEvent(evt) {
+    var xhr = evt && evt.detail && evt.detail.xhr;
+    var token = xhr && xhr.__shellSwapToken;
+    releaseShellSwap(token || activeShellSwap);
+}
+
+function armShellSwapLock(evt) {
+    if (!isShellContentTarget(evt)) return;
+    shellSwapSerial += 1;
+    var token = shellSwapSerial;
+    activeShellSwap = token;
+    var xhr = evt.detail && evt.detail.xhr;
+    if (xhr) xhr.__shellSwapToken = token;
+    if (shellSwapTimer) clearTimeout(shellSwapTimer);
+    shellSwapTimer = setTimeout(function () {
+        releaseShellSwap(token);
+    }, SHELL_SWAP_STALL_MS);
+    if (typeof window.armShellSwapSkeleton === "function") {
+        window.armShellSwapSkeleton(shellSwapHref(evt.detail.elt));
+    }
+}
+
+document.body.addEventListener("htmx:beforeRequest", armShellSwapLock);
+document.body.addEventListener("htmx:afterSettle", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:responseError", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:sendError", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:timeout", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:sendAbort", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:swapError", function (evt) {
+    if (!isShellContentTarget(evt)) return;
+    releaseShellSwapFromEvent(evt);
+});
+document.body.addEventListener("htmx:abort", function (evt) {
+    var node = evt.target;
+    if (node && node.id === "shell-content") releaseShellSwap(activeShellSwap);
+});
+document.body.addEventListener("htmx:historyRestore", function () {
+    releaseShellSwap(activeShellSwap);
+});
+
+// Capture so a second plain click never reaches the shell-nav / ticket-open
+// triggers. Ctrl/cmd/shift/alt-click still follows the real href.
+document.addEventListener("click", function (event) {
+    if (!activeShellSwap || !isPlainPrimaryClick(event)) return;
+    var el = eventElement(event);
+    if (!el || !el.closest) return;
+    var link = el.closest("a[data-shell-nav]");
+    var row = el.closest(".clickable-row");
+    if (row && el.closest("button, input, select, textarea, form, .action-cell")) row = null;
+    if (row && (row.getAttribute("hx-target") !== "#shell-content" || !row.getAttribute("hx-get"))) row = null;
+    if (!link && !row) return;
+    event.preventDefault();
+    event.stopPropagation();
+}, true);
+
 // Plain left-clicks on menu links swap #shell-content. Modified clicks keep
 // the real href so new tabs and no-JS still load a full document.
 document.addEventListener("click", function (event) {
     var link = event.target && event.target.closest ? event.target.closest("a[data-shell-nav]") : null;
     if (!link) return;
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!isPlainPrimaryClick(event)) return;
     if (!window.htmx || !document.getElementById("shell-content")) return;
     // Dashboard stays a full document, including Back from a later menu page.
     if (document.body.classList.contains("dashboard-page")) return;
+    if (activeShellSwap) {
+        event.preventDefault();
+        return;
+    }
     var data = link["htmx-internal-data"];
     if (!data || !data.listenerInfos || !data.listenerInfos.length) return;
     event.preventDefault();
@@ -803,6 +917,8 @@ function remountShellPage(kind) {
 
 window.addEventListener("pageshow", function (evt) {
     if (!evt.persisted) return;
+    // bfcache restores a dead in-flight XHR. Drop the lock with the skeleton.
+    releaseShellSwap(activeShellSwap);
     updateActiveNav();
     var kind = shellPageKindFromDom();
     if (kind === "ticket" && typeof window.mountTicketChat === "function") {
@@ -812,9 +928,52 @@ window.addEventListener("pageshow", function (evt) {
     remountShellPage(kind);
 });
 
+function canonicalShellPath(path) {
+    try {
+        var url = new URL(path, location.origin);
+        var pathname = url.pathname.replace(/\/+$/, "") || "/";
+        return pathname + url.search;
+    } catch (e) {
+        return "";
+    }
+}
+
+function shellPaneEtag(kind) {
+    var ids = {
+        news: "news-shell-pane",
+        kb: "kb-shell-pane",
+        settings: "settings-shell-pane"
+    };
+    var id = ids[kind];
+    if (!id) return "";
+    var el = document.getElementById(id);
+    return el ? (el.getAttribute("data-etag") || "") : "";
+}
+
+// Revalidate the pane already on screen. A different destination must not
+// send If-None-Match: a 304 would keep the previous pane's HTML.
+function attachShellPaneEtag(evt) {
+    var target = evt.detail && evt.detail.target;
+    if (!target || target.id !== "shell-content") return;
+    var headers = evt.detail.headers;
+    if (!headers || headers["HX-History-Restore-Request"]) return;
+    var requested = canonicalShellPath(evt.detail.path || "");
+    var here = canonicalShellPath(location.pathname + location.search);
+    if (!requested || requested !== here) return;
+    var etag = shellPaneEtag(shellPageKindFromDom());
+    if (etag) headers["If-None-Match"] = etag;
+}
+
 document.body.addEventListener("htmx:beforeSwap", function (evt) {
     var target = evt.detail && evt.detail.target;
     if (!target || target.id !== "shell-content") return;
+    var xhr = evt.detail.xhr;
+    if (xhr && xhr.status === 304) {
+        evt.detail.shouldSwap = false;
+        evt.detail.isError = false;
+        releaseShellSwapFromEvent(evt);
+        return;
+    }
     if (!evt.detail.shouldSwap) return;
     var html = evt.detail.serverResponse || "";
     var kind = shellPageKindFromHtml(html);
@@ -828,6 +987,11 @@ document.body.addEventListener("htmx:beforeSwap", function (evt) {
     if (kind !== "kb" && typeof window.unmountKbSearch === "function") {
         window.unmountKbSearch();
     }
+});
+
+document.body.addEventListener("htmx:beforeSwap", function (evt) {
+    if (!isShellContentTarget(evt) || !evt.detail || evt.detail.shouldSwap) return;
+    releaseShellSwapFromEvent(evt);
 });
 
 document.body.addEventListener("htmx:pushedIntoHistory", function () {
@@ -868,6 +1032,7 @@ document.body.addEventListener('htmx:load', (evt) => {
 document.body.addEventListener('htmx:configRequest', function (evt) {
     var elt = evt.detail.elt;
     if (!elt) return;
+    attachShellPaneEtag(evt);
     if (elt.classList && elt.classList.contains('tickets-filters')) {
         document.body.classList.remove('pause-polling');
     }

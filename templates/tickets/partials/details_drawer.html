@@ -85,7 +85,7 @@
                 onclick="openModal()" class="secondary">{% trans "Edit Ticket" %}</button>
         </div>
         {% endif %} 
-        {% if ticket.merged_tickets.exists %}
+        {% if ticket.merged_tickets.all %}
         <div class="merged-tickets-section">
             <label class="merged-tickets-label">{% trans "Merged Tickets" %}</label>
             <div class="merged-tickets-sidebar-list">
@@ -101,7 +101,7 @@
         </div>
         {% endif %}
         
-        {% if ticket.kb_articles.exists %}
+        {% if ticket.kb_articles.all %}
         <div class="kb-articles-section">
             <label class="merged-tickets-label">{% trans "Related Knowledge Base Articles" %}</label>
             <div class="merged-tickets-sidebar-list">
