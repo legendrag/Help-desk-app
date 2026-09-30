@@ -171,7 +171,15 @@ def _enqueue_web_push(user, title, message, link):
 
 
 def _deliver_notification(notification):
+    # MySQL bulk_create does not return autoincrement ids. Without a pk the
+    # bell payload and the web-push enqueue both no-op, so outside-app push
+    # never leaves the server (in-app rows still show up on the next fetch).
     if not notification.pk:
+        logger.error(
+            "Skipping notification delivery; row has no primary key (recipient=%s title=%r)",
+            getattr(notification, "recipient_id", None),
+            getattr(notification, "title", None),
+        )
         return
     _broadcast_notification(notification)
     _enqueue_web_push(
@@ -200,38 +208,51 @@ def _notification_row(user, title, message, link, notification_type, title_ar, m
     )
 
 
+def _save_notification_row(row):
+    return InAppNotification.objects.create(
+        recipient=row.recipient,
+        title=row.title,
+        message=row.message,
+        title_ar=row.title_ar,
+        message_ar=row.message_ar,
+        params=row.params,
+        link=row.link,
+        notification_type=row.notification_type,
+        created_at=row.created_at,
+    )
+
+
 def _create_notification_rows(rows):
-    """Insert rows in chunks. If a chunk fails, insert that chunk one row at a time."""
+    """Insert rows in chunks.
+
+    ``bulk_create`` is only used when the backend returns the new primary keys
+    (SQLite, PostgreSQL, MariaDB). Oracle MySQL does not, and delivery refuses
+    rows with no pk — that dropped WebSocket fanout and web push on the Windows
+    installer. Those inserts go through ``create()`` so each row has an id.
+    """
+    from django.db import connection
+
+    use_bulk = connection.features.can_return_rows_from_bulk_insert
     created = []
     for start in range(0, len(rows), _NOTIFY_CHUNK):
         chunk = rows[start:start + _NOTIFY_CHUNK]
-        try:
-            with transaction.atomic():
-                created.extend(InAppNotification.objects.bulk_create(chunk))
-        except Exception:
-            logger.exception("Bulk notification insert failed; falling back to per-user creates")
-            for row in chunk:
-                try:
-                    with transaction.atomic():
-                        created.append(
-                            InAppNotification.objects.create(
-                                recipient=row.recipient,
-                                title=row.title,
-                                message=row.message,
-                                title_ar=row.title_ar,
-                                message_ar=row.message_ar,
-                                params=row.params,
-                                link=row.link,
-                                notification_type=row.notification_type,
-                                created_at=row.created_at,
-                            )
-                        )
-                except Exception:
-                    logger.exception(
-                        "Failed to create in-app notification for user %s (title=%r)",
-                        getattr(row.recipient, "id", None),
-                        row.title,
-                    )
+        if use_bulk:
+            try:
+                with transaction.atomic():
+                    created.extend(InAppNotification.objects.bulk_create(chunk))
+                continue
+            except Exception:
+                logger.exception("Bulk notification insert failed; falling back to per-user creates")
+        for row in chunk:
+            try:
+                with transaction.atomic():
+                    created.append(_save_notification_row(row))
+            except Exception:
+                logger.exception(
+                    "Failed to create in-app notification for user %s (title=%r)",
+                    getattr(row.recipient, "id", None),
+                    row.title,
+                )
     return created
 
 
