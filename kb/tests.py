@@ -1,4 +1,10 @@
+import re
+import tempfile
+from pathlib import Path
+
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 
@@ -261,6 +267,71 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertContains(response, "vendor/tinymce/tinymce.min.js")
         self.assertNotContains(response, "cdn.jsdelivr.net/npm/tinymce")
         self.assertNotContains(response, "tickets-page")
+
+    def test_form_template_static_tags_are_files_and_tinymce_stays_local(self):
+        source = Path(settings.BASE_DIR, "templates", "kb", "form.html").read_text(
+            encoding="utf-8"
+        )
+        names = re.findall(r"""\{%\s*static\s+['"]([^'"]+)['"]\s*%\}""", source)
+        self.assertIn("vendor/tinymce/tinymce.min.js", names)
+        self.assertNotIn("vendor/tinymce", names)
+        for name in names:
+            path = Path(settings.BASE_DIR, "static", name)
+            self.assertTrue(path.is_file(), name)
+        self.assertIn(
+            "\"{% static 'vendor/tinymce/tinymce.min.js' %}\".replace("
+            "/\\/tinymce\\.min(?:\\.[a-f0-9]+)?\\.js(?:\\?.*)?$/, \"\")",
+            source,
+        )
+        self.assertNotIn("cdn.jsdelivr.net", source)
+        self.assertNotIn("cdn.tiny.cloud", source)
+        tinymce_root = Path(settings.BASE_DIR, "static", "vendor", "tinymce")
+        for rel in (
+            "themes/silver/theme.min.js",
+            "models/dom/model.min.js",
+            "icons/default/icons.min.js",
+            "skins/ui/oxide/skin.min.css",
+            "skins/ui/oxide-dark/skin.min.css",
+            "skins/content/default/content.min.css",
+            "skins/content/dark/content.min.css",
+            "plugins/lists/plugin.min.js",
+            "plugins/link/plugin.min.js",
+            "plugins/code/plugin.min.js",
+            "plugins/table/plugin.min.js",
+        ):
+            self.assertTrue((tinymce_root / rel).is_file(), rel)
+        self.assertIn("beforeunload", source)
+        self.assertIn("window.confirm", source)
+
+    def test_create_and_edit_render_with_manifest_static_storage(self):
+        storages = {
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+            },
+        }
+        with tempfile.TemporaryDirectory() as static_root:
+            with override_settings(DEBUG=False, STORAGES=storages, STATIC_ROOT=static_root):
+                call_command("collectstatic", interactive=False, verbosity=0)
+                create = self.client.get(reverse("kb_create"))
+                edit = self.client.get(reverse("kb_update", args=[self.article_a1.pk]))
+                self.assertEqual(create.status_code, 200)
+                self.assertEqual(edit.status_code, 200)
+                for response in (create, edit):
+                    html = response.content.decode()
+                    match = re.search(r'base_url:\s*"([^"]+)"\.replace\(', html)
+                    self.assertIsNotNone(match, html[html.find("base_url") : html.find("base_url") + 400])
+                    base_url = re.sub(
+                        r"/tinymce\.min(?:\.[a-f0-9]+)?\.js(?:\?.*)?$",
+                        "",
+                        match.group(1),
+                    )
+                    self.assertEqual(base_url, "/static/vendor/tinymce")
+                    self.assertNotIn("cdn.jsdelivr.net", html)
+                    self.assertNotIn("cdn.tiny.cloud", html)
+                    self.assertIn("plugins: 'lists link code table'", html)
 
     def test_attachment_kind_helpers(self):
         self.assertEqual(kb_attachment_kind("shot.png"), "image")

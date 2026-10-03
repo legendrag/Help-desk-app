@@ -339,7 +339,7 @@
             const isNarrow = window.matchMedia('(max-width: 640px)').matches;
             tinymce.init({
                 selector: '.tinymce-editor',
-                base_url: "{% static 'vendor/tinymce' %}".replace(/\/$/, ''),
+                base_url: "{% static 'vendor/tinymce/tinymce.min.js' %}".replace(/\/tinymce\.min(?:\.[a-f0-9]+)?\.js(?:\?.*)?$/, ""),
                 suffix: '.min',
                 menubar: false,
                 statusbar: false,
