@@ -410,6 +410,10 @@ class ArticleWriteMixin:
         if action in self.publish_actions:
             form.instance.is_published = True
             form.instance.visibility = action
+            if action == Article.Visibility.DEPARTMENT:
+                form.instance.visibility_department_id = getattr(author, "department_id", None)
+            else:
+                form.instance.visibility_department = None
             return "publish"
         form.instance.is_published = True
         return "publish"

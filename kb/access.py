@@ -57,7 +57,7 @@ def published_visibility_q(user, prefix=""):
         audience |= Q(
             **{
                 field("visibility"): Article.Visibility.DEPARTMENT,
-                field("created_by__department_id"): department_id,
+                field("visibility_department_id"): department_id,
             }
         )
     return published & audience

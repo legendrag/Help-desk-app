@@ -57,6 +57,14 @@ class Article(TimeStampedModel):
         default=Visibility.ALL_SUPPORT,
         help_text=_("Who can read this article after it is published."),
     )
+    visibility_department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="visibility_kb_articles",
+        help_text=_("Author's department at the time this article was published to that department."),
+    )
     
     related_ticket = models.ForeignKey(
         "tickets.Ticket",

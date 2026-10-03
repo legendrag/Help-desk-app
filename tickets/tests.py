@@ -1021,7 +1021,30 @@ class TicketDetailQueryOptimizationTests(TestCase):
             status=Ticket.Status.MERGED,
             merged_into=self.ticket,
         )
+        Article.objects.create(
+            title="Drawer only me",
+            category=kb_category,
+            content="<p>SECRET-ONLY-ME</p>",
+            is_published=True,
+            visibility=Article.Visibility.ONLY_ME,
+            created_by=self.support_user,
+            related_ticket=self.ticket,
+        )
+        kb_role = Role.objects.create(name="Drawer KB", can_access_kb=True)
+        self.other_support.role = kb_role
+        self.other_support.save(update_fields=["role"])
+
         self.client.login(username="qo_branch", password="password123")
+        branch_response = self.client.get(
+            reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(branch_response.status_code, 200)
+        self.assertNotContains(branch_response, "Drawer article")
+        self.assertNotContains(branch_response, "Drawer only me")
+        self.assertNotContains(branch_response, "Related Knowledge Base Articles")
+
+        self.client.login(username="qo_support2", password="password123")
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
 
@@ -1045,6 +1068,7 @@ class TicketDetailQueryOptimizationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "mountTicketChat")
         self.assertContains(response, "Drawer article")
+        self.assertNotContains(response, "Drawer only me")
         self.assertNotContains(response, "SECRET-KB-HTML")
         ticket = response.context["ticket"]
         with self.assertNumQueries(0):

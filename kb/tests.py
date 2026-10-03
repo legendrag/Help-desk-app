@@ -1,5 +1,5 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 
 from accounts.models import User
@@ -366,6 +366,7 @@ class KnowledgeBaseVisibilityTests(TestCase):
             content="<p>Department only.</p>",
             is_published=True,
             visibility=Article.Visibility.DEPARTMENT,
+            visibility_department=self.dept_a,
             created_by=self.author,
         )
         self.shared = Article.objects.create(
@@ -647,6 +648,59 @@ class KnowledgeBaseVisibilityTests(TestCase):
         self.assertContains(create_page, "Publish")
         self.assertContains(create_page, "Save draft")
         self.assertNotContains(create_page, 'value="department"')
+
+    def test_department_visibility_is_snapshotted_at_publish(self):
+        self._login("kb_vis_author")
+        created = self.client.post(
+            reverse("kb_create"),
+            {
+                "title": "Snapshot dept article",
+                "content": "<p>Dept snapshot.</p>",
+                "visibility": Article.Visibility.DEPARTMENT,
+                "category": str(self.category.pk),
+                "action": "department",
+            },
+        )
+        article = Article.objects.get(title="Snapshot dept article")
+        self.assertEqual(created.status_code, 302)
+        self.assertEqual(article.visibility_department_id, self.dept_a.id)
+
+        self.author.department = self.dept_b
+        self.author.save()
+        article.refresh_from_db()
+        self.assertEqual(article.visibility_department_id, self.dept_a.id)
+
+        self._login("kb_vis_same")
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[article.pk])).status_code, 200)
+        self._login("kb_vis_other")
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[article.pk])).status_code, 404)
+        moved = self.client.get(reverse("kb_list"), {"q": "Snapshot dept"})
+        self.assertNotIn(article, list(moved.context["articles"]))
+
+    def test_public_kb_media_stays_blocked_when_debug_is_off(self):
+        attachment = ArticleAttachment.objects.create(
+            article=self.shared,
+            file=SimpleUploadedFile("private.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"),
+        )
+        from importlib import reload
+
+        from django.urls import clear_url_caches
+
+        import config.urls
+
+        with override_settings(DEBUG=False):
+            clear_url_caches()
+            reload(config.urls)
+            try:
+                response = self.client.get(attachment.file.url)
+                payload = response.content
+                if getattr(response, "streaming", False):
+                    payload = b"".join(response.streaming_content)
+                self.assertNotEqual(response.status_code, 200)
+                self.assertNotIn(b"\x89PNG", payload)
+            finally:
+                clear_url_caches()
+                reload(config.urls)
 
     def test_autosave_saves_a_draft_without_publishing(self):
         self._login("kb_vis_author")
