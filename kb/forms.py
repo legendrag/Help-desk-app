@@ -1,9 +1,14 @@
+import os
+
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from .models import Article, ArticleAttachment, Category
-import os
+
+from accounts.models import User
+
+from .models import Article, Category
+from .sanitize import sanitize_article_html
 
 
 class MultipleFileInput(forms.ClearableFileInput):
@@ -53,7 +58,7 @@ class ArticleForm(forms.ModelForm):
 
     class Meta:
         model = Article
-        fields = ["title", "category", "related_ticket", "content"]
+        fields = ["title", "category", "visibility", "related_ticket", "content"]
         widgets = {
             "title": forms.TextInput(attrs={
                 "class": "form-control",
@@ -61,6 +66,7 @@ class ArticleForm(forms.ModelForm):
                 "placeholder": _("e.g. How to reset a branch password"),
             }),
             "category": forms.Select(attrs={"class": "form-control"}),
+            "visibility": forms.Select(attrs={"class": "form-control"}),
             "related_ticket": forms.HiddenInput(attrs={"id": "id_related_ticket"}),
             "content": forms.Textarea(attrs={
                 "class": "form-control tinymce-editor",
@@ -68,10 +74,55 @@ class ArticleForm(forms.ModelForm):
             }),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, author=None, editor=None, **kwargs):
+        self.author = author
+        self.editor = editor or author
         super().__init__(*args, **kwargs)
         if hasattr(self.fields['category'], 'empty_label'):
             self.fields['category'].empty_label = _("No Category")
+        if not getattr(self.author, "department_id", None):
+            self.fields["visibility"].choices = [
+                (value, label)
+                for value, label in self.fields["visibility"].choices
+                if value != Article.Visibility.DEPARTMENT
+            ]
+
+    def clean_content(self):
+        return sanitize_article_html(self.cleaned_data.get("content") or "")
+
+    def clean_visibility(self):
+        visibility = self.cleaned_data.get("visibility")
+        if (
+            visibility == Article.Visibility.DEPARTMENT
+            and not getattr(self.author, "department_id", None)
+        ):
+            raise ValidationError(_("My department is unavailable without a department."))
+        return visibility
+
+    def clean_related_ticket(self):
+        ticket = self.cleaned_data.get("related_ticket")
+        if not ticket:
+            return ticket
+        if self.instance and self.instance.related_ticket_id == ticket.id:
+            return ticket
+        editor = self.editor
+        if editor and editor.is_superuser:
+            return ticket
+        if (
+            editor
+            and editor.user_type == User.UserType.SUPPORT
+            and editor.department_id
+            and ticket.department_id == editor.department_id
+        ):
+            return ticket
+        if (
+            editor
+            and editor.user_type == User.UserType.BRANCH
+            and editor.branch_id
+            and ticket.branch_id == editor.branch_id
+        ):
+            return ticket
+        raise ValidationError(_("You cannot relate a ticket outside your organization."))
 
 class KBCategoryForm(forms.ModelForm):
     class Meta:

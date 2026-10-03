@@ -1,7 +1,8 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import Http404
 from django.urls import include, path
+from django.views.static import serve
 
 from django.shortcuts import redirect
 from django.views.generic.base import RedirectView
@@ -24,5 +25,25 @@ urlpatterns = [
     path("", lambda r: redirect('tickets_list'), name='root'),
 ]
 
+def _block_public_kb_media(request, path=""):
+    """KB files are not part of the public media tree in any environment."""
+    raise Http404()
+
+
+def _protected_media(request, path):
+    """Other uploads can use Django's debug media helper. KB paths stay blocked."""
+    normalized = (path or "").lstrip("/")
+    if normalized == "kb" or normalized.startswith("kb/"):
+        raise Http404()
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
+
+
+urlpatterns += [
+    path("media/kb/<path:path>", _block_public_kb_media),
+    path("media/kb", _block_public_kb_media),
+]
+
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += [
+        path("media/<path:path>", _protected_media),
+    ]

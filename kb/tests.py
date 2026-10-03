@@ -1,11 +1,20 @@
+import re
+import tempfile
+from pathlib import Path
+
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, Client
+from django.core.management import call_command
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 
 from accounts.models import User
-from core.models import Role
+from core.models import Branch, Department, Role
+from core.models import Category as TicketCategory
 from kb.models import Article, ArticleAttachment, Category
 from kb.templatetags.kb_extras import basename, kb_attachment_kind
+from tickets.access import user_can_view_ticket
+from tickets.models import Ticket
 
 
 class KnowledgeBasePolishTests(TestCase):
@@ -259,6 +268,71 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertNotContains(response, "cdn.jsdelivr.net/npm/tinymce")
         self.assertNotContains(response, "tickets-page")
 
+    def test_form_template_static_tags_are_files_and_tinymce_stays_local(self):
+        source = Path(settings.BASE_DIR, "templates", "kb", "form.html").read_text(
+            encoding="utf-8"
+        )
+        names = re.findall(r"""\{%\s*static\s+['"]([^'"]+)['"]\s*%\}""", source)
+        self.assertIn("vendor/tinymce/tinymce.min.js", names)
+        self.assertNotIn("vendor/tinymce", names)
+        for name in names:
+            path = Path(settings.BASE_DIR, "static", name)
+            self.assertTrue(path.is_file(), name)
+        self.assertIn(
+            "\"{% static 'vendor/tinymce/tinymce.min.js' %}\".replace("
+            "/\\/tinymce\\.min(?:\\.[a-f0-9]+)?\\.js(?:\\?.*)?$/, \"\")",
+            source,
+        )
+        self.assertNotIn("cdn.jsdelivr.net", source)
+        self.assertNotIn("cdn.tiny.cloud", source)
+        tinymce_root = Path(settings.BASE_DIR, "static", "vendor", "tinymce")
+        for rel in (
+            "themes/silver/theme.min.js",
+            "models/dom/model.min.js",
+            "icons/default/icons.min.js",
+            "skins/ui/oxide/skin.min.css",
+            "skins/ui/oxide-dark/skin.min.css",
+            "skins/content/default/content.min.css",
+            "skins/content/dark/content.min.css",
+            "plugins/lists/plugin.min.js",
+            "plugins/link/plugin.min.js",
+            "plugins/code/plugin.min.js",
+            "plugins/table/plugin.min.js",
+        ):
+            self.assertTrue((tinymce_root / rel).is_file(), rel)
+        self.assertIn("beforeunload", source)
+        self.assertIn("window.confirm", source)
+
+    def test_create_and_edit_render_with_manifest_static_storage(self):
+        storages = {
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+            },
+        }
+        with tempfile.TemporaryDirectory() as static_root:
+            with override_settings(DEBUG=False, STORAGES=storages, STATIC_ROOT=static_root):
+                call_command("collectstatic", interactive=False, verbosity=0)
+                create = self.client.get(reverse("kb_create"))
+                edit = self.client.get(reverse("kb_update", args=[self.article_a1.pk]))
+                self.assertEqual(create.status_code, 200)
+                self.assertEqual(edit.status_code, 200)
+                for response in (create, edit):
+                    html = response.content.decode()
+                    match = re.search(r'base_url:\s*"([^"]+)"\.replace\(', html)
+                    self.assertIsNotNone(match, html[html.find("base_url") : html.find("base_url") + 400])
+                    base_url = re.sub(
+                        r"/tinymce\.min(?:\.[a-f0-9]+)?\.js(?:\?.*)?$",
+                        "",
+                        match.group(1),
+                    )
+                    self.assertEqual(base_url, "/static/vendor/tinymce")
+                    self.assertNotIn("cdn.jsdelivr.net", html)
+                    self.assertNotIn("cdn.tiny.cloud", html)
+                    self.assertIn("plugins: 'lists link code table'", html)
+
     def test_attachment_kind_helpers(self):
         self.assertEqual(kb_attachment_kind("shot.png"), "image")
         self.assertEqual(kb_attachment_kind("guide.PDF"), "pdf")
@@ -266,7 +340,7 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertEqual(basename("kb/1/path/photo.jpg"), "photo.jpg")
 
     def test_detail_attachment_preview_markup(self):
-        ArticleAttachment.objects.create(
+        attachment = ArticleAttachment.objects.create(
             article=self.article_a1,
             file=SimpleUploadedFile(
                 "diagram.png",
@@ -283,3 +357,465 @@ class KnowledgeBasePolishTests(TestCase):
         self.assertContains(response, "diagram")
         self.assertNotContains(response, "Open / download")
         self.assertNotContains(response, "kb-attachment-preview-download")
+        self.assertContains(response, reverse("kb_attachment", args=[attachment.pk]))
+        self.assertNotContains(response, attachment.file.url)
+
+
+class KnowledgeBaseVisibilityTests(TestCase):
+    def setUp(self):
+        self.dept_a = Department.objects.create(name="KB Dept A")
+        self.dept_b = Department.objects.create(name="KB Dept B")
+        self.branch_a = Branch.objects.create(code="KBA", name="KB Branch A")
+        self.branch_b = Branch.objects.create(code="KBB", name="KB Branch B")
+        self.ticket_category = TicketCategory.objects.create(
+            department=self.dept_a,
+            name="KB Ticket Cat",
+            default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.manage_role = Role.objects.create(
+            name="KB Manager Visibility",
+            can_access_kb=True,
+            can_manage_kb=True,
+        )
+        self.read_role = Role.objects.create(
+            name="KB Reader Visibility",
+            can_access_kb=True,
+            can_manage_kb=False,
+        )
+        self.author = User.objects.create_user(
+            username="kb_vis_author",
+            email="kb-vis-author@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_a,
+            role=self.manage_role,
+        )
+        self.same_dept = User.objects.create_user(
+            username="kb_vis_same",
+            email="kb-vis-same@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_a,
+            role=self.read_role,
+        )
+        self.other_dept = User.objects.create_user(
+            username="kb_vis_other",
+            email="kb-vis-other@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_b,
+            role=self.read_role,
+        )
+        self.reader = User.objects.create_user(
+            username="kb_vis_reader",
+            email="kb-vis-reader@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_b,
+            role=self.read_role,
+        )
+        self.branch_user = User.objects.create_user(
+            username="kb_vis_branch",
+            email="kb-vis-branch@test.com",
+            password="testpassword123",
+            user_type=User.UserType.BRANCH,
+            branch=self.branch_b,
+            role=self.manage_role,
+        )
+        self.category = Category.objects.create(name="Visibility Cat", icon="book")
+        self.only_me = Article.objects.create(
+            title="ONLYME-TOKEN private note",
+            category=self.category,
+            content="<p>Only the author.</p>",
+            is_published=True,
+            visibility=Article.Visibility.ONLY_ME,
+            created_by=self.author,
+        )
+        self.department_article = Article.objects.create(
+            title="DEPT-TOKEN department note",
+            category=self.category,
+            content="<p>Department only.</p>",
+            is_published=True,
+            visibility=Article.Visibility.DEPARTMENT,
+            visibility_department=self.dept_a,
+            created_by=self.author,
+        )
+        self.shared = Article.objects.create(
+            title="ALL-TOKEN shared note",
+            category=self.category,
+            content="<p>All support.</p>",
+            is_published=True,
+            visibility=Article.Visibility.ALL_SUPPORT,
+            created_by=self.author,
+        )
+        self.draft = Article.objects.create(
+            title="DRAFT-TOKEN unfinished",
+            category=self.category,
+            content="<p>Not published.</p>",
+            is_published=False,
+            visibility=Article.Visibility.ALL_SUPPORT,
+            created_by=self.author,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-KB-VIS-1",
+            title="<b>Injected ticket title</b>",
+            description="desc",
+            branch=self.branch_a,
+            department=self.dept_a,
+            category=self.ticket_category,
+            created_by=self.author,
+            status=Ticket.Status.OPEN,
+            client_name="Client",
+            client_phone="123",
+        )
+        self.outside_ticket = Ticket.objects.create(
+            ticket_number="TK-KB-VIS-2",
+            title="Outside org ticket",
+            description="desc",
+            branch=self.branch_b,
+            department=self.dept_b,
+            category=TicketCategory.objects.create(
+                department=self.dept_b,
+                name="KB Ticket Cat B",
+                default_priority=Ticket.Priority.LOW,
+            ),
+            created_by=self.other_dept,
+            status=Ticket.Status.OPEN,
+            client_name="Client",
+            client_phone="456",
+        )
+        self.shared.related_ticket = self.ticket
+        self.shared.save(update_fields=["related_ticket"])
+
+    def _login(self, username):
+        self.client.logout()
+        self.client.login(username=username, password="testpassword123")
+
+    def test_branch_user_blocked_even_with_kb_permissions(self):
+        self._login("kb_vis_branch")
+        self.assertEqual(self.client.get(reverse("kb_list")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.shared.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("kb_create")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("kb_category_list")).status_code, 403)
+        self.assertEqual(
+            self.client.get(reverse("kb_search_suggest"), {"q": "ALL"}).status_code,
+            403,
+        )
+
+    def test_reader_cannot_write_or_open_draft_by_id(self):
+        self._login("kb_vis_reader")
+        self.assertEqual(self.client.get(reverse("kb_create")).status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                reverse("kb_create"),
+                {
+                    "title": "Sneaky",
+                    "content": "<p>no</p>",
+                    "visibility": Article.Visibility.ALL_SUPPORT,
+                    "action": "draft",
+                },
+            ).status_code,
+            403,
+        )
+        self.assertEqual(self.client.get(reverse("kb_update", args=[self.shared.pk])).status_code, 403)
+        self.assertEqual(self.client.post(reverse("kb_delete", args=[self.shared.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("kb_category_list")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.draft.pk])).status_code, 404)
+        listed = self.client.get(reverse("kb_list"), {"q": "DRAFT-TOKEN"})
+        self.assertNotIn(self.draft, list(listed.context["articles"]))
+        home = self.client.get(reverse("kb_list"))
+        self.assertNotIn(self.draft, list(home.context["recent_articles"]))
+        suggest = self.client.get(reverse("kb_search_suggest"), {"q": "DRAFT-TOKEN"})
+        self.assertNotContains(suggest, "DRAFT-TOKEN")
+
+    def test_only_me_and_department_hidden_from_other_departments(self):
+        self._login("kb_vis_other")
+        home = self.client.get(reverse("kb_list"))
+        self.assertContains(home, self.shared.title)
+        self.assertNotContains(home, self.only_me.title)
+        self.assertNotContains(home, self.department_article.title)
+        recent = list(home.context["recent_articles"])
+        self.assertIn(self.shared, recent)
+        self.assertNotIn(self.only_me, recent)
+        self.assertNotIn(self.department_article, recent)
+        category = next(row for row in home.context["categories"] if row.pk == self.category.pk)
+        self.assertEqual(category.article_count, 1)
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.only_me.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("kb_detail", args=[self.department_article.pk])).status_code,
+            404,
+        )
+        detail = self.client.get(reverse("kb_detail", args=[self.shared.pk]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertNotContains(detail, self.only_me.title)
+        self.assertNotContains(detail, self.department_article.title)
+        suggest = self.client.get(reverse("kb_search_suggest"), {"q": "ONLYME"})
+        self.assertNotContains(suggest, self.only_me.title)
+        dept_suggest = self.client.get(reverse("kb_search_suggest"), {"q": "DEPT-TOKEN"})
+        self.assertNotContains(dept_suggest, self.department_article.title)
+        append = self.client.get(
+            reverse("kb_list"),
+            {"category": str(self.category.pk), "append": "true"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertContains(append, self.shared.title)
+        self.assertNotContains(append, self.only_me.title)
+        self.assertNotContains(append, self.department_article.title)
+
+        self._login("kb_vis_same")
+        same = self.client.get(reverse("kb_list"))
+        self.assertContains(same, self.department_article.title)
+        self.assertContains(same, self.shared.title)
+        self.assertNotContains(same, self.only_me.title)
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.only_me.pk])).status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("kb_detail", args=[self.department_article.pk])).status_code,
+            200,
+        )
+
+        self._login("kb_vis_author")
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.only_me.pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[self.draft.pk])).status_code, 200)
+
+    def test_script_tag_does_not_round_trip(self):
+        self._login("kb_vis_author")
+        raw = '<script>alert(1)</script><p onclick="alert(1)">Hi</p><a href="javascript:alert(1)">x</a>'
+        response = self.client.post(
+            reverse("kb_create"),
+            {
+                "title": "XSS article",
+                "content": raw,
+                "visibility": Article.Visibility.ALL_SUPPORT,
+                "action": "all_support",
+            },
+        )
+        article = Article.objects.get(title="XSS article")
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn("<script", article.content.lower())
+        self.assertNotIn("onclick", article.content.lower())
+        self.assertNotIn("javascript:", article.content.lower())
+        self.assertIn(">Hi<", article.content)
+        detail = self.client.get(reverse("kb_detail", args=[article.pk]))
+        rendered = detail.context["article"].content.lower()
+        self.assertNotIn("<script", rendered)
+        self.assertNotIn("onclick", rendered)
+        self.assertNotIn("javascript:", rendered)
+        self.assertNotContains(detail, "alert(1)", html=False)
+        self.assertContains(detail, "Hi")
+
+    def test_attachment_url_without_session_does_not_return_file(self):
+        attachment = ArticleAttachment.objects.create(
+            article=self.shared,
+            file=SimpleUploadedFile("diagram.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"),
+        )
+        self.client.logout()
+        media = self.client.get(attachment.file.url)
+        guarded = self.client.get(reverse("kb_attachment", args=[attachment.pk]))
+        self.assertNotEqual(media.status_code, 200)
+        self.assertNotEqual(guarded.status_code, 200)
+        self.assertNotIn(b"\x89PNG", media.content)
+        self.assertNotIn(b"\x89PNG", guarded.content)
+
+        self._login("kb_vis_other")
+        allowed = self.client.get(reverse("kb_attachment", args=[attachment.pk]))
+        self.assertEqual(allowed.status_code, 200)
+        self.assertIn(b"\x89PNG", b"".join(allowed.streaming_content))
+        hidden = ArticleAttachment.objects.create(
+            article=self.only_me,
+            file=SimpleUploadedFile("secret.png", b"\x89PNG\r\n\x1a\nsecret", content_type="image/png"),
+        )
+        denied = self.client.get(reverse("kb_attachment", args=[hidden.pk]))
+        self.assertEqual(denied.status_code, 404)
+        draft_file = ArticleAttachment.objects.create(
+            article=self.draft,
+            file=SimpleUploadedFile("draft.png", b"\x89PNG\r\n\x1a\ndraft", content_type="image/png"),
+        )
+        self._login("kb_vis_reader")
+        self.assertEqual(self.client.get(reverse("kb_attachment", args=[draft_file.pk])).status_code, 404)
+
+    def test_published_article_does_not_unlock_ticket_outside_org(self):
+        self.assertFalse(user_can_view_ticket(self.other_dept, self.ticket))
+        self.assertTrue(user_can_view_ticket(self.same_dept, self.ticket))
+        self._login("kb_vis_other")
+        ticket_page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertEqual(ticket_page.status_code, 403)
+        article_page = self.client.get(reverse("kb_detail", args=[self.shared.pk]))
+        self.assertContains(article_page, f"#{self.ticket.ticket_number}")
+        self.assertNotContains(article_page, reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+
+        self._login("kb_vis_same")
+        linked = self.client.get(reverse("kb_detail", args=[self.shared.pk]))
+        self.assertContains(linked, reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+
+    def test_existing_articles_remain_visible_to_support_readers(self):
+        legacy = Article.objects.create(
+            title="Legacy published article",
+            category=self.category,
+            content="<p>Already in the library.</p>",
+            is_published=True,
+            created_by=self.author,
+        )
+        self.assertEqual(legacy.visibility, Article.Visibility.ALL_SUPPORT)
+        self._login("kb_vis_other")
+        response = self.client.get(reverse("kb_detail", args=[legacy.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, legacy.title)
+
+    def test_form_can_save_draft_and_remove_attachment(self):
+        self._login("kb_vis_author")
+        created = self.client.post(
+            reverse("kb_create"),
+            {
+                "title": "Draft with file",
+                "content": "<p>Work in progress.</p>",
+                "visibility": Article.Visibility.ALL_SUPPORT,
+                "category": str(self.category.pk),
+                "action": "draft",
+            },
+        )
+        article = Article.objects.get(title="Draft with file")
+        self.assertEqual(created.status_code, 302)
+        self.assertFalse(article.is_published)
+        attachment = ArticleAttachment.objects.create(
+            article=article,
+            file=SimpleUploadedFile("notes.pdf", b"%PDF-1.4", content_type="application/pdf"),
+        )
+        form_page = self.client.get(reverse("kb_update", args=[article.pk]))
+        self.assertContains(form_page, "kb-dropzone")
+        self.assertContains(form_page, "beforeunload")
+        self.assertContains(form_page, "blocks | bullist numlist | link | code | table")
+        self.assertContains(form_page, 'value="only_me"')
+        self.assertContains(form_page, 'value="department"')
+        self.assertContains(form_page, 'value="all_support"')
+        self.assertContains(form_page, "kb-remove-existing")
+        self.assertNotContains(form_page, "kb-ticket-modal")
+        self.assertNotContains(form_page, "cdn.jsdelivr.net")
+        removed = self.client.post(
+            reverse("kb_update", args=[article.pk]),
+            {
+                "title": article.title,
+                "content": "<p>Work in progress.</p>",
+                "visibility": Article.Visibility.ALL_SUPPORT,
+                "category": str(self.category.pk),
+                "action": "draft",
+                "remove_attachments": [str(attachment.pk)],
+            },
+        )
+        article.refresh_from_db()
+        self.assertEqual(removed.status_code, 302)
+        self.assertFalse(article.is_published)
+        self.assertFalse(ArticleAttachment.objects.filter(pk=attachment.pk).exists())
+
+        no_dept = User.objects.create_user(
+            username="kb_vis_nodept",
+            email="kb-vis-nodept@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            role=self.manage_role,
+        )
+        self.client.logout()
+        self.client.login(username="kb_vis_nodept", password="testpassword123")
+        create_page = self.client.get(reverse("kb_create"))
+        self.assertContains(create_page, "Publish")
+        self.assertContains(create_page, "Save draft")
+        self.assertNotContains(create_page, 'value="department"')
+
+    def test_department_visibility_is_snapshotted_at_publish(self):
+        self._login("kb_vis_author")
+        created = self.client.post(
+            reverse("kb_create"),
+            {
+                "title": "Snapshot dept article",
+                "content": "<p>Dept snapshot.</p>",
+                "visibility": Article.Visibility.DEPARTMENT,
+                "category": str(self.category.pk),
+                "action": "department",
+            },
+        )
+        article = Article.objects.get(title="Snapshot dept article")
+        self.assertEqual(created.status_code, 302)
+        self.assertEqual(article.visibility_department_id, self.dept_a.id)
+
+        self.author.department = self.dept_b
+        self.author.save()
+        article.refresh_from_db()
+        self.assertEqual(article.visibility_department_id, self.dept_a.id)
+
+        self._login("kb_vis_same")
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[article.pk])).status_code, 200)
+        self._login("kb_vis_other")
+        self.assertEqual(self.client.get(reverse("kb_detail", args=[article.pk])).status_code, 404)
+        moved = self.client.get(reverse("kb_list"), {"q": "Snapshot dept"})
+        self.assertNotIn(article, list(moved.context["articles"]))
+
+    def test_public_kb_media_stays_blocked_when_debug_is_off(self):
+        attachment = ArticleAttachment.objects.create(
+            article=self.shared,
+            file=SimpleUploadedFile("private.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"),
+        )
+        from importlib import reload
+
+        from django.urls import clear_url_caches
+
+        import config.urls
+
+        with override_settings(DEBUG=False):
+            clear_url_caches()
+            reload(config.urls)
+            try:
+                response = self.client.get(attachment.file.url)
+                payload = response.content
+                if getattr(response, "streaming", False):
+                    payload = b"".join(response.streaming_content)
+                self.assertNotEqual(response.status_code, 200)
+                self.assertNotIn(b"\x89PNG", payload)
+            finally:
+                clear_url_caches()
+                reload(config.urls)
+
+    def test_autosave_saves_a_draft_without_publishing(self):
+        self._login("kb_vis_author")
+        response = self.client.post(
+            reverse("kb_create"),
+            {
+                "title": "Autosave note",
+                "content": "<p>wip</p>",
+                "visibility": Article.Visibility.ONLY_ME,
+                "action": "draft",
+            },
+            HTTP_X_KB_AUTOSAVE="1",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        article = Article.objects.get(pk=payload["id"])
+        self.assertFalse(article.is_published)
+        self.assertEqual(article.visibility, Article.Visibility.ONLY_ME)
+        self.assertIn(f"/kb/{article.pk}/edit/", payload["edit_url"])
+
+    def test_ticket_search_requires_manager_and_escapes_titles(self):
+        self._login("kb_vis_reader")
+        denied = self.client.get(reverse("kb_ticket_search"), {"q": "Injected"})
+        self.assertEqual(denied.status_code, 403)
+
+        other_manager = User.objects.create_user(
+            username="kb_vis_other_mgr",
+            email="kb-vis-other-mgr@test.com",
+            password="testpassword123",
+            user_type=User.UserType.SUPPORT,
+            department=self.dept_b,
+            role=self.manage_role,
+        )
+        self.client.logout()
+        self.client.login(username=other_manager.username, password="testpassword123")
+        outside = self.client.get(reverse("kb_ticket_search"), {"q": "Injected"})
+        self.assertEqual(outside.status_code, 200)
+        self.assertNotContains(outside, self.ticket.ticket_number)
+
+        self._login("kb_vis_author")
+        found = self.client.get(reverse("kb_ticket_search"), {"q": "Injected"})
+        self.assertEqual(found.status_code, 200)
+        self.assertContains(found, self.ticket.ticket_number)
+        self.assertNotContains(found, "<b>Injected ticket title</b>", html=False)
+        self.assertContains(found, "&lt;b&gt;", html=False)
+        missed = self.client.get(reverse("kb_ticket_search"), {"q": "Outside org"})
+        self.assertNotContains(missed, self.outside_ticket.ticket_number)

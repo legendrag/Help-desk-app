@@ -5,6 +5,7 @@ from .views import (
     ArticleCreateView,
     ArticleUpdateView,
     ArticleDeleteView,
+    kb_attachment,
     kb_ticket_search,
     kb_search_suggest,
     KBCategoryListView,
@@ -15,6 +16,7 @@ from .views import (
 
 urlpatterns = [
     path("", ArticleListView.as_view(), name="kb_list"),
+    path("attachments/<int:pk>/", kb_attachment, name="kb_attachment"),
     path("create/", ArticleCreateView.as_view(), name="kb_create"),
     path("<int:pk>/", ArticleDetailView.as_view(), name="kb_detail"),
     path("<int:pk>/edit/", ArticleUpdateView.as_view(), name="kb_update"),
