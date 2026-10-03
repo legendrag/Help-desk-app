@@ -1,6 +1,10 @@
 from django.db import models
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
+
 from core.models import TimeStampedModel
+
+from .sanitize import sanitize_article_html
 
 def kb_attachment_path(instance, filename):
     from django.utils.text import get_valid_filename
@@ -38,10 +42,21 @@ class Category(models.Model):
         return self.name
 
 class Article(TimeStampedModel):
+    class Visibility(models.TextChoices):
+        ONLY_ME = "only_me", _("Only me")
+        DEPARTMENT = "department", _("My department")
+        ALL_SUPPORT = "all_support", _("All support")
+
     title = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name="articles")
     content = models.TextField(help_text="HTML content from TinyMCE")
     is_published = models.BooleanField(default=True)
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility.choices,
+        default=Visibility.ALL_SUPPORT,
+        help_text=_("Who can read this article after it is published."),
+    )
     
     related_ticket = models.ForeignKey(
         "tickets.Ticket",
@@ -68,6 +83,14 @@ class Article(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "content" in set(update_fields):
+            self.content = sanitize_article_html(self.content or "")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"content"}
+        super().save(*args, **kwargs)
 
 class ArticleAttachment(TimeStampedModel):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="attachments")

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n static %}
+{% load i18n kb_extras static %}
 
 {% block title %}{% if object %}{% trans "Edit Article" %}{% else %}{% trans "New Article" %}{% endif %} | {% trans "Knowledge Base" %}{% endblock title %}
 
@@ -19,7 +19,8 @@
         {% endif %}
     </nav>
 
-    <form method="post" enctype="multipart/form-data" novalidate class="kb-article-form" id="kb-article-form">
+    <form method="post" enctype="multipart/form-data" novalidate class="kb-article-form" id="kb-article-form"
+          data-published="{% if object and object.is_published %}1{% else %}0{% endif %}">
         {% csrf_token %}
 
         <header class="kb-form-topbar">
@@ -34,11 +35,12 @@
                     {% if object and not object.is_published %}
                     {% trans "Draft — publish when ready for the team." %}
                     {% elif object %}
-                    {% trans "Update content, then save or keep as draft." %}
+                    {% trans "Update content, then publish or keep as draft." %}
                     {% else %}
                     {% trans "Procedures and notes for the team." %}
                     {% endif %}
                 </p>
+                <p class="kb-autosave-status" id="kb-autosave-status" aria-live="polite"></p>
             </div>
         </header>
 
@@ -67,41 +69,33 @@
             <aside class="kb-form-sidebar" aria-label="{% trans 'Article details' %}">
                 <section class="panel kb-form-side-card">
                     <div class="kb-form-field">
+                        <label for="{{ form.visibility.id_for_label }}">{% trans "Visibility" %}</label>
+                        {{ form.visibility }}
+                        {% if form.visibility.errors %}<div class="field-error">{{ form.visibility.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="kb-form-field">
                         <label for="{{ form.category.id_for_label }}">{% trans "Category" %}</label>
                         {{ form.category }}
                         {% if form.category.errors %}<div class="field-error">{{ form.category.errors }}</div>{% endif %}
                     </div>
 
                     <div class="kb-form-field kb-related-ticket-group">
-                        <label>{% trans "Related ticket" %} <span class="kb-optional-label">{% trans "optional" %}</span></label>
+                        <label for="kb_ticket_search_input">{% trans "Related ticket" %} <span class="kb-optional-label">{% trans "optional" %}</span></label>
                         {{ form.related_ticket }}
-                        <div id="kb-search-trigger" style="display: {% if object and object.related_ticket %}none{% else %}block{% endif %};">
-                            <button type="button" class="kb-search-trigger-box" onclick="document.getElementById('kb-ticket-modal').style.display='flex'">
-                                <span>{% trans "Select a ticket…" %}</span>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            </button>
+                        <div id="kb-ticket-selected" class="kb-ticket-selected" {% if not object or not object.related_ticket %}hidden{% endif %}>
+                            <span id="kb-ticket-selected-label">
+                                {% if object and object.related_ticket %}#{{ object.related_ticket.ticket_number }} {{ object.related_ticket.title }}{% endif %}
+                            </span>
+                            <button type="button" class="btn secondary kb-ticket-clear" id="kb-ticket-clear">{% trans "Remove" %}</button>
                         </div>
-                        <div id="kb-selected-ticket-preview" style="display: {% if object and object.related_ticket %}block{% else %}none{% endif %};">
-                            {% if object and object.related_ticket %}
-                            <div class="merge-preview-card margin-bottom-small">
-                              <div class="merge-preview-header">
-                                <span class="merge-preview-num">#{{ object.related_ticket.ticket_number }}</span>
-                                <div class="merge-preview-badges">
-                                  <span class="badge badge-{{ object.related_ticket.status }}">{{ object.related_ticket.get_status_display }}</span>
-                                  <span class="priority-badge priority-{{ object.related_ticket.priority }}">{{ object.related_ticket.get_priority_display|upper }}</span>
-                                  <button type="button" class="modal-close modal-close--sm" onclick="clearKbTicket()" title="{% trans 'Remove Related Ticket' %}">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 class="merge-preview-title merge-preview-title--lg">{{ object.related_ticket.title }}</h4>
-                              <div class="merge-preview-meta-grid">
-                                <div class="merge-meta-item"><span class="label">Dept</span><span class="val">{{ object.related_ticket.department.name }}</span></div>
-                                <div class="merge-meta-item"><span class="label">By</span><span class="val">{{ object.related_ticket.created_by.username }}</span></div>
-                              </div>
-                            </div>
-                            {% endif %}
-                        </div>
+                        <input type="search" name="q" id="kb_ticket_search_input" class="form-control"
+                               placeholder="{% trans 'Search by ticket number or title' %}" autocomplete="off"
+                               hx-get="{% url 'kb_ticket_search' %}"
+                               hx-trigger="input changed delay:200ms, search"
+                               hx-target="#kb-ticket-results"
+                               hx-swap="outerHTML">
+                        <div id="kb-ticket-results"></div>
                         {% if form.related_ticket.errors %}<div class="field-error">{{ form.related_ticket.errors }}</div>{% endif %}
                     </div>
 
@@ -111,15 +105,21 @@
                             {% trans "Attachments" %}
                             <span class="kb-optional-label">{% trans "optional" %}</span>
                         </label>
-                        {{ form.attachments }}
+                        <div class="kb-dropzone" id="kb-dropzone">
+                            <p class="kb-dropzone-hint">{% trans "Drop files here or choose them below." %}</p>
+                            {{ form.attachments }}
+                        </div>
+                        <ul class="kb-pending-files" id="kb-pending-files"></ul>
+                        {% if form.attachments.errors %}<div class="field-error">{{ form.attachments.errors }}</div>{% endif %}
 
                         {% if object and object.attachments.all %}
                         <div class="kb-current-attachments">
                             <strong>{% trans "Current files" %}</strong>
                             <ul class="kb-current-attachments-list">
                                 {% for att in object.attachments.all %}
-                                <li>
-                                    <a href="{{ att.file.url }}" target="_blank" rel="noopener">{{ att.file.name|slice:"15:"|default:att.file.name }}</a>
+                                <li data-attachment-id="{{ att.id }}">
+                                    <span>{{ att.file.name|basename }}</span>
+                                    <button type="button" class="btn secondary kb-remove-existing" data-attachment-id="{{ att.id }}">{% trans "Remove" %}</button>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -128,10 +128,15 @@
                     </div>
 
                     <div class="kb-form-side-actions" aria-label="{% trans 'Save actions' %}">
-                        <button type="submit" name="action" value="publish" class="btn primary kb-form-publish-btn">
-                            {% if object and object.is_published %}{% trans "Save" %}{% else %}{% trans "Publish" %}{% endif %}
-                        </button>
                         <button type="submit" name="action" value="draft" class="btn secondary kb-form-draft-btn">{% trans "Save draft" %}</button>
+                        <div class="kb-publish-choices">
+                            <span class="kb-publish-label">{% trans "Publish" %}</span>
+                            <button type="submit" name="action" value="only_me" class="btn primary kb-form-publish-btn">{% trans "Only me" %}</button>
+                            {% if offer_department_visibility %}
+                            <button type="submit" name="action" value="department" class="btn primary kb-form-publish-btn">{% trans "My department" %}</button>
+                            {% endif %}
+                            <button type="submit" name="action" value="all_support" class="btn primary kb-form-publish-btn">{% trans "All support" %}</button>
+                        </div>
                         <a href="{% if object %}{% url 'kb_detail' object.id %}{% else %}{% url 'kb_list' %}{% endif %}" class="btn secondary kb-form-cancel-btn">{% trans "Cancel" %}</a>
                     </div>
                 </section>
@@ -140,36 +145,193 @@
     </form>
 </div>
 
-<!-- KB Related Ticket Search Modal -->
-<div id="kb-ticket-modal" class="modal-overlay modal-overlay-hidden" onclick="if(event.target == this) document.getElementById('kb-ticket-modal').style.display='none'">
-    <div class="modal-content modal-merge-ticket">
-        <div class="modal-header">
-            <h2 class="modal-title-text">{% trans "Search ticket" %}</h2>
-            <button type="button" class="modal-close" onclick="document.getElementById('kb-ticket-modal').style.display='none'">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="modal-description-text-merge">{% trans "Search and select the ticket related to this article." %}</p>
-            <div class="form-group full modal-form-group-merge">
-                <label for="kb_ticket_search_input">{% trans "Search ticket" %}</label>
-                <div class="position-relative">
-                    <input type="text" name="q" id="kb_ticket_search_input" class="form-control"
-                        placeholder="{% trans 'Type ticket number or title...' %}" autocomplete="off"
-                        hx-get="{% url 'kb_ticket_search' %}"
-                        hx-trigger="input changed delay:150ms, search"
-                        hx-target="#kb-search-results-container"
-                        hx-swap="outerHTML">
-                    <div id="kb-search-results-container"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById('kb-article-form');
+        const statusEl = document.getElementById('kb-autosave-status');
+        let dirty = false;
+        let submitting = false;
+        let autosaveTimer = null;
+
+        function markDirty() {
+            dirty = true;
+            scheduleAutosave();
+        }
+
+        function scheduleAutosave() {
+            if (!form || form.dataset.published === '1') return;
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(autosave, 2500);
+        }
+
+        function autosave() {
+            if (!form || !dirty || submitting || form.dataset.published === '1') return;
+            const title = document.getElementById('id_title');
+            if (!title || !title.value.trim()) return;
+            if (typeof tinymce !== 'undefined') tinymce.triggerSave();
+            const data = new FormData(form);
+            data.set('action', 'draft');
+            data.delete('attachments');
+            if (statusEl) statusEl.textContent = '{% trans "Saving draft…" %}';
+            fetch(form.getAttribute('action') || window.location.pathname, {
+                method: 'POST',
+                body: data,
+                headers: { 'X-KB-Autosave': '1' },
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) throw new Error('autosave failed');
+                return response.json();
+            }).then(function (payload) {
+                if (submitting) return;
+                dirty = false;
+                if (statusEl) statusEl.textContent = '{% trans "Draft saved" %}';
+                if (payload.edit_url) {
+                    form.setAttribute('action', payload.edit_url);
+                    if (window.location.pathname !== payload.edit_url) {
+                        window.history.replaceState({}, '', payload.edit_url);
+                    }
+                }
+            }).catch(function () {
+                if (statusEl) statusEl.textContent = '{% trans "Draft not saved yet" %}';
+            });
+        }
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!dirty || submitting) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('a[href]');
+            if (!link || !dirty || submitting || link.target === '_blank') return;
+            const href = link.getAttribute('href') || '';
+            if (!href || href.charAt(0) === '#') return;
+            if (!window.confirm('{% trans "You have unsaved changes. Leave this page?" %}')) {
+                event.preventDefault();
+            } else {
+                dirty = false;
+            }
+        });
+
+        if (form) {
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
+            form.addEventListener('submit', function () {
+                submitting = true;
+                dirty = false;
+                if (typeof tinymce !== 'undefined') tinymce.triggerSave();
+            });
+        }
+
+        const fileInput = document.getElementById('id_attachments');
+        const dropzone = document.getElementById('kb-dropzone');
+        const pending = document.getElementById('kb-pending-files');
+
+        function syncPending() {
+            if (!fileInput || !pending) return;
+            pending.innerHTML = '';
+            Array.from(fileInput.files || []).forEach(function (file, index) {
+                const item = document.createElement('li');
+                const name = document.createElement('span');
+                name.textContent = file.name;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn secondary';
+                remove.textContent = '{% trans "Remove" %}';
+                remove.addEventListener('click', function () {
+                    const next = new DataTransfer();
+                    Array.from(fileInput.files).forEach(function (current, currentIndex) {
+                        if (currentIndex !== index) next.items.add(current);
+                    });
+                    fileInput.files = next.files;
+                    syncPending();
+                    markDirty();
+                });
+                item.appendChild(name);
+                item.appendChild(remove);
+                pending.appendChild(item);
+            });
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                syncPending();
+                markDirty();
+            });
+        }
+        if (dropzone && fileInput) {
+            dropzone.addEventListener('dragover', function (event) {
+                event.preventDefault();
+                dropzone.classList.add('is-dragover');
+            });
+            dropzone.addEventListener('dragleave', function () {
+                dropzone.classList.remove('is-dragover');
+            });
+            dropzone.addEventListener('drop', function (event) {
+                event.preventDefault();
+                dropzone.classList.remove('is-dragover');
+                const next = new DataTransfer();
+                Array.from(fileInput.files || []).forEach(function (file) { next.items.add(file); });
+                Array.from(event.dataTransfer.files || []).forEach(function (file) { next.items.add(file); });
+                fileInput.files = next.files;
+                syncPending();
+                markDirty();
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            const removeExisting = event.target.closest('.kb-remove-existing');
+            if (removeExisting && form) {
+                const attachmentId = removeExisting.getAttribute('data-attachment-id');
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'remove_attachments';
+                hidden.value = attachmentId;
+                form.appendChild(hidden);
+                const row = removeExisting.closest('li');
+                if (row) row.remove();
+                markDirty();
+                return;
+            }
+            const ticketButton = event.target.closest('.kb-ticket-result');
+            if (ticketButton) {
+                const idInput = document.getElementById('id_related_ticket');
+                const label = document.getElementById('kb-ticket-selected-label');
+                const selected = document.getElementById('kb-ticket-selected');
+                if (idInput) idInput.value = ticketButton.getAttribute('data-ticket-id') || '';
+                if (label) label.textContent = ticketButton.getAttribute('data-ticket-label') || '';
+                if (selected) selected.hidden = false;
+                const results = document.getElementById('kb-ticket-results');
+                if (results) results.innerHTML = '';
+                const search = document.getElementById('kb_ticket_search_input');
+                if (search) search.value = '';
+                markDirty();
+            }
+        });
+
+        const clearTicket = document.getElementById('kb-ticket-clear');
+        if (clearTicket) {
+            clearTicket.addEventListener('click', function () {
+                const idInput = document.getElementById('id_related_ticket');
+                const label = document.getElementById('kb-ticket-selected-label');
+                const selected = document.getElementById('kb-ticket-selected');
+                if (idInput) idInput.value = '';
+                if (label) label.textContent = '';
+                if (selected) selected.hidden = true;
+                markDirty();
+            });
+        }
+
+        const ticketSearch = document.getElementById('kb_ticket_search_input');
+        if (ticketSearch) {
+            ticketSearch.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') event.preventDefault();
+            });
+        }
+
         const initEditor = () => {
+            if (typeof tinymce === 'undefined') return;
             if (tinymce.activeEditor) {
                 tinymce.remove();
             }
@@ -181,8 +343,10 @@
                 suffix: '.min',
                 menubar: false,
                 statusbar: false,
-                plugins: 'lists link image',
-                toolbar: 'bold italic underline | bullist numlist | link | removeformat',
+                promotion: false,
+                branding: false,
+                plugins: 'lists link code table',
+                toolbar: 'blocks | bullist numlist | link | code | table',
                 height: isNarrow ? 320 : 460,
                 skin: isDark ? 'oxide-dark' : 'oxide',
                 content_css: isDark ? 'dark' : 'default',
@@ -191,18 +355,9 @@
                         document.getElementById('editor-loading-placeholder').style.display = 'none';
                         document.getElementById('editor-container').style.display = 'block';
                     });
+                    editor.on('change input', markDirty);
                 }
             });
-
-            const form = document.getElementById('kb-article-form');
-            if (form && !form.dataset.tinymceBound) {
-                form.dataset.tinymceBound = '1';
-                form.addEventListener('submit', function() {
-                    if (typeof tinymce !== 'undefined') {
-                        tinymce.triggerSave();
-                    }
-                });
-            }
         };
 
         const loadTinyMCE = () => {
@@ -226,33 +381,5 @@
 
         setTimeout(loadTinyMCE, 100);
     });
-
-    function selectKbTicket(ticketId, encodedPreviewHtml) {
-        document.getElementById('id_related_ticket').value = ticketId;
-
-        let decodedHtml = '';
-        try {
-            decodedHtml = decodeURIComponent(escape(window.atob(encodedPreviewHtml)));
-        } catch (e) {
-            decodedHtml = window.atob(encodedPreviewHtml);
-        }
-
-        document.getElementById('kb-selected-ticket-preview').innerHTML = decodedHtml;
-        document.getElementById('kb_ticket_search_input').value = '';
-        document.getElementById('kb-search-results-container').innerHTML = '';
-
-        document.getElementById('kb-ticket-modal').style.display = 'none';
-
-        document.getElementById('kb-search-trigger').style.display = 'none';
-        document.getElementById('kb-selected-ticket-preview').style.display = 'block';
-    }
-
-    function clearKbTicket() {
-        document.getElementById('id_related_ticket').value = '';
-        document.getElementById('kb-selected-ticket-preview').innerHTML = '';
-
-        document.getElementById('kb-search-trigger').style.display = 'block';
-        document.getElementById('kb-selected-ticket-preview').style.display = 'none';
-    }
 </script>
 {% endblock content %}

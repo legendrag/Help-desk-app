@@ -1,39 +1,38 @@
+import mimetypes
+from pathlib import Path
+
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q, Count, Case, When, Value, IntegerField, Max
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
-from django.urls import reverse_lazy
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse, reverse_lazy
 from django.utils.cache import patch_vary_headers
-from django.utils.translation import get_language
+from django.utils.html import format_html
+from django.utils.translation import get_language, gettext as _
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.pagination import KnownCountPaginator
 from core.management_views import BaseManagementView, BaseDeleteView
+from tickets.access import user_can_view_ticket
 from tickets.models import Ticket
 from tickets.search import apply_ticket_search
 
+from .access import articles_for_user, published_visibility_q, user_can_manage_kb, user_can_read_kb
 from .forms import ArticleForm, KBCategoryForm
 from .models import Article, ArticleAttachment, Category
 
 
 def _user_can_manage_kb(user):
-    return user.is_superuser or (
-        user.role and getattr(user.role, "can_manage_kb", False)
-    )
-
-
-def _published_filter_for_status(status_filter, can_manage):
-    if status_filter == "draft" and can_manage:
-        return Q(articles__is_published=False)
-    return Q(articles__is_published=True)
+    return user_can_manage_kb(user)
 
 
 def _base_articles_qs(user, status_filter="published"):
-    qs = Article.objects.select_related("category", "created_by")
     if status_filter == "draft" and _user_can_manage_kb(user):
-        return qs.filter(is_published=False)
-    return qs.filter(is_published=True)
+        qs = Article.objects.filter(is_published=False)
+    else:
+        qs = articles_for_user(user, include_drafts=False)
+    return qs.select_related("category", "created_by")
 
 
 def _apply_sort(qs, sort, search_query):
@@ -56,12 +55,14 @@ def _apply_sort(qs, sort, search_query):
 
 class KBPermissionMixin(UserPassesTestMixin):
     def test_func(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return False
-        if user.is_superuser:
-            return True
-        return user.role and getattr(user.role, 'can_access_kb', False)
+        return user_can_read_kb(self.request.user)
+
+
+class KBManageMixin(UserPassesTestMixin):
+    """Create, edit, delete, and drafts require can_manage_kb, not only read access."""
+
+    def test_func(self):
+        return user_can_manage_kb(self.request.user)
 
 class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
     model = Article
@@ -271,9 +272,11 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
             return ctx
 
         can_manage = _user_can_manage_kb(request.user)
-        published_filter = _published_filter_for_status(status_filter, can_manage)
         ctx["categories"] = Category.objects.annotate(
-            article_count=Count("articles", filter=published_filter)
+            article_count=Count(
+                "articles",
+                filter=published_visibility_q(request.user, prefix="articles__"),
+            )
         )
         ctx["current_categories"] = category_ids
         ctx["current_status"] = status_filter
@@ -305,7 +308,7 @@ class ArticleListView(LoginRequiredMixin, KBPermissionMixin, ListView):
 
         if is_browse_home:
             ctx["recent_articles"] = list(
-                Article.objects.filter(is_published=True)
+                articles_for_user(request.user, include_drafts=False)
                 .select_related("category")
                 .only(
                     "title",
@@ -331,70 +334,158 @@ class ArticleDetailView(LoginRequiredMixin, KBPermissionMixin, DetailView):
     context_object_name = "article"
 
     def get_queryset(self):
-        return Article.objects.select_related(
-            "category", "created_by", "related_ticket"
-        ).prefetch_related("attachments")
+        # Drafts and out-of-audience rows are excluded. Managers may open drafts.
+        user = self.request.user
+        return (
+            articles_for_user(user, include_drafts=_user_can_manage_kb(user))
+            .select_related("category", "created_by", "related_ticket")
+            .prefetch_related("attachments")
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         article = self.object
+        user = self.request.user
         related = []
         if article.category_id:
-            related_qs = Article.objects.filter(
-                category_id=article.category_id
-            ).exclude(pk=article.pk)
-            if not _user_can_manage_kb(self.request.user):
-                related_qs = related_qs.filter(is_published=True)
             related = list(
-                related_qs.select_related("category").order_by("-updated_at")[:5]
+                articles_for_user(user, include_drafts=False)
+                .filter(category_id=article.category_id)
+                .exclude(pk=article.pk)
+                .select_related("category")
+                .order_by("-updated_at")[:5]
             )
         ctx["related_articles"] = related
-        ctx["can_manage_kb"] = _user_can_manage_kb(self.request.user)
+        ctx["can_manage_kb"] = _user_can_manage_kb(user)
+        ticket = article.related_ticket
+        ctx["can_view_related_ticket"] = bool(ticket and user_can_view_ticket(user, ticket))
         return ctx
 
-class ArticleCreateView(LoginRequiredMixin, KBPermissionMixin, CreateView):
-    model = Article
-    form_class = ArticleForm
-    template_name = "kb/form.html"
+
+class ArticleWriteMixin:
+    """Publish actions set visibility. Save draft and autosave do not publish."""
+
+    publish_actions = {
+        Article.Visibility.ONLY_ME,
+        Article.Visibility.DEPARTMENT,
+        Article.Visibility.ALL_SUPPORT,
+    }
+
+    def _visibility_author(self):
+        obj = getattr(self, "object", None)
+        if obj is not None and getattr(obj, "created_by_id", None):
+            return obj.created_by
+        return self.request.user
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["author"] = self._visibility_author()
+        kwargs["editor"] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        author = self._visibility_author()
+        ctx["offer_department_visibility"] = bool(getattr(author, "department_id", None))
+        return ctx
+
+    def _is_autosave(self):
+        return self.request.headers.get("X-KB-Autosave") == "1"
+
+    def _apply_action(self, form):
+        action = (self.request.POST.get("action") or "").strip()
+        author = self._visibility_author()
+        if action == Article.Visibility.DEPARTMENT and not getattr(author, "department_id", None):
+            form.add_error("visibility", _("My department is unavailable without a department."))
+            return None
+        if self._is_autosave():
+            already_published = bool(
+                self.object and getattr(self.object, "pk", None) and self.object.is_published
+            )
+            form.instance.is_published = already_published
+            return "autosave"
+        if action == "draft":
+            form.instance.is_published = False
+            return "draft"
+        if action in self.publish_actions:
+            form.instance.is_published = True
+            form.instance.visibility = action
+            return "publish"
+        form.instance.is_published = True
+        return "publish"
+
+    def _sync_attachments(self, form):
+        remove_ids = [pk for pk in self.request.POST.getlist("remove_attachments") if str(pk).isdigit()]
+        if remove_ids:
+            doomed = ArticleAttachment.objects.filter(article=self.object, pk__in=remove_ids)
+            for attachment in doomed:
+                if attachment.file:
+                    attachment.file.delete(save=False)
+                attachment.delete()
+        for uploaded in form.cleaned_data.get("attachments") or []:
+            if uploaded:
+                ArticleAttachment.objects.create(article=self.object, file=uploaded)
 
     def form_valid(self, form):
-        action = self.request.POST.get('action')
-        form.instance.is_published = (action != 'draft')
-        form.instance.created_by = self.request.user
+        if not form.instance.created_by_id:
+            form.instance.created_by = self.request.user
+        outcome = self._apply_action(form)
+        if outcome is None:
+            return self.form_invalid(form)
         self.object = form.save()
-        attachments = self.request.FILES.getlist('attachments')
-        for f in attachments:
-            ArticleAttachment.objects.create(article=self.object, file=f)
+        if outcome != "autosave":
+            self._sync_attachments(form)
+        if outcome == "autosave":
+            return JsonResponse(
+                {
+                    "id": self.object.pk,
+                    "edit_url": reverse("kb_update", kwargs={"pk": self.object.pk}),
+                    "is_published": self.object.is_published,
+                }
+            )
         return HttpResponseRedirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if self._is_autosave():
+            return JsonResponse({"ok": False}, status=400)
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy("kb_detail", kwargs={"pk": self.object.pk})
 
-class ArticleUpdateView(LoginRequiredMixin, KBPermissionMixin, UpdateView):
+
+class ArticleCreateView(ArticleWriteMixin, LoginRequiredMixin, KBManageMixin, CreateView):
+    model = Article
+    form_class = ArticleForm
+    template_name = "kb/form.html"
+
+
+class ArticleUpdateView(ArticleWriteMixin, LoginRequiredMixin, KBManageMixin, UpdateView):
     model = Article
     form_class = ArticleForm
     template_name = "kb/form.html"
 
     def get_queryset(self):
-        return Article.objects.select_related(
-            "category", "related_ticket", "related_ticket__department", "related_ticket__created_by"
-        ).prefetch_related("attachments")
+        user = self.request.user
+        return (
+            articles_for_user(user, include_drafts=True)
+            .select_related(
+                "category",
+                "created_by",
+                "related_ticket",
+                "related_ticket__department",
+                "related_ticket__created_by",
+            )
+            .prefetch_related("attachments")
+        )
 
-    def form_valid(self, form):
-        action = self.request.POST.get('action')
-        form.instance.is_published = (action != 'draft')
-        self.object = form.save()
-        attachments = self.request.FILES.getlist('attachments')
-        for f in attachments:
-            ArticleAttachment.objects.create(article=self.object, file=f)
-        return HttpResponseRedirect(self.get_success_url())
 
-    def get_success_url(self):
-        return reverse_lazy("kb_detail", kwargs={"pk": self.object.pk})
-
-class ArticleDeleteView(LoginRequiredMixin, KBPermissionMixin, DeleteView):
+class ArticleDeleteView(LoginRequiredMixin, KBManageMixin, DeleteView):
     model = Article
     success_url = reverse_lazy("kb_list")
+
+    def get_queryset(self):
+        return articles_for_user(self.request.user, include_drafts=True)
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -409,12 +500,7 @@ class ArticleDeleteView(LoginRequiredMixin, KBPermissionMixin, DeleteView):
 
 class KBCategoryPermissionMixin(UserPassesTestMixin):
     def test_func(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return False
-        if user.is_superuser:
-            return True
-        return user.role and getattr(user.role, 'can_manage_kb', False)
+        return user_can_manage_kb(self.request.user)
 
 class KBCategoryListView(KBCategoryPermissionMixin, ListView):
     model = Category
@@ -458,7 +544,7 @@ class KBCategoryDeleteView(KBCategoryPermissionMixin, BaseDeleteView, DeleteView
     success_url = reverse_lazy('settings')
 
 def kb_search_suggest(request):
-    if not request.user.is_authenticated:
+    if not user_can_read_kb(request.user):
         return HttpResponse(status=403)
 
     query = (request.GET.get("q") or "").strip()
@@ -466,7 +552,8 @@ def kb_search_suggest(request):
         return HttpResponse("")
 
     suggestions = (
-        Article.objects.filter(is_published=True, title__icontains=query)
+        articles_for_user(request.user, include_drafts=False)
+        .filter(title__icontains=query)
         .select_related("category")
         .order_by("-updated_at")[:5]
     )
@@ -478,14 +565,15 @@ def kb_search_suggest(request):
 
 
 def kb_ticket_search(request):
-    user = request.user
-    query = request.GET.get("q", "").strip()
+    if not user_can_manage_kb(request.user):
+        return HttpResponse(status=403)
 
+    user = request.user
+    query = (request.GET.get("q") or "").strip()
     if len(query) < 1:
-        return HttpResponse('<div id="kb-search-results-container"></div>')
+        return HttpResponse('<div id="kb-ticket-results"></div>')
 
     tickets = Ticket.objects.all()
-
     if not user.is_superuser:
         if user.user_type == "branch" and user.branch_id:
             tickets = tickets.filter(branch_id=user.branch_id)
@@ -494,56 +582,58 @@ def kb_ticket_search(request):
         else:
             tickets = tickets.none()
 
-    tickets = apply_ticket_search(
-        tickets.select_related("department", "branch", "created_by"),
-        query,
-    )[:10]
-    
-    if not tickets.exists():
-        return HttpResponse('<div id="kb-search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')
+    tickets = list(
+        apply_ticket_search(
+            tickets.select_related("department", "branch", "created_by"),
+            query,
+        )[:10]
+    )
+    parts = ['<div id="kb-ticket-results" class="kb-ticket-results" role="listbox">']
+    if not tickets:
+        parts.append('<p class="kb-ticket-empty">No matching tickets found</p>')
+    for ticket in tickets:
+        label = f"#{ticket.ticket_number} {ticket.title}"
+        parts.append(
+            str(
+                format_html(
+                    '<button type="button" class="kb-ticket-result" role="option" data-ticket-id="{}" data-ticket-label="{}">{}</button>',
+                    ticket.pk,
+                    label,
+                    label,
+                )
+            )
+        )
+    parts.append("</div>")
+    return HttpResponse("\n".join(parts))
 
-    options = ['<div id="kb-search-results-container" class="merge-search-results">']
-    for t in tickets:
-        status_label = t.get_status_display()
-        priority_label = t.get_priority_display().upper()
-        # Instead of going to merge-preview, we just render the ticket preview directly and set the hidden input.
-        # We can use JS to set the hidden input and update a preview div.
-        preview_html = (
-            f'<div class="merge-preview-card margin-bottom-small">'
-            f'  <div class="merge-preview-header">'
-            f'    <span class="merge-preview-num">#{t.ticket_number}</span>'
-            f'    <div class="merge-preview-badges">'
-            f'      <span class="badge badge-{t.status}">{status_label}</span>'
-            f'      <span class="priority-badge priority-{t.priority}">{priority_label}</span>'
-            f'      <button type="button" class="modal-close modal-close--sm" onclick="clearKbTicket()" title="Remove Related Ticket">'
-            f'        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
-            f'      </button>'
-            f'    </div>'
-            f'  </div>'
-            f'  <h4 class="merge-preview-title merge-preview-title--lg">{t.title}</h4>'
-            f'  <div class="merge-preview-meta-grid">'
-            f'    <div class="merge-meta-item"><span class="label">Dept</span><span class="val">{t.department.name}</span></div>'
-            f'    <div class="merge-meta-item"><span class="label">By</span><span class="val">{t.created_by.username}</span></div>'
-            f'  </div>'
-            f'</div>'
-        )
-        
-        # Base64 encode the html for the onclick handler to avoid all quote escaping issues
-        import base64
-        encoded_preview = base64.b64encode(preview_html.encode('utf-8')).decode('utf-8')
-        
-        options.append(
-            f'<div class="merge-search-item" '
-            f'onclick="selectKbTicket(\'{t.id}\', \'{encoded_preview}\')">'
-            f'  <div class="merge-item-header">'
-            f'    <span class="merge-item-number">{t.ticket_number}</span>'
-            f'    <div class="merge-item-badges">'
-            f'      <span class="badge badge-{t.status}">{status_label}</span>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="merge-item-title">{t.title}</div>'
-            f'</div>'
-        )
-    options.append('</div>')
-    
-    return HttpResponse("\n".join(options))
+
+def kb_attachment(request, pk):
+    """Download or preview an attachment after the same read check as the article."""
+    if not user_can_read_kb(request.user):
+        return HttpResponse(status=403)
+    attachment = get_object_or_404(
+        ArticleAttachment.objects.select_related("article"),
+        pk=pk,
+    )
+    visible = articles_for_user(
+        request.user,
+        include_drafts=_user_can_manage_kb(request.user),
+    )
+    if not visible.filter(pk=attachment.article_id).exists():
+        raise Http404()
+    if not attachment.file or not attachment.file.name:
+        raise Http404()
+    try:
+        handle = attachment.file.open("rb")
+    except FileNotFoundError:
+        raise Http404()
+    content_type = mimetypes.guess_type(attachment.file.name)[0] or "application/octet-stream"
+    response = FileResponse(
+        handle,
+        content_type=content_type,
+        as_attachment=False,
+        filename=Path(attachment.file.name).name,
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response

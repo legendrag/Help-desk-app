@@ -83,6 +83,7 @@
                 {% if article.related_ticket %}
                 <div class="kb-detail-side-block">
                     <h2 class="kb-detail-side-label">{% trans "Related ticket" %}</h2>
+                    {% if can_view_related_ticket %}
                     <a href="{% url 'ticket_detail' article.related_ticket.id %}" class="kb-detail-ticket-link">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
@@ -90,6 +91,9 @@
                         </svg>
                         #{{ article.related_ticket.ticket_number }}
                     </a>
+                    {% else %}
+                    <span class="kb-detail-ticket-number">#{{ article.related_ticket.ticket_number }}</span>
+                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -98,16 +102,17 @@
                     <h2 class="kb-detail-side-label">{% trans "Attachments" %}</h2>
                     <ul class="kb-detail-attachment-list">
                         {% for attachment in article.attachments.all %}
-                        {% with kind=attachment.file.url|kb_attachment_kind name=attachment.file.name|basename %}
+                        {% url 'kb_attachment' attachment.pk as attachment_url %}
+                        {% with kind=attachment.file.name|kb_attachment_kind name=attachment.file.name|basename %}
                         <li>
                             <button type="button"
                                     class="kb-detail-attachment-btn"
-                                    data-kb-preview-url="{{ attachment.file.url }}"
+                                    data-kb-preview-url="{{ attachment_url }}"
                                     data-kb-preview-kind="{{ kind }}"
                                     data-kb-preview-name="{{ name }}"
                                     onclick="openKbAttachmentPreview(this)">
                                 {% if kind == "image" %}
-                                <img src="{{ attachment.file.url }}" alt="" class="kb-detail-attachment-thumb">
+                                <img src="{{ attachment_url }}" alt="" class="kb-detail-attachment-thumb">
                                 {% else %}
                                 <span class="kb-detail-attachment-icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

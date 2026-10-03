@@ -12,7 +12,7 @@ class ArticleAttachmentInline(admin.TabularInline):
 
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'is_published', 'created_by', 'created_at')
-    list_filter = ('is_published', 'category', 'created_at')
+    list_display = ('title', 'category', 'is_published', 'visibility', 'created_by', 'created_at')
+    list_filter = ('is_published', 'visibility', 'category', 'created_at')
     search_fields = ('title', 'content')
     inlines = [ArticleAttachmentInline]
