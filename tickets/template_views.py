@@ -24,11 +24,28 @@ from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.pagination import KnownCountPaginator
-from kb.models import Article
+from kb.access import articles_for_user
 from .search import apply_ticket_search
 from .services import merge_tickets
 from notifications.services import notify_ticket_picked, notify_ticket_update
 # ... (existing code)
+
+def _kb_articles_prefetch(user):
+    """Ticket drawer only lists articles this user is allowed to read."""
+    return Prefetch(
+        "kb_articles",
+        queryset=articles_for_user(user, include_drafts=False)
+        .select_related("created_by")
+        .only(
+            "title",
+            "related_ticket",
+            "created_by",
+            "created_by__username",
+            "created_by__first_name",
+            "created_by__last_name",
+        ),
+    )
+
 
 def _default_month_range():
     """Return (start_date, end_date) for the current local calendar month."""
@@ -1148,6 +1165,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             "changed_by",
             "changed_by__username",
         )
+        request = getattr(self, "request", None)
+        user = getattr(request, "user", None)
         return Ticket.objects.select_related(
             "branch", "department", "category", "assigned_to",
             "merged_into", "pending_transfer_to", "pending_transfer_by",
@@ -1158,17 +1177,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
                 "merged_tickets",
                 queryset=Ticket.objects.only("id", "ticket_number", "merged_into"),
             ),
-            Prefetch(
-                "kb_articles",
-                queryset=Article.objects.select_related("created_by").only(
-                    "title",
-                    "related_ticket",
-                    "created_by",
-                    "created_by__username",
-                    "created_by__first_name",
-                    "created_by__last_name",
-                ),
-            ),
+            _kb_articles_prefetch(user),
         )
 
     def get_object(self, queryset=None):
@@ -1267,11 +1276,15 @@ class TicketDrawerPartialView(LoginRequiredMixin, DetailView):
         return not cls._is_document_navigation(request)
 
     def get_queryset(self):
+        request = getattr(self, "request", None)
+        user = getattr(request, "user", None)
         return Ticket.objects.select_related(
             "branch", "department", "category", "assigned_to"
         ).prefetch_related(
-            "merged_tickets", "kb_articles", "kb_articles__created_by",
-            "status_history", "status_history__changed_by"
+            "merged_tickets",
+            _kb_articles_prefetch(user),
+            "status_history",
+            "status_history__changed_by",
         )
 
     def get_object(self, queryset=None):

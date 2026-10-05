@@ -581,14 +581,15 @@ class SecurityTenancyTests(TestCase):
             created_by=self.support_a,
         )
 
-    def test_kb_bypass_requires_can_access_kb(self):
-        self.assertTrue(user_can_view_ticket(self.branch_user_b_kb, self.ticket))
+    def test_published_article_does_not_unlock_ticket_outside_org(self):
+        self.assertTrue(self.article.is_published)
+        self.assertFalse(user_can_view_ticket(self.branch_user_b_kb, self.ticket))
         self.assertFalse(user_can_view_ticket(self.branch_user_b_nokk, self.ticket))
 
-    def test_kb_bypass_http_allows_kb_user(self):
+    def test_published_article_does_not_unlock_ticket_http(self):
         self.client.login(username="branch_b_kb", password="password123")
         response = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
 
     def test_kb_bypass_http_denies_non_kb_user(self):
         self.client.login(username="branch_b_nokb", password="password123")
@@ -1020,7 +1021,30 @@ class TicketDetailQueryOptimizationTests(TestCase):
             status=Ticket.Status.MERGED,
             merged_into=self.ticket,
         )
+        Article.objects.create(
+            title="Drawer only me",
+            category=kb_category,
+            content="<p>SECRET-ONLY-ME</p>",
+            is_published=True,
+            visibility=Article.Visibility.ONLY_ME,
+            created_by=self.support_user,
+            related_ticket=self.ticket,
+        )
+        kb_role = Role.objects.create(name="Drawer KB", can_access_kb=True)
+        self.other_support.role = kb_role
+        self.other_support.save(update_fields=["role"])
+
         self.client.login(username="qo_branch", password="password123")
+        branch_response = self.client.get(
+            reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(branch_response.status_code, 200)
+        self.assertNotContains(branch_response, "Drawer article")
+        self.assertNotContains(branch_response, "Drawer only me")
+        self.assertNotContains(branch_response, "Related Knowledge Base Articles")
+
+        self.client.login(username="qo_support2", password="password123")
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
 
@@ -1044,6 +1068,7 @@ class TicketDetailQueryOptimizationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "mountTicketChat")
         self.assertContains(response, "Drawer article")
+        self.assertNotContains(response, "Drawer only me")
         self.assertNotContains(response, "SECRET-KB-HTML")
         ticket = response.context["ticket"]
         with self.assertNumQueries(0):

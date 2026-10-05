@@ -5490,6 +5490,19 @@ select.kb-sort-select.no-tomselect:focus {
   border-top: 1px solid var(--border);
 }
 
+.kb-publish-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  order: 1;
+}
+
+.kb-publish-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
 .kb-form-side-actions .btn {
   width: 100%;
   min-height: 2.45rem;
@@ -5505,8 +5518,101 @@ select.kb-sort-select.no-tomselect:focus {
   order: 2;
 }
 
-.kb-form-side-actions .kb-form-publish-btn {
-  order: 1;
+.kb-autosave-status {
+  margin: 0.35rem 0 0;
+  min-height: 1em;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.kb-dropzone {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.kb-dropzone.is-dragover {
+  border-color: var(--primary);
+}
+
+.kb-dropzone-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.kb-pending-files {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.kb-pending-files li,
+.kb-form-page .kb-current-attachments-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.kb-pending-files .btn,
+.kb-form-page .kb-current-attachments-list .btn {
+  width: auto;
+  min-height: 1.8rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.kb-ticket-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.kb-ticket-selected[hidden] {
+  display: none;
+}
+
+.kb-ticket-clear {
+  width: auto;
+  min-height: 1.8rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.kb-ticket-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.kb-ticket-result {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.kb-ticket-empty {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.kb-detail-ticket-number {
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .kb-optional-label {
@@ -5607,25 +5713,24 @@ select.kb-sort-select.no-tomselect:focus {
     border-radius: 0;
     background: var(--panel-bg, #fff);
     box-shadow: 0 -6px 20px -14px rgba(15, 23, 42, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .kb-publish-choices {
     display: grid;
-    grid-template-columns: auto 1fr 1.25fr;
-    gap: 0.5rem;
-    align-items: stretch;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
   }
 
-  .kb-form-side-actions .kb-form-cancel-btn {
-    order: 1;
-    width: auto;
-    min-width: 4.5rem;
-    padding-inline: 0.75rem;
+  .kb-publish-label {
+    grid-column: 1 / -1;
   }
 
+  .kb-form-side-actions .kb-form-cancel-btn,
   .kb-form-side-actions .kb-form-draft-btn {
-    order: 2;
-  }
-
-  .kb-form-side-actions .kb-form-publish-btn {
-    order: 3;
+    width: 100%;
   }
 
   .kb-form-side-actions .btn {

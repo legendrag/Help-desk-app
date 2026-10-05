@@ -14,26 +14,13 @@ def user_in_ticket_org(user, ticket) -> bool:
     return False
 
 
-def _ticket_has_published_kb(ticket) -> bool:
-    return ticket.kb_articles.filter(is_published=True).exists()
-
-
 def user_can_view_ticket(user, ticket) -> bool:
-    """
-    View access: same org, or KB-related bypass when the user has can_access_kb
-    and the ticket has a published related KB article.
-    """
+    """View access is same-org only. A published KB article does not widen it."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
         return True
-    if user_in_ticket_org(user, ticket):
-        return True
-
-    has_kb_role = bool(user.role_id and getattr(user.role, "can_access_kb", False))
-    if has_kb_role and _ticket_has_published_kb(ticket):
-        return True
-    return False
+    return user_in_ticket_org(user, ticket)
 
 
 def user_can_pick_ticket(user, ticket) -> bool:
