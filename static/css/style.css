@@ -2747,6 +2747,13 @@ button.success:hover,
   flex-wrap: wrap;
 }
 
+.info-main-panel > .panel-header > .ticket-header-actions,
+.info-main-panel > .panel-header > .ticket-number-row,
+.info-main-panel > .panel-header > .ticket-title-text {
+  margin: 0;
+  align-self: center;
+}
+
 .chat-header-layout {
   display: grid;
   grid-template-columns: 1fr auto;
