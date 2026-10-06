@@ -106,6 +106,22 @@ def overrides_set_by_worker(assignment) -> bool:
     return not is_shift_manager(setter)
 
 
+def check_in_marker(assignment, now) -> str:
+    if assignment.shift_type.is_night:
+        return ""
+    today = timezone.localdate()
+    if assignment.date > today:
+        return ""
+    if assignment.checked_in_at and assignment.date <= today:
+        return "checked"
+    if assignment.date < today:
+        return "missed"
+    start_dt, _end = effective_interval(assignment)
+    if now >= start_dt:
+        return "not"
+    return ""
+
+
 def check_in_state(assignment, now) -> str:
     start_dt, end_dt = effective_interval(assignment)
     opens = start_dt - timedelta(minutes=CHECK_IN_EARLY_MINUTES)

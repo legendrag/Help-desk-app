@@ -2,6 +2,9 @@
 {% load i18n %}
 {% block shifts_body %}
 <h1>{% trans "Rota" %}</h1>
+{% if check_in %}
+{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+{% endif %}
 {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
 {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
 <form method="get" class="shifts-toolbar" action="{% url 'shifts_rota' %}">

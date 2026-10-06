@@ -22,6 +22,8 @@ from shifts.services import (
     aware_on,
     clipped_day_night_minutes,
     clock_length,
+    check_in_marker,
+    check_in_state,
     effective_interval,
     effective_times,
     interval_for,
@@ -88,8 +90,10 @@ def _rota_bundle(department, dates):
         ).select_related("user", "shift_type", "times_set_by", "times_set_by__role")
     )
     visible = [row for row in assignments if first <= row.date <= last]
+    now = timezone.now()
     for row in visible:
         row.set_by_worker = overrides_set_by_worker(row)
+        row.check_marker = check_in_marker(row, now)
     assigned_ids = {row.user_id for row in visible}
     active = User.objects.filter(
         department=department,
@@ -151,6 +155,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
         "skips": skips or [],
         "error": error,
         "display_name": display_name,
+        "check_in": _viewer_check_in(request),
     }
     template = "shifts/rota_grid.html" if retarget else "shifts/rota.html"
     response = _shell(request, template, context)
@@ -217,10 +222,14 @@ def shifts_mine(request):
         if start_dt <= now < end_dt:
             banner_end = end_dt
             break
+    check_in = None
+    if request.user.user_type == "support":
+        check_in = next((row for row in rows if row.date == today and not row.shift_type.is_night), None)
     return _shell(request, "shifts/mine.html", {
         "assignments": rows,
         "banner_end": banner_end,
         "today": today,
+        "check_in": _check_in_context(check_in, now),
     })
 
 
@@ -325,6 +334,13 @@ def shifts_cell(request):
             "existing": existing,
             "types": ShiftType.objects.filter(department=department, archived=False),
         })
+    if request.method == "POST" and request.POST.get("clear_check_in") == "1":
+        if existing and not existing.shift_type.is_night:
+            existing.checked_in_at = None
+            existing.save(update_fields=["checked_in_at", "updated_at"])
+        response = _grid_response(request, department, retarget=True)
+        response["HX-Trigger"] = "closeModal"
+        return response
     shift_type_id = request.POST.get("shift_type") or ""
     if not shift_type_id:
         if existing:
@@ -812,3 +828,65 @@ def shifts_mine_hours(request, pk):
 
 def _mine_row(request, assignment, error):
     return render(request, "shifts/mine_row.html", {"assignment": assignment, "error": error})
+
+
+def _check_in_context(assignment, now):
+    if assignment is None:
+        return None
+    if assignment.checked_in_at:
+        return {"assignment": assignment, "state": "checked", "hint": ""}
+    state = check_in_state(assignment, now)
+    hint = ""
+    if state == "early":
+        hint = _("You can check in from 30 minutes before this shift starts.")
+    elif state == "closed":
+        hint = _("This shift has ended.")
+    return {"assignment": assignment, "state": state, "hint": hint}
+
+
+def _viewer_check_in(request):
+    if request.user.user_type != "support":
+        return None
+    today = timezone.localdate()
+    assignment = (
+        ShiftAssignment.objects.filter(user=request.user, date=today, shift_type__is_night=False)
+        .select_related("shift_type")
+        .first()
+    )
+    return _check_in_context(assignment, timezone.now())
+
+
+@login_required
+@require_POST
+def shifts_check_in(request, pk):
+    assignment = get_object_or_404(
+        ShiftAssignment.objects.select_related("shift_type", "user"),
+        pk=pk,
+    )
+    if assignment.user_id != request.user.id:
+        return _forbid()
+    if request.user.user_type != "support":
+        return _forbid()
+    if assignment.shift_type.is_night:
+        return _forbid()
+    if assignment.date != timezone.localdate():
+        return _forbid()
+    now = timezone.now()
+    if assignment.checked_in_at:
+        return render(request, "shifts/check_in_panel.html", {"assignment": assignment, "state": "checked"})
+    state = check_in_state(assignment, now)
+    if state == "early":
+        return render(request, "shifts/check_in_panel.html", {
+            "assignment": assignment,
+            "state": "early",
+            "hint": _("You can check in from 30 minutes before this shift starts."),
+        })
+    if state == "closed":
+        return render(request, "shifts/check_in_panel.html", {
+            "assignment": assignment,
+            "state": "closed",
+            "hint": _("This shift has ended."),
+        })
+    assignment.checked_in_at = now
+    assignment.save(update_fields=["checked_in_at", "updated_at"])
+    return render(request, "shifts/check_in_panel.html", {"assignment": assignment, "state": "checked"})

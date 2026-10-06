@@ -2,6 +2,9 @@
 {% load i18n %}
 {% block shifts_body %}
 <h1>{% trans "My shifts" %}</h1>
+{% if check_in %}
+{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+{% endif %}
 {% if banner_end %}
 <p>{% blocktrans trimmed with end=banner_end|date:"H:i" %}You are on shift until {{ end }}.{% endblocktrans %}</p>
 {% endif %}

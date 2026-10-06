@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
@@ -10,6 +11,13 @@ from core.models import Department, Role
 from shifts.models import ShiftAssignment, ShiftType
 
 User = get_user_model()
+
+
+@contextmanager
+def _both_clocks(now, day):
+    with patch("django.utils.timezone.now", return_value=now), \
+         patch("django.utils.timezone.localdate", return_value=day):
+        yield
 
 
 def aware(y, m, d, hh, mm=0):
@@ -611,3 +619,103 @@ class WorkerHoursTests(TestCase):
         self.assertIsNone(self.own.start_time_override)
         self.assertIsNone(self.own.times_set_by_id)
         self.assertIsNone(self.own.times_set_at)
+
+
+class CheckInTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Check")
+        self.agent = make_user("check-agent", "support", self.department)
+        self.other = make_user("check-other", "support", self.department)
+        self.day = make_shift_type(self.department, name="Check day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Check night")
+        self.today = date(2026, 6, 2)
+        self.row = make_assignment(self.agent, self.day, self.today)
+        self.client.force_login(self.agent)
+
+    def _at(self, hh, mm=0):
+        return _both_clocks(aware(2026, 6, 2, hh, mm), date(2026, 6, 2))
+
+    def test_window_and_idempotent_press(self):
+        with self._at(8, 0):
+            too_soon = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.assertContains(too_soon, "30 minutes")
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        with self._at(8, 40):
+            first = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.row.refresh_from_db()
+        stamped = self.row.checked_in_at
+        self.assertIsNotNone(stamped)
+        with self._at(9, 0):
+            second = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.row.refresh_from_db()
+        self.assertEqual(self.row.checked_in_at, stamped)
+        self.assertContains(second, "Checked in at")
+
+    def test_hidden_for_night_other_and_branch(self):
+        night = make_assignment(self.agent, self.night, self.today + timedelta(days=1))
+        with self._at(8, 40):
+            self.assertEqual(self.client.post(reverse("shifts_check_in", args=[night.pk])).status_code, 403)
+        # Freezing timezone.now rewrites the session expiry into the past
+        # because SESSION_SAVE_EVERY_REQUEST is on. Sign in again before the
+        # unpatched request.
+        self.client.force_login(self.agent)
+        foreign = make_assignment(self.other, self.day, self.today + timedelta(days=2))
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[foreign.pk])).status_code, 403)
+        self.client.force_login(make_user("check-branch", "branch"))
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.row.pk])).status_code, 403)
+
+    def test_manager_clear_worker_cannot(self):
+        self.row.checked_in_at = aware(2026, 6, 2, 8, 40)
+        self.row.save()
+        self.assertEqual(self.client.post(reverse("shifts_cell"), {
+            "clear_check_in": "1",
+            "user": self.agent.pk,
+            "date": "2026-06-02",
+            "department": self.department.pk,
+            "shift_type": self.day.pk,
+        }).status_code, 403)
+        manager = make_user("check-lead", "support", self.department, make_role("Check lead", can_manage_shifts=True))
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_cell"), {
+            "clear_check_in": "1",
+            "user": self.agent.pk,
+            "date": "2026-06-02",
+            "department": self.department.pk,
+            "shift_type": self.day.pk,
+        })
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+
+    def test_panel_only_for_the_owning_support_user(self):
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 8, 40)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            mine = self.client.get(reverse("shifts_mine"))
+        self.assertContains(mine, 'id="shifts-check-in"')
+        self.client.force_login(self.other)
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 8, 40)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            other = self.client.get(reverse("shifts_mine"))
+        self.assertNotContains(other, 'id="shifts-check-in"')
+        manager = make_user("check-panel-lead", "support", self.department, make_role("Panel lead", can_manage_shifts=True))
+        make_assignment(manager, self.day, self.today)
+        self.client.force_login(manager)
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 8, 40)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            rota = self.client.get(reverse("shifts_rota"))
+        self.assertContains(rota, 'id="shifts-check-in"')
+
+    def test_day_to_night_clears_check_in(self):
+        self.row.checked_in_at = aware(2026, 6, 2, 9, 0)
+        self.row.save()
+        manager = make_user("type-lead", "support", self.department, make_role("Type lead", can_manage_shifts=True))
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-06-02",
+            "department": self.department.pk,
+            "shift_type": self.night.pk,
+        })
+        self.row.refresh_from_db()
+        self.assertEqual(self.row.shift_type_id, self.night.pk)
+        self.assertIsNone(self.row.checked_in_at)

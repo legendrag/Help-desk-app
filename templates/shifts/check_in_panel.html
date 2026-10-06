@@ -1,0 +1,14 @@
+{% load i18n %}
+<div id="shifts-check-in" class="panel">
+  {% if state == "checked" %}
+  <p>{% blocktrans trimmed with time=assignment.checked_in_at|date:"H:i" %}Checked in at {{ time }}{% endblocktrans %}</p>
+  {% else %}
+  {% if hint %}<p>{{ hint }}</p>{% endif %}
+  <form method="post" action="{% url 'shifts_check_in' assignment.pk %}"
+        hx-post="{% url 'shifts_check_in' assignment.pk %}"
+        hx-target="#shifts-check-in" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button class="btn primary" type="submit"{% if state != "open" %} disabled{% endif %}>{% trans "Check in" %}</button>
+  </form>
+  {% endif %}
+</div>
