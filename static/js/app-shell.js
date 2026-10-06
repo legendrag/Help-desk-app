@@ -547,16 +547,18 @@ document.body.addEventListener('reloadPage', function () {
 });
 
 document.body.addEventListener('refreshTickets', function () {
+    if (document.body.classList.contains('pause-polling')) return;
     const list = document.getElementById('tickets-live') || document.getElementById('ticket-list');
-    if (list && window.htmx) {
-        // Prefer the live partial's own hx-trigger; this ajax is a fallback.
-        // source + data-no-progress keeps the top progress bar off.
-        window.htmx.ajax('GET', window.location.href, {
-            target: '#' + list.id,
-            source: list,
-            swap: 'outerHTML'
-        });
-    }
+    if (!list || !window.htmx) return;
+    // #tickets-live already listens for this event. A second ajax replace
+    // would drop rows the Load Older Tickets button just appended.
+    var trigger = list.getAttribute('hx-trigger') || '';
+    if (trigger.indexOf('refreshTickets') !== -1) return;
+    window.htmx.ajax('GET', window.location.href, {
+        target: '#' + list.id,
+        source: list,
+        swap: 'outerHTML'
+    });
 });
 
 document.addEventListener('htmx:afterRequest', function (evt) {
@@ -1064,49 +1066,129 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
     if (etag) evt.detail.headers['If-None-Match'] = etag;
     
     // Rule A: Requests from #tickets-live always omit loaded_pages.
-    // When elt.id === 'tickets-live', the request is either:
-    // - Timer poll (every 20s) → should fetch page 1 only (bounded depth)
-    // - refreshTickets event (manual dispatch) → should reset to page 1
-    //
-    // By omitting loaded_pages, server defaults to depth=1, avoiding re-fetch of
-    // hundreds of rows after load-more. Load-more rows stay in DOM until full reload.
-    //
-    // Filter form (.tickets-filters) is a different element, handled earlier in this
-    // handler. It also omits loaded_pages, resetting to page 1 on filter change.
+    // Timer polls and refreshTickets fetch the first page only. Appended rows
+    // stay in the table until a full reload or a filter change.
 });
 
+function appendRequestPath(evt) {
+    var detail = (evt && evt.detail) || {};
+    if (detail.pathInfo && detail.pathInfo.requestPath) return detail.pathInfo.requestPath;
+    if (detail.requestConfig && detail.requestConfig.path) return detail.requestConfig.path;
+    var elt = detail.elt;
+    if (elt && elt.getAttribute) return elt.getAttribute('hx-get') || '';
+    return '';
+}
+
+function settleAppendRequest(evt) {
+    if (appendRequestPath(evt).indexOf('append=true') === -1) return;
+    document.querySelectorAll('#tickets-tbody tr.load-more-oob-row').forEach(function (row) {
+        row.remove();
+    });
+    document.body.classList.remove('pause-polling');
+}
+
 document.body.addEventListener('htmx:afterSwap', function (evt) {
-    // Check if this was a load-more request by checking the URL
-    var pathInfo = evt.detail.pathInfo;
-    if (!pathInfo || !pathInfo.requestPath) return;
-    
-    // If this was an append=true request (load-more), update depth and resume polling
-    if (pathInfo.requestPath.indexOf('append=true') !== -1) {
-        var live = document.getElementById('tickets-live');
-        if (!live) return;
+    if (appendRequestPath(evt).indexOf('append=true') === -1) return;
+    var live = document.getElementById('tickets-live');
+    if (live) {
         var depth = parseInt(live.getAttribute('data-loaded-pages') || '1', 10);
         if (!depth || depth < 1) depth = 1;
         live.setAttribute('data-loaded-pages', String(depth + 1));
-        
-        // Resume polling after successful load-more
-        document.body.classList.remove('pause-polling');
     }
+    settleAppendRequest(evt);
 });
+
+['htmx:responseError', 'htmx:sendError', 'htmx:timeout', 'htmx:swapError'].forEach(function (name) {
+    document.body.addEventListener(name, settleAppendRequest);
+});
+
+function ticketRowSignature(row) {
+    var badge = row.querySelector('[class*="badge-"]');
+    return [
+        row.getAttribute('data-href') || '',
+        badge ? badge.className : '',
+        (row.textContent || '').replace(/\s+/g, ' ').trim()
+    ].join('~');
+}
 
 function ticketsLiveSignature(el) {
     if (!el) return '';
-    var rows = el.querySelectorAll('#tickets-tbody tr');
     var parts = [el.getAttribute('hx-get') || ''];
-    rows.forEach(function (row) {
-        var badge = row.querySelector('[class*="badge-"]');
-        parts.push(row.getAttribute('data-href') || '');
-        parts.push(badge ? badge.className : '');
-        parts.push((row.textContent || '').replace(/\s+/g, ' ').trim());
+    el.querySelectorAll('#tickets-tbody tr').forEach(function (row) {
+        parts.push(ticketRowSignature(row));
     });
     return parts.join('|');
 }
 
-// 20s ticket poll: skip the table swap when the visible rows did not change.
+function firstPageSignature(el) {
+    if (!el) return '';
+    var parts = [el.getAttribute('hx-get') || ''];
+    el.querySelectorAll('#tickets-tbody tr').forEach(function (row) {
+        if (row.hasAttribute('data-appended') || row.classList.contains('load-more-oob-row')) return;
+        parts.push(ticketRowSignature(row));
+    });
+    return parts.join('|');
+}
+
+function mergeTicketFirstPage(current, incoming, doc) {
+    var currentBody = current.querySelector('#tickets-tbody');
+    var incomingBody = incoming.querySelector('#tickets-tbody');
+    if (!currentBody || !incomingBody) return;
+
+    var incomingRows = Array.from(incomingBody.children).filter(function (node) {
+        return node.tagName === 'TR';
+    });
+    var incomingReal = incomingRows.filter(function (row) {
+        return row.hasAttribute('data-href');
+    });
+
+    if (!incomingReal.length) {
+        while (currentBody.firstChild) currentBody.removeChild(currentBody.firstChild);
+        incomingRows.forEach(function (row) {
+            currentBody.appendChild(document.importNode(row, true));
+        });
+        current.setAttribute('data-loaded-pages', '1');
+        var incomingMore = doc && doc.getElementById('load-more-container');
+        var currentMore = document.getElementById('load-more-container');
+        if (incomingMore && currentMore) {
+            var replacement = document.importNode(incomingMore, true);
+            currentMore.replaceWith(replacement);
+            if (window.htmx) window.htmx.process(replacement);
+        }
+        if (window.htmx) window.htmx.process(currentBody);
+        return;
+    }
+
+    var seen = {};
+    incomingReal.forEach(function (row) {
+        seen[row.getAttribute('data-href')] = true;
+    });
+    Array.from(currentBody.querySelectorAll('tr')).forEach(function (row) {
+        if (row.classList.contains('load-more-oob-row') || !row.hasAttribute('data-appended')) {
+            row.remove();
+            return;
+        }
+        var href = row.getAttribute('data-href');
+        if (href && seen[href]) row.remove();
+    });
+
+    var anchor = currentBody.querySelector('tr[data-appended]');
+    incomingRows.forEach(function (row) {
+        var node = document.importNode(row, true);
+        if (anchor) currentBody.insertBefore(node, anchor);
+        else currentBody.appendChild(node);
+        if (window.htmx) window.htmx.process(node);
+    });
+}
+
+function ticketsLiveTriggerType(evt) {
+    var req = evt.detail && evt.detail.requestConfig;
+    var triggering = req && req.triggeringEvent;
+    return triggering && triggering.type ? triggering.type : '';
+}
+
+// Polls fetch page 1 only. After Load Older Tickets, keep those rows and
+// refresh the first page in place. A filter change still replaces the list.
 document.body.addEventListener('htmx:beforeSwap', function (evt) {
     var target = evt.detail.target;
     if (!target || target.id !== 'tickets-live') return;
@@ -1120,7 +1202,31 @@ document.body.addEventListener('htmx:beforeSwap', function (evt) {
     var doc = new DOMParser().parseFromString(xhr.responseText, 'text/html');
     var incoming = doc.getElementById('tickets-live');
     if (!incoming) return;
+
+    var isFilter = /^(submit|change|keyup|search|input)$/.test(ticketsLiveTriggerType(evt));
+    var depth = parseInt(target.getAttribute('data-loaded-pages') || '1', 10);
+    var hasAppended = !!target.querySelector('#tickets-tbody tr[data-appended]');
+    if (!isFilter && (depth > 1 || hasAppended)) {
+        var etag = incoming.getAttribute('data-etag');
+        if (etag) target.setAttribute('data-etag', etag);
+        if (firstPageSignature(incoming) !== firstPageSignature(target)) {
+            mergeTicketFirstPage(target, incoming, doc);
+        }
+        evt.detail.shouldSwap = false;
+        return;
+    }
+
     if (ticketsLiveSignature(incoming) === ticketsLiveSignature(target)) {
         evt.detail.shouldSwap = false;
     }
+});
+
+// A poll can replace #tickets-live while Load Older Tickets is in flight.
+// Appending into the detached tbody would drop the new rows.
+document.body.addEventListener('htmx:beforeSwap', function (evt) {
+    if (appendRequestPath(evt).indexOf('append=true') === -1) return;
+    var target = evt.detail.target;
+    if (target && target.isConnected) return;
+    var body = document.getElementById('tickets-tbody');
+    if (body) evt.detail.target = body;
 });

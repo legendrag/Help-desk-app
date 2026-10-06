@@ -1,6 +1,6 @@
 {% load i18n %}
 {% for ticket in tickets %}
-<tr class="clickable-row" data-href="{% url 'ticket_detail' ticket.id %}"
+<tr class="clickable-row" data-appended="true" data-href="{% url 'ticket_detail' ticket.id %}"
     hx-get="{% url 'ticket_detail' ticket.id %}"
     hx-target="#shell-content"
     hx-swap="innerHTML show:window:top settle:0"

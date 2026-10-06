@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.conf import settings
 from accounts.models import User
 from core.models import Branch, Department, Category, Role
@@ -1646,6 +1646,59 @@ class TicketListPerformanceTests(TestCase):
         view.request = response.wsgi_request
         self.assertEqual(view.get_paginate_by(None), 30)  # 10 * 3
 
+    def test_append_returns_the_next_older_page(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        start = timezone.now() - timedelta(days=2)
+        extra = []
+        for i in range(7):
+            extra.append(
+                Ticket.objects.create(
+                    ticket_number=f"TK-OLDER-{i}",
+                    title=f"Older ticket {i}",
+                    description="Test description",
+                    branch=self.branch,
+                    department=self.department,
+                    category=self.category,
+                    created_by=self.branch_user,
+                    client_name="Test Client",
+                    client_phone="123456789",
+                )
+            )
+        ordered_ids = list(Ticket.objects.order_by("id").values_list("id", flat=True))
+        for index, ticket_id in enumerate(ordered_ids):
+            Ticket.objects.filter(pk=ticket_id).update(
+                created_at=start + timedelta(minutes=index)
+            )
+        newest_first = list(
+            Ticket.objects.order_by("-created_at", "-id").values_list(
+                "ticket_number", flat=True
+            )
+        )
+
+        self.client.force_login(self.support_user)
+        first = self.client.get("/tickets/")
+        self.assertEqual(
+            [ticket.ticket_number for ticket in first.context["tickets"]],
+            newest_first[:10],
+        )
+        self.assertContains(first, "page=2&append=true")
+
+        second = self.client.get(
+            "/tickets/",
+            {"page": "2", "append": "true"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertTemplateUsed(second, "tickets/list_append.html")
+        self.assertEqual(
+            [ticket.ticket_number for ticket in second.context["tickets"]],
+            newest_first[10:],
+        )
+        self.assertContains(second, 'data-appended="true"')
+        self.assertNotContains(second, newest_first[0])
+
     def _session_key(self):
         return self.client.cookies[settings.SESSION_COOKIE_NAME].value
 
@@ -2281,6 +2334,27 @@ class PhaseDShellPaneTests(TestCase):
         self.assertIn("requested !== here", shell_js)
         self.assertIn('xhr.status === 304', shell_js)
         self.assertIn("settings-shell-pane", shell_js)
+
+
+class TicketLoadOlderTests(SimpleTestCase):
+    def test_live_refresh_keeps_rows_loaded_by_the_older_tickets_button(self):
+        append = (
+            Path(settings.BASE_DIR) / "templates" / "tickets" / "list_append.html"
+        ).read_text(encoding="utf-8")
+        live = (
+            Path(settings.BASE_DIR) / "templates" / "tickets" / "list_live_partial.html"
+        ).read_text(encoding="utf-8")
+        shell = (
+            Path(settings.BASE_DIR) / "static" / "js" / "app-shell.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('data-appended="true"', append)
+        self.assertIn("function mergeTicketFirstPage", shell)
+        self.assertIn("tr[data-appended]", shell)
+        self.assertIn(
+            "refreshTickets[!document.body.classList.contains('pause-polling')]",
+            live,
+        )
 
 
 def _opening_tag(html, href):

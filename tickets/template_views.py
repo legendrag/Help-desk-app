@@ -1088,7 +1088,7 @@ class TicketListView(LoginRequiredMixin, ListView):
         context["loaded_pages"] = depth
         context["list_etag"] = getattr(self, "_list_etag_value", "")
         page_obj = context.get("page_obj")
-        if is_append and page_obj is not None and page_obj.has_next:
+        if is_append and page_obj is not None and page_obj.has_next():
             context["append_page"] = page_obj.next_page_number()
         else:
             context["append_page"] = depth + 1

@@ -1,7 +1,7 @@
 {% load i18n %}
 <div id="tickets-live"
      hx-get="{% url 'tickets_list' %}{% if filters_query %}?{{ filters_query }}{% endif %}"
-     hx-trigger="every 20s [!document.body.classList.contains('pause-polling')], refreshTickets from:body"
+     hx-trigger="every 20s [!document.body.classList.contains('pause-polling')], refreshTickets[!document.body.classList.contains('pause-polling')] from:body"
      hx-swap="outerHTML"
      data-no-progress
      data-etag="{{ list_etag }}"
