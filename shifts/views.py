@@ -17,6 +17,8 @@ from shifts.forms import ShiftTypeForm
 from shifts.models import ShiftAssignment, ShiftType
 from shifts.services import (
     REPEAT_WEEKS_MAX,
+    WORKER_HOURS_LOOKBACK_DAYS,
+    WORKER_HOURS_MAX_MINUTES,
     aware_on,
     clipped_day_night_minutes,
     clock_length,
@@ -194,7 +196,32 @@ def shifts_rota_grid(request):
 def shifts_mine(request):
     if request.user.user_type != "support" and not is_shift_manager(request.user):
         return _forbid()
-    return _shell(request, "shifts/mine.html", {})
+    today = timezone.localdate()
+    lookback = today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS)
+    upcoming = list(
+        ShiftAssignment.objects.filter(user=request.user, date__gte=today).select_related("shift_type")
+    )
+    past_nights = list(
+        ShiftAssignment.objects.filter(
+            user=request.user,
+            shift_type__is_night=True,
+            date__gte=lookback,
+            date__lt=today,
+        ).select_related("shift_type")
+    )
+    rows = sorted(upcoming + past_nights, key=lambda row: (row.date, row.pk))
+    now = timezone.now()
+    banner_end = None
+    for row in rows:
+        start_dt, end_dt = effective_interval(row)
+        if start_dt <= now < end_dt:
+            banner_end = end_dt
+            break
+    return _shell(request, "shifts/mine.html", {
+        "assignments": rows,
+        "banner_end": banner_end,
+        "today": today,
+    })
 
 
 @login_required
@@ -734,3 +761,54 @@ def shifts_calc_coverage(request):
         "view": view,
         "start": start,
     })
+
+
+@login_required
+@require_POST
+def shifts_mine_hours(request, pk):
+    assignment = get_object_or_404(
+        ShiftAssignment.objects.select_related("shift_type", "user"),
+        pk=pk,
+    )
+    if assignment.user_id != request.user.id:
+        return _forbid()
+    if not assignment.shift_type.is_night:
+        return _forbid()
+    if request.user.user_type != "support" and not is_shift_manager(request.user):
+        return _forbid()
+    today = timezone.localdate()
+    if assignment.date < today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS):
+        return _mine_row(request, assignment, _("You can only change hours from the last 7 days onward."))
+    if request.POST.get("action") == "reset":
+        assignment.start_time_override = None
+        assignment.end_time_override = None
+        assignment.times_set_by = None
+        assignment.times_set_at = None
+        assignment.save()
+        return _mine_row(request, assignment, "")
+    start_raw = request.POST.get("start_time") or ""
+    end_raw = request.POST.get("end_time") or ""
+    if not start_raw or not end_raw:
+        return _mine_row(request, assignment, _("Enter both a start and an end time."))
+    start_t = time.fromisoformat(start_raw)
+    end_t = time.fromisoformat(end_raw)
+    total, _after = clock_length(start_t, end_t)
+    if total <= 0 or total > WORKER_HOURS_MAX_MINUTES:
+        return _mine_row(request, assignment, _("This shift must be longer than 0 hours and no more than 16 hours."))
+    try:
+        start_dt, end_dt = interval_for(assignment.date, start_t, end_t)
+    except ValueError as exc:
+        return _mine_row(request, assignment, str(exc))
+    other = neighbor_conflict(assignment, start_dt, end_dt, exclude_pk=assignment.pk)
+    if other:
+        return _mine_row(request, assignment, overlap_message(other))
+    assignment.start_time_override = start_t
+    assignment.end_time_override = end_t
+    assignment.times_set_by = request.user
+    assignment.times_set_at = timezone.now()
+    assignment.save()
+    return _mine_row(request, assignment, "")
+
+
+def _mine_row(request, assignment, error):
+    return render(request, "shifts/mine_row.html", {"assignment": assignment, "error": error})

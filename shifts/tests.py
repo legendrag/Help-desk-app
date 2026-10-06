@@ -513,3 +513,101 @@ class CalculatorTests(TestCase):
         after_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
         self.assertEqual(before_hours, after_hours)
         self.assertEqual(before_coverage, after_coverage)
+
+
+class WorkerHoursTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Mine")
+        self.agent = make_user("mine-agent", "support", self.department)
+        self.other = make_user("mine-other", "support", self.department)
+        self.night = make_shift_type(self.department, name="Mine night")
+        self.day = make_shift_type(self.department, name="Mine day", start=time(9, 0), end=time(17, 0))
+        self.today = timezone.localdate()
+        self.own = make_assignment(self.agent, self.night, self.today)
+        self.client.force_login(self.agent)
+
+    def test_owner_can_set_same_evening_hours(self):
+        response = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00",
+            "end_time": "23:00",
+            "action": "save",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.own.refresh_from_db()
+        self.assertEqual(self.own.start_time_override, time(18, 0))
+        self.assertEqual(self.own.times_set_by_id, self.agent.pk)
+
+    def test_other_user_and_day_shift_are_403(self):
+        foreign = make_assignment(self.other, self.night, self.today)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[foreign.pk]), {
+            "start_time": "18:00", "end_time": "23:00", "action": "save",
+        }).status_code, 403)
+        foreign.refresh_from_db()
+        self.assertIsNone(foreign.start_time_override)
+        day_row = make_assignment(self.agent, self.day, self.today + timedelta(days=1))
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[day_row.pk]), {
+            "start_time": "10:00", "end_time": "15:00", "action": "save",
+        }).status_code, 403)
+
+    def test_eight_days_ago_rejected_and_seven_accepted(self):
+        old = make_assignment(self.agent, self.night, self.today - timedelta(days=8))
+        response = self.client.post(reverse("shifts_mine_hours", args=[old.pk]), {
+            "start_time": "18:00", "end_time": "23:00", "action": "save",
+        })
+        self.assertContains(response, "last 7 days")
+        old.refresh_from_db()
+        self.assertIsNone(old.start_time_override)
+        recent = make_assignment(self.agent, self.night, self.today - timedelta(days=7))
+        ok = self.client.post(reverse("shifts_mine_hours", args=[recent.pk]), {
+            "start_time": "18:00", "end_time": "23:00", "action": "save",
+        })
+        self.assertEqual(ok.status_code, 200)
+        recent.refresh_from_db()
+        self.assertEqual(recent.start_time_override, time(18, 0))
+
+    def test_branch_post_forbidden(self):
+        branch = make_user("mine-branch", "branch")
+        self.client.force_login(branch)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00", "end_time": "23:00", "action": "save",
+        }).status_code, 403)
+
+    def test_length_cap_equal_times_overlap_and_reset(self):
+        too_long = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "00:00", "end_time": "16:30", "action": "save",
+        })
+        self.assertContains(too_long, "16 hours")
+        self.own.refresh_from_db()
+        self.assertIsNone(self.own.start_time_override)
+        equal = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00", "end_time": "18:00", "action": "save",
+        })
+        self.assertContains(equal, "16 hours")
+        crossing = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00", "end_time": "02:00", "action": "save",
+        })
+        self.assertEqual(crossing.status_code, 200)
+        self.own.refresh_from_db()
+        self.assertEqual(self.own.end_time_override, time(2, 0))
+        self.own.start_time_override = None
+        self.own.end_time_override = None
+        self.own.times_set_by = None
+        self.own.times_set_at = None
+        self.own.save()
+        neighbor = make_assignment(self.agent, self.night, self.today + timedelta(days=1), time(1, 0), time(9, 0))
+        blocked = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00", "end_time": "02:00", "action": "save",
+        })
+        self.assertContains(blocked, "overlaps")
+        self.own.refresh_from_db()
+        self.assertIsNone(self.own.start_time_override)
+        neighbor.delete()
+        self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {
+            "start_time": "18:00", "end_time": "23:00", "action": "save",
+        })
+        reset = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {"action": "reset"})
+        self.assertEqual(reset.status_code, 200)
+        self.own.refresh_from_db()
+        self.assertIsNone(self.own.start_time_override)
+        self.assertIsNone(self.own.times_set_by_id)
+        self.assertIsNone(self.own.times_set_at)

@@ -2,4 +2,20 @@
 {% load i18n %}
 {% block shifts_body %}
 <h1>{% trans "My shifts" %}</h1>
+{% if banner_end %}
+<p>{% blocktrans trimmed with end=banner_end|date:"H:i" %}You are on shift until {{ end }}.{% endblocktrans %}</p>
+{% endif %}
+{% if assignments %}
+<div class="table-wrap">
+  <table>
+    <tbody>
+      {% for assignment in assignments %}
+      {% include "shifts/mine_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p>{% trans "You have no upcoming shifts." %}</p>
+{% endif %}
 {% endblock %}

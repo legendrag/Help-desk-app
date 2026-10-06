@@ -1,0 +1,32 @@
+{% load i18n %}
+<tr id="shift-mine-{{ assignment.pk }}">
+  <td>{{ assignment.date|date:"Y-m-d" }}</td>
+  <td>{{ assignment.shift_type.name }}</td>
+  <td style="background-color: {{ assignment.shift_type.colour }}">{{ assignment.shift_type.colour }}</td>
+  <td>
+    {% if assignment.shift_type.is_night %}{% trans "Night" %}{% endif %}
+    {{ assignment.start_time_override|default:assignment.shift_type.start_time|time:"H:i" }}–{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:"H:i" }}
+  </td>
+  <td>
+    {% if assignment.shift_type.is_night %}
+    <form method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"
+          hx-post="{% url 'shifts_mine_hours' assignment.pk %}"
+          hx-target="#shift-mine-{{ assignment.pk }}"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <p>{% trans "Set my hours" %}</p>
+      <div class="form-group">
+        <label for="mine-start-{{ assignment.pk }}">{% trans "Start time" %}</label>
+        <input id="mine-start-{{ assignment.pk }}" type="time" name="start_time" value="{{ assignment.start_time_override|default:assignment.shift_type.start_time|time:'H:i' }}">
+      </div>
+      <div class="form-group">
+        <label for="mine-end-{{ assignment.pk }}">{% trans "End time" %}</label>
+        <input id="mine-end-{{ assignment.pk }}" type="time" name="end_time" value="{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:'H:i' }}">
+      </div>
+      {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+      <button class="btn primary" type="submit" name="action" value="save">{% trans "Save" %}</button>
+      <button class="btn secondary" type="submit" name="action" value="reset">{% trans "Reset to shift default" %}</button>
+    </form>
+    {% endif %}
+  </td>
+</tr>
