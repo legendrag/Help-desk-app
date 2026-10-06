@@ -475,6 +475,25 @@ class RotationTests(TestCase):
         })
         self.assertEqual(empty.status_code, 404)
 
+    def test_plain_auto_fill_post_redirects_to_the_rota(self):
+        department = make_department("Fill page")
+        manager = make_user("fill-lead", "support", department, make_role("Fill lead", can_manage_shifts=True))
+        make_user("fill-agent", "support", department, first_name="Hana", last_name="Nour")
+        make_shift_type(department, name="Fill night")
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_auto_fill"), {
+            "department": department.pk,
+            "action": "preview",
+            "start": "2026-10-03",
+            "view": "week",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/shifts/rota/", response["Location"])
+        followed = self.client.get(response["Location"])
+        self.assertEqual(followed.status_code, 200)
+        self.assertContains(followed, "Open the rota to review the night rotation.")
+        self.assertNotIn(b"<table", response.content)
+
     def test_one_person_second_night_is_back_to_back(self):
         from shifts.services import suggest_nights
 
@@ -1003,7 +1022,7 @@ class PermissionMatrixTests(TestCase):
             self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "2026-10-03"}).status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "13"}).status_code, 200)
-            self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "preview", "start": "2026-10-03", "view": "week"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "preview", "start": "2026-10-03", "view": "week"}).status_code, 302)
             self.assertEqual(self.client.post(reverse("shifts_calc_rotation"), {"action": "preview", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05", "users": [self.support.pk]}).status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
             self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)

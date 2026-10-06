@@ -7,6 +7,9 @@
 {% endif %}
 {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
 {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+{% for message in messages %}
+<p class="notice{% if 'error' in message.tags %} notice-error{% endif %}">{{ message }}</p>
+{% endfor %}
 <form method="get" class="shifts-toolbar" action="{% url 'shifts_rota' %}">
   <label for="rota-department">{% trans "Department" %}</label>
   <select id="rota-department" name="department">
@@ -23,7 +26,12 @@
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=week&start={{ start|date:'Y-m-d' }}">{% trans "Week" %}</a>
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>
 </form>
-<form method="post" action="{% url 'shifts_auto_fill' %}">
+<form method="post" action="{% url 'shifts_auto_fill' %}"
+      hx-post="{% url 'shifts_auto_fill' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
   {% csrf_token %}
   <input type="hidden" name="department" value="{{ department.pk }}">
   <input type="hidden" name="view" value="{{ view }}">
@@ -31,6 +39,7 @@
   <input type="hidden" name="action" value="preview">
   <button class="btn secondary" type="submit">{% trans "Auto-fill nights" %}</button>
 </form>
+<div id="shifts-auto-fill-result"></div>
 {% if view == "week" %}
 <form method="post" action="{% url 'shifts_copy_week' %}">
   {% csrf_token %}
@@ -50,7 +59,7 @@
 {% if skips %}
 <ul>
   {% for item in skips %}
-  <li>{{ item.user_id }} {{ item.date|date:"Y-m-d" }} {{ item.skip }}</li>
+  <li>{{ item.name|default:item.user_id }} {{ item.date|date:"Y-m-d" }} {{ item.skip }}</li>
   {% endfor %}
 </ul>
 {% endif %}

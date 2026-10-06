@@ -1,11 +1,14 @@
 from datetime import date, time, timedelta
+from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Max
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import get_language, gettext as _
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -747,25 +750,39 @@ def shifts_calc_rotation(request):
     })
 
 
+def _rota_redirect(request, department, view, start, message):
+    messages.success(request, message)
+    query = urlencode({
+        "department": department.pk,
+        "view": view,
+        "start": start.isoformat(),
+    })
+    return redirect(f"{reverse('shifts_rota')}?{query}")
+
+
 @login_required
 @require_POST
 def shifts_auto_fill(request):
     if not is_shift_manager(request.user):
         return _forbid()
     department = _selected_department(request)
-    _view, _start, dates = _rota_dates(request)
+    view, start, dates = _rota_dates(request)
+    htmx = bool(request.headers.get("HX-Request"))
     night_types = list(
         ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
     )
     if not night_types:
-        return _grid_response(request, department, notice=_("This department has no night shift."))
-    chosen_id = request.POST.get("shift_type")
+        notice = _("This department has no night shift.")
+        if not htmx:
+            return _rota_redirect(request, department, view, start, notice)
+        return _grid_response(request, department, notice=notice)
+    chosen_id = (request.POST.get("shift_type") or "").strip()
     shift_type = night_types[0]
     if chosen_id:
-        shift_type = get_object_or_404(
-            ShiftType, pk=chosen_id, department=department, archived=False, is_night=True,
-        )
+        shift_type = _posted_night_type(request, department)
     elif len(night_types) > 1:
+        if not htmx:
+            return _rota_redirect(request, department, view, start, _("Choose a night shift type on the rota."))
         return render(request, "shifts/calc_rotation.html", {
             "pick_types": night_types,
             "department": department,
@@ -779,7 +796,10 @@ def shifts_auto_fill(request):
         status=User.Status.ACTIVE,
     ))
     proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    _attach_names(proposals, people)
     if request.POST.get("action") != "apply":
+        if not htmx:
+            return _rota_redirect(request, department, view, start, _("Open the rota to review the night rotation."))
         return render(request, "shifts/calc_rotation.html", {
             "proposals": proposals,
             "skips": [],
@@ -789,12 +809,11 @@ def shifts_auto_fill(request):
             "can_apply": True,
         })
     created, skips = _apply_rotation(proposals, shift_type, department)
-    return _grid_response(
-        request,
-        department,
-        notice=_("Filled %(count)s night shifts.") % {"count": created},
-        skips=skips,
-    )
+    _attach_names(skips, people)
+    notice = _("Filled %(count)s night shifts.") % {"count": created}
+    if not htmx:
+        return _rota_redirect(request, department, view, start, notice)
+    return _grid_response(request, department, retarget=True, notice=notice, skips=skips)
 
 
 def _hours_minutes(minutes):

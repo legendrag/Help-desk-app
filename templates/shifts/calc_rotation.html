@@ -2,7 +2,12 @@
 <div id="shifts-rotation">
   {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
   {% if pick_types %}
-  <form method="post" action="{% url 'shifts_auto_fill' %}">
+  <form method="post" action="{% url 'shifts_auto_fill' %}"
+        hx-post="{% url 'shifts_auto_fill' %}"
+        hx-target="#shifts-auto-fill-result"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
     {% csrf_token %}
     <input type="hidden" name="department" value="{{ department.pk }}">
     <input type="hidden" name="view" value="{{ request.POST.view }}">
@@ -36,7 +41,12 @@
     {% endfor %}
   </ul>
   {% if can_apply %}
-  <form method="post" action="{% url 'shifts_auto_fill' %}">
+  <form method="post" action="{% url 'shifts_auto_fill' %}"
+        hx-post="{% url 'shifts_auto_fill' %}"
+        hx-target="#shifts-rota-grid"
+        hx-swap="outerHTML"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
     {% csrf_token %}
     <input type="hidden" name="department" value="{{ department.pk }}">
     <input type="hidden" name="view" value="{{ request.POST.view }}">
