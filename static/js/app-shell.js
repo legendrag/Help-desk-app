@@ -283,6 +283,8 @@ function cancelDiscard() {
 
 let globalConfirmCallback = null;
 
+let defaultConfirmCancelText = null;
+
 function showConfirmModal(options) {
     const titleEl = document.getElementById('global-confirm-title');
     titleEl.textContent = options.title || 'Confirm Action';
@@ -290,6 +292,14 @@ function showConfirmModal(options) {
 
     const actionBtn = document.getElementById('global-confirm-action-btn');
     actionBtn.textContent = options.yesText || 'Yes, Delete';
+
+    const cancelBtn = document.getElementById('global-confirm-cancel-btn');
+    if (cancelBtn) {
+        if (defaultConfirmCancelText === null) {
+            defaultConfirmCancelText = cancelBtn.textContent;
+        }
+        cancelBtn.textContent = options.cancelText || defaultConfirmCancelText;
+    }
 
     if (options.isDanger === false) {
         actionBtn.className = 'btn primary discard-modal-btn';
@@ -328,6 +338,10 @@ document.body.addEventListener('htmx:confirm', function (evt) {
     if (confirmQuestion) {
         evt.preventDefault();
         const element = evt.detail.elt;
+        const host = element.closest('[hx-confirm]') || element;
+        const confirmAttr = function (name) {
+            return element.getAttribute(name) || host.getAttribute(name);
+        };
 
         // Smart defaults based on context/classes
         const isDelete = confirmQuestion.toLowerCase().includes('delete') ||
@@ -335,14 +349,15 @@ document.body.addEventListener('htmx:confirm', function (evt) {
             (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
             (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
 
-        const title = element.getAttribute('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
-        const yesText = element.getAttribute('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
+        const title = confirmAttr('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
+        const yesText = confirmAttr('data-confirm-ok') || confirmAttr('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
         const isDanger = element.getAttribute('data-confirm-type') !== 'primary' && (isDelete || element.classList.contains('danger'));
 
         showConfirmModal({
             title: title,
             message: confirmQuestion,
             yesText: yesText,
+            cancelText: confirmAttr('data-confirm-cancel'),
             isDanger: isDanger,
             onConfirm: function () {
                 evt.detail.issueRequest();

@@ -243,7 +243,8 @@ msgstr "عاجلة"
 #: templates/base.html:601 templates/core/management/delete_confirm.html:19
 #: templates/core/management/delete_confirm_partial.html:20
 #: templates/core/management/form_partial.html:419 templates/kb/form.html:140
-#: templates/news/form_partial.html:61 templates/tickets/create.html:71
+#: templates/news/form_partial.html:61 templates/shifts/rota.html:60
+#: templates/shifts/rota.html:75 templates/tickets/create.html:71
 #: templates/tickets/create_partial.html:69
 #: templates/tickets/detail_pane.html:225
 #: templates/tickets/detail_pane.html:752
@@ -1359,7 +1360,8 @@ msgid "Reopened"
 msgstr "أعيد فتحها"
 
 # Confirm modals
-#: templates/base.html:586
+#: templates/base.html:586 templates/shifts/rota.html:58
+#: templates/shifts/rota.html:73
 msgid "Confirm Action"
 msgstr "تأكيد الإجراء"
 
@@ -3108,11 +3110,11 @@ msgstr "التالي"
 msgid "Auto-fill nights"
 msgstr "ملء المناوبات الليلية تلقائياً"
 
-#: templates/shifts/rota.html:63
+#: templates/shifts/rota.html:66
 msgid "Copy last week"
 msgstr "انسخ الأسبوع السابق"
 
-#: templates/shifts/rota.html:78
+#: templates/shifts/rota.html:84
 msgid "Repeat this week forward"
 msgstr "كرر هذا الأسبوع للأمام"
 
@@ -3234,7 +3236,7 @@ msgstr "تحديد الكل"
 msgid "You are on shift until"
 msgstr "أنت في مناوبة حتى"
 
-#: templates/shifts/rota.html:75
+#: templates/shifts/rota.html:81
 msgid "weeks"
 msgstr "أسابيع"
 
@@ -3273,9 +3275,13 @@ msgstr "لا يوجد أحد في هذا القسم للتعيين."
 msgid "Copy last week into this week?"
 msgstr "هل تريد نسخ الأسبوع الماضي إلى هذا الأسبوع؟"
 
-#: templates/shifts/rota.html:69
+#: templates/shifts/rota.html:72
 msgid "Repeat this week forward?"
 msgstr "هل تريد تكرار هذا الأسبوع للأمام؟"
+
+#: templates/shifts/rota.html:59 templates/shifts/rota.html:74
+msgid "Yes, Proceed"
+msgstr "نعم، متابعة"
 
 #, python-format
 #~ msgid "Nobody available on %(date)s."

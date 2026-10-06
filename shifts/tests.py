@@ -1,10 +1,10 @@
 from contextlib import contextmanager
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -582,6 +582,13 @@ class RotationTests(TestCase):
         page = self.client.get(reverse("shifts_rota"), {"department": department.pk, "start": "2026-10-10"})
         self.assertContains(page, "Copy last week into this week?")
         self.assertContains(page, "Repeat this week forward?")
+        self.client.cookies["django_language"] = "ar"
+        arabic = self.client.get(reverse("shifts_rota"), {"department": department.pk, "start": "2026-10-10"})
+        body = arabic.content.decode()
+        self.assertEqual(body.count('data-confirm-title="تأكيد الإجراء"'), 2)
+        self.assertEqual(body.count('data-confirm-ok="نعم، متابعة"'), 2)
+        self.assertEqual(body.count('data-confirm-cancel="إلغاء"'), 2)
+        self.client.cookies["django_language"] = "en"
         response = self.client.post(reverse("shifts_copy_week"), {
             "department": department.pk,
             "start": "2026-10-10",
@@ -804,6 +811,7 @@ class WorkerHoursTests(TestCase):
         self.assertContains(board, "1:00 PM")
         self.assertNotContains(board, "13:00")
 
+    @override_settings(TIME_ZONE="Africa/Cairo")
     def test_arabic_times_are_isolated_and_english_ranges_stay_left_to_right(self):
         department = make_department("Bidi")
         manager = make_user("bidi-lead", "support", department, make_role("Bidi lead", can_manage_shifts=True))
@@ -811,26 +819,34 @@ class WorkerHoursTests(TestCase):
         day = make_shift_type(department, name="Bidi day", start=time(9, 0), end=time(17, 0))
         today = date(2026, 10, 6)
         row = make_assignment(agent, day, today)
-        row.checked_in_at = aware(2026, 10, 6, 11, 29)
+        # 06:05 UTC is 9:05 AM in Africa/Cairo, independent of the server TIME_ZONE.
+        row.checked_in_at = datetime(2026, 10, 6, 6, 5, tzinfo=dt_timezone.utc)
         row.save()
         params = {"department": department.pk, "view": "week", "start": "2026-10-06"}
+        noon_utc = datetime(2026, 10, 6, 9, 0, tzinfo=dt_timezone.utc)
         self.client.force_login(manager)
         english = self.client.get(reverse("shifts_rota"), params)
         self.assertContains(english, '<bdi class="shifts-ltr" dir="ltr">9:00 AM–5:00 PM</bdi>')
         self.assertNotContains(english, 'dir="auto"')
+        self.client.force_login(agent)
+        with _both_clocks(noon_utc, today):
+            mine_en = self.client.get(reverse("shifts_mine"))
+        self.assertContains(mine_en, '<bdi class="shifts-ltr" dir="ltr">9:05 AM</bdi>')
+        self.assertContains(mine_en, "Checked in at")
         self.client.cookies["django_language"] = "ar"
+        self.client.force_login(manager)
         arabic = self.client.get(reverse("shifts_rota"), params)
         self.assertContains(arabic, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
         self.assertNotContains(arabic, 'dir="ltr">9:00 ص')
         self.assertNotContains(arabic, 'class="shifts-ltr" dir="ltr">9:00 ص–5:00 م')
         self.client.force_login(agent)
-        with _both_clocks(aware(2026, 10, 6, 12, 0), today):
+        with _both_clocks(noon_utc, today):
             mine = self.client.get(reverse("shifts_mine"))
             board = self.client.get(reverse("shifts_available"))
         self.assertContains(mine, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
-        self.assertContains(mine, '<bdi dir="auto">11:29 ص</bdi>')
+        self.assertContains(mine, '<bdi dir="auto">9:05 ص</bdi>')
         self.assertContains(mine, "تم تسجيل الحضور في")
-        self.assertNotContains(mine, 'dir="ltr">11:29')
+        self.assertNotContains(mine, 'dir="ltr">9:05')
         self.assertContains(board, '<bdi dir="auto">5:00 م</bdi>')
         self.assertContains(board, "حتى")
         self.assertNotContains(board, 'dir="ltr">5:00 م')

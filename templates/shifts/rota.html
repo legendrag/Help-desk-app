@@ -55,6 +55,9 @@
       hx-target="#shifts-auto-fill-result"
       hx-swap="innerHTML"
       hx-confirm="{% trans "Copy last week into this week?" %}"
+      data-confirm-title="{% trans "Confirm Action" %}"
+      data-confirm-ok="{% trans "Yes, Proceed" %}"
+      data-confirm-cancel="{% trans "Cancel" %}"
       hx-disabled-elt="this"
       hx-sync="this:replace">
   {% csrf_token %}
@@ -67,6 +70,9 @@
       hx-target="#shifts-auto-fill-result"
       hx-swap="innerHTML"
       hx-confirm="{% trans "Repeat this week forward?" %}"
+      data-confirm-title="{% trans "Confirm Action" %}"
+      data-confirm-ok="{% trans "Yes, Proceed" %}"
+      data-confirm-cancel="{% trans "Cancel" %}"
       hx-disabled-elt="this"
       hx-sync="this:replace">
   {% csrf_token %}
