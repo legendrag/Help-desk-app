@@ -1,6 +1,6 @@
 # Shifts & availability
 
-**Status:** Design approved by owner; spec awaiting owner review.
+**Status:** Approved by owner Omar (`legendrag`) on 2026-10-06. Implementation plan: `docs/superpowers/plans/2026-10-06-shifts-availability.md`.
 
 **Owner:** Omar (GitHub `legendrag`).
 
@@ -295,7 +295,7 @@ Include in `config/urls.py` next to the other apps:
 path("shifts/", include("shifts.urls")),
 ```
 
-`INSTALLED_APPS` gains `"shifts"` after `"webpush"`.
+`INSTALLED_APPS` gains `"shifts"` after `"webpush"`. `shifts/urls.py` does not set `app_name`. No urls module in this repo uses a namespace. Reverse names are the global strings in the table below (`reverse("shifts_home")`).
 
 `shifts/urls.py` names:
 
@@ -344,7 +344,7 @@ Query strings:
 
 ### Templates
 
-Under `shifts/templates/shifts/`:
+Under `templates/shifts/` (project templates, same as `templates/kb/` and `templates/news/`, not an app `templates/` package):
 
 | File | Role |
 |---|---|
@@ -469,7 +469,7 @@ The add/edit form: department (fixed to the current list filter on create), name
       hx-swap="outerHTML">
 ```
 
-HTMX replaces only `#shifts-check-in`. It does not target `#shell-content` and it does not add a second poll. Styles stay on `.btn` / `.btn.primary` / `.panel` from `static/css/modern.css`. Any extra layout is in `shifts/static/shifts/shifts.css` under `#shifts-shell-pane`, with logical properties and the existing colour variables, so dark mode and `html[dir=rtl]` work without editing `modern.css`, `dark-mode.css`, or `rtl.css`. After a successful check-in the panel text is `{% blocktrans trimmed %}Checked in at {{ time }}{% endblocktrans %}`.
+HTMX replaces only `#shifts-check-in`. It does not target `#shell-content` and it does not add a second poll. Styles stay on `.btn` / `.btn.primary` / `.panel` from `static/css/modern.css`. Any extra layout is in `static/css/shifts.css` under `#shifts-shell-pane`, with logical properties and the existing colour variables, so dark mode and `html[dir=rtl]` work without editing `modern.css`, `dark-mode.css`, or `rtl.css`. After a successful check-in the panel text is `{% blocktrans trimmed %}Checked in at {{ time }}{% endblocktrans %}`.
 
 Rows are the logged-in user’s assignments, ordered by date:
 
@@ -486,7 +486,7 @@ Each night-type row in that set has an inline “Set my hours” form, not a mod
       hx-swap="outerHTML">
 ```
 
-HTMX swaps only that `<tr>`. It does not target `#shell-content`. Layout for the inline inputs lives in `shifts/static/shifts/shifts.css`, scoped under `#shifts-shell-pane`, using logical properties and the existing colour variables so dark mode and `html[dir=rtl]` work without editing `modern.css`, `dark-mode.css`, or `rtl.css`. Night rows older than 7 days are not on this page. A forged POST for one still returns the date-window validation error.
+HTMX swaps only that `<tr>`. It does not target `#shell-content`. Layout for the inline inputs lives in `static/css/shifts.css`, scoped under `#shifts-shell-pane`, using logical properties and the existing colour variables so dark mode and `html[dir=rtl]` work without editing `modern.css`, `dark-mode.css`, or `rtl.css`. Night rows older than 7 days are not on this page. A forged POST for one still returns the date-window validation error.
 
 ### Team rota
 
@@ -509,7 +509,7 @@ One card per department, departments ordered by name. Card title is the departme
 
 Who is on shift: load assignments with `date__in=[local_yesterday, local_today]` (Python dates, then a `DateField` lookup — not `__date` on a datetime). `select_related("user", "shift_type", "shift_type__department")`. `times_set_at` and `checked_in_at` are columns on the assignment and are used in the ETag, not rendered. In Python, keep a night-type row when its effective interval contains `timezone.now()`. Keep a day-type row only when `checked_in_at` is not null and that same interval contains `timezone.now()`. Group by `shift_type.department`. A day shift that has started but is not checked in is omitted. A day shift checked in during the 30 minutes before the effective start stays omitted until that start. It drops off at the effective end. A night shift never consults `checked_in_at`. Worker-entered 18:00–23:00 on a night type is on shift from 18:00 until 23:00 and not at 23:00. Include yesterday’s overnight night shift when that effective end is still after now. Do not include tomorrow. A shift that ends at the current minute is already over. The board still shows only the display name and the effective end time. It does not show “Checked in”, “Missed”, or a start time.
 
-`shifts/static/shifts/shifts.js` (loaded only from the shifts shell via `{% block extra_js %}`):
+`static/js/shifts.js` (loaded only from the shifts shell via `{% block extra_js %}` and `{% static 'js/shifts.js' %}`):
 
 - On `htmx:configRequest`, if the element id is `shifts-available-now` and it has `data-etag`, set `If-None-Match`.
 - On `htmx:beforeSwap`, if the target id is `shifts-available-now` and the status is 304, set `shouldSwap = false` and `isError = false` (same idea as the `#tickets-live` handler, but in this file).
@@ -611,7 +611,7 @@ Match existing components. Do not restyle Tickets, Dashboard, or Settings.
 
 Reuse classes from `static/css/modern.css`: `.panel`, `.btn`, `.btn.primary`, `.btn.secondary`, `.btn.danger`, `.table-wrap`, `.notice`, `.notice-error`, `.badge`, `.settings-tabs`, `.settings-tab`, `.form-group`, `.form-actions`, modal classes already on `#modal-container`.
 
-New rules live only in `shifts/static/shifts/shifts.css`, loaded from the shifts shell. Scope under `#shifts-shell-pane`. Use the existing variables (`--panel-bg`, `--text-main`, `--text-muted`, `--border`, `--bg`, `--warning`, `--danger`) so `[data-theme="dark"]` from `dark-mode.css` applies without editing that file. Do not edit `static/css/modern.css`, `dark-mode.css`, `rtl.css`, or `style.css`.
+New rules live only in `static/css/shifts.css`, loaded from the shifts shell with `{% static 'css/shifts.css' %}`. This matches `static/css/` and `static/js/` used by every other page. Do not put a second static tree inside the app. Scope under `#shifts-shell-pane`. Use the existing variables (`--panel-bg`, `--text-main`, `--text-muted`, `--border`, `--bg`, `--warning`, `--danger`) so `[data-theme="dark"]` from `dark-mode.css` applies without editing that file. Do not edit `static/css/modern.css`, `dark-mode.css`, `rtl.css`, or `style.css`.
 
 Shift-type colour stays the manager’s hex in both themes. Night cells add a 2px dashed outline (`shifts-cell--night`) and the word “Night”, because two types can have similar colours. Gaps use `var(--danger)` at low emphasis plus the digit 0.
 
@@ -709,7 +709,7 @@ MySQL/MariaDB (test agent, not the unit-test default SQLite):
 
 `DEBUG=0` static check:
 
-- `collectstatic` with `CompressedManifestStaticFilesStorage` succeeds, and the shifts shell’s `{% static 'shifts/shifts.css' %}` and `{% static 'shifts/shifts.js' %}` resolve in the manifest. App static is picked up by the app directories finder; do not add a new `STATICFILES_DIRS` entry.
+- `collectstatic` with `CompressedManifestStaticFilesStorage` succeeds, and the shifts shell’s `{% static 'css/shifts.css' %}` and `{% static 'js/shifts.js' %}` resolve in the manifest. Those files live in the existing `STATICFILES_DIRS` entry `static/`. Do not add another `STATICFILES_DIRS` entry and do not add an app `static/` package.
 
 Manual browser checks (implementation PR, before merge):
 
@@ -734,7 +734,10 @@ Manual browser checks (implementation PR, before merge):
 
 Allowed:
 
-- New tree `shifts/` (`models.py`, `services.py`, `access.py`, `forms.py`, `views.py`, `urls.py`, `admin.py`, `apps.py`, `tests.py`, `migrations/0001_initial.py` depending on `core.0023` and `accounts.0008_alter_requires_password_change_verbose`, templates including `check_in_panel.html`, static). `checked_in_at` is a nullable datetime on `ShiftAssignment` in that initial migration. Do not add check-in clear-audit fields.
+- New tree `shifts/` only: `__init__.py`, `apps.py`, `admin.py`, `models.py`, `services.py`, `access.py`, `forms.py`, `views.py`, `urls.py`, `tests.py`, `migrations/__init__.py`, `migrations/0001_initial.py` (depends on `core.0023` and `accounts.0008_alter_requires_password_change_verbose`). One `views.py` and one `tests.py`, matching `kb` and `news`. No `app_name` on `shifts/urls.py`; this repo does not namespace URLs. No `views/` or `tests/` package. No app-level `templates/` or `static/`. `checked_in_at` is a nullable datetime on `ShiftAssignment` in that initial migration. Do not add check-in clear-audit fields.
+- `templates/shifts/` for every shifts template (`shell.html`, `rota.html`, `rota_grid.html`, `cell_form.html`, `types.html`, `type_form.html`, `calculator.html`, `calc_hours.html`, `calc_rotation.html`, `calc_length.html`, `calc_coverage.html`, `available.html`, `available_board.html`, `mine.html`, `mine_row.html`, `check_in_panel.html`, `team.html`). Same place as `templates/kb/` and `templates/news/`.
+- New files `static/css/shifts.css` and `static/js/shifts.js` only. Do not edit `modern.css`, `dark-mode.css`, `rtl.css`, or `style.css`.
+- `core/tests.py`: add the `can_manage_shifts` admin-role save test only. Every other shifts test lives in `shifts/tests.py`.
 - `config/settings.py` (`INSTALLED_APPS` only) and `config/urls.py` (one include).
 - `core/models.py` (the one flag), `core/migrations/0023_role_can_manage_shifts.py`, `core/forms.py` (`RoleForm` only), `templates/core/management/form_partial.html` (the Access checkbox and no preset entry).
 - `templates/base.html` (the one sidebar link).
@@ -757,4 +760,4 @@ No feature flag. The sidebar link is the rollout. Existing roles other than `adm
 
 ## Open questions
 
-None. The choices that were not spelled out in the first approval (Saturday week start, half-open intervals, one row per person per date, N limited to 12, rotation steps, auto-fill reusing that algorithm, 403 rather than a silent redirect, Available now showing every department to every logged-in viewer, CSS kept inside the new app) are locked above. Worker night hours, the 7-day window, the 16-hour cap, the “Set by worker” audit split, and night hours meaning every effective minute of a night shift type are locked in decisions 12 and 18–22. Day-shift check-in, the 30-minute early window, no clear-audit columns, and coverage that ignores check-in are locked in decisions 8 and 23.
+None. The choices that were not spelled out in the first approval (Saturday week start, half-open intervals, one row per person per date, N limited to 12, rotation steps, auto-fill reusing that algorithm, 403 rather than a silent redirect, Available now showing every department to every logged-in viewer, templates in `templates/shifts/`, CSS in `static/css/shifts.css`, JS in `static/js/shifts.js`) are locked above. Worker night hours, the 7-day window, the 16-hour cap, the “Set by worker” audit split, and night hours meaning every effective minute of a night shift type are locked in decisions 12 and 18–22. Day-shift check-in, the 30-minute early window, no clear-audit columns, and coverage that ignores check-in are locked in decisions 8 and 23.
