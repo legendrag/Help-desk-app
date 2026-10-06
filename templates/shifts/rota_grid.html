@@ -1,0 +1,50 @@
+{% load i18n shifts_extras %}
+<div id="shifts-rota-grid" class="panel"{% if grid_oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <div class="table-wrap shifts-grid-wrap">
+    <table class="shifts-grid{% if dates|length > 7 %} shifts-grid--month{% endif %}">
+      <thead>
+        <tr>
+          <th class="shifts-person">{% trans "Person" %}</th>
+          {% for day in dates %}
+          <th class="{% if day == today %}shifts-day--today{% endif %}">{{ day|date:"D" }} {{ day|date:"j" }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+        <tr>
+          <th class="shifts-person">{{ person.shift_label }}</th>
+          {% for item in person.cells %}
+          {% with day=item.0 cell=item.1 %}
+          <td class="{% if day == today %}shifts-day--today{% endif %}">
+            {% if cell %}
+              {% if readonly %}
+              <span class="shifts-cell{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}">
+                {% include "shifts/cell_bits.html" %}
+              </span>
+              {% else %}
+              <button type="button" class="shifts-cell-btn{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
+                      hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
+                      hx-target="#modal-content"
+                      onclick="openModal()">
+                {% include "shifts/cell_bits.html" %}
+              </button>
+              {% endif %}
+            {% elif not readonly %}
+            <button type="button" class="shifts-cell-btn shifts-cell--empty"
+                    hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
+                    hx-target="#modal-content"
+                    onclick="openModal()"
+                    aria-label="{% trans "Empty" %}"><span aria-hidden="true">+</span></button>
+            {% else %}
+            <span class="shifts-cell shifts-cell--empty" role="img" aria-label="{% trans "Empty" %}"><span aria-hidden="true">–</span></span>
+            {% endif %}
+          </td>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,113 @@
+{% extends "shifts/shell.html" %}
+{% load i18n %}
+{% block shifts_body %}
+<header class="shifts-header">
+  <h1>{% trans "Calculator" %}</h1>
+</header>
+<div class="shifts-tools">
+<section id="shifts-length" class="panel">
+  <h2>{% trans "Shift length" %}</h2>
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_length' %}" hx-get="{% url 'shifts_calc_length' %}" hx-target="#shifts-length-result">
+    <div class="form-group">
+      <label for="len-start">{% trans "Start" %}</label>
+      <input id="len-start" type="time" name="start">
+    </div>
+    <div class="form-group">
+      <label for="len-end">{% trans "End" %}</label>
+      <input id="len-end" type="time" name="end">
+    </div>
+    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
+  </form>
+  <div id="shifts-length-result"></div>
+</section>
+<section id="shifts-hours" class="panel">
+  <h2>{% trans "Hours per person" %}</h2>
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_hours' %}" hx-get="{% url 'shifts_calc_hours' %}" hx-target="#shifts-hours-result">
+    <div class="form-group">
+      <label for="hours-department">{% trans "Department" %}</label>
+      <select id="hours-department" class="no-tomselect" name="department">
+        {% for row in departments %}
+        <option value="{{ row.pk }}">{{ row.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="hours-view">{% trans "View" %}</label>
+      <select id="hours-view" class="no-tomselect" name="view">
+        <option value="week">{% trans "Week" %}</option>
+        <option value="month">{% trans "Month" %}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="hours-start">{% trans "Start" %}</label>
+      <input id="hours-start" type="date" name="start">
+    </div>
+    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
+  </form>
+  <div id="shifts-hours-result" class="table-wrap"></div>
+</section>
+<section id="shifts-rotation" class="panel">
+  <h2>{% trans "Night rotation" %}</h2>
+  <form class="shifts-form" method="post" action="{% url 'shifts_calc_rotation' %}"
+        hx-post="{% url 'shifts_calc_rotation' %}"
+        hx-target="#shifts-rotation-result"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="rot-department">{% trans "Department" %}</label>
+      <select id="rot-department" class="no-tomselect" name="department"
+              hx-get="{% url 'shifts_calculator' %}?part=rotation"
+              hx-target="#shifts-rotation-options"
+              hx-swap="innerHTML"
+              hx-trigger="change"
+              hx-include="this">
+        {% for row in departments %}
+        <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="rot-start">{% trans "Start" %}</label>
+      <input id="rot-start" type="date" name="start">
+    </div>
+    <div class="form-group">
+      <label for="rot-end">{% trans "End" %}</label>
+      <input id="rot-end" type="date" name="end">
+    </div>
+    <div id="shifts-rotation-options">
+      {% include "shifts/calculator_rotation_options.html" %}
+    </div>
+    <button class="btn secondary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
+    <button class="btn primary" type="submit" name="action" value="apply">{% trans "Apply" %}</button>
+  </form>
+  <div id="shifts-rotation-result"></div>
+</section>
+<section id="shifts-coverage" class="panel">
+  <h2>{% trans "Coverage" %}</h2>
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_coverage' %}" hx-get="{% url 'shifts_calc_coverage' %}" hx-target="#shifts-coverage-result">
+    <div class="form-group">
+      <label for="cov-department">{% trans "Department" %}</label>
+      <select id="cov-department" class="no-tomselect" name="department">
+        {% for row in departments %}
+        <option value="{{ row.pk }}">{{ row.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="cov-view">{% trans "View" %}</label>
+      <select id="cov-view" class="no-tomselect" name="view">
+        <option value="week">{% trans "Week" %}</option>
+        <option value="month">{% trans "Month" %}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="cov-start">{% trans "Start" %}</label>
+      <input id="cov-start" type="date" name="start">
+    </div>
+    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
+  </form>
+  <div id="shifts-coverage-result" class="table-wrap shifts-coverage"></div>
+</section>
+</div>
+{% endblock %}

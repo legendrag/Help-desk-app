@@ -1,0 +1,20 @@
+{% load i18n %}
+<label for="rot-type">{% trans "Shift type" %}</label>
+<select id="rot-type" class="no-tomselect" name="shift_type">
+  {% for row in night_types %}
+  <option value="{{ row.pk }}">{{ row.name }}</option>
+  {% endfor %}
+</select>
+<fieldset class="shifts-people">
+  <legend>{% trans "People" %}</legend>
+  <label class="shifts-check">
+    <input type="checkbox" class="shifts-select-all" checked>
+    {% trans "Select all" %}
+  </label>
+  {% for person in people %}
+  <label class="shifts-check">
+    <input type="checkbox" name="users" value="{{ person.pk }}" checked>
+    {{ person.shift_label }}
+  </label>
+  {% endfor %}
+</fieldset>

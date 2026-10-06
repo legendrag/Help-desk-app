@@ -123,14 +123,14 @@
 
     {% if not user.user_type == 'branch' %}
     <section class="offcanvas-section">
-        <h4 class="sidebar-panel-header">Performance</h4>
+        <h4 class="sidebar-panel-header">{% trans "Performance" %}</h4>
         <div class="meta-grid meta-grid-two-col">
             <div class="meta-item">
-                <label>Response Time</label>
+                <label>{% trans "Response Time" %}</label>
                 <span>{{ response_time|human_duration }}</span>
             </div>
             <div class="meta-item">
-                <label>Resolution Time</label>
+                <label>{% trans "Resolution Time" %}</label>
                 <span>{{ resolution_time|human_duration }}</span>
             </div>
         </div>
@@ -138,7 +138,7 @@
     {% endif %}
 
     <section class="offcanvas-section">
-        <h4 class="sidebar-panel-header">Timeline</h4>
+        <h4 class="sidebar-panel-header">{% trans "Timeline" %}</h4>
         <div class="timeline-list timeline-list-scrollable">
             {% for item in ticket.status_history.all %}
             <div class="timeline-item">
@@ -153,11 +153,11 @@
                         {% endif %}
                         <span class="timeline-time timeline-time-text">{{ item.created_at|date:"Y-m-d H:i" }}</span>
                     </div>
-                    <p class="timeline-by-text">By {{ item.changed_by.username }} {% if item.detail %}<span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
+                    <p class="timeline-by-text">{% blocktrans trimmed with name=item.changed_by.username %}By {{ name }}{% endblocktrans %}{% if item.detail %} <span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
                 </div>
             </div>
             {% empty %}
-            <div class="timeline-empty">No updates.</div>
+            <div class="timeline-empty">{% trans "No updates." %}</div>
             {% endfor %}
         </div>
     </section>

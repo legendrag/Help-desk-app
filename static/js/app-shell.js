@@ -283,6 +283,8 @@ function cancelDiscard() {
 
 let globalConfirmCallback = null;
 
+let defaultConfirmCancelText = null;
+
 function showConfirmModal(options) {
     const titleEl = document.getElementById('global-confirm-title');
     titleEl.textContent = options.title || 'Confirm Action';
@@ -290,6 +292,14 @@ function showConfirmModal(options) {
 
     const actionBtn = document.getElementById('global-confirm-action-btn');
     actionBtn.textContent = options.yesText || 'Yes, Delete';
+
+    const cancelBtn = document.getElementById('global-confirm-cancel-btn');
+    if (cancelBtn) {
+        if (defaultConfirmCancelText === null) {
+            defaultConfirmCancelText = cancelBtn.textContent;
+        }
+        cancelBtn.textContent = options.cancelText || defaultConfirmCancelText;
+    }
 
     if (options.isDanger === false) {
         actionBtn.className = 'btn primary discard-modal-btn';
@@ -328,6 +338,10 @@ document.body.addEventListener('htmx:confirm', function (evt) {
     if (confirmQuestion) {
         evt.preventDefault();
         const element = evt.detail.elt;
+        const host = element.closest('[hx-confirm]') || element;
+        const confirmAttr = function (name) {
+            return element.getAttribute(name) || host.getAttribute(name);
+        };
 
         // Smart defaults based on context/classes
         const isDelete = confirmQuestion.toLowerCase().includes('delete') ||
@@ -335,14 +349,15 @@ document.body.addEventListener('htmx:confirm', function (evt) {
             (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
             (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
 
-        const title = element.getAttribute('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
-        const yesText = element.getAttribute('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
+        const title = confirmAttr('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
+        const yesText = confirmAttr('data-confirm-ok') || confirmAttr('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
         const isDanger = element.getAttribute('data-confirm-type') !== 'primary' && (isDelete || element.classList.contains('danger'));
 
         showConfirmModal({
             title: title,
             message: confirmQuestion,
             yesText: yesText,
+            cancelText: confirmAttr('data-confirm-cancel'),
             isDanger: isDanger,
             onConfirm: function () {
                 evt.detail.issueRequest();
@@ -727,6 +742,7 @@ function shellPageKindFromHtml(html) {
     if (html.indexOf('id="ticket-shell-pane"') !== -1) return "ticket";
     if (html.indexOf('id="tickets-live"') !== -1) return "tickets";
     if (html.indexOf('id="kb-shell-pane"') !== -1) return "kb";
+    if (html.indexOf('id="shifts-shell-pane"') !== -1) return "shifts";
     if (html.indexOf('id="settings-shell-pane"') !== -1) return "settings";
     if (html.indexOf('id="news-shell-pane"') !== -1) return "news";
     return "";
@@ -736,6 +752,7 @@ function shellPageKindFromDom() {
     if (document.getElementById("ticket-shell-pane")) return "ticket";
     if (document.getElementById("tickets-live")) return "tickets";
     if (document.getElementById("kb-shell-pane")) return "kb";
+    if (document.getElementById("shifts-shell-pane")) return "shifts";
     if (document.getElementById("settings-shell-pane")) return "settings";
     if (document.getElementById("news-shell-pane")) return "news";
     if (document.body.classList.contains("dashboard-page")) return "dashboard";
@@ -766,6 +783,7 @@ function updateActiveNav() {
     else if (path === "/tickets/settings" || path.indexOf("/tickets/settings/") === 0) key = "settings";
     else if (path === "/news" || path.indexOf("/news/") === 0) key = "news";
     else if (path === "/kb" || path.indexOf("/kb/") === 0) key = "kb";
+    else if (path === "/shifts" || path.indexOf("/shifts/") === 0) key = "shifts";
     else if (path === "/tickets" || path.indexOf("/tickets/") === 0) key = "tickets";
     document.querySelectorAll("#sidebar .sidebar-nav a[data-nav-key]").forEach(function (anchor) {
         var on = anchor.getAttribute("data-nav-key") === key;
@@ -944,7 +962,8 @@ function shellPaneEtag(kind) {
     var ids = {
         news: "news-shell-pane",
         kb: "kb-shell-pane",
-        settings: "settings-shell-pane"
+        settings: "settings-shell-pane",
+        shifts: "shifts-shell-pane"
     };
     var id = ids[kind];
     if (!id) return "";
