@@ -1,0 +1,80 @@
+<h2>Article page — which reading layout?</h2>
+<p class="subtitle">Home is locked as compact hub + drafts rail. Now the article experience for agents reading while on tickets.</p>
+
+<div class="cards">
+  <div class="card" data-choice="reading-toc" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:0;background:#f4f6f8;font-size:11px;color:#333;display:flex;min-height:170px">
+          <div style="flex:1;padding:12px">
+            <div style="opacity:.6;margin-bottom:6px">KB › Passwords ›</div>
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">Reset Your Password</div>
+            <div class="placeholder" style="height:14px;margin-bottom:6px"></div>
+            <div class="placeholder" style="height:14px;margin-bottom:6px;width:90%"></div>
+            <div class="placeholder" style="height:14px;margin-bottom:6px;width:80%"></div>
+            <div class="placeholder" style="height:40px;margin-top:10px"></div>
+          </div>
+          <div style="width:32%;padding:10px;border-left:1px solid #dde3ea;background:#fff;font-size:10px">
+            <div style="font-weight:600;margin-bottom:6px">On this page</div>
+            <div style="line-height:1.7;opacity:.85">1. Before you start<br>2. Reset steps<br>3. If it fails</div>
+            <div style="margin-top:12px;font-weight:600">Details</div>
+            <div style="opacity:.7;margin-top:4px">Category · Ticket · Files</div>
+            <div class="mock-button" style="margin-top:10px;padding:4px 8px;font-size:10px">Edit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Wide article + sticky TOC</h3>
+      <p>Reading-first. Table of contents and meta (category, ticket, attachments, Edit) sit in a quiet right rail.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="focused-doc" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:14px 18%;background:#f4f6f8;font-size:11px;color:#333;min-height:170px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="opacity:.6">KB › Passwords</span>
+            <span class="mock-button" style="padding:3px 8px;font-size:10px">Edit</span>
+          </div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px">Reset Your Password</div>
+          <div style="opacity:.65;margin-bottom:10px;font-size:10px">Agent One · Updated Oct 3 · 3 min</div>
+          <div class="placeholder" style="height:12px;margin-bottom:5px"></div>
+          <div class="placeholder" style="height:12px;margin-bottom:5px;width:92%"></div>
+          <div class="placeholder" style="height:12px;margin-bottom:5px;width:85%"></div>
+          <div style="margin-top:12px;padding:8px;background:#fff;border-radius:6px;border:1px solid #dde3ea">Attachments · Ticket #4821</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Focused single column</h3>
+      <p>Notion-like: one narrow reading column, meta and attachments under the body. Minimal chrome, no sticky TOC.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="split-preview" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:0;background:#f4f6f8;font-size:11px;color:#333;display:flex;min-height:170px">
+          <div style="width:36%;padding:10px;border-right:1px solid #dde3ea;background:#fff">
+            <div class="mock-input" style="height:22px;margin-bottom:8px"></div>
+            <div class="placeholder" style="height:18px;margin-bottom:4px"></div>
+            <div class="placeholder" style="height:18px;margin-bottom:4px;outline:2px solid #3b82f6;outline-offset:1px"></div>
+            <div class="placeholder" style="height:18px"></div>
+          </div>
+          <div style="flex:1;padding:12px">
+            <div style="font-weight:700;margin-bottom:8px">Reset Your Password</div>
+            <div class="placeholder" style="height:14px;margin-bottom:6px"></div>
+            <div class="placeholder" style="height:14px;margin-bottom:6px;width:90%"></div>
+            <div class="placeholder" style="height:40px;margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — List + article split</h3>
+      <p>Stay in category context: article list on the left, article on the right. Faster hopping, less “help center article.”</p>
+    </div>
+  </div>
+</div>
