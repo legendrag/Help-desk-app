@@ -177,3 +177,63 @@ class LandingTests(TestCase):
         self.client.force_login(support)
         response = self.client.get(reverse("shifts_mine"))
         self.assertContains(response, 'data-nav-key="shifts"')
+
+
+class ShiftTypeCrudTests(TestCase):
+    def test_support_cannot_open_types(self):
+        department = make_department("Types")
+        support = make_user("types-agent", "support", department)
+        self.client.force_login(support)
+        self.assertEqual(self.client.get(reverse("shifts_types")).status_code, 403)
+
+    def test_manager_creates_and_archives(self):
+        department = make_department("Types2")
+        role = make_role("Types lead", can_manage_shifts=True)
+        manager = make_user("types-lead", "support", department, role)
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_type_add"), {
+            "department": department.pk,
+            "name": "Night",
+            "start_time": "22:00",
+            "end_time": "06:00",
+            "colour": "#336699",
+        })
+        self.assertEqual(response.status_code, 200)
+        row = ShiftType.objects.get(name="Night")
+        self.assertTrue(row.is_night)
+        archive = self.client.post(reverse("shifts_type_archive", args=[row.pk]))
+        self.assertEqual(archive.status_code, 302)
+        row.refresh_from_db()
+        self.assertTrue(row.archived)
+
+    def test_equal_times_rejected(self):
+        department = make_department("Types3")
+        role = make_role("Types lead 2", can_manage_shifts=True)
+        manager = make_user("types-lead-2", "support", department, role)
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_type_add"), {
+            "department": department.pk,
+            "name": "Bad",
+            "start_time": "09:00",
+            "end_time": "09:00",
+            "colour": "#336699",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ShiftType.objects.filter(name="Bad").exists())
+        self.assertContains(response, "Start and end must differ.")
+
+    def test_short_name_rejected(self):
+        department = make_department("Types4")
+        role = make_role("Types lead 3", can_manage_shifts=True)
+        manager = make_user("types-lead-3", "support", department, role)
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_type_add"), {
+            "department": department.pk,
+            "name": " N ",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "colour": "#336699",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ShiftType.objects.filter(department=department).exists())
+        self.assertContains(response, "at least 2 characters")

@@ -21,7 +21,15 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Rota" %}</a>
-    {# Task 5: Shift types tab goes here, still inside is_manager. #}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_types' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_types' %}"
+       hx-get="{% url 'shifts_types' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Shift types" %}</a>
     {# Task 9: Calculator tab goes here, after Shift types and before Available now. #}
     <a class="settings-tab" role="tab" tabindex="0"
        aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"

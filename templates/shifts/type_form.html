@@ -1,0 +1,7 @@
+{% load i18n %}
+<form method="post" hx-post="." hx-target="#modal-content">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p class="help">{% trans "A shift that ends before its start is a night shift and runs into the next morning." %}</p>
+  <button class="btn primary" type="submit">{% trans "Save" %}</button>
+</form>
