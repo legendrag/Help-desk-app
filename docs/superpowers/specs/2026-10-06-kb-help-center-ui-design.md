@@ -1,8 +1,8 @@
 # Knowledge Base Help-Center UI Redesign
 
 **Date:** 2026-10-06  
-**Status:** Approved  
-**Owner:** [Project Owner]  
+**Status:** Design approved by owner; spec awaiting owner review  
+**Owner:** Omar (GitHub: legendrag)  
 **Target:** Single implementation PR
 
 ## Goal and Context
@@ -90,7 +90,7 @@ These decisions are final and non-negotiable:
 **Visibility chips:**
 - Displayed on article list items (not on home category cards or right rail)
 - Labels: "Only me" (gray), "Department" (blue), "All support" (green)
-- Only shown when article.visibility != 'all_support' (default is assumed, no chip needed)
+- All three scopes are shown; the chip communicates the article's scope to the reader
 - Implementation: new template partial `templates/kb/partials/visibility_chip.html`
 
 **URL patterns:**
@@ -105,7 +105,7 @@ These decisions are final and non-negotiable:
 - `templates/kb/partials/result_item.html` (add visibility chip)
 - `templates/kb/partials/visibility_chip.html` (new)
 - `kb/views.py::ArticleListView.get_context_data()` (populate right rail data)
-- `static/css/kb.css` (new or extend existing styles)
+- `static/css/modern.css` (add new KB hub styles to existing KB section)
 
 ### 2. Article Detail (`templates/kb/detail.html`)
 
@@ -113,7 +113,7 @@ These decisions are final and non-negotiable:
 
 **Description:**
 - Breadcrumb: "KB › [Category] › [Article title]"
-- Article header: title, author, created date, updated date (if different), read time
+- Article header: title, author, created date, updated date (if different)
 - Two-column layout:
   - **Main column (70%):** Article content (sanitized HTML from `article.content`)
   - **Right sidebar (30%):** Sticky, starts below header
@@ -129,22 +129,25 @@ These decisions are final and non-negotiable:
 - **Decision: Client-side generation** (recommended)
   - **Rationale:** The sanitized HTML is already rendered; parsing it server-side (with lxml/BeautifulSoup) adds dependency weight. Client-side JS can extract headings from the DOM after render, add stable IDs if missing, and build the TOC without a server round-trip. This keeps the implementation lightweight and avoids double-parsing the HTML.
   - **Implementation:** 
-    - On page load, run JS to find all `h2`, `h3`, `h4` in `.kb-content`
+    - On page load, HTMX swap (`htmx:afterSwap`), and history restore (`htmx:historyRestore`), run JS to find all `h2`, `h3`, `h4` in `.kb-content`
     - Generate stable anchor IDs (slug of heading text, deduplicated if needed)
-    - Inject `id` attributes into headings
+      - Slugification must handle non-Latin (e.g., Arabic, Chinese) text: use a Unicode-aware slug function or fallback to `kb-h-<n>` (where `n` is the heading index) when the slug is empty after normalization
+      - Do not overwrite an existing `id` attribute (sanitizer may preserve heading IDs from the editor)
+    - Inject `id` attributes into headings that lack them
     - Build TOC list with links to those IDs
     - Insert TOC into `#kb-toc-container` in the sidebar
     - Optional: add scroll-spy to highlight active section
+    - **Critical for in-shell navigation:** KB pages are reached via HTMX swaps into `#shell-content`, so `kb-toc.js` must initialize on HTMX swaps and back/forward restores as well as on full page load. The script must not double-bind scroll listeners or leak event handlers across swaps. Use a cleanup pattern (e.g., remove old listeners before re-initializing, or guard against duplicate initialization).
   - **Fallback:** If JS is disabled, TOC is hidden (progressive enhancement)
 
 **Visibility chip:**
-- Shown in the meta section if article.visibility != 'all_support'
+- Shown in the meta section for all visibility scopes (Only me / Department / All support)
 - Same styling as list view
 
 **Files affected:**
 - `templates/kb/detail.html` (rework layout: wide main + sticky sidebar with TOC placeholder)
-- `static/js/kb-toc.js` (new: TOC generation and scroll-spy)
-- `static/css/kb.css` (sticky sidebar, TOC styles)
+- `static/js/kb-toc.js` (new: TOC generation with HTMX swap support and scroll-spy)
+- `static/css/modern.css` (sticky sidebar, TOC styles in existing KB section)
 
 ### 3. Editor (`templates/kb/form.html`)
 
@@ -153,19 +156,22 @@ These decisions are final and non-negotiable:
 **Description:**
 - Sticky top bar (always visible on scroll):
   - Left: "← Back" link, autosave status ("Draft autosaved")
-  - Right: "Save draft" button (secondary), "Publish" dropdown (primary: Only me / My department / All support)
+  - Right: "Save draft" button (secondary), "Publish" buttons (primary: Only me / My department / All support)
 - Two-column layout below top bar:
   - **Main column (70%):** Title field, TinyMCE editor
   - **Right sidebar (30%):** 
-    - Visibility (read-only if published, shows current visibility)
+    - Visibility (display-only field showing current visibility when editing a published article; cannot be changed directly in the sidebar)
     - Category dropdown
     - Related ticket search (existing HTMX `kb_ticket_search`)
     - Attachments (drag-and-drop zone, existing file list)
 
-**Publish dropdown:**
-- Clicking "Publish" shows three options (buttons): "Only me", "My department" (if user has department), "All support"
-- Each sets `action` input and submits form
-- If user has no department, "My department" is not shown
+**Publish buttons:**
+- Three separate publish buttons in the sticky top bar: "Only me", "My department" (if user has department), "All support"
+- These are the same three publish actions from PR #13 (`ArticleWriteMixin.publish_actions`: `Article.Visibility.ONLY_ME`, `DEPARTMENT`, `ALL_SUPPORT`) moved from the sidebar into the top bar
+- Each sets `action=<visibility>` and submits the form
+- When editing a published article, clicking a publish button changes the article's visibility to the new scope and saves it (same behavior as PR #13: `_apply_action` sets `form.instance.is_published = True` and `form.instance.visibility = action`)
+- If the user has no department, "My department" is not shown
+- **Department snapshot behavior (preserved from PR #13):** When publishing to "My department", `visibility_department_id` is set to the author's current `department_id` at publish time (see `ArticleWriteMixin._apply_action` lines 414-416 in `views.py`). When publishing to "Only me" or "All support", `visibility_department` is cleared. This behavior is unchanged.
 
 **No changes to:**
 - TinyMCE initialization (keep `base_url` fix from PR #13)
@@ -174,9 +180,9 @@ These decisions are final and non-negotiable:
 - Related ticket search (keep HTMX endpoint `kb_ticket_search`)
 
 **Files affected:**
-- `templates/kb/form.html` (move publish buttons to sticky top bar, adjust layout)
-- `kb/views.py::ArticleWriteMixin` (no changes, but validate UI calls it correctly)
-- `static/css/kb.css` (sticky top bar styles)
+- `templates/kb/form.html` (move publish buttons to sticky top bar, adjust layout, show visibility as display-only)
+- `kb/views.py::ArticleWriteMixin` (no changes; publish button behavior is identical to PR #13)
+- `static/css/modern.css` (sticky top bar styles in existing KB section)
 
 ### 4. Empty, Loading, and Error States
 
@@ -192,7 +198,7 @@ These decisions are final and non-negotiable:
 
 **Error states:**
 - **Typeahead fetch fails:** Hide suggestions, allow user to submit full search
-- **Attachment upload fails:** Show "Upload failed: [file name]" with retry option
+- **Attachment upload fails:** Show "Upload failed: [file name]" (no retry UI; user can re-upload manually via the same dropzone or file input)
 - **Autosave fails:** Update status to "Draft not saved yet"
 
 **Files affected:**
@@ -211,11 +217,11 @@ These decisions are final and non-negotiable:
 **New behavior (enhanced):**
 - **Input:** `?q=<query>` (min 2 chars)
 - **Permission scoping:** Use `articles_for_user(request.user, include_drafts=False)` (same as full search, no drafts in suggestions)
-- **Query:** Filter by `title__icontains` (same as current)
+- **Query:** Filter by `title__icontains` only (same as current). Note that full search (`ArticleListView`) matches both `title__icontains` and `content__icontains`, but typeahead intentionally matches only titles for faster, more relevant suggestions.
 - **Response:** HTML with up to 5 suggestions, each:
   - Article title
   - Category name (if present)
-  - Visibility chip (if not all_support)
+  - Visibility chip (all three scopes: Only me / Department / All support)
   - Direct link to article detail
 - **Behavior:** Clicking a suggestion navigates directly to the article (skips search results page)
 - **Empty state (no matches):** Render empty `<div>` (JS will hide dropdown)
@@ -236,10 +242,11 @@ These decisions are final and non-negotiable:
 - **Recent articles:** Load 6 most recent published articles visible to user
   - Query: `articles_for_user(request.user, include_drafts=False).order_by('-updated_at')[:6]`
   - Already implemented in `get_context_data()` as `recent_articles` (currently loads 6)
-- **Manager drafts:** If user `can_manage_kb`, load their unpublished articles
-  - Query: `Article.objects.filter(is_published=False, created_by=request.user).order_by('-updated_at')[:6]`
+- **Manager drafts:** If `user_can_manage_kb(request.user)`, load their unpublished articles
+  - Query: `articles_for_user(request.user, include_drafts=True).filter(is_published=False, created_by=request.user).order_by('-updated_at')[:6]`
   - Add to context as `my_drafts`
-- **Permission scoping:** Recent articles already use `articles_for_user` (correct). Drafts are per-user, no cross-user leaks.
+  - **Rationale:** All article queries go through `articles_for_user` (the spec's own security rule). Even though managers can see all drafts via `include_drafts=True`, we filter to `created_by=request.user` to show only the current user's drafts in the rail. Field names verified from `kb/models.py`: `is_published` (BooleanField), `created_by` (ForeignKey to User).
+- **Permission scoping:** Recent articles already use `articles_for_user` (correct). Drafts use `articles_for_user(..., include_drafts=True).filter(...)` (correct).
 
 **Files affected:**
 - `kb/views.py::ArticleListView.get_context_data()` (add `my_drafts` to context)
@@ -321,7 +328,7 @@ All security checks from PR #13 are preserved:
    - Always full width on all breakpoints
 
 **Files affected:**
-- `static/css/kb.css` (media queries for responsive layouts)
+- `static/css/modern.css` (media queries for responsive layouts in existing KB section)
 
 ## Accessibility
 
@@ -354,7 +361,7 @@ All security checks from PR #13 are preserved:
 1. **Typeahead scoping:**
    - Test that `kb_search_suggest` returns only articles visible to the current user (all_support, department, only_me)
    - Test that drafts are excluded from typeahead
-   - Test that branch users get 403
+   - Test that branch users receive a 403 response (`UserPassesTestMixin` raises `PermissionDenied`, Django converts to 403)
 
 2. **Empty-state scoping:**
    - Test that `recent_articles` in `ArticleListView` are permission-scoped
@@ -362,8 +369,9 @@ All security checks from PR #13 are preserved:
    - Test that non-managers do not see drafts rail
 
 3. **Visibility chip rendering:**
-   - Test that visibility chip is rendered for `only_me` and `department` but not `all_support`
-   - Test that visibility chip text matches article.visibility
+   - Test that visibility chip is rendered for all three scopes: `only_me`, `department`, `all_support`
+   - Test that visibility chip text matches article.visibility for each of the three choices
+   - Test that "Only me" articles show "Only me" chip, "Department" articles show "Department" chip, "All support" articles show "All support" chip
 
 4. **TOC generation (JS):**
    - Manual browser check only (JS unit tests are out of scope for this project)
@@ -399,8 +407,8 @@ All security checks from PR #13 are preserved:
    - Upload attachment: verify drag-and-drop works
 
 5. **Permissions:**
-   - Log in as agent without `can_access_kb`: verify KB nav link is hidden, direct `/kb/` access returns 403
-   - Log in as branch user: verify 403 on `/kb/`
+   - Log in as agent without `can_access_kb`: verify KB nav link is hidden, direct `/kb/` access returns 403 (`UserPassesTestMixin` raises `PermissionDenied`)
+   - Log in as branch user: verify 403 on `/kb/` (same mechanism)
    - Log in as support user with department A: verify cannot see department B articles
 
 6. **Responsive:**
@@ -416,7 +424,7 @@ All security checks from PR #13 are preserved:
 
 **Static files (DEBUG=0):**
 - Run `python manage.py collectstatic` with `ManifestStaticFilesStorage`
-- Verify `kb-toc.js`, `kb-search.js`, `kb.css` are collected and hashed
+- Verify `kb-toc.js`, `kb-search.js`, `modern.css` are collected and hashed
 - Verify TinyMCE `base_url` fix from PR #13 still works (local vendor files load correctly)
 
 ## Out of Scope
@@ -447,11 +455,12 @@ All security checks from PR #13 are preserved:
 
 None. All design decisions have been made explicitly:
 
-- **TOC generation:** Client-side JS (rationale: lightweight, avoids server-side HTML parsing dependencies)
-- **Typeahead endpoint:** Enhance current `kb_search_suggest` with category and visibility chip (no new endpoint)
-- **Empty state:** Use existing `_is_browse_home()` logic, add `my_drafts` to context (no new query pattern)
+- **TOC generation:** Client-side JS with HTMX swap support (rationale: lightweight, avoids server-side HTML parsing dependencies)
+- **Typeahead endpoint:** Enhance current `kb_search_suggest` with category and visibility chip; matches title only (no new endpoint)
+- **Empty state:** Use existing `_is_browse_home()` logic, add `my_drafts` to context via `articles_for_user(..., include_drafts=True).filter(...)`
 - **Category page:** Full-width list, remove three-column filter layout (simplify to browsing UX)
-- **Visibility chips:** Show on list and detail, hide for `all_support` (assumed default)
+- **Visibility chips:** Show all three scopes (Only me / Department / All support) on list and detail
+- **Editor visibility on published articles:** Same behavior as PR #13 (publish buttons change visibility and save)
 - **Responsive rails:** Collapse below main content on narrow widths (<1024px)
 - **Sticky top bar in editor:** Always visible, no collapse (critical publish controls)
 
@@ -460,52 +469,52 @@ None. All design decisions have been made explicitly:
 **Phase 1: Home and List Views**
 - [ ] Update `templates/kb/list_shell_partial.html`: replace three-column with hub + rail
 - [ ] Update `templates/kb/list_content.html`: add category list, right rail (recent + drafts)
-- [ ] Create `templates/kb/partials/visibility_chip.html`
+- [ ] Create `templates/kb/partials/visibility_chip.html` (all three scopes)
 - [ ] Update `templates/kb/partials/result_item.html`: add visibility chip
-- [ ] Update `kb/views.py::ArticleListView.get_context_data()`: add `my_drafts`
-- [ ] Create `static/css/kb.css` (or extend existing): home layout styles
+- [ ] Update `kb/views.py::ArticleListView.get_context_data()`: add `my_drafts` via `articles_for_user`
+- [ ] Update `static/css/modern.css`: home layout styles in existing KB section
 - [ ] Test: home page, category page, permissions
 
 **Phase 2: Article Detail and TOC**
 - [ ] Update `templates/kb/detail.html`: wide main + sticky sidebar with TOC placeholder
-- [ ] Create `static/js/kb-toc.js`: client-side TOC generation, scroll-spy
-- [ ] Update `static/css/kb.css`: sticky sidebar, TOC styles
-- [ ] Test: article detail, TOC generation, visibility chip
+- [ ] Create `static/js/kb-toc.js`: client-side TOC generation with HTMX swap support, non-Latin slug handling, scroll-spy
+- [ ] Update `static/css/modern.css`: sticky sidebar, TOC styles in existing KB section
+- [ ] Test: article detail, TOC generation on swaps, visibility chip
 
 **Phase 3: Editor**
-- [ ] Update `templates/kb/form.html`: sticky top bar with publish buttons, adjust layout
-- [ ] Update `static/css/kb.css`: sticky top bar styles
-- [ ] Test: editor layout, autosave, publish, attachments
+- [ ] Update `templates/kb/form.html`: sticky top bar with publish buttons, visibility display-only
+- [ ] Update `static/css/modern.css`: sticky top bar styles in existing KB section
+- [ ] Test: editor layout, autosave, publish (verify visibility changes work), attachments
 
 **Phase 4: Typeahead and Search**
 - [ ] Update `kb/views.py::kb_search_suggest`: add category, visibility to context
-- [ ] Update `templates/kb/partials/search_suggestions.html`: add category, visibility chip
-- [ ] Test: typeahead, permission scoping, empty state
+- [ ] Update `templates/kb/partials/search_suggestions.html`: add category, visibility chip (all three scopes)
+- [ ] Test: typeahead (title-only match), permission scoping, empty state
 
 **Phase 5: Responsive and Accessibility**
-- [ ] Add responsive media queries to `static/css/kb.css`
+- [ ] Add responsive media queries to `static/css/modern.css` (existing KB section)
 - [ ] Add ARIA labels to all new templates
 - [ ] Test: responsive layouts, keyboard navigation, screen reader compatibility
 
 **Phase 6: Testing and Polish**
-- [ ] Write unit tests in `kb/tests.py` (typeahead scoping, empty-state scoping, visibility chips)
+- [ ] Write unit tests in `kb/tests.py` (typeahead scoping, empty-state scoping, visibility chips for all three scopes)
 - [ ] Run tests on MySQL/MariaDB
 - [ ] Run `collectstatic` with DEBUG=0, verify TinyMCE loads
 - [ ] Manual browser checks (all scenarios above)
 - [ ] Fix any regressions in Dashboard, Tickets, or other non-KB views
 
 **Phase 7: Review and Merge**
-- [ ] Owner reviews implementation PR
-- [ ] Regression tests on MySQL
-- [ ] Performance checks (no new N+1 queries, no slow typeahead)
-- [ ] Owner approves and merges
+- [ ] Greg (planner/reviewer) reviews implementation PR for design fidelity, code quality
+- [ ] Test agent runs regression + perf + KB permission tests on MySQL/MariaDB
+- [ ] No new N+1 queries, typeahead remains fast
+- [ ] Omar (owner) explicitly approves and merges
 
 ## Ship Path
 
-1. **Single implementation PR:** All changes in one PR (title: "redesign: KB help-center UI"), based on this spec
-2. **Reviewed by owner:** Owner reviews for design fidelity, UX, and security
-3. **Regression and perf tests:** Run on MySQL, verify no feature regressions elsewhere, check typeahead performance
-4. **Merged only when owner says yes:** No auto-merge, explicit owner approval required
+1. **Single implementation PR:** All changes in one PR (title: "redesign: KB help-center UI"), implemented by our dev agent, based on this spec
+2. **Code review:** Greg (planner/reviewer) reviews for design fidelity, code quality, UX, and security
+3. **Regression and perf tests:** Test agent runs regression + perf + KB permission tests on MySQL/MariaDB, verifies no feature regressions elsewhere, checks typeahead performance
+4. **Merged only when Omar says yes:** No auto-merge, explicit owner (Omar) approval required
 
 ## References
 
