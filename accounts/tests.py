@@ -83,6 +83,68 @@ class LogoutClearsWebPushTests(TestCase):
         self.assertEqual(clear_user_webpush_subscriptions(None), 0)
 
 
+class LogoutGetConfirmTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="logout_user",
+            email="logout@test.local",
+            password="str0ng-Passw0rd!",
+        )
+        self.logout_url = reverse("logout")
+        self.login_url = reverse("login")
+        self.home_url = reverse("tickets_list")
+
+    def test_anonymous_get_redirects_to_login(self):
+        response = self.client.get(self.logout_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.login_url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_authenticated_get_renders_post_form_and_stays_logged_in(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.logout_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/logout_confirm.html")
+        self.assertContains(response, f'action="{self.logout_url}"')
+        self.assertContains(response, 'method="post"')
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, f'href="{self.home_url}"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_cancel_uses_same_origin_referer(self):
+        self.client.force_login(self.user)
+        referer_path = "/kb/?q=reset"
+        response = self.client.get(
+            self.logout_url,
+            HTTP_REFERER=f"http://testserver{referer_path}",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/kb/?q=reset"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_cancel_falls_back_for_offsite_or_logout_referer(self):
+        self.client.force_login(self.user)
+        offsite = self.client.get(
+            self.logout_url,
+            HTTP_REFERER="https://evil.example/phish",
+        )
+        self.assertContains(offsite, f'href="{self.home_url}"')
+
+        loop = self.client.get(
+            self.logout_url,
+            HTTP_REFERER="http://testserver/accounts/logout/",
+        )
+        self.assertContains(loop, f'href="{self.home_url}"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_post_logs_out_and_redirects_to_login(self):
+        self.client.force_login(self.user)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.login_url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+
 class PasswordChangePageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
