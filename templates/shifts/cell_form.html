@@ -29,4 +29,7 @@
   {% if existing and existing.checked_in_at and not existing.shift_type.is_night %}
   <button class="btn secondary" type="submit" name="clear_check_in" value="1">{% trans "Clear check-in" %}</button>
   {% endif %}
+  {% if can_restore %}
+  <button class="btn primary" type="submit" name="restore_check_in" value="1">{% trans "Check in" %}</button>
+  {% endif %}
 </form>

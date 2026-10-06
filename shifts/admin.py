@@ -11,5 +11,5 @@ class ShiftTypeAdmin(admin.ModelAdmin):
 
 @admin.register(ShiftAssignment)
 class ShiftAssignmentAdmin(admin.ModelAdmin):
-    list_display = ("user", "date", "shift_type", "checked_in_at")
+    list_display = ("user", "date", "shift_type", "checked_in_at", "checked_out_at")
     list_filter = ("date", "shift_type__department")

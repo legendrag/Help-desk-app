@@ -3326,6 +3326,18 @@ msgstr "هل تريد تكرار هذا الأسبوع للأمام؟"
 msgid "Yes, Proceed"
 msgstr "نعم، متابعة"
 
+#: core/models.py:123
+msgid "Check in to shifts"
+msgstr "تسجيل الحضور في المناوبات"
+
+#: shifts/models.py:77
+msgid "Checked out at"
+msgstr "وقت تسجيل الانصراف"
+
+#: shifts/views.py:1147 shifts/views.py:1195
+msgid "You cannot check in again on this shift."
+msgstr "لا يمكنك تسجيل الحضور مرة أخرى في هذه المناوبة."
+
 #, python-format
 #~ msgid "Nobody available on %(date)s."
 #~ msgstr "لا يتوفر أحد في %(date)s."

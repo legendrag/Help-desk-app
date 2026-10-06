@@ -74,6 +74,7 @@ class ShiftAssignment(TimeStampedModel):
     )
     times_set_at = models.DateTimeField(_("Times set at"), null=True, blank=True)
     checked_in_at = models.DateTimeField(_("Checked in at"), null=True, blank=True)
+    checked_out_at = models.DateTimeField(_("Checked out at"), null=True, blank=True)
 
     class Meta:
         ordering = ["date", "user_id"]

@@ -791,22 +791,24 @@ class WorkerHoursTests(TestCase):
         row = make_assignment(agent, day, today)
         row.checked_in_at = aware(2026, 10, 6, 9, 30)
         row.save()
+        during = aware(2026, 10, 6, 10, 0)
         self.client.force_login(manager)
-        rota = self.client.get(reverse("shifts_rota"), {
-            "department": department.pk,
-            "view": "week",
-            "start": "2026-10-06",
-        })
+        with _both_clocks(during, today):
+            rota = self.client.get(reverse("shifts_rota"), {
+                "department": department.pk,
+                "view": "week",
+                "start": "2026-10-06",
+            })
         self.assertContains(rota, "1:00 PM")
         self.assertContains(rota, "9:00 AM")
         self.assertNotContains(rota, "13:00")
         self.client.force_login(agent)
-        mine = self.client.get(reverse("shifts_mine"))
+        with _both_clocks(during, today):
+            mine = self.client.get(reverse("shifts_mine"))
         self.assertContains(mine, "1:00 PM")
         self.assertNotContains(mine, "13:00")
         self.client.force_login(make_user("clock-branch", "branch"))
-        with patch("django.utils.timezone.now", return_value=aware(2026, 10, 6, 10, 0)), \
-             patch("django.utils.timezone.localdate", return_value=today):
+        with _both_clocks(during, today):
             board = self.client.get(reverse("shifts_available"))
         self.assertContains(board, "1:00 PM")
         self.assertNotContains(board, "13:00")
@@ -825,7 +827,8 @@ class WorkerHoursTests(TestCase):
         params = {"department": department.pk, "view": "week", "start": "2026-10-06"}
         noon_utc = datetime(2026, 10, 6, 9, 0, tzinfo=dt_timezone.utc)
         self.client.force_login(manager)
-        english = self.client.get(reverse("shifts_rota"), params)
+        with _both_clocks(noon_utc, today):
+            english = self.client.get(reverse("shifts_rota"), params)
         self.assertContains(english, '<bdi class="shifts-ltr" dir="ltr">9:00 AM–5:00 PM</bdi>')
         self.assertNotContains(english, 'dir="auto"')
         self.client.force_login(agent)
@@ -835,7 +838,8 @@ class WorkerHoursTests(TestCase):
         self.assertContains(mine_en, "Checked in at")
         self.client.cookies["django_language"] = "ar"
         self.client.force_login(manager)
-        arabic = self.client.get(reverse("shifts_rota"), params)
+        with _both_clocks(noon_utc, today):
+            arabic = self.client.get(reverse("shifts_rota"), params)
         self.assertContains(arabic, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
         self.assertNotContains(arabic, 'dir="ltr">9:00 ص')
         self.assertNotContains(arabic, 'class="shifts-ltr" dir="ltr">9:00 ص–5:00 م')
@@ -941,7 +945,12 @@ class WorkerHoursTests(TestCase):
 class CheckInTests(TestCase):
     def setUp(self):
         self.department = make_department("Check")
-        self.agent = make_user("check-agent", "support", self.department)
+        self.agent = make_user(
+            "check-agent",
+            "support",
+            self.department,
+            make_role("Check agent", can_check_in=True),
+        )
         self.other = make_user("check-other", "support", self.department)
         self.day = make_shift_type(self.department, name="Check day", start=time(9, 0), end=time(17, 0))
         self.night = make_shift_type(self.department, name="Check night")
@@ -1014,7 +1023,12 @@ class CheckInTests(TestCase):
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
             other = self.client.get(reverse("shifts_mine"))
         self.assertNotContains(other, 'id="shifts-check-in"')
-        manager = make_user("check-panel-lead", "support", self.department, make_role("Panel lead", can_manage_shifts=True))
+        manager = make_user(
+            "check-panel-lead",
+            "support",
+            self.department,
+            make_role("Panel lead", can_manage_shifts=True, can_check_in=True),
+        )
         make_assignment(manager, self.day, self.today)
         self.client.force_login(manager)
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 8, 40)), \
@@ -1036,6 +1050,271 @@ class CheckInTests(TestCase):
         self.row.refresh_from_db()
         self.assertEqual(self.row.shift_type_id, self.night.pk)
         self.assertIsNone(self.row.checked_in_at)
+
+
+class AutoCheckOutTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Auto out")
+        self.agent = make_user(
+            "auto-agent",
+            "support",
+            self.department,
+            make_role("Auto agent", can_check_in=True),
+            first_name="Nada",
+            last_name="Farid",
+        )
+        self.day = make_shift_type(self.department, name="Auto day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Auto night")
+        self.today = date(2026, 6, 2)
+        self.row = make_assignment(self.agent, self.day, self.today)
+        self.client.force_login(self.agent)
+
+    def _stamp_checked_in(self, at):
+        self.row.checked_in_at = at
+        self.row.checked_out_at = None
+        self.row.save(update_fields=["checked_in_at", "checked_out_at"])
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_lazy_clear_after_effective_end_in_cairo(self):
+        checked_in = timezone.make_aware(datetime(2026, 6, 2, 9, 5))
+        end = timezone.make_aware(datetime(2026, 6, 2, 17, 0))
+        self._stamp_checked_in(checked_in)
+        manager = make_user(
+            "auto-lead",
+            "support",
+            self.department,
+            make_role("Auto lead", can_manage_shifts=True),
+        )
+        self.client.force_login(manager)
+        with _both_clocks(end, self.today):
+            rota = self.client.get(reverse("shifts_rota"), {
+                "department": self.department.pk,
+                "view": "week",
+                "start": "2026-05-30",
+            })
+        self.assertNotContains(rota, "Checked in at")
+        self.client.force_login(self.agent)
+        with _both_clocks(end, self.today):
+            mine = self.client.get(reverse("shifts_mine"))
+            board = self.client.get(reverse("shifts_available"))
+        self.assertNotContains(mine, "Checked in at")
+        self.assertNotContains(board, "Nada Farid")
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        self.assertEqual(self.row.checked_out_at, end)
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_override_end_is_the_auto_check_out_time(self):
+        self.row.start_time_override = time(9, 0)
+        self.row.end_time_override = time(15, 0)
+        self.row.times_set_by = self.agent
+        self.row.times_set_at = timezone.now()
+        self.row.checked_in_at = timezone.make_aware(datetime(2026, 6, 2, 9, 5))
+        self.row.save()
+        still_open = timezone.make_aware(datetime(2026, 6, 2, 14, 59))
+        with _both_clocks(still_open, self.today):
+            self.client.get(reverse("shifts_mine"))
+        self.row.refresh_from_db()
+        self.assertIsNotNone(self.row.checked_in_at)
+        ended = timezone.make_aware(datetime(2026, 6, 2, 15, 0))
+        with _both_clocks(ended, self.today):
+            mine = self.client.get(reverse("shifts_mine"))
+        self.assertNotContains(mine, "Checked in at")
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        self.assertEqual(self.row.checked_out_at, ended)
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_agent_cannot_check_in_again_after_auto_or_manager_clear(self):
+        self._stamp_checked_in(timezone.make_aware(datetime(2026, 6, 2, 9, 5)))
+        end = timezone.make_aware(datetime(2026, 6, 2, 17, 0))
+        with _both_clocks(end, self.today):
+            self.client.get(reverse("shifts_mine"))
+            blocked = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        self.assertIsNotNone(self.row.checked_out_at)
+        self.assertNotContains(blocked, "Checked in at")
+        self.row.start_time_override = time(9, 0)
+        self.row.end_time_override = time(21, 0)
+        self.row.times_set_by = self.agent
+        self.row.times_set_at = timezone.now()
+        self.row.save()
+        later = timezone.make_aware(datetime(2026, 6, 2, 18, 0))
+        with _both_clocks(later, self.today):
+            self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        self.assertIsNotNone(self.row.checked_out_at)
+
+        fresh = make_assignment(self.agent, self.day, self.today + timedelta(days=1))
+        # Manager clear is on today's row; use a new open day shift that is today.
+        fresh.delete()
+        self.row.end_time_override = None
+        self.row.start_time_override = None
+        self.row.times_set_by = None
+        self.row.times_set_at = None
+        self.row.checked_out_at = None
+        self.row.checked_in_at = timezone.make_aware(datetime(2026, 6, 2, 9, 5))
+        self.row.save()
+        manager = make_user(
+            "auto-clear-lead",
+            "support",
+            self.department,
+            make_role("Auto clear lead", can_manage_shifts=True),
+        )
+        during = timezone.make_aware(datetime(2026, 6, 2, 10, 0))
+        self.client.force_login(manager)
+        with _both_clocks(during, self.today):
+            self.client.post(reverse("shifts_cell"), {
+                "clear_check_in": "1",
+                "user": self.agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+                "shift_type": self.day.pk,
+            })
+        self.client.force_login(self.agent)
+        with _both_clocks(during, self.today):
+            again = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+        self.assertIsNotNone(self.row.checked_out_at)
+        self.assertNotContains(again, "Checked in at")
+        self.assertNotContains(again, "Check out")
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_manager_can_restore_check_in_without_the_agent_flag(self):
+        self._stamp_checked_in(timezone.make_aware(datetime(2026, 6, 2, 9, 5)))
+        manager = make_user(
+            "auto-restore-lead",
+            "support",
+            self.department,
+            make_role("Auto restore lead", can_manage_shifts=True),
+        )
+        during = timezone.make_aware(datetime(2026, 6, 2, 10, 0))
+        self.client.force_login(manager)
+        with _both_clocks(during, self.today):
+            self.client.post(reverse("shifts_cell"), {
+                "clear_check_in": "1",
+                "user": self.agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+                "shift_type": self.day.pk,
+            })
+            form = self.client.get(reverse("shifts_cell"), {
+                "user": self.agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+            })
+        self.assertContains(form, 'name="restore_check_in"')
+        self.assertNotContains(form, "Clear check-in")
+        with _both_clocks(during, self.today):
+            self.client.post(reverse("shifts_cell"), {
+                "restore_check_in": "1",
+                "user": self.agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+                "shift_type": self.day.pk,
+            })
+        self.row.refresh_from_db()
+        self.assertIsNotNone(self.row.checked_in_at)
+        self.assertIsNone(self.row.checked_out_at)
+        self.client.force_login(self.agent)
+        with _both_clocks(during, self.today):
+            mine = self.client.get(reverse("shifts_mine"))
+            board = self.client.get(reverse("shifts_available"))
+        self.assertContains(mine, "Checked in at")
+        self.assertContains(board, "Nada Farid")
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_night_shift_is_not_auto_checked_out(self):
+        night = make_assignment(self.agent, self.night, date(2026, 6, 1))
+        night.checked_in_at = timezone.make_aware(datetime(2026, 6, 1, 22, 5))
+        night.save(update_fields=["checked_in_at"])
+        later = timezone.make_aware(datetime(2026, 6, 2, 8, 0))
+        with _both_clocks(later, self.today):
+            self.client.get(reverse("shifts_available"))
+            posted = self.client.post(reverse("shifts_check_in", args=[night.pk]))
+        self.assertEqual(posted.status_code, 403)
+        night.refresh_from_db()
+        self.assertIsNotNone(night.checked_in_at)
+        self.assertIsNone(night.checked_out_at)
+
+
+class CheckInPermissionTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Check flag")
+        self.day = make_shift_type(self.department, name="Flag day", start=time(9, 0), end=time(17, 0))
+        self.today = date(2026, 6, 2)
+        self.during = aware(2026, 6, 2, 10, 0)
+
+    def test_flag_allows_check_in_and_hides_it_when_missing(self):
+        allowed_user = make_user(
+            "flag-yes",
+            "support",
+            self.department,
+            make_role("Flag yes", can_check_in=True),
+        )
+        denied_user = make_user("flag-no", "support", self.department)
+        allowed = make_assignment(allowed_user, self.day, self.today)
+        denied = make_assignment(denied_user, self.day, self.today)
+        self.client.force_login(denied_user)
+        with _both_clocks(self.during, self.today):
+            hidden = self.client.get(reverse("shifts_mine"))
+            blocked = self.client.post(reverse("shifts_check_in", args=[denied.pk]))
+        self.assertNotContains(hidden, 'id="shifts-check-in"')
+        self.assertEqual(blocked.status_code, 403)
+        denied.refresh_from_db()
+        self.assertIsNone(denied.checked_in_at)
+        self.client.force_login(allowed_user)
+        with _both_clocks(self.during, self.today):
+            shown = self.client.get(reverse("shifts_mine"))
+            opened = self.client.post(reverse("shifts_check_in", args=[allowed.pk]))
+        self.assertContains(shown, 'id="shifts-check-in"')
+        self.assertContains(opened, "Checked in at")
+        allowed.refresh_from_db()
+        self.assertIsNotNone(allowed.checked_in_at)
+
+    def test_manager_without_check_in_flag_can_still_clear_and_restore(self):
+        agent = make_user(
+            "flag-agent",
+            "support",
+            self.department,
+            make_role("Flag agent", can_check_in=True),
+        )
+        row = make_assignment(agent, self.day, self.today)
+        row.checked_in_at = self.during
+        row.save(update_fields=["checked_in_at"])
+        manager = make_user(
+            "flag-lead",
+            "support",
+            self.department,
+            make_role("Flag lead", can_manage_shifts=True),
+        )
+        make_assignment(manager, self.day, self.today)
+        self.client.force_login(manager)
+        with _both_clocks(self.during, self.today):
+            own = self.client.get(reverse("shifts_mine"))
+        self.assertNotContains(own, 'id="shifts-check-in"')
+        with _both_clocks(self.during, self.today):
+            self.client.post(reverse("shifts_cell"), {
+                "clear_check_in": "1",
+                "user": agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+                "shift_type": self.day.pk,
+            })
+            restored = self.client.post(reverse("shifts_cell"), {
+                "restore_check_in": "1",
+                "user": agent.pk,
+                "date": "2026-06-02",
+                "department": self.department.pk,
+                "shift_type": self.day.pk,
+            })
+        self.assertEqual(restored.status_code, 200)
+        row.refresh_from_db()
+        self.assertIsNotNone(row.checked_in_at)
+        self.assertIsNone(row.checked_out_at)
 
 
 class TeamRotaTests(TestCase):
@@ -1186,7 +1465,12 @@ class PermissionMatrixTests(TestCase):
     def setUp(self):
         self.department = make_department("Perm")
         self.other = make_department("Perm other")
-        self.support = make_user("perm-agent", "support", self.department)
+        self.support = make_user(
+            "perm-agent",
+            "support",
+            self.department,
+            make_role("Perm agent", can_check_in=True),
+        )
         self.outsider = make_user("perm-out", "support", self.other)
         self.branch = make_user("perm-branch", "branch")
         self.manager = make_user("perm-lead", "support", self.department, make_role("Perm lead", can_manage_shifts=True))

@@ -108,6 +108,25 @@ def overrides_set_by_worker(assignment) -> bool:
     return not is_shift_manager(setter)
 
 
+def settle_check_in(assignment, now) -> bool:
+    """Clear a day-shift check-in once its effective end has passed.
+
+    ``checked_out_at`` stays set so a later edit of the end time cannot
+    look like a shift that was never checked in. Night shifts are left alone.
+    """
+    if assignment is None or not getattr(assignment, "pk", None):
+        return False
+    if assignment.shift_type.is_night or not assignment.checked_in_at:
+        return False
+    _start_dt, end_dt = effective_interval(assignment)
+    if now < end_dt:
+        return False
+    assignment.checked_in_at = None
+    assignment.checked_out_at = end_dt
+    assignment.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
+    return True
+
+
 def check_in_marker(assignment, now) -> str:
     if assignment.shift_type.is_night:
         return ""
@@ -116,6 +135,8 @@ def check_in_marker(assignment, now) -> str:
         return ""
     if assignment.checked_in_at and assignment.date <= today:
         return "checked"
+    if assignment.checked_out_at:
+        return ""
     if assignment.date < today:
         return "missed"
     start_dt, _end = effective_interval(assignment)

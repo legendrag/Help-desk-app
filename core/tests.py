@@ -277,7 +277,9 @@ class ManageShiftsFlagTests(TestCase):
         role.save()
         role.refresh_from_db()
         self.assertTrue(role.can_manage_shifts)
+        self.assertTrue(role.can_check_in)
 
     def test_other_role_keeps_false(self):
         role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
         self.assertFalse(role.can_manage_shifts)
+        self.assertFalse(role.can_check_in)

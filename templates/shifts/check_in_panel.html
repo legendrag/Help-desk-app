@@ -11,7 +11,7 @@
     <p>{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
     {% endif %}
   </div>
-  {% if state != "checked" %}
+  {% if state != "checked" and state != "spent" %}
   <form method="post" action="{% url 'shifts_check_in' assignment.pk %}"
         hx-post="{% url 'shifts_check_in' assignment.pk %}"
         hx-target="#shifts-check-in" hx-swap="outerHTML"
