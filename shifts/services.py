@@ -233,6 +233,19 @@ def suggest_nights(people, dates, shift_type, existing_by_user):
             return (st["lookback"] + st["proposed"], last, person.pk)
 
         chosen = min(pool, key=sort_key)
+        reason = ""
+        if not preferred:
+            others_assigned = any(
+                day in stats[person.pk]["dates"]
+                for person in people
+                if person.pk != chosen.pk
+            )
+            if others_assigned:
+                reason = _("Others already assigned on this date")
+            elif len(people) == 1:
+                reason = _("Only one person available")
+            else:
+                reason = _("Back-to-back")
         st = stats[chosen.pk]
         st["proposed"] += 1
         st["last"] = day
@@ -243,5 +256,6 @@ def suggest_nights(people, dates, shift_type, existing_by_user):
             "date": day,
             "user_id": chosen.pk,
             "back_to_back": not preferred,
+            "reason": reason,
         })
     return result

@@ -30,7 +30,7 @@
       {% else %}
       <td><bdi class="shifts-ltr" dir="ltr">{{ row.date|date:"Y-m-d" }}</bdi></td>
       <td>{{ row.name|default:row.user_id }}</td>
-      {% if row.back_to_back %}<td>{% trans "Others already assigned on this date" %}</td>{% endif %}
+      {% if row.reason %}<td>{{ row.reason }}</td>{% endif %}
       {% endif %}
     </tr>
     {% endfor %}

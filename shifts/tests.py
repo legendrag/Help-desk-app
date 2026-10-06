@@ -531,7 +531,28 @@ class RotationTests(TestCase):
             "action": "preview",
         })
         self.assertEqual(preview.status_code, 200)
-        self.assertContains(preview, "Others already assigned on this date")
+        self.assertContains(preview, "Only one person available")
+        self.assertNotContains(preview, "Others already assigned on this date")
+
+    def test_back_to_back_reason_names_others_when_the_date_is_taken(self):
+        from shifts.services import suggest_nights
+
+        department = make_department("Taken")
+        veteran = make_user("taken-vet", "support", department)
+        other = make_user("taken-other", "support", department)
+        night = make_shift_type(department, name="Taken night")
+        day = make_shift_type(department, name="Taken day", start=time(9, 0), end=time(17, 0))
+        existing_night = make_assignment(veteran, night, date(2026, 10, 5))
+        existing_day = make_assignment(other, day, date(2026, 10, 6))
+        result = suggest_nights(
+            [veteran, other],
+            [date(2026, 10, 6)],
+            night,
+            {veteran.pk: [existing_night], other.pk: [existing_day]},
+        )
+        self.assertEqual(result[0]["user_id"], veteran.pk)
+        self.assertTrue(result[0]["back_to_back"])
+        self.assertEqual(str(result[0]["reason"]), "Others already assigned on this date")
 
     def test_missing_rotation_dates_ask_for_dates(self):
         department = make_department("Dates")
@@ -555,7 +576,7 @@ class RotationTests(TestCase):
         fresh = make_user("tie-fresh", "support", department)
         night = make_shift_type(department, name="Tie night")
         older = make_assignment(veteran, night, date(2026, 9, 28))
-        dates = [date(2026, 10, 5), date(2026, 10, 6)]
+        dates = [date(2026, 10, 5), date(2026, 10, 7)]
         result = suggest_nights(
             [veteran, fresh],
             dates,

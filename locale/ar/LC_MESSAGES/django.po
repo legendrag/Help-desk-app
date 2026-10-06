@@ -3222,7 +3222,7 @@ msgstr "حتى"
 msgid "Nobody available on this date"
 msgstr "لا يتوفر أحد في هذا التاريخ"
 
-#: templates/shifts/calc_rotation.html:33
+#: shifts/services.py:244
 msgid "Others already assigned on this date"
 msgstr "الآخرون معينون بالفعل في هذا التاريخ"
 
@@ -3238,12 +3238,17 @@ msgstr "أنت في مناوبة حتى"
 msgid "weeks"
 msgstr "أسابيع"
 
+#: shifts/services.py:248
+msgid "Back-to-back"
+msgstr "متعاقبة"
+
+#: shifts/services.py:246
+msgid "Only one person available"
+msgstr "يتوفر شخص واحد فقط"
+
 #, python-format
 #~ msgid "Nobody available on %(date)s."
 #~ msgstr "لا يتوفر أحد في %(date)s."
-
-#~ msgid "Back-to-back"
-#~ msgstr "متعاقبة"
 
 #, python-format
 #~ msgid "You are on shift until %(end)s."
