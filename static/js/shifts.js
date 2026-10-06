@@ -22,4 +22,20 @@
     var board = document.getElementById("shifts-available-now");
     if (board && window.htmx) window.htmx.trigger(board, "refresh");
   });
+
+  document.body.addEventListener("change", function (evt) {
+    var box = evt.target;
+    if (!box || !box.closest) return;
+    var root = box.closest(".shifts-people");
+    if (!root) return;
+    var people = root.querySelectorAll('input[name="users"]');
+    var all = root.querySelector(".shifts-select-all");
+    if (box.classList.contains("shifts-select-all")) {
+      people.forEach(function (item) { item.checked = box.checked; });
+      return;
+    }
+    if (box.name === "users" && all) {
+      all.checked = Array.prototype.every.call(people, function (item) { return item.checked; });
+    }
+  });
 })();

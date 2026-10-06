@@ -4,6 +4,7 @@
 <header class="shifts-header">
   <h1>{% trans "Calculator" %}</h1>
 </header>
+<div class="shifts-tools">
 <section id="shifts-length" class="panel">
   <h2>{% trans "Shift length" %}</h2>
   <form class="shifts-form" method="get" action="{% url 'shifts_calc_length' %}" hx-get="{% url 'shifts_calc_length' %}" hx-target="#shifts-length-result">
@@ -108,4 +109,5 @@
   </form>
   <div id="shifts-coverage-result" class="table-wrap shifts-coverage"></div>
 </section>
+</div>
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block shifts_body %}
 <header class="shifts-header">
   <h1>{% trans "Team rota" %}</h1>
-  {% if dates %}<p class="shifts-range">{{ dates.0|date:"Y-m-d" }}–{{ dates|last|date:"Y-m-d" }}</p>{% endif %}
+  {% if dates %}<p class="shifts-range"><bdi class="shifts-ltr" dir="ltr">{{ dates.0|date:"D j M" }} – {{ dates|last|date:"D j M Y" }}</bdi></p>{% endif %}
 </header>
 {% if error %}
 <p class="notice notice-error">{{ error }}</p>

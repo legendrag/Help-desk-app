@@ -7,6 +7,9 @@
     {% elif hint %}
     <p>{{ hint }}</p>
     {% endif %}
+    {% if banner_end %}
+    <p>{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|date:"H:i" }}</bdi>.</p>
+    {% endif %}
   </div>
   {% if state != "checked" %}
   <form method="post" action="{% url 'shifts_check_in' assignment.pk %}"

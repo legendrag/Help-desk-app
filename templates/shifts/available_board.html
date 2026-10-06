@@ -15,7 +15,7 @@
         {% for person in card.people %}
         <li class="shifts-person-line">
           <span class="shifts-person-name">{{ person.name }}</span>
-          <span class="shifts-until">{% blocktrans trimmed with end=person.end|date:"H:i" %}until {{ end }}{% endblocktrans %}</span>
+          <span class="shifts-until">{% trans "until" %} <bdi class="shifts-ltr" dir="ltr">{{ person.end|date:"H:i" }}</bdi></span>
         </li>
         {% endfor %}
       </ul>

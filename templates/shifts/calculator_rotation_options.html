@@ -5,9 +5,16 @@
   <option value="{{ row.pk }}">{{ row.name }}</option>
   {% endfor %}
 </select>
-<label for="rot-users">{% trans "People" %}</label>
-<select id="rot-users" class="no-tomselect" name="users" multiple>
+<fieldset class="shifts-people">
+  <legend>{% trans "People" %}</legend>
+  <label class="shifts-check">
+    <input type="checkbox" class="shifts-select-all" checked>
+    {% trans "Select all" %}
+  </label>
   {% for person in people %}
-  <option value="{{ person.pk }}">{{ person.shift_label }}</option>
+  <label class="shifts-check">
+    <input type="checkbox" name="users" value="{{ person.pk }}" checked>
+    {{ person.shift_label }}
+  </label>
   {% endfor %}
-</select>
+</fieldset>

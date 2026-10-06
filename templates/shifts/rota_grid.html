@@ -34,9 +34,10 @@
             <button type="button" class="shifts-cell-btn shifts-cell--empty"
                     hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
                     hx-target="#modal-content"
-                    onclick="openModal()">{% trans "Empty" %}</button>
+                    onclick="openModal()"
+                    aria-label="{% trans "Empty" %}"><span aria-hidden="true">+</span></button>
             {% else %}
-            <span class="shifts-cell shifts-cell--empty">{% trans "Empty" %}</span>
+            <span class="shifts-cell shifts-cell--empty" role="img" aria-label="{% trans "Empty" %}"><span aria-hidden="true">–</span></span>
             {% endif %}
           </td>
           {% endwith %}

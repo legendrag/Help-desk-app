@@ -1,11 +1,11 @@
 {% load i18n %}
 <tr id="shift-mine-{{ assignment.pk }}">
-  <td>{{ assignment.date|date:"Y-m-d" }}</td>
+  <td><bdi class="shifts-ltr" dir="ltr">{{ assignment.date|date:"Y-m-d" }}</bdi></td>
   <td><span class="shifts-swatch" style="background-color: {{ assignment.shift_type.colour }}" aria-hidden="true"></span></td>
   <td>
     {{ assignment.shift_type.name }}
   </td>
-  <td>{{ assignment.start_time_override|default:assignment.shift_type.start_time|time:"H:i" }}–{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:"H:i" }}</td>
+  <td><bdi class="shifts-ltr" dir="ltr">{{ assignment.start_time_override|default:assignment.shift_type.start_time|time:"H:i" }}–{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:"H:i" }}</bdi></td>
   <td>
     {% if assignment.shift_type.is_night %}
     <form class="shifts-form shifts-hours-form" method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"

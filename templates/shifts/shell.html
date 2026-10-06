@@ -12,7 +12,8 @@
 <div id="shifts-shell-pane" class="shifts-page" data-etag="{{ shell_etag|default:'' }}">
   <nav class="settings-tabs" role="tablist">
     {% if is_manager %}
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_rota' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_rota' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_rota' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_rota' %}"
        hx-get="{% url 'shifts_rota' %}"
@@ -21,7 +22,8 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Rota" %}</a>
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_types' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_types' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_types' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_types' %}"
        hx-get="{% url 'shifts_types' %}"
@@ -30,7 +32,8 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Shift types" %}</a>
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_calculator' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_calculator' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_calculator' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_calculator' %}"
        hx-get="{% url 'shifts_calculator' %}"
@@ -39,7 +42,8 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Calculator" %}</a>
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_available' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_available' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_available' %}"
        hx-get="{% url 'shifts_available' %}"
@@ -50,7 +54,8 @@
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
     {% endif %}
     {% if user.user_type == "support" or is_manager %}
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_mine' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_mine' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_mine' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_mine' %}"
        hx-get="{% url 'shifts_mine' %}"
@@ -59,7 +64,8 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "My shifts" %}</a>
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_team' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_team' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_team' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_team' %}"
        hx-get="{% url 'shifts_team' %}"
@@ -70,7 +76,8 @@
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Team rota" %}</a>
     {% endif %}
     {% if not is_manager %}
-    <a class="settings-tab" role="tab" tabindex="0"
+    <a class="settings-tab{% if request.resolver_match.url_name == 'shifts_available' %} active{% endif %}" role="tab" tabindex="0"
+       {% if request.resolver_match.url_name == 'shifts_available' %}aria-current="page"{% endif %}
        aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_available' %}"
        hx-get="{% url 'shifts_available' %}"

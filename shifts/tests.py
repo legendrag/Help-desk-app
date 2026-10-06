@@ -459,6 +459,10 @@ class RotationTests(TestCase):
         page = self.client.get(reverse("shifts_calculator"))
         self.assertContains(page, "Picker night")
         self.assertContains(page, "Nora Saleh")
+        self.assertContains(page, 'name="users"')
+        self.assertContains(page, "Select all")
+        self.assertContains(page, "checked")
+        self.assertNotContains(page, "multiple")
         self.assertNotContains(page, "Picker day")
         self.assertNotContains(page, "Picker old")
         preview = self.client.post(reverse("shifts_calc_rotation"), {
@@ -511,6 +515,55 @@ class RotationTests(TestCase):
         dates = [date(2026, 10, 5), date(2026, 10, 6)]
         result = suggest_nights([person], dates, night, {person.pk: []})
         self.assertEqual(result[1]["back_to_back"], True)
+
+    def test_back_to_back_preview_names_the_reason(self):
+        department = make_department("Reason")
+        manager = make_user("reason-lead", "support", department, make_role("Reason lead", can_manage_shifts=True))
+        agent = make_user("reason-agent", "support", department, first_name="Mona", last_name="Saleh")
+        night = make_shift_type(department, name="Reason night")
+        self.client.force_login(manager)
+        preview = self.client.post(reverse("shifts_calc_rotation"), {
+            "department": department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-06",
+            "shift_type": night.pk,
+            "users": [agent.pk],
+            "action": "preview",
+        })
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, "Others already assigned on this date")
+
+    def test_missing_rotation_dates_ask_for_dates(self):
+        department = make_department("Dates")
+        manager = make_user("dates-lead", "support", department, make_role("Dates lead", can_manage_shifts=True))
+        night = make_shift_type(department, name="Dates night")
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_calc_rotation"), {
+            "department": department.pk,
+            "start": "",
+            "end": "",
+            "shift_type": night.pk,
+            "action": "preview",
+        })
+        self.assertContains(response, "Enter a start and an end date.")
+
+    def test_proposed_night_counts_toward_the_earliest_last_night(self):
+        from shifts.services import suggest_nights
+
+        department = make_department("Tie break")
+        veteran = make_user("tie-veteran", "support", department)
+        fresh = make_user("tie-fresh", "support", department)
+        night = make_shift_type(department, name="Tie night")
+        older = make_assignment(veteran, night, date(2026, 9, 28))
+        dates = [date(2026, 10, 5), date(2026, 10, 6)]
+        result = suggest_nights(
+            [veteran, fresh],
+            dates,
+            night,
+            {veteran.pk: [older], fresh.pk: []},
+        )
+        self.assertEqual(result[0]["user_id"], fresh.pk)
+        self.assertEqual(result[1]["user_id"], veteran.pk)
 
 
 class CalculatorTests(TestCase):
@@ -601,6 +654,11 @@ class WorkerHoursTests(TestCase):
         response = self.client.get(reverse("shifts_mine"))
         self.assertContains(response, "shifts-swatch")
         self.assertNotContains(response, ">#336699<")
+
+    def test_time_ranges_keep_start_before_end_in_an_ltr_wrapper(self):
+        response = self.client.get(reverse("shifts_mine"))
+        self.assertContains(response, 'class="shifts-ltr" dir="ltr"')
+        self.assertContains(response, "22:00–06:00")
 
     def test_owner_can_set_same_evening_hours(self):
         response = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {

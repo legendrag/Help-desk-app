@@ -26,18 +26,18 @@
     {% for row in proposals %}
     <tr>
       {% if row.gap %}
-      <td>{% blocktrans trimmed with date=row.date|date:"Y-m-d" %}Nobody available on {{ date }}.{% endblocktrans %}</td>
+      <td>{% trans "Nobody available on this date" %} <bdi class="shifts-ltr" dir="ltr">{{ row.date|date:"Y-m-d" }}</bdi></td>
       {% else %}
-      <td>{{ row.date|date:"Y-m-d" }}</td>
+      <td><bdi class="shifts-ltr" dir="ltr">{{ row.date|date:"Y-m-d" }}</bdi></td>
       <td>{{ row.name|default:row.user_id }}</td>
-      {% if row.back_to_back %}<td>{% trans "Back-to-back" %}</td>{% endif %}
+      {% if row.back_to_back %}<td>{% trans "Others already assigned on this date" %}</td>{% endif %}
       {% endif %}
     </tr>
     {% endfor %}
   </table>
   <ul>
     {% for skip in skips %}
-    <li>{{ skip.name|default:skip.user_id }} {{ skip.date|date:"Y-m-d" }} {{ skip.skip }}</li>
+    <li>{{ skip.name|default:skip.user_id }} <bdi class="shifts-ltr" dir="ltr">{{ skip.date|date:"Y-m-d" }}</bdi> {{ skip.skip }}</li>
     {% endfor %}
   </ul>
   {% if can_apply %}

@@ -5,10 +5,9 @@
   <h1>{% trans "My shifts" %}</h1>
 </header>
 {% if check_in %}
-{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
-{% endif %}
-{% if banner_end %}
-<p class="notice">{% blocktrans trimmed with end=banner_end|date:"H:i" %}You are on shift until {{ end }}.{% endblocktrans %}</p>
+{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
+{% elif banner_end %}
+<p class="notice">{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|date:"H:i" }}</bdi>.</p>
 {% endif %}
 {% if assignments %}
 <div class="panel">
