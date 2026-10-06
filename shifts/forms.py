@@ -12,6 +12,10 @@ class ShiftTypeForm(forms.ModelForm):
     class Meta:
         model = ShiftType
         fields = ["department", "name", "start_time", "end_time", "colour", "archived"]
+        widgets = {
+            "start_time": forms.TimeInput(format="%H:%M", attrs={"type": "time"}),
+            "end_time": forms.TimeInput(format="%H:%M", attrs={"type": "time"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

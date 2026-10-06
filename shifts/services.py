@@ -3,6 +3,8 @@ from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from shifts.clock import format_clock
+
 from shifts.access import is_shift_manager
 
 WORKER_HOURS_LOOKBACK_DAYS = 7
@@ -182,8 +184,8 @@ def overlap_message(other) -> str:
     return _("This shift overlaps %(name)s on %(date)s (%(start)s–%(end)s).") % {
         "name": other.shift_type.name,
         "date": other.date.isoformat(),
-        "start": start_t.strftime("%H:%M"),
-        "end": end_t.strftime("%H:%M"),
+        "start": format_clock(start_t),
+        "end": format_clock(end_t),
     }
 
 

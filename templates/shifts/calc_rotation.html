@@ -37,14 +37,14 @@
   </table>
   <ul>
     {% for skip in skips %}
-    <li>{{ skip.name|default:skip.user_id }} <bdi class="shifts-ltr" dir="ltr">{{ skip.date|date:"Y-m-d" }}</bdi> {{ skip.skip }}</li>
+    <li>{% if skip.name %}{{ skip.name }} {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ skip.date|date:"Y-m-d" }}</bdi> {{ skip.skip }}</li>
     {% endfor %}
   </ul>
   {% if can_apply %}
   <form method="post" action="{% url 'shifts_auto_fill' %}"
         hx-post="{% url 'shifts_auto_fill' %}"
-        hx-target="#shifts-rota-grid"
-        hx-swap="outerHTML"
+        hx-target="#shifts-auto-fill-result"
+        hx-swap="innerHTML"
         hx-disabled-elt="this"
         hx-sync="this:replace">
     {% csrf_token %}

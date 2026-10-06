@@ -320,8 +320,15 @@ def shifts_type_add(request):
         return _forbid()
     form = ShiftTypeForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return _render_types(request)
+        saved = form.save()
+        if request.headers.get("HX-Request"):
+            response = _render_types(request)
+            response["HX-Retarget"] = "#shell-content"
+            response["HX-Reswap"] = "innerHTML"
+            response["HX-Trigger"] = "closeModal"
+            return response
+        query = urlencode({"department": saved.department_id})
+        return redirect(f"{reverse('shifts_types')}?{query}")
     return render(request, "shifts/type_form.html", {"form": form})
 
 
@@ -333,8 +340,15 @@ def shifts_type_edit(request, pk):
     row = get_object_or_404(ShiftType, pk=pk)
     form = ShiftTypeForm(request.POST or None, instance=row)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return _render_types(request)
+        saved = form.save()
+        if request.headers.get("HX-Request"):
+            response = _render_types(request)
+            response["HX-Retarget"] = "#shell-content"
+            response["HX-Reswap"] = "innerHTML"
+            response["HX-Trigger"] = "closeModal"
+            return response
+        query = urlencode({"department": saved.department_id})
+        return redirect(f"{reverse('shifts_types')}?{query}")
     return render(request, "shifts/type_form.html", {"form": form, "editing": True})
 
 
@@ -533,7 +547,7 @@ def shifts_copy_week(request):
         notice = _("Nothing to copy.")
     else:
         notice = _("Copied %(count)s shifts.") % {"count": created}
-    return _grid_response(request, department, retarget=False, notice=notice, skips=skips)
+    return _rota_action(request, department, notice, skips=skips, refresh_grid=True)
 
 
 @login_required
@@ -548,11 +562,11 @@ def shifts_repeat_week(request):
     except ValueError:
         weeks = 0
     if weeks < 1 or weeks > REPEAT_WEEKS_MAX:
-        return _grid_response(
+        return _rota_action(
             request,
             department,
-            retarget=False,
-            error=_("Enter a number of weeks from 1 to 12."),
+            _("Enter a number of weeks from 1 to 12."),
+            error=True,
         )
     source_rows = list(
         ShiftAssignment.objects.filter(
@@ -576,7 +590,7 @@ def shifts_repeat_week(request):
                 ).select_related("shift_type", "times_set_by", "times_set_by__role")
             )
     notice = _("Repeated %(count)s shifts.") % {"count": created}
-    return _grid_response(request, department, retarget=False, notice=notice, skips=skips)
+    return _rota_action(request, department, notice, skips=skips, refresh_grid=True)
 
 
 def _dates_inclusive(start, end):
@@ -751,14 +765,74 @@ def shifts_calc_rotation(request):
     })
 
 
-def _rota_redirect(request, department, view, start, message):
-    messages.success(request, message)
+def _rota_redirect(request, department, view, start, message=None, *, error=False):
+    if message:
+        if error:
+            messages.error(request, message)
+        else:
+            messages.success(request, message)
     query = urlencode({
         "department": department.pk,
         "view": view,
         "start": start.isoformat(),
     })
     return redirect(f"{reverse('shifts_rota')}?{query}")
+
+
+def _skip_text(skips):
+    parts = []
+    for item in skips:
+        day = item["date"].isoformat() if hasattr(item.get("date"), "isoformat") else item.get("date", "")
+        parts.append(f"{item.get('name') or ''} {day} {item.get('skip') or ''}".strip())
+    return " ".join(part for part in parts if part)
+
+
+def _rota_action(request, department, message, *, error=False, skips=None, people=(), refresh_grid=False):
+    """HX requests get a fragment. A normal POST goes back to the rota."""
+    view, start, dates = _rota_dates(request)
+    named = _attach_names(list(skips or []), people)
+    if not request.headers.get("HX-Request"):
+        extra = _skip_text(named)
+        text = f"{message} {extra}".strip() if extra else message
+        return _rota_redirect(request, department, view, start, text, error=error)
+    context = {
+        "notice": "" if error else message,
+        "error": message if error else "",
+        "skips": named,
+        "grid_oob": False,
+    }
+    if refresh_grid:
+        context.update({
+            **_rota_bundle(department, dates),
+            "department": department,
+            "readonly": False,
+            "today": timezone.localdate(),
+            "now": timezone.now(),
+            "grid_oob": True,
+        })
+    return render(request, "shifts/action_result.html", context)
+
+
+def _open_night_dates(department, dates):
+    today = timezone.localdate()
+    taken = set(
+        ShiftAssignment.objects.filter(
+            shift_type__department=department,
+            shift_type__is_night=True,
+            date__in=dates,
+            date__gte=today,
+        ).values_list("date", flat=True)
+    )
+    open_dates = []
+    skips = []
+    for day in dates:
+        if day < today:
+            skips.append({"date": day, "skip": _("skipped (past)")})
+        elif day in taken:
+            skips.append({"date": day, "skip": _("skipped (already assigned)")})
+        else:
+            open_dates.append(day)
+    return open_dates, skips
 
 
 @login_required
@@ -773,17 +847,22 @@ def shifts_auto_fill(request):
         ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
     )
     if not night_types:
-        notice = _("This department has no night shift.")
-        if not htmx:
-            return _rota_redirect(request, department, view, start, notice)
-        return _grid_response(request, department, notice=notice)
+        return _rota_action(request, department, _("This department has no night shift."))
     chosen_id = (request.POST.get("shift_type") or "").strip()
-    shift_type = night_types[0]
     if chosen_id:
-        shift_type = _posted_night_type(request, department)
+        shift_type = next((row for row in night_types if str(row.pk) == chosen_id), None)
+        if shift_type is None:
+            return _rota_action(
+                request,
+                department,
+                _("Choose a night shift type on the rota."),
+                error=True,
+            )
     elif len(night_types) > 1:
         if not htmx:
-            return _rota_redirect(request, department, view, start, _("Choose a night shift type on the rota."))
+            return _rota_redirect(
+                request, department, view, start, _("Choose a night shift type on the rota."), error=True,
+            )
         return render(request, "shifts/calc_rotation.html", {
             "pick_types": night_types,
             "department": department,
@@ -791,30 +870,36 @@ def shifts_auto_fill(request):
             "skips": [],
             "created": 0,
         })
+    else:
+        shift_type = night_types[0]
     people = list(User.objects.filter(
         department=department,
         user_type=User.UserType.SUPPORT,
         status=User.Status.ACTIVE,
     ))
-    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    if not people:
+        return _rota_action(request, department, _("This department has no one to assign."))
+    open_dates, skipped = _open_night_dates(department, dates)
+    proposals = suggest_nights(people, open_dates, shift_type, _people_and_existing(people))
     _attach_names(proposals, people)
     if request.POST.get("action") != "apply":
         if not htmx:
-            return _rota_redirect(request, department, view, start, _("Open the rota to review the night rotation."))
+            return _rota_redirect(
+                request, department, view, start, _("Open the rota to review the night rotation."),
+            )
         return render(request, "shifts/calc_rotation.html", {
             "proposals": proposals,
-            "skips": [],
+            "skips": skipped,
             "created": 0,
             "department": department,
             "shift_type": shift_type,
             "can_apply": True,
         })
-    created, skips = _apply_rotation(proposals, shift_type, department)
+    created, applied = _apply_rotation(proposals, shift_type, department)
+    skips = skipped + applied
     _attach_names(skips, people)
     notice = _("Filled %(count)s night shifts.") % {"count": created}
-    if not htmx:
-        return _rota_redirect(request, department, view, start, notice)
-    return _grid_response(request, department, retarget=True, notice=notice, skips=skips)
+    return _rota_action(request, department, notice, skips=skips, people=people, refresh_grid=True)
 
 
 def _hours_minutes(minutes):

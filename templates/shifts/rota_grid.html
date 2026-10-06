@@ -1,5 +1,5 @@
 {% load i18n shifts_extras %}
-<div id="shifts-rota-grid" class="panel">
+<div id="shifts-rota-grid" class="panel"{% if grid_oob %} hx-swap-oob="outerHTML"{% endif %}>
   <div class="table-wrap shifts-grid-wrap">
     <table class="shifts-grid{% if dates|length > 7 %} shifts-grid--month{% endif %}">
       <thead>

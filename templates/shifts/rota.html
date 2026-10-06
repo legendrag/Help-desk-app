@@ -50,13 +50,25 @@
   <button class="btn secondary" type="submit">{% trans "Auto-fill nights" %}</button>
 </form>
 {% if view == "week" %}
-<form method="post" action="{% url 'shifts_copy_week' %}">
+<form method="post" action="{% url 'shifts_copy_week' %}"
+      hx-post="{% url 'shifts_copy_week' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-confirm="{% trans "Copy last week into this week?" %}"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
   {% csrf_token %}
   <input type="hidden" name="department" value="{{ department.pk }}">
   <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
   <button class="btn secondary" type="submit">{% trans "Copy last week" %}</button>
 </form>
-<form method="post" action="{% url 'shifts_repeat_week' %}">
+<form method="post" action="{% url 'shifts_repeat_week' %}"
+      hx-post="{% url 'shifts_repeat_week' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-confirm="{% trans "Repeat this week forward?" %}"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
   {% csrf_token %}
   <input type="hidden" name="department" value="{{ department.pk }}">
   <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
@@ -71,7 +83,7 @@
 {% if skips %}
 <ul>
   {% for item in skips %}
-  <li>{{ item.name|default:item.user_id }} <bdi class="shifts-ltr" dir="ltr">{{ item.date|date:"Y-m-d" }}</bdi> {{ item.skip }}</li>
+  <li>{% if item.name %}{{ item.name }} {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ item.date|date:"Y-m-d" }}</bdi> {{ item.skip }}</li>
   {% endfor %}
 </ul>
 {% endif %}

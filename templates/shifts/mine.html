@@ -1,5 +1,5 @@
 {% extends "shifts/shell.html" %}
-{% load i18n %}
+{% load i18n shifts_extras %}
 {% block shifts_body %}
 <header class="shifts-header">
   <h1>{% trans "My shifts" %}</h1>
@@ -7,7 +7,7 @@
 {% if check_in %}
 {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
 {% elif banner_end %}
-<p class="notice">{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|date:"H:i" }}</bdi>.</p>
+<p class="notice">{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|shifts_clock }}</bdi>.</p>
 {% endif %}
 {% if assignments %}
 <div class="panel">

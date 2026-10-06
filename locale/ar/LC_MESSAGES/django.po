@@ -2789,16 +2789,16 @@ msgid ""
 "department."
 msgstr "قسم المؤلف وقت نشر هذه المقالة لذلك القسم."
 
-#: shifts/forms.py:24
+#: shifts/forms.py:28
 msgid "Shift type name must be at least 2 characters long."
 msgstr "يجب أن يكون اسم نوع المناوبة حرفين على الأقل."
 
-#: shifts/forms.py:32 shifts/models.py:99 shifts/views.py:431
-#: shifts/views.py:862
+#: shifts/forms.py:36 shifts/models.py:99 shifts/views.py:445
+#: shifts/views.py:947
 msgid "Start and end must differ."
 msgstr "يجب أن يختلف وقت البداية عن وقت النهاية."
 
-#: shifts/forms.py:35
+#: shifts/forms.py:39
 msgid "Colour must be a 6-digit hex value."
 msgstr "يجب أن يكون اللون قيمة سداسية من 6 أرقام."
 
@@ -2865,7 +2865,7 @@ msgstr "تعيين مناوبة"
 msgid "Shift assignments"
 msgstr "تعيينات المناوبات"
 
-#: shifts/models.py:97 shifts/views.py:429
+#: shifts/models.py:97 shifts/views.py:443
 msgid "Enter both start and end, or leave both blank."
 msgstr "أدخل البداية والنهاية معاً، أو اتركهما فارغين."
 
@@ -2877,11 +2877,11 @@ msgstr "امسح حقول التدقيق عند مسح الأوقات المخص
 msgid "Record who set the times."
 msgstr "سجّل من حدد الأوقات."
 
-#: shifts/services.py:55
+#: shifts/services.py:57
 msgid "That time does not exist on this date."
 msgstr "هذا الوقت غير موجود في هذا التاريخ."
 
-#: shifts/services.py:182
+#: shifts/services.py:184
 #, python-format
 msgid "This shift overlaps %(name)s on %(date)s (%(start)s–%(end)s)."
 msgstr "تتعارض هذه المناوبة مع %(name)s في %(date)s (%(start)s–%(end)s)."
@@ -2894,72 +2894,72 @@ msgstr "لا يمكنك فتح هذه الصفحة."
 msgid "No department exists."
 msgstr "لا يوجد قسم."
 
-#: shifts/views.py:440 shifts/views.py:617
+#: shifts/views.py:454 shifts/views.py:631
 msgid "Only active support users in this department can be assigned."
 msgstr "يمكن تعيين موظفي الدعم النشطين في هذا القسم فقط."
 
-#: shifts/views.py:442 shifts/views.py:621 shifts/views.py:685
+#: shifts/views.py:456 shifts/views.py:635 shifts/views.py:699
 msgid "Archived shift types cannot be assigned."
 msgstr "لا يمكن تعيين أنواع المناوبات المؤرشفة."
 
-#: shifts/views.py:533
+#: shifts/views.py:547
 msgid "Nothing to copy."
 msgstr "لا يوجد ما يُنسخ."
 
-#: shifts/views.py:535
+#: shifts/views.py:549
 #, python-format
 msgid "Copied %(count)s shifts."
 msgstr "تم نسخ %(count)s مناوبات."
 
-#: shifts/views.py:555
+#: shifts/views.py:568
 msgid "Enter a number of weeks from 1 to 12."
 msgstr "أدخل عدد أسابيع من 1 إلى 12."
 
-#: shifts/views.py:578
+#: shifts/views.py:592
 #, python-format
 msgid "Repeated %(count)s shifts."
 msgstr "تم تكرار %(count)s مناوبات."
 
-#: shifts/views.py:776
+#: shifts/views.py:850
 msgid "This department has no night shift."
 msgstr "لا توجد مناوبة ليلية لهذا القسم."
 
-#: shifts/views.py:814
+#: shifts/views.py:901
 #, python-format
 msgid "Filled %(count)s night shifts."
 msgstr "تم ملء %(count)s مناوبات ليلية."
 
-#: shifts/views.py:826 shifts/views.py:867
+#: shifts/views.py:911 shifts/views.py:952
 #, python-format
 msgid "%(hours)s hours %(minutes)s minutes"
 msgstr "%(hours)s ساعة و%(minutes)s دقيقة"
 
-#: shifts/views.py:868
+#: shifts/views.py:953
 #, python-format
 msgid "%(hours)s hours %(minutes)s minutes after midnight."
 msgstr "%(hours)s ساعة و%(minutes)s دقيقة بعد منتصف الليل."
 
-#: shifts/views.py:954
+#: shifts/views.py:1039
 msgid "You can only change hours from the last 7 days onward."
 msgstr "يمكنك تغيير الساعات من آخر 7 أيام فصاعداً فقط."
 
-#: shifts/views.py:965
+#: shifts/views.py:1050
 msgid "Enter both a start and an end time."
 msgstr "أدخل وقت البداية ووقت النهاية معاً."
 
-#: shifts/views.py:970
+#: shifts/views.py:1055
 msgid "This shift must be longer than 0 hours and no more than 16 hours."
 msgstr "يجب أن تكون هذه المناوبة أطول من 0 ساعة ولا تتجاوز 16 ساعة."
 
-#: shifts/views.py:999
+#: shifts/views.py:1084
 msgid "You are not assigned to a department."
 msgstr "لست معيناً في قسم."
 
-#: shifts/views.py:1029 shifts/views.py:1070
+#: shifts/views.py:1114 shifts/views.py:1155
 msgid "You can check in from 30 minutes before this shift starts."
 msgstr "يمكنك تسجيل الحضور ابتداءً من 30 دقيقة قبل بدء هذه المناوبة."
 
-#: shifts/views.py:1031 shifts/views.py:1076
+#: shifts/views.py:1116 shifts/views.py:1161
 msgid "This shift has ended."
 msgstr "انتهت هذه المناوبة."
 
@@ -3108,11 +3108,11 @@ msgstr "التالي"
 msgid "Auto-fill nights"
 msgstr "ملء المناوبات الليلية تلقائياً"
 
-#: templates/shifts/rota.html:57
+#: templates/shifts/rota.html:63
 msgid "Copy last week"
 msgstr "انسخ الأسبوع السابق"
 
-#: templates/shifts/rota.html:66
+#: templates/shifts/rota.html:78
 msgid "Repeat this week forward"
 msgstr "كرر هذا الأسبوع للأمام"
 
@@ -3169,11 +3169,11 @@ msgstr "أرشفة"
 msgid "Manage Users"
 msgstr "إدارة المستخدمين"
 
-#: shifts/views.py:786
+#: shifts/views.py:858 shifts/views.py:864
 msgid "Choose a night shift type on the rota."
 msgstr "اختر نوع المناوبة الليلية من جدول المناوبات."
 
-#: shifts/views.py:803
+#: shifts/views.py:888
 msgid "Open the rota to review the night rotation."
 msgstr "افتح جدول المناوبات لمراجعة التناوب الليلي."
 
@@ -3210,7 +3210,7 @@ msgstr "لا توجد تحديثات."
 msgid "Day"
 msgstr "نهاري"
 
-#: shifts/views.py:715
+#: shifts/views.py:729
 msgid "Enter a start and an end date."
 msgstr "أدخل تاريخ البداية وتاريخ النهاية."
 
@@ -3222,7 +3222,7 @@ msgstr "حتى"
 msgid "Nobody available on this date"
 msgstr "لا يتوفر أحد في هذا التاريخ"
 
-#: shifts/services.py:244
+#: shifts/services.py:246
 msgid "Others already assigned on this date"
 msgstr "الآخرون معينون بالفعل في هذا التاريخ"
 
@@ -3234,17 +3234,48 @@ msgstr "تحديد الكل"
 msgid "You are on shift until"
 msgstr "أنت في مناوبة حتى"
 
-#: templates/shifts/rota.html:63
+#: templates/shifts/rota.html:75
 msgid "weeks"
 msgstr "أسابيع"
 
-#: shifts/services.py:248
+#: shifts/services.py:250
 msgid "Back-to-back"
 msgstr "متعاقبة"
 
-#: shifts/services.py:246
+#: shifts/services.py:248
 msgid "Only one person available"
 msgstr "يتوفر شخص واحد فقط"
+
+#: kb/templatetags/kb_extras.py:26
+#, python-format
+msgid "%(count)s min read"
+msgid_plural "%(count)s min read"
+msgstr[0] "%(count)s دقائق للقراءة"
+msgstr[1] "دقيقة واحدة للقراءة"
+msgstr[2] "دقيقتان للقراءة"
+msgstr[3] "%(count)s دقائق للقراءة"
+msgstr[4] "%(count)s دقيقة للقراءة"
+msgstr[5] "%(count)s دقيقة للقراءة"
+
+#: shifts/views.py:830
+msgid "skipped (past)"
+msgstr "تم التخطي (تاريخ سابق)"
+
+#: shifts/views.py:832
+msgid "skipped (already assigned)"
+msgstr "تم التخطي (معين بالفعل)"
+
+#: shifts/views.py:881
+msgid "This department has no one to assign."
+msgstr "لا يوجد أحد في هذا القسم للتعيين."
+
+#: templates/shifts/rota.html:57
+msgid "Copy last week into this week?"
+msgstr "هل تريد نسخ الأسبوع الماضي إلى هذا الأسبوع؟"
+
+#: templates/shifts/rota.html:69
+msgid "Repeat this week forward?"
+msgstr "هل تريد تكرار هذا الأسبوع للأمام؟"
 
 #, python-format
 #~ msgid "Nobody available on %(date)s."

@@ -38,4 +38,17 @@
       all.checked = Array.prototype.every.call(people, function (item) { return item.checked; });
     }
   });
+
+  function scrollActiveShiftTab() {
+    var tab = document.querySelector("#shifts-shell-pane .settings-tab[aria-current='page'], #shifts-shell-pane .settings-tab.active");
+    if (tab && tab.scrollIntoView) tab.scrollIntoView({inline: "center", block: "nearest"});
+  }
+  scrollActiveShiftTab();
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    var target = evt.detail && evt.detail.target;
+    if (!target || !target.querySelector) return;
+    if (target.id === "shell-content" || (target.closest && target.closest("#shifts-shell-pane"))) {
+      scrollActiveShiftTab();
+    }
+  });
 })();

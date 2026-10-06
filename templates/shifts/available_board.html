@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n shifts_extras %}
 <div id="shifts-available-now"
      hx-get="{% url 'shifts_available_board' %}"
      hx-trigger="every 20s [!document.hidden], refresh"
@@ -15,7 +15,7 @@
         {% for person in card.people %}
         <li class="shifts-person-line">
           <span class="shifts-person-name">{{ person.name }}</span>
-          <span class="shifts-until">{% trans "until" %} <bdi class="shifts-ltr" dir="ltr">{{ person.end|date:"H:i" }}</bdi></span>
+          <span class="shifts-until">{% trans "until" %} <bdi class="shifts-ltr" dir="ltr">{{ person.end|shifts_clock }}</bdi></span>
         </li>
         {% endfor %}
       </ul>

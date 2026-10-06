@@ -1,6 +1,13 @@
 from django import template
 
+from shifts.clock import format_clock
+
 register = template.Library()
+
+
+@register.filter
+def shifts_clock(value):
+    return format_clock(value)
 
 
 @register.filter

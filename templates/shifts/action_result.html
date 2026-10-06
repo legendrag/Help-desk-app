@@ -1,0 +1,15 @@
+{% load i18n %}
+<div class="shifts-action-result">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+  {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+  {% if skips %}
+  <ul>
+    {% for item in skips %}
+    <li>{% if item.name %}{{ item.name }} {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ item.date|date:"Y-m-d" }}</bdi> {{ item.skip }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% if grid_oob %}
+{% include "shifts/rota_grid.html" %}
+{% endif %}

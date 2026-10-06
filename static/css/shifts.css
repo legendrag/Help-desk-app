@@ -152,7 +152,7 @@
   position: sticky;
   inset-inline-start: 0;
   z-index: 3;
-  background: var(--panel-bg);
+  background: var(--bg);
   text-align: start;
   text-transform: none;
   letter-spacing: 0;
@@ -167,6 +167,11 @@
 #shifts-shell-pane .shifts-grid thead .shifts-person {
   z-index: 4;
   text-align: start;
+  background-color: var(--bg);
+}
+
+#shifts-shell-pane tr:hover .shifts-person {
+  background-color: color-mix(in srgb, var(--primary) 8%, var(--bg));
 }
 
 #shifts-shell-pane .shifts-day--today {
@@ -223,6 +228,9 @@
 }
 
 #shifts-shell-pane .settings-tab {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
   text-decoration: none;
   border-block-end: 0;
   background: transparent;
@@ -562,9 +570,7 @@
     width: 10rem !important;
   }
 
-  #shifts-shell-pane .shifts-grid td::before {
-    content: none !important;
-    min-inline-size: 0 !important;
-    min-width: 0 !important;
+  #shifts-shell-pane .shifts-grid .shifts-person {
+    background-color: var(--bg) !important;
   }
 }

@@ -1,14 +1,14 @@
-{% load i18n %}
+{% load i18n shifts_extras %}
 <div id="shifts-check-in" class="panel shifts-checkin">
   <div>
     <h2 class="shifts-title">{% trans "Check in" %}</h2>
     {% if state == "checked" %}
-    <p>{% blocktrans trimmed with time=assignment.checked_in_at|date:"H:i" %}Checked in at {{ time }}{% endblocktrans %}</p>
+    <p>{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</p>
     {% elif hint %}
     <p>{{ hint }}</p>
     {% endif %}
     {% if banner_end %}
-    <p>{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|date:"H:i" }}</bdi>.</p>
+    <p>{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|shifts_clock }}</bdi>.</p>
     {% endif %}
   </div>
   {% if state != "checked" %}
