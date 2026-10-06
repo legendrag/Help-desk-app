@@ -2752,6 +2752,80 @@ msgstr "الإشعارات محظورة في إعدادات جهازك."
 msgid "Add this app to your Home Screen to get notifications."
 msgstr "أضف هذا التطبيق إلى الشاشة الرئيسية للحصول على الإشعارات."
 
+
+#: kb/forms.py:99
+msgid "My department is unavailable without a department."
+msgstr "خيار «قسمي» غير متاح بدون قسم."
+
+#: kb/forms.py:125
+msgid "You cannot relate a ticket outside your organization."
+msgstr "لا يمكنك ربط تذكرة خارج مؤسستك."
+
+#: kb/models.py:46 templates/kb/form.html:134
+msgid "Only me"
+msgstr "أنا فقط"
+
+#: kb/models.py:47 templates/kb/form.html:136
+msgid "My department"
+msgstr "قسمي"
+
+#: kb/models.py:48 templates/kb/form.html:138
+msgid "All support"
+msgstr "كل الدعم"
+
+#: kb/models.py:58
+msgid "Who can read this article after it is published."
+msgstr "من يمكنه قراءة هذا المقال بعد نشره."
+
+#: kb/models.py:66
+msgid "Author's department at the time this article was published to that department."
+msgstr "قسم المؤلف وقت نشر هذا المقال لذلك القسم."
+
+#: templates/accounts/logout_confirm.html:4
+#: templates/accounts/logout_confirm.html:9
+msgid "Confirm Logout"
+msgstr "تأكيد تسجيل الخروج"
+
+#: templates/accounts/logout_confirm.html:11
+msgid "Are you sure you want to log out?"
+msgstr "هل أنت متأكد من تسجيل الخروج؟"
+
+#: templates/kb/form.html:38
+msgid "Update content, then publish or keep as draft."
+msgstr "حدّث المحتوى، ثم انشره أو أبقِه كمسودة."
+
+#: templates/kb/form.html:72
+msgid "Visibility"
+msgstr "الظهور"
+
+#: templates/kb/form.html:90 templates/kb/form.html:122
+msgid "Remove"
+msgstr "إزالة"
+
+#: templates/kb/form.html:93
+msgid "Search by ticket number or title"
+msgstr "ابحث برقم التذكرة أو عنوانها"
+
+#: templates/kb/form.html:109
+msgid "Drop files here or choose them below."
+msgstr "أفلت الملفات هنا أو اخترها بالأسفل."
+
+#: templates/kb/form.html:175
+msgid "Saving draft…"
+msgstr "جارٍ حفظ المسودة…"
+
+#: templates/kb/form.html:187
+msgid "Draft saved"
+msgstr "تم حفظ المسودة"
+
+#: templates/kb/form.html:195
+msgid "Draft not saved yet"
+msgstr "لم تُحفظ المسودة بعد"
+
+#: templates/kb/form.html:210
+msgid "You have unsaved changes. Leave this page?"
+msgstr "لديك تغييرات غير محفوظة. هل تريد مغادرة هذه الصفحة؟"
+
 #~ msgid "%(label)s must be at least %(min)s characters."
 #~ msgstr "%(label)s يجب أن يكون %(min)s أحرف على الأقل."
 
