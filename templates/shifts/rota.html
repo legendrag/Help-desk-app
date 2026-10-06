@@ -20,6 +20,21 @@
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=week&start={{ start|date:'Y-m-d' }}">{% trans "Week" %}</a>
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>
 </form>
+{% if view == "week" %}
+<form method="post" action="{% url 'shifts_copy_week' %}">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <button class="btn secondary" type="submit">{% trans "Copy last week" %}</button>
+</form>
+<form method="post" action="{% url 'shifts_repeat_week' %}">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="number" name="weeks" min="1" max="12" value="1">
+  <button class="btn secondary" type="submit">{% trans "Repeat this week forward" %}</button>
+</form>
+{% endif %}
 <p>{{ dates.0|date:"Y-m-d" }}–{{ dates|last|date:"Y-m-d" }}</p>
 {% if skips %}
 <ul>

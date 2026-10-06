@@ -2,6 +2,7 @@ from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Max
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,6 +16,7 @@ from shifts.access import display_name, home_target, is_shift_manager
 from shifts.forms import ShiftTypeForm
 from shifts.models import ShiftAssignment, ShiftType
 from shifts.services import (
+    REPEAT_WEEKS_MAX,
     effective_times,
     interval_for,
     month_dates,
@@ -22,6 +24,7 @@ from shifts.services import (
     normalize_start,
     overlap_message,
     overrides_set_by_worker,
+    plan_copy,
     week_dates,
 )
 
@@ -360,3 +363,105 @@ def shifts_cell(request):
     response = _grid_response(request, department, retarget=True)
     response["HX-Trigger"] = "closeModal"
     return response
+
+
+def _write_planned(planned):
+    created = 0
+    skips = []
+    for item in sorted(planned, key=lambda row: row["date"]):
+        if item["skip"]:
+            skips.append(item)
+            continue
+        if ShiftAssignment.objects.filter(user_id=item["user_id"], date=item["date"]).exists():
+            item["skip"] = "already assigned"
+            skips.append(item)
+            continue
+        shift_type = ShiftType.objects.get(pk=item["shift_type_id"])
+        probe = ShiftAssignment(user_id=item["user_id"], date=item["date"], shift_type=shift_type)
+        start_t = item["start"] if item["start"] is not None else shift_type.start_time
+        end_t = item["end"] if item["end"] is not None else shift_type.end_time
+        start_dt, end_dt = interval_for(item["date"], start_t, end_t)
+        other = neighbor_conflict(probe, start_dt, end_dt)
+        if other:
+            item["skip"] = "overlaps"
+            skips.append(item)
+            continue
+        ShiftAssignment.objects.create(
+            user_id=item["user_id"],
+            date=item["date"],
+            shift_type=shift_type,
+            start_time_override=item["start"],
+            end_time_override=item["end"],
+            times_set_by_id=item["times_set_by_id"],
+            times_set_at=item["times_set_at"],
+            checked_in_at=None,
+        )
+        created += 1
+    return created, skips
+
+
+@login_required
+@require_POST
+def shifts_copy_week(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    start = normalize_start(date.fromisoformat(request.POST["start"]), "week")
+    source_dates = week_dates(start - timedelta(days=7))
+    source_rows = list(
+        ShiftAssignment.objects.filter(
+            shift_type__department=department,
+            date__gte=source_dates[0],
+            date__lte=source_dates[-1],
+        ).select_related("shift_type", "times_set_by", "times_set_by__role")
+    )
+    with transaction.atomic():
+        created, skips = _write_planned(plan_copy(source_rows, timedelta(days=7), request.user))
+    if created == 0 and not skips:
+        notice = _("Nothing to copy.")
+    else:
+        notice = _("Copied %(count)s shifts.") % {"count": created}
+    return _grid_response(request, department, retarget=False, notice=notice, skips=skips)
+
+
+@login_required
+@require_POST
+def shifts_repeat_week(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    start = normalize_start(date.fromisoformat(request.POST["start"]), "week")
+    try:
+        weeks = int(request.POST.get("weeks") or "")
+    except ValueError:
+        weeks = 0
+    if weeks < 1 or weeks > REPEAT_WEEKS_MAX:
+        return _grid_response(
+            request,
+            department,
+            retarget=False,
+            error=_("Enter a number of weeks from 1 to 12."),
+        )
+    source_rows = list(
+        ShiftAssignment.objects.filter(
+            shift_type__department=department,
+            date__gte=start,
+            date__lte=start + timedelta(days=6),
+        ).select_related("shift_type", "times_set_by", "times_set_by__role")
+    )
+    created = 0
+    skips = []
+    with transaction.atomic():
+        for k in range(1, weeks + 1):
+            made, skipped = _write_planned(plan_copy(source_rows, timedelta(days=7 * k), request.user))
+            created += made
+            skips.extend(skipped)
+            source_rows = list(
+                ShiftAssignment.objects.filter(
+                    shift_type__department=department,
+                    date__gte=start,
+                    date__lte=start + timedelta(days=6),
+                ).select_related("shift_type", "times_set_by", "times_set_by__role")
+            )
+    notice = _("Repeated %(count)s shifts.") % {"count": created}
+    return _grid_response(request, department, retarget=False, notice=notice, skips=skips)

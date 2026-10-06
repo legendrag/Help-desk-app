@@ -286,3 +286,74 @@ class RotaGridTests(TestCase):
             })
         self.assertEqual(response.status_code, 200)
         self.assertLessEqual(len(captured), 12)
+
+
+class CopyWeekTests(TestCase):
+    def test_worker_times_are_not_copied(self):
+        from shifts.services import plan_copy
+
+        department = make_department("Copy")
+        agent = make_user("copy-agent", "support", department)
+        manager = make_user("copy-lead", "support", department, make_role("Copy lead", can_manage_shifts=True))
+        night = make_shift_type(department)
+        source = make_assignment(agent, night, date(2026, 10, 3), time(18, 0), time(23, 0))
+        planned = plan_copy([source], timedelta(days=7), manager)
+        self.assertEqual(planned[0]["start"], None)
+        self.assertEqual(planned[0]["end"], None)
+        self.assertIsNone(planned[0]["times_set_by_id"])
+        self.assertEqual(planned[0]["date"], date(2026, 10, 10))
+
+    def test_repeat_rejects_13(self):
+        department = make_department("Repeat")
+        manager = make_user("repeat-lead", "support", department, make_role("Repeat lead", can_manage_shifts=True))
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_repeat_week"), {
+            "department": department.pk,
+            "start": "2026-10-03",
+            "weeks": "13",
+        })
+        self.assertContains(response, "1 to 12")
+        self.assertEqual(ShiftAssignment.objects.count(), 0)
+
+    def test_friday_tail_does_not_become_saturday(self):
+        department = make_department("Tail")
+        manager = make_user("tail-lead", "support", department, make_role("Tail lead", can_manage_shifts=True))
+        agent = make_user("tail-agent", "support", department)
+        night = make_shift_type(department, name="Tail night")
+        make_assignment(agent, night, date(2026, 10, 9))  # Friday
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_copy_week"), {
+            "department": department.pk,
+            "start": "2026-10-10",
+        })
+        self.assertFalse(ShiftAssignment.objects.filter(user=agent, date=date(2026, 10, 10)).exists())
+        copied = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 16))
+        self.assertIsNone(copied.checked_in_at)
+        self.assertIsNone(copied.start_time_override)
+
+    def test_manager_set_override_is_copied_and_repeated(self):
+        department = make_department("Mgr copy")
+        manager = make_user("mgr-copy-lead", "support", department, make_role("Mgr copy lead", can_manage_shifts=True))
+        agent = make_user("mgr-copy-agent", "support", department)
+        night = make_shift_type(department, name="Mgr night")
+        source = make_assignment(agent, night, date(2026, 10, 3), time(18, 0), time(23, 0))
+        source.times_set_by = manager
+        source.save()
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_copy_week"), {
+            "department": department.pk,
+            "start": "2026-10-10",
+        })
+        copied = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 10))
+        self.assertEqual(copied.start_time_override, time(18, 0))
+        self.assertEqual(copied.end_time_override, time(23, 0))
+        self.assertEqual(copied.times_set_by_id, manager.pk)
+        self.client.post(reverse("shifts_repeat_week"), {
+            "department": department.pk,
+            "start": "2026-10-10",
+            "weeks": "1",
+        })
+        repeated = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 17))
+        self.assertEqual(repeated.start_time_override, time(18, 0))
+        self.assertEqual(repeated.end_time_override, time(23, 0))
+        self.assertEqual(repeated.times_set_by_id, manager.pk)

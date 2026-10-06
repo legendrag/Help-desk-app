@@ -133,6 +133,34 @@ def neighbor_conflict(assignment, start_dt, end_dt, exclude_pk=None):
     return None
 
 
+def plan_copy(source_rows, day_shift, acting_user):
+    planned = []
+    for source in source_rows:
+        item = {
+            "user_id": source.user_id,
+            "date": source.date + day_shift,
+            "shift_type_id": source.shift_type_id,
+            "start": None,
+            "end": None,
+            "times_set_by_id": None,
+            "times_set_at": None,
+            "skip": None,
+        }
+        if source.shift_type.archived:
+            item["skip"] = "archived shift type"
+        elif (
+            not overrides_set_by_worker(source)
+            and source.start_time_override is not None
+            and source.end_time_override is not None
+        ):
+            item["start"] = source.start_time_override
+            item["end"] = source.end_time_override
+            item["times_set_by_id"] = acting_user.pk
+            item["times_set_at"] = timezone.now()
+        planned.append(item)
+    return planned
+
+
 def overlap_message(other) -> str:
     start_t, end_t = effective_times(other)
     return _("This shift overlaps %(name)s on %(date)s (%(start)s–%(end)s).") % {
