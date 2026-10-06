@@ -146,6 +146,31 @@ body:has(.ticket-offcanvas.open) .topbar {
   background: rgba(0, 0, 0, 0.05);
 }
 
+/* Touch taps leave :hover and :focus stuck after the panel closes. */
+@media (hover: none) and (pointer: coarse) {
+  .menu-btn-universal:hover,
+  .menu-btn-universal:active,
+  .menu-btn-universal:focus,
+  .menu-btn-universal:focus-visible,
+  .notification-btn:hover,
+  .notification-btn:active,
+  .notification-btn:focus,
+  .notification-btn:focus-visible {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .menu-btn-universal.is-open,
+  .notification-btn.is-open {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .notification-btn.is-open {
+    transform: scale(1.05);
+  }
+}
+
 /* Panels with true glassmorphism */
 .panel {
   background: var(--panel-bg);
@@ -324,7 +349,7 @@ button, .btn {
 }
 
 /* Immediate press feedback on the clicked control */
-a.is-navigating,
+a.is-navigating:not(.brand),
 .clickable-row.is-navigating,
 .kb-result-item.is-navigating,
 .kb-recent-item.is-navigating,
@@ -1536,7 +1561,7 @@ select.form-control[aria-invalid="true"],
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin-top: 0.75rem;
+  margin: 0;
 }
 .ticket-copy-value-row {
   display: inline-flex;
@@ -1546,6 +1571,7 @@ select.form-control[aria-invalid="true"],
 }
 .ticket-title-number {
   margin: 0;
+  line-height: 1;
 }
 .ticket-copy-number-btn {
   display: inline-flex;
@@ -1588,8 +1614,10 @@ select.form-control[aria-invalid="true"],
   display: block;
 }
 .ticket-title-text {
+  margin: 0;
   color: var(--text-muted);
   font-size: 1.1rem;
+  line-height: 1;
 }
 .ticket-edit-btn-wrap {
   margin-top: 1.5rem;
