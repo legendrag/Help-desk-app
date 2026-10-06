@@ -10,7 +10,7 @@ from django.urls import reverse
 from accounts.models import User
 from config.settings import mysql_connect_host
 from core.management_views import CategoryListView
-from core.models import Category, Department
+from core.models import Category, Department, Role
 from core.version import get_app_version
 from tickets.models import Ticket
 
@@ -269,3 +269,15 @@ class SeedDemoDataTests(TestCase):
         
         branches = set(Ticket.objects.values_list("branch__code", flat=True))
         self.assertGreater(len(branches), 1)
+
+
+class ManageShiftsFlagTests(TestCase):
+    def test_admin_role_name_forces_the_flag(self):
+        role = Role(name=" Admin ", can_manage_shifts=False)
+        role.save()
+        role.refresh_from_db()
+        self.assertTrue(role.can_manage_shifts)
+
+    def test_other_role_keeps_false(self):
+        role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
+        self.assertFalse(role.can_manage_shifts)
