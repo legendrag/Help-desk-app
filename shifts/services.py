@@ -235,6 +235,7 @@ def suggest_nights(people, dates, shift_type, existing_by_user):
         chosen = min(pool, key=sort_key)
         st = stats[chosen.pk]
         st["proposed"] += 1
+        st["last"] = day
         st["dates"].add(day)
         st["night_dates"].add(day)
         st["intervals"].append(target)
