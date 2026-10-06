@@ -1,6 +1,6 @@
 {% load i18n shifts_extras %}
 <span class="shifts-chip {{ cell.shift_type.colour|chip_ink }}{% if cell.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ cell.shift_type.colour }}">{{ cell.shift_type.name }}</span>
-<span class="shifts-times"><bdi class="shifts-ltr" dir="ltr">{% if cell.start_time_override %}{{ cell.start_time_override|shifts_clock }}–{{ cell.end_time_override|shifts_clock }}{% else %}{{ cell.shift_type.start_time|shifts_clock }}–{{ cell.shift_type.end_time|shifts_clock }}{% endif %}</bdi></span>
+<span class="shifts-times">{% if cell.start_time_override %}{% shifts_time_range cell.start_time_override cell.end_time_override %}{% else %}{% shifts_time_range cell.shift_type.start_time cell.shift_type.end_time %}{% endif %}</span>
 {% if cell.set_by_worker %}<span class="badge">{% trans "Set by worker" %}</span>{% endif %}
 {% if cell.check_marker == "checked" %}<span class="badge">{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</span>
 {% elif cell.check_marker == "not" %}<span class="badge">{% trans "Not checked in" %}</span>

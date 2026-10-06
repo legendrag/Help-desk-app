@@ -7,7 +7,7 @@
 {% if check_in %}
 {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
 {% elif banner_end %}
-<p class="notice">{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|shifts_clock }}</bdi>.</p>
+<p class="notice">{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
 {% endif %}
 {% if assignments %}
 <div class="panel">

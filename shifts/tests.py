@@ -771,8 +771,8 @@ class WorkerHoursTests(TestCase):
 
     def test_time_ranges_keep_start_before_end_in_an_ltr_wrapper(self):
         response = self.client.get(reverse("shifts_mine"))
-        self.assertContains(response, 'class="shifts-ltr" dir="ltr"')
-        self.assertContains(response, "10:00 PM–6:00 AM")
+        self.assertContains(response, '<bdi class="shifts-ltr" dir="ltr">10:00 PM–6:00 AM</bdi>')
+        self.assertNotContains(response, 'dir="auto"')
         self.assertNotContains(response, "13:00")
 
     def test_board_rota_and_mine_show_a_12_hour_clock(self):
@@ -803,6 +803,37 @@ class WorkerHoursTests(TestCase):
             board = self.client.get(reverse("shifts_available"))
         self.assertContains(board, "1:00 PM")
         self.assertNotContains(board, "13:00")
+
+    def test_arabic_times_are_isolated_and_english_ranges_stay_left_to_right(self):
+        department = make_department("Bidi")
+        manager = make_user("bidi-lead", "support", department, make_role("Bidi lead", can_manage_shifts=True))
+        agent = make_user("bidi-agent", "support", department, first_name="Sara", last_name="Nabil")
+        day = make_shift_type(department, name="Bidi day", start=time(9, 0), end=time(17, 0))
+        today = date(2026, 10, 6)
+        row = make_assignment(agent, day, today)
+        row.checked_in_at = aware(2026, 10, 6, 11, 29)
+        row.save()
+        params = {"department": department.pk, "view": "week", "start": "2026-10-06"}
+        self.client.force_login(manager)
+        english = self.client.get(reverse("shifts_rota"), params)
+        self.assertContains(english, '<bdi class="shifts-ltr" dir="ltr">9:00 AM–5:00 PM</bdi>')
+        self.assertNotContains(english, 'dir="auto"')
+        self.client.cookies["django_language"] = "ar"
+        arabic = self.client.get(reverse("shifts_rota"), params)
+        self.assertContains(arabic, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
+        self.assertNotContains(arabic, 'dir="ltr">9:00 ص')
+        self.assertNotContains(arabic, 'class="shifts-ltr" dir="ltr">9:00 ص–5:00 م')
+        self.client.force_login(agent)
+        with _both_clocks(aware(2026, 10, 6, 12, 0), today):
+            mine = self.client.get(reverse("shifts_mine"))
+            board = self.client.get(reverse("shifts_available"))
+        self.assertContains(mine, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
+        self.assertContains(mine, '<bdi dir="auto">11:29 ص</bdi>')
+        self.assertContains(mine, "تم تسجيل الحضور في")
+        self.assertNotContains(mine, 'dir="ltr">11:29')
+        self.assertContains(board, '<bdi dir="auto">5:00 م</bdi>')
+        self.assertContains(board, "حتى")
+        self.assertNotContains(board, 'dir="ltr">5:00 م')
 
     def test_owner_can_set_same_evening_hours(self):
         response = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {

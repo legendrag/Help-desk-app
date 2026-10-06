@@ -8,7 +8,7 @@
     <p>{{ hint }}</p>
     {% endif %}
     {% if banner_end %}
-    <p>{% trans "You are on shift until" %} <bdi class="shifts-ltr" dir="ltr">{{ banner_end|shifts_clock }}</bdi>.</p>
+    <p>{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
     {% endif %}
   </div>
   {% if state != "checked" %}

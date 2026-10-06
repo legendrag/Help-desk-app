@@ -35,7 +35,7 @@
         {% for row in types %}
         <tr{% if row.archived %} class="shifts-archived"{% endif %}>
           <td>{{ row.name }}</td>
-          <td><bdi class="shifts-ltr" dir="ltr">{{ row.start_time|shifts_clock }}–{{ row.end_time|shifts_clock }}</bdi></td>
+          <td>{% shifts_time_range row.start_time row.end_time %}</td>
           <td>{% if row.is_night %}<span class="badge shifts-type-badge">{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}</td>
           <td><span class="shifts-swatch" style="background-color: {{ row.colour }}" aria-hidden="true"></span></td>
           <td class="shifts-actions">

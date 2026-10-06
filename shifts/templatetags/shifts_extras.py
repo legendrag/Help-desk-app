@@ -1,13 +1,19 @@
 from django import template
+from django.utils.safestring import mark_safe
 
-from shifts.clock import format_clock
+from shifts.clock import clock_html, clock_range_html
 
 register = template.Library()
 
 
 @register.filter
 def shifts_clock(value):
-    return format_clock(value)
+    return mark_safe(clock_html(value))
+
+
+@register.simple_tag
+def shifts_time_range(start, end):
+    return mark_safe(clock_range_html(start, end))
 
 
 @register.filter

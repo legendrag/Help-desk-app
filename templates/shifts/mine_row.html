@@ -5,7 +5,7 @@
   <td>
     {{ assignment.shift_type.name }}
   </td>
-  <td><bdi class="shifts-ltr" dir="ltr">{{ assignment.start_time_override|default:assignment.shift_type.start_time|shifts_clock }}–{{ assignment.end_time_override|default:assignment.shift_type.end_time|shifts_clock }}</bdi></td>
+  <td>{% shifts_time_range assignment.start_time_override|default:assignment.shift_type.start_time assignment.end_time_override|default:assignment.shift_type.end_time %}</td>
   <td>
     {% if assignment.shift_type.is_night %}
     <form class="shifts-form shifts-hours-form" method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"
