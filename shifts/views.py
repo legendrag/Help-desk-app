@@ -17,6 +17,10 @@ from shifts.forms import ShiftTypeForm
 from shifts.models import ShiftAssignment, ShiftType
 from shifts.services import (
     REPEAT_WEEKS_MAX,
+    aware_on,
+    clipped_day_night_minutes,
+    clock_length,
+    effective_interval,
     effective_times,
     interval_for,
     month_dates,
@@ -623,3 +627,110 @@ def shifts_auto_fill(request):
         notice=_("Filled %(count)s night shifts.") % {"count": created},
         skips=skips,
     )
+
+
+def _hours_minutes(minutes):
+    return minutes // 60, minutes % 60
+
+
+def _format_minutes(minutes):
+    hours, mins = _hours_minutes(minutes)
+    return _("%(hours)s hours %(minutes)s minutes") % {"hours": hours, "minutes": mins}
+
+
+@login_required
+@require_GET
+def shifts_calculator(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    return _shell(request, "shifts/calculator.html", {
+        "departments": Department.objects.order_by("name"),
+    })
+
+
+@login_required
+@require_GET
+def shifts_calc_length(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    try:
+        start_t = time.fromisoformat(request.GET.get("start", ""))
+        end_t = time.fromisoformat(request.GET.get("end", ""))
+    except ValueError:
+        start_t = end_t = None
+    if start_t is None or end_t is None or start_t == end_t:
+        return render(request, "shifts/calc_length.html", {"error": _("Start and end must differ.")})
+    total, after = clock_length(start_t, end_t)
+    hours, minutes = _hours_minutes(total)
+    after_hours, after_minutes = _hours_minutes(after)
+    return render(request, "shifts/calc_length.html", {
+        "total_text": _("%(hours)s hours %(minutes)s minutes") % {"hours": hours, "minutes": minutes},
+        "after_text": _("%(hours)s hours %(minutes)s minutes after midnight.") % {
+            "hours": after_hours,
+            "minutes": after_minutes,
+        },
+    })
+
+
+@login_required
+@require_GET
+def shifts_calc_hours(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    view, start, dates = _rota_dates(request)
+    bundle = _rota_bundle(department, dates)
+    range_start = aware_on(dates[0], time(0, 0))
+    range_end = aware_on(dates[-1] + timedelta(days=1), time(0, 0))
+    totals = {}
+    for row in bundle["assignments"]:
+        day_m, night_m = clipped_day_night_minutes(row, range_start, range_end)
+        bucket = totals.setdefault(row.user_id, {"user": row.user, "day": 0, "night": 0})
+        bucket["day"] += day_m
+        bucket["night"] += night_m
+    people = []
+    for bucket in totals.values():
+        if bucket["day"] == 0 and bucket["night"] == 0:
+            continue
+        people.append({
+            "name": display_name(bucket["user"]),
+            "day": _format_minutes(bucket["day"]),
+            "night": _format_minutes(bucket["night"]),
+            "total": _format_minutes(bucket["day"] + bucket["night"]),
+        })
+    return render(request, "shifts/calc_hours.html", {
+        "people": people,
+        "department": department,
+        "view": view,
+        "start": start,
+    })
+
+
+@login_required
+@require_GET
+def shifts_calc_coverage(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    view, start, dates = _rota_dates(request)
+    bundle = _rota_bundle(department, dates)
+    intervals = [effective_interval(row) for row in bundle["assignments"]]
+    rows = []
+    for hour in range(24):
+        cells = []
+        for day in dates:
+            bucket_start = aware_on(day, time(hour, 0))
+            bucket_end = bucket_start + timedelta(hours=1)
+            count = 0
+            for start_dt, end_dt in intervals:
+                if start_dt < bucket_end and bucket_start < end_dt:
+                    count += 1
+            cells.append({"day": day, "hour": hour, "count": count})
+        rows.append({"hour": hour, "cells": cells})
+    return render(request, "shifts/calc_coverage.html", {
+        "rows": rows,
+        "dates": dates,
+        "department": department,
+        "view": view,
+        "start": start,
+    })

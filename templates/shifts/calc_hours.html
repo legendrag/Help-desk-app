@@ -1,0 +1,11 @@
+{% load i18n %}
+<table>
+  {% for person in people %}
+  <tr>
+    <td>{{ person.name }}</td>
+    <td>{{ person.day }}</td>
+    <td>{{ person.night }}</td>
+    <td>{{ person.total }}</td>
+  </tr>
+  {% endfor %}
+</table>

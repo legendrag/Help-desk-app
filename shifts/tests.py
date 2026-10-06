@@ -440,3 +440,76 @@ class RotationTests(TestCase):
         dates = [date(2026, 10, 5), date(2026, 10, 6)]
         result = suggest_nights([person], dates, night, {person.pk: []})
         self.assertEqual(result[1]["back_to_back"], True)
+
+
+class CalculatorTests(TestCase):
+    def test_length_reports_after_midnight_separately(self):
+        department = make_department("Calc")
+        manager = make_user("calc-lead", "support", department, make_role("Calc lead", can_manage_shifts=True))
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_calc_length"), {"start": "22:00", "end": "06:00"})
+        self.assertContains(response, "8")
+        self.assertContains(response, "6")
+        self.assertContains(response, "after midnight")
+
+    def test_support_forbidden(self):
+        department = make_department("Calc2")
+        agent = make_user("calc-agent", "support", department)
+        self.client.force_login(agent)
+        self.assertEqual(self.client.get(reverse("shifts_calculator")).status_code, 403)
+
+    def test_quarter_hour_length(self):
+        department = make_department("Calc3")
+        manager = make_user("calc-lead-3", "support", department, make_role("Calc lead 3", can_manage_shifts=True))
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_calc_length"), {"start": "09:00", "end": "12:30"})
+        self.assertContains(response, "3 hours 30 minutes")
+        self.assertContains(response, "0 hours 0 minutes after midnight")
+
+    def test_coverage_counts_overnight_until_but_not_including_06(self):
+        department = make_department("Heat")
+        manager = make_user("heat-lead", "support", department, make_role("Heat lead", can_manage_shifts=True))
+        agent = make_user("heat-agent", "support", department)
+        night = make_shift_type(department, name="Heat night")
+        make_assignment(agent, night, date(2026, 10, 5))  # Monday 22:00–06:00
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_calc_coverage"), {
+            "department": department.pk,
+            "view": "week",
+            "start": "2026-10-03",
+        })
+        self.assertContains(response, 'id="cov-2026-10-06-5">1')
+        self.assertContains(response, 'id="cov-2026-10-06-6" class="shifts-gap">0')
+
+    def test_same_evening_covers_18_through_22(self):
+        department = make_department("Heat eve")
+        manager = make_user("heat-lead-2", "support", department, make_role("Heat lead 2", can_manage_shifts=True))
+        agent = make_user("heat-eve", "support", department)
+        night = make_shift_type(department, name="Heat eve")
+        make_assignment(agent, night, date(2026, 10, 6), time(18, 0), time(23, 0))
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_calc_coverage"), {
+            "department": department.pk,
+            "view": "week",
+            "start": "2026-10-03",
+        })
+        self.assertContains(response, 'id="cov-2026-10-06-18">1')
+        self.assertContains(response, 'id="cov-2026-10-06-22">1')
+        self.assertContains(response, 'id="cov-2026-10-06-23" class="shifts-gap">0')
+
+    def test_check_in_does_not_change_hours_or_coverage(self):
+        department = make_department("Same hours")
+        manager = make_user("same-lead", "support", department, make_role("Same lead", can_manage_shifts=True))
+        agent = make_user("same-agent", "support", department)
+        day = make_shift_type(department, name="Same day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(agent, day, date(2026, 10, 5))
+        self.client.force_login(manager)
+        params = {"department": department.pk, "view": "week", "start": "2026-10-03"}
+        before_hours = self.client.get(reverse("shifts_calc_hours"), params).content
+        before_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
+        row.checked_in_at = aware(2026, 10, 5, 9, 0)
+        row.save()
+        after_hours = self.client.get(reverse("shifts_calc_hours"), params).content
+        after_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
+        self.assertEqual(before_hours, after_hours)
+        self.assertEqual(before_coverage, after_coverage)
