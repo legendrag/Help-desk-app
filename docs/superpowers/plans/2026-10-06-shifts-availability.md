@@ -2023,6 +2023,29 @@ class RotationTests(TestCase):
         self.assertContains(response, "already assigned")
         existing.refresh_from_db()
         self.assertEqual(existing.shift_type_id, night.pk)
+
+    def test_day_or_archived_night_type_returns_404_and_writes_nothing(self):
+        department = make_department("Gate")
+        role = make_role("Gate lead", can_manage_shifts=True)
+        manager = make_user("gate-lead", "support", department, role)
+        agent = make_user("gate-agent", "support", department)
+        day = make_shift_type(department, name="Gate day", start=time(9, 0), end=time(17, 0))
+        archived = make_shift_type(department, name="Gate old night", archived=True)
+        self.client.force_login(manager)
+        payload = {
+            "department": department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-05",
+            "users": [agent.pk],
+            "action": "apply",
+        }
+        for bad in (day, archived):
+            response = self.client.post(
+                reverse("shifts_calc_rotation"),
+                {**payload, "shift_type": bad.pk},
+            )
+            self.assertEqual(response.status_code, 404)
+        self.assertEqual(ShiftAssignment.objects.count(), 0)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2177,7 +2200,10 @@ def shifts_calc_rotation(request):
     if not is_shift_manager(request.user):
         return _forbid()
     department = _selected_department(request)
-    shift_type = get_object_or_404(ShiftType, pk=request.POST.get("shift_type"), department=department)
+    shift_type = get_object_or_404(
+        ShiftType, pk=request.POST.get("shift_type"),
+        department=department, archived=False, is_night=True,
+    )
     start = date.fromisoformat(request.POST.get("start"))
     end = date.fromisoformat(request.POST.get("end"))
     dates = _dates_inclusive(start, end)
@@ -2260,7 +2286,7 @@ def shifts_auto_fill(request):
     )
 ```
 
-`calc_rotation.html` renders each non-gap proposal as a row. When `back_to_back` is true the row contains `{% trans "Back-to-back" %}`. A gap renders `{% blocktrans trimmed with date=row.date|date:"Y-m-d" %}Nobody available on {{ date }}.{% endblocktrans %}`. Each skip renders `{{ skip.skip }}`, which is how the apply test finds `already assigned`. Preview (`action` other than `apply`) does not call `_apply_rotation` and does not write. Apply never calls `save()` or `update()` on an existing row.
+`calc_rotation.html` renders each non-gap proposal as a row. When `back_to_back` is true the row contains `{% trans "Back-to-back" %}`. A gap renders `{% blocktrans trimmed with date=row.date|date:"Y-m-d" %}Nobody available on {{ date }}.{% endblocktrans %}`. Each skip renders `{{ skip.skip }}`, which is how the apply test finds `already assigned`. Preview (`action` other than `apply`) does not call `_apply_rotation` and does not write. Apply never calls `save()` or `update()` on an existing row. Preview and apply share the one `get_object_or_404` above (`archived=False`, `is_night=True`). Apply passes that same `shift_type` into `_apply_rotation` and does not look the type up again. A day type or an archived night type is 404 before any row is created.
 
 Auto-fill uses the visible rota dates from `_rota_dates` (POST `view` and `start`). People are every active support user in the department. Zero non-archived night types: notice `"This department has no night shift."` and no writes. One night type: preview immediately. Several, and no `shift_type` posted: the response is the picker. The rota toolbar form posts `action=preview` with `{% csrf_token %}`. Apply is a second POST with `action=apply` and the same token.
 
