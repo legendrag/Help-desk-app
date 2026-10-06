@@ -11,6 +11,14 @@
   background: color-mix(in srgb, var(--danger, #f87171) 25%, transparent);
 }
 #shifts-shell-pane .shifts-cell-btn { min-block-size: 44px; }
+#shifts-shell-pane .shifts-swatch {
+  display: inline-block;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
 #shifts-shell-pane .shifts-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 #shifts-shell-pane .shifts-cards { display: flex; flex-wrap: wrap; gap: 1rem; }
 @media (max-width: 720px) {

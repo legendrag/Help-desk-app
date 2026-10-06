@@ -2,7 +2,7 @@
 <tr id="shift-mine-{{ assignment.pk }}">
   <td>{{ assignment.date|date:"Y-m-d" }}</td>
   <td>{{ assignment.shift_type.name }}</td>
-  <td style="background-color: {{ assignment.shift_type.colour }}">{{ assignment.shift_type.colour }}</td>
+  <td><span class="shifts-swatch" style="background-color: {{ assignment.shift_type.colour }}" aria-hidden="true"></span></td>
   <td>
     {% if assignment.shift_type.is_night %}{% trans "Night" %}{% endif %}
     {{ assignment.start_time_override|default:assignment.shift_type.start_time|time:"H:i" }}–{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:"H:i" }}
