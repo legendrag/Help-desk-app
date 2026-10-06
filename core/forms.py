@@ -130,6 +130,7 @@ class RoleForm(forms.ModelForm):
             'can_access_kb': forms.CheckboxInput(),
             'can_manage_kb': forms.CheckboxInput(),
             'can_manage_maintenance': forms.CheckboxInput(),
+            'can_manage_shifts': forms.CheckboxInput(),
         }
         model = Role
         fields = [
@@ -160,6 +161,7 @@ class RoleForm(forms.ModelForm):
             'can_access_kb',
             'can_manage_kb',
             'can_manage_maintenance',
+            'can_manage_shifts',
         ]
 
     def clean_name(self):

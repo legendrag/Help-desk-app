@@ -1,0 +1,28 @@
+{% load i18n shifts_extras %}
+<div id="shifts-available-now"
+     hx-get="{% url 'shifts_available_board' %}"
+     hx-trigger="every 20s [!document.hidden], refresh"
+     hx-swap="outerHTML"
+     data-no-progress
+     data-etag="{{ board_etag }}"
+     aria-live="polite">
+  <div class="shifts-cards">
+    {% for card in cards %}
+    <section class="panel shifts-card">
+      <h2>{{ card.department.name }}</h2>
+      {% if card.people %}
+      <ul>
+        {% for person in card.people %}
+        <li class="shifts-person-line">
+          <span class="shifts-person-name">{{ person.name }}</span>
+          <span class="shifts-until">{% trans "until" %} {{ person.end|shifts_clock }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="shifts-empty">{% trans "Nobody on shift now" %}</p>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+</div>
