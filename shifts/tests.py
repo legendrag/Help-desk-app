@@ -87,3 +87,71 @@ class ShiftTypeNightFlagTests(TestCase):
                 end_time=time(2, 0),
                 colour="#112233",
             )
+
+
+class WeekAndHoursTests(TestCase):
+    def test_wednesday_snaps_to_previous_saturday(self):
+        from shifts.services import normalize_start, saturday_of, week_dates
+
+        wednesday = date(2026, 10, 7)  # Wednesday
+        saturday = date(2026, 10, 3)
+        self.assertEqual(saturday_of(wednesday), saturday)
+        self.assertEqual(saturday_of(saturday), saturday)
+        self.assertEqual(normalize_start(wednesday, "week"), saturday)
+        self.assertEqual(normalize_start(date(2026, 10, 7), "month"), date(2026, 10, 1))
+        self.assertEqual(week_dates(saturday)[0], saturday)
+        self.assertEqual(week_dates(saturday)[-1], date(2026, 10, 9))  # Friday
+        self.assertEqual(len(week_dates(saturday)), 7)
+
+    def test_night_type_minutes_stay_night_when_clipped(self):
+        from shifts.services import clipped_day_night_minutes, interval_for
+
+        department = make_department("Hours")
+        user = make_user("hana", "support", department)
+        night = make_shift_type(department)
+        friday = date(2026, 10, 9)
+        row = make_assignment(user, night, friday)
+        start, end = interval_for(friday, time(22, 0), time(6, 0))
+        day, night_m = clipped_day_night_minutes(row, start, end)
+        self.assertEqual((day, night_m), (0, 480))
+        week_end = timezone.make_aware(datetime(2026, 10, 10, 0, 0))
+        week_start = timezone.make_aware(datetime(2026, 10, 3, 0, 0))
+        day, night_m = clipped_day_night_minutes(row, week_start, week_end)
+        self.assertEqual((day, night_m), (0, 120))
+        next_week_end = timezone.make_aware(datetime(2026, 10, 17, 0, 0))
+        day, night_m = clipped_day_night_minutes(row, week_end, next_week_end)
+        self.assertEqual((day, night_m), (0, 360))
+
+    def test_same_evening_on_a_night_type_is_all_night_hours(self):
+        from shifts.services import clipped_day_night_minutes
+
+        department = make_department("Evening")
+        user = make_user("omar", "support", department)
+        night = make_shift_type(department, name="Night desk")
+        row = make_assignment(user, night, date(2026, 10, 6), time(18, 0), time(23, 0))
+        start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
+        end = timezone.make_aware(datetime(2026, 10, 7, 0, 0))
+        self.assertEqual(clipped_day_night_minutes(row, start, end), (0, 300))
+
+    def test_day_type_crossing_midnight_stays_day_hours(self):
+        from shifts.services import clipped_day_night_minutes, clock_length
+
+        department = make_department("Day cross")
+        user = make_user("lina", "support", department)
+        day_type = make_shift_type(department, name="Days", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(user, day_type, date(2026, 10, 6), time(22, 0), time(6, 0))
+        start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
+        end = timezone.make_aware(datetime(2026, 10, 8, 0, 0))
+        self.assertEqual(clipped_day_night_minutes(row, start, end), (480, 0))
+        self.assertEqual(clock_length(time(22, 0), time(6, 0)), (480, 360))
+        self.assertEqual(clock_length(time(9, 0), time(12, 30)), (210, 0))
+
+    def test_half_open_touch_is_not_overlap(self):
+        from shifts.services import interval_for, overlaps
+
+        monday = date(2026, 10, 5)
+        left = interval_for(monday, time(22, 0), time(6, 0))
+        right = interval_for(date(2026, 10, 6), time(6, 0), time(14, 0))
+        early = interval_for(date(2026, 10, 6), time(1, 0), time(9, 0))
+        self.assertFalse(overlaps(left, right))
+        self.assertTrue(overlaps(left, early))
