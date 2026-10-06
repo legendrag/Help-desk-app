@@ -46,6 +46,8 @@ def _forbid():
 
 def _shell(request, template, context):
     context["is_manager"] = is_shift_manager(request.user)
+    if request.headers.get("HX-Request"):
+        context["base_template"] = "shifts/hx_base.html"
     return render(request, template, context)
 
 
@@ -600,6 +602,8 @@ def _apply_rotation(proposals, shift_type, department):
             if item.get("gap"):
                 continue
             user = User.objects.filter(pk=item["user_id"]).select_related("role").first()
+            if user is not None:
+                item["name"] = display_name(user)
             if (
                 user is None
                 or user.user_type != User.UserType.SUPPORT
@@ -638,18 +642,74 @@ def _apply_rotation(proposals, shift_type, department):
     return created, skips
 
 
+def _rotation_choices(department):
+    if department is None:
+        return [], []
+    night_types = list(
+        ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
+    )
+    people = list(User.objects.filter(
+        department=department,
+        user_type=User.UserType.SUPPORT,
+        status=User.Status.ACTIVE,
+    ).order_by("first_name", "last_name", "username"))
+    for person in people:
+        person.shift_label = display_name(person)
+    return night_types, people
+
+
+def _attach_names(rows, people=()):
+    names = {person.pk: display_name(person) for person in people}
+    missing = [
+        row.get("user_id")
+        for row in rows
+        if row.get("user_id") and row["user_id"] not in names and not row.get("name")
+    ]
+    if missing:
+        for user in User.objects.filter(pk__in=set(missing)):
+            names[user.pk] = display_name(user)
+    for row in rows:
+        user_id = row.get("user_id")
+        if user_id and not row.get("name"):
+            row["name"] = names.get(user_id, "")
+    return rows
+
+
+def _posted_night_type(request, department):
+    raw = (request.POST.get("shift_type") or "").strip()
+    if not raw.isdigit():
+        raise Http404(_("Archived shift types cannot be assigned."))
+    return get_object_or_404(
+        ShiftType, pk=int(raw), department=department, archived=False, is_night=True,
+    )
+
+
+def _posted_dates(request):
+    try:
+        start = date.fromisoformat(request.POST.get("start") or "")
+        end = date.fromisoformat(request.POST.get("end") or "")
+    except ValueError:
+        return None, None
+    return start, end
+
+
 @login_required
 @require_POST
 def shifts_calc_rotation(request):
     if not is_shift_manager(request.user):
         return _forbid()
     department = _selected_department(request)
-    shift_type = get_object_or_404(
-        ShiftType, pk=request.POST.get("shift_type"),
-        department=department, archived=False, is_night=True,
-    )
-    start = date.fromisoformat(request.POST.get("start"))
-    end = date.fromisoformat(request.POST.get("end"))
+    shift_type = _posted_night_type(request, department)
+    start, end = _posted_dates(request)
+    if start is None or end is None:
+        return render(request, "shifts/calc_rotation.html", {
+            "proposals": [],
+            "skips": [],
+            "created": 0,
+            "department": department,
+            "shift_type": shift_type,
+            "error": _("Enter both a start and an end time."),
+        })
     dates = _dates_inclusive(start, end)
     people = list(User.objects.filter(
         pk__in=request.POST.getlist("users"),
@@ -664,13 +724,20 @@ def shifts_calc_rotation(request):
         for person in people:
             for day in dates:
                 if ShiftAssignment.objects.filter(user=person, date=day).exists():
-                    skips.append({"date": day, "user_id": person.pk, "skip": "already assigned"})
+                    skips.append({
+                        "date": day,
+                        "user_id": person.pk,
+                        "name": display_name(person),
+                        "skip": "already assigned",
+                    })
         created, applied_skips = _apply_rotation(
             [item for item in proposals if not item.get("gap")],
             shift_type,
             department,
         )
         skips.extend(applied_skips)
+    _attach_names(proposals, people)
+    _attach_names(skips, people)
     return render(request, "shifts/calc_rotation.html", {
         "proposals": proposals,
         "skips": skips,
@@ -744,9 +811,21 @@ def _format_minutes(minutes):
 def shifts_calculator(request):
     if not is_shift_manager(request.user):
         return _forbid()
-    return _shell(request, "shifts/calculator.html", {
+    raw = request.GET.get("department")
+    if raw:
+        department = get_object_or_404(Department, pk=raw)
+    else:
+        department = Department.objects.order_by("name").first()
+    night_types, people = _rotation_choices(department)
+    context = {
         "departments": Department.objects.order_by("name"),
-    })
+        "department": department,
+        "night_types": night_types,
+        "people": people,
+    }
+    if request.GET.get("part") == "rotation":
+        return render(request, "shifts/calculator_rotation_options.html", context)
+    return _shell(request, "shifts/calculator.html", context)
 
 
 @login_required

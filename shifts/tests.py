@@ -439,6 +439,42 @@ class RotationTests(TestCase):
         self.assertEqual([row["user_id"] for row in result], [people[0].pk, people[1].pk])
         self.assertFalse(any(row["back_to_back"] for row in result))
 
+    def test_calculator_lists_night_types_and_preview_uses_names(self):
+        department = make_department("Picker")
+        manager = make_user("picker-lead", "support", department, make_role("Picker lead", can_manage_shifts=True))
+        agent = make_user("picker-agent", "support", department, first_name="Nora", last_name="Saleh")
+        make_user("picker-day-only", "branch")
+        night = make_shift_type(department, name="Picker night")
+        make_shift_type(department, name="Picker day", start=time(9, 0), end=time(17, 0))
+        make_shift_type(department, name="Picker old", archived=True)
+        self.client.force_login(manager)
+        page = self.client.get(reverse("shifts_calculator"))
+        self.assertContains(page, "Picker night")
+        self.assertContains(page, "Nora Saleh")
+        self.assertNotContains(page, "Picker day")
+        self.assertNotContains(page, "Picker old")
+        preview = self.client.post(reverse("shifts_calc_rotation"), {
+            "department": department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-05",
+            "shift_type": night.pk,
+            "users": [agent.pk],
+            "action": "preview",
+        })
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, "Nora Saleh")
+        hx = self.client.get(reverse("shifts_calculator"), HTTP_HX_REQUEST="true")
+        self.assertEqual(hx.status_code, 200)
+        self.assertNotContains(hx, "<main")
+        empty = self.client.post(reverse("shifts_calc_rotation"), {
+            "department": department.pk,
+            "start": "",
+            "end": "",
+            "shift_type": "",
+            "action": "preview",
+        })
+        self.assertEqual(empty.status_code, 404)
+
     def test_one_person_second_night_is_back_to_back(self):
         from shifts.services import suggest_nights
 

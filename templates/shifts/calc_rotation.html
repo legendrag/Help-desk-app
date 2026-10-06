@@ -1,5 +1,6 @@
 {% load i18n %}
 <div id="shifts-rotation">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
   {% if pick_types %}
   <form method="post" action="{% url 'shifts_auto_fill' %}">
     {% csrf_token %}
@@ -23,7 +24,7 @@
       <td>{% blocktrans trimmed with date=row.date|date:"Y-m-d" %}Nobody available on {{ date }}.{% endblocktrans %}</td>
       {% else %}
       <td>{{ row.date|date:"Y-m-d" }}</td>
-      <td>{{ row.user_id }}</td>
+      <td>{{ row.name|default:row.user_id }}</td>
       {% if row.back_to_back %}<td>{% trans "Back-to-back" %}</td>{% endif %}
       {% endif %}
     </tr>
@@ -31,7 +32,7 @@
   </table>
   <ul>
     {% for skip in skips %}
-    <li>{{ skip.user_id }} {{ skip.date|date:"Y-m-d" }} {{ skip.skip }}</li>
+    <li>{{ skip.name|default:skip.user_id }} {{ skip.date|date:"Y-m-d" }} {{ skip.skip }}</li>
     {% endfor %}
   </ul>
   {% if can_apply %}

@@ -38,19 +38,23 @@
   <form method="post" action="{% url 'shifts_calc_rotation' %}" hx-post="{% url 'shifts_calc_rotation' %}" hx-target="#shifts-rotation">
     {% csrf_token %}
     <label for="rot-department">{% trans "Department" %}</label>
-    <select id="rot-department" name="department">
+    <select id="rot-department" name="department"
+            hx-get="{% url 'shifts_calculator' %}?part=rotation"
+            hx-target="#shifts-rotation-options"
+            hx-swap="innerHTML"
+            hx-trigger="change"
+            hx-include="this">
       {% for row in departments %}
-      <option value="{{ row.pk }}">{{ row.name }}</option>
+      <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
       {% endfor %}
     </select>
     <label for="rot-start">{% trans "Start" %}</label>
     <input id="rot-start" type="date" name="start">
     <label for="rot-end">{% trans "End" %}</label>
     <input id="rot-end" type="date" name="end">
-    <label for="rot-type">{% trans "Shift type" %}</label>
-    <select id="rot-type" name="shift_type"></select>
-    <label for="rot-users">{% trans "People" %}</label>
-    <select id="rot-users" name="users" multiple></select>
+    <div id="shifts-rotation-options">
+      {% include "shifts/calculator_rotation_options.html" %}
+    </div>
     <button class="btn secondary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
     <button class="btn primary" type="submit" name="action" value="apply">{% trans "Apply" %}</button>
   </form>
