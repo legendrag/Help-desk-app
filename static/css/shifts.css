@@ -264,11 +264,14 @@
   background: var(--panel-bg);
 }
 
-#shifts-shell-pane .shifts-type-badge {
-  padding: 0.2rem 0.65rem;
+#shifts-shell-pane .shifts-list .shifts-type-badge {
+  padding: 0.25rem 0.7rem;
   font-size: 0.8rem;
   letter-spacing: 0;
   text-transform: none;
+  background: color-mix(in srgb, var(--primary) 16%, var(--panel-bg));
+  color: var(--text-main);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
 }
 
 #shifts-shell-pane .shifts-muted {
