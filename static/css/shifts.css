@@ -66,9 +66,46 @@
 }
 
 #shifts-shell-pane .shifts-grid {
+  display: table;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
+  inline-size: max(100%, calc(10rem + 7 * 6.75rem));
+  width: max(100%, calc(10rem + 7 * 6.75rem));
   min-inline-size: 100%;
+}
+
+#shifts-shell-pane .shifts-grid--month {
+  inline-size: max(100%, calc(10rem + 31 * 6.75rem));
+  width: max(100%, calc(10rem + 31 * 6.75rem));
+}
+
+#shifts-shell-pane .shifts-grid thead {
+  display: table-header-group;
+  position: static;
+  inline-size: auto;
+  width: auto;
+  block-size: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+}
+
+#shifts-shell-pane .shifts-grid tbody {
+  display: table-row-group;
+  inline-size: auto;
+  width: auto;
+}
+
+#shifts-shell-pane .shifts-grid tr {
+  display: table-row;
+  inline-size: auto;
+  width: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 #shifts-shell-pane table {
@@ -90,9 +127,16 @@
 
 #shifts-shell-pane .shifts-grid th,
 #shifts-shell-pane .shifts-grid td {
+  display: table-cell;
+  inline-size: auto;
+  width: auto;
   padding: 0.35rem;
   vertical-align: top;
   border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-grid td::before {
+  content: none;
 }
 
 #shifts-shell-pane .shifts-grid thead th {
@@ -104,7 +148,7 @@
   white-space: nowrap;
 }
 
-#shifts-shell-pane .shifts-person {
+#shifts-shell-pane .shifts-grid .shifts-person {
   position: sticky;
   inset-inline-start: 0;
   z-index: 3;
@@ -114,7 +158,10 @@
   letter-spacing: 0;
   font-size: 0.95rem;
   color: var(--text-main);
-  min-inline-size: 8rem;
+  inline-size: 10rem;
+  width: 10rem;
+  min-inline-size: 10rem;
+  max-inline-size: 10rem;
 }
 
 #shifts-shell-pane .shifts-grid thead .shifts-person {
@@ -133,7 +180,8 @@
   align-items: flex-start;
   gap: 0.2rem;
   inline-size: 100%;
-  min-inline-size: 7.5rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   padding: 0.35rem 0.45rem;
   border-radius: 8px;
   text-align: start;
@@ -160,6 +208,11 @@
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.3;
+}
+
+#shifts-shell-pane .shifts-chip--night::before {
+  content: "☾";
+  margin-inline-end: 0.25em;
 }
 
 #shifts-shell-pane .settings-tabs {
@@ -460,5 +513,58 @@
 
   #shifts-shell-pane .shifts-cards {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  #shifts-shell-pane .shifts-grid-wrap {
+    overflow-x: auto !important;
+  }
+
+  #shifts-shell-pane .shifts-grid {
+    display: table !important;
+    inline-size: max(100%, calc(10rem + 7 * 6.75rem)) !important;
+    width: max(100%, calc(10rem + 7 * 6.75rem)) !important;
+    background: var(--panel-bg) !important;
+  }
+
+  #shifts-shell-pane .shifts-grid--month {
+    inline-size: max(100%, calc(10rem + 31 * 6.75rem)) !important;
+    width: max(100%, calc(10rem + 31 * 6.75rem)) !important;
+  }
+
+  #shifts-shell-pane .shifts-grid thead {
+    display: table-header-group !important;
+  }
+
+  #shifts-shell-pane .shifts-grid tbody {
+    display: table-row-group !important;
+  }
+
+  #shifts-shell-pane .shifts-grid tr {
+    display: table-row !important;
+    inline-size: auto !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #shifts-shell-pane .shifts-grid th,
+  #shifts-shell-pane .shifts-grid td {
+    display: table-cell !important;
+    inline-size: auto !important;
+    width: auto !important;
+    text-align: start !important;
+  }
+
+  #shifts-shell-pane .shifts-grid .shifts-person {
+    inline-size: 10rem !important;
+    width: 10rem !important;
+  }
+
+  #shifts-shell-pane .shifts-grid td::before {
+    content: none !important;
+    min-inline-size: 0 !important;
+    min-width: 0 !important;
   }
 }

@@ -1,7 +1,7 @@
 {% load i18n shifts_extras %}
 <div id="shifts-rota-grid" class="panel">
   <div class="table-wrap shifts-grid-wrap">
-    <table class="shifts-grid">
+    <table class="shifts-grid{% if dates|length > 7 %} shifts-grid--month{% endif %}">
       <thead>
         <tr>
           <th class="shifts-person">{% trans "Person" %}</th>
