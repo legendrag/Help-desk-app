@@ -43,6 +43,7 @@ It is a **Django 6 monolith**: server-rendered HTML, HTMX partials, vanilla CSS/
 | `notifications/` | In-app, WebSockets, email queue, web push | `notifications/services.py`, `notifications/consumers.py` |
 | `news/` | Announcements | `news/views.py` |
 | `kb/` | Knowledge base articles (separate from ticket categories) | `kb/views.py`, `kb/models.py` |
+| `shifts/` | Dated rota, night hours, day-shift check-in, Available now | `shifts/views.py`, `shifts/services.py` |
 | `config/` | Settings, URLs, ASGI/WSGI | `config/settings.py`, `config/asgi.py` |
 | `templates/` | SSR HTML (plus app `templates/`) | `templates/base.html` |
 | `static/` | CSS/JS/images | `static/css/`, `static/js/` |

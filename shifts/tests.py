@@ -850,3 +850,111 @@ class AvailableNowTests(TestCase):
              CaptureQueriesContext(connection) as captured:
             self.client.get(reverse("shifts_available_board"))
         self.assertLessEqual(len(captured), 8)
+
+
+class PermissionMatrixTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Perm")
+        self.other = make_department("Perm other")
+        self.support = make_user("perm-agent", "support", self.department)
+        self.outsider = make_user("perm-out", "support", self.other)
+        self.branch = make_user("perm-branch", "branch")
+        self.manager = make_user("perm-lead", "support", self.department, make_role("Perm lead", can_manage_shifts=True))
+        self.superuser = make_user("perm-root", "support", self.department, superuser=True)
+        self.night = make_shift_type(self.department, name="Perm night")
+        self.day = make_shift_type(self.department, name="Perm day", start=time(0, 0), end=time(23, 59))
+        self.row = make_assignment(self.support, self.night, date(2026, 1, 10))
+        self.today_row = make_assignment(self.support, self.day, timezone.localdate())
+
+    def _assert_login(self, response):
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_anonymous_redirects_every_named_url(self):
+        gets = [
+            reverse("shifts_home"),
+            reverse("shifts_rota"),
+            reverse("shifts_rota_grid"),
+            reverse("shifts_cell"),
+            reverse("shifts_types"),
+            reverse("shifts_type_add"),
+            reverse("shifts_type_edit", args=[self.night.pk]),
+            reverse("shifts_calculator"),
+            reverse("shifts_calc_hours"),
+            reverse("shifts_calc_length"),
+            reverse("shifts_calc_coverage"),
+            reverse("shifts_available"),
+            reverse("shifts_available_board"),
+            reverse("shifts_mine"),
+            reverse("shifts_team"),
+        ]
+        for url in gets:
+            self._assert_login(self.client.get(url))
+        posts = [
+            reverse("shifts_cell"),
+            reverse("shifts_copy_week"),
+            reverse("shifts_repeat_week"),
+            reverse("shifts_auto_fill"),
+            reverse("shifts_type_archive", args=[self.night.pk]),
+            reverse("shifts_calc_rotation"),
+            reverse("shifts_mine_hours", args=[self.row.pk]),
+            reverse("shifts_check_in", args=[self.today_row.pk]),
+        ]
+        for url in posts:
+            self._assert_login(self.client.post(url, {}))
+
+    def test_branch_support_and_manager_statuses(self):
+        manager_gets = [
+            "shifts_rota", "shifts_rota_grid", "shifts_types", "shifts_type_add",
+            "shifts_calculator", "shifts_calc_hours", "shifts_calc_length", "shifts_calc_coverage",
+        ]
+        shared_gets = ["shifts_available", "shifts_available_board"]
+        support_gets = ["shifts_mine", "shifts_team"]
+        for user, forbidden in (
+            (self.branch, manager_gets + support_gets),
+            (self.support, manager_gets),
+        ):
+            self.client.force_login(user)
+            home = self.client.get(reverse("shifts_home"))
+            self.assertEqual(home.status_code, 302, user.username)
+            for name in shared_gets:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
+            for name in forbidden:
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 403, f"{user.username} {name}")
+                self.assertNotContains(response, "2099-01-01", status_code=403)
+        self.client.force_login(self.support)
+        self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("shifts_team")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("shifts_team"), {"department": self.other.pk}).status_code, 403)
+        self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 200)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[make_assignment(self.outsider, self.night, date(2026, 10, 6)).pk]), {"action": "reset"}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 200)
+        for name, payload in (
+            ("shifts_cell", {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}),
+            ("shifts_copy_week", {"department": self.department.pk, "start": "2026-10-03"}),
+            ("shifts_repeat_week", {"department": self.department.pk, "start": "2026-10-03", "weeks": "1"}),
+            ("shifts_auto_fill", {"department": self.department.pk, "action": "apply", "start": "2026-10-03", "view": "week"}),
+            ("shifts_calc_rotation", {"action": "apply", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05"}),
+        ):
+            self.assertEqual(self.client.post(reverse(name), payload).status_code, 403, name)
+        self.assertEqual(self.client.post(reverse("shifts_type_archive", args=[self.night.pk])).status_code, 403)
+        self.client.force_login(self.branch)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)
+        for user in (self.manager, self.superuser):
+            self.client.force_login(user)
+            self.assertEqual(self.client.get(reverse("shifts_home")).status_code, 302)
+            for name in manager_gets + shared_gets + support_gets:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200, f"{user.username} {name}")
+            self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 200)
+            self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "2026-10-03"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "13"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "preview", "start": "2026-10-03", "view": "week"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_calc_rotation"), {"action": "preview", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05", "users": [self.support.pk]}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
+            self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)
