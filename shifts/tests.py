@@ -719,3 +719,17 @@ class CheckInTests(TestCase):
         self.row.refresh_from_db()
         self.assertEqual(self.row.shift_type_id, self.night.pk)
         self.assertIsNone(self.row.checked_in_at)
+
+
+class TeamRotaTests(TestCase):
+    def test_support_cannot_switch_department(self):
+        home = make_department("Home team")
+        other = make_department("Other team")
+        agent = make_user("team-agent", "support", home)
+        self.client.force_login(agent)
+        response = self.client.get(reverse("shifts_team"), {"department": other.pk, "start": "2026-10-03"})
+        self.assertEqual(response.status_code, 403)
+
+    def test_branch_forbidden(self):
+        self.client.force_login(make_user("team-branch", "branch"))
+        self.assertEqual(self.client.get(reverse("shifts_team")).status_code, 403)

@@ -59,7 +59,15 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "My shifts" %}</a>
-    {# Task 12: Team rota tab goes here, still inside support or manager. #}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_team' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_team' %}"
+       hx-get="{% url 'shifts_team' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Team rota" %}</a>
     {% endif %}
     {% if not is_manager %}
     <a class="settings-tab" role="tab" tabindex="0"

@@ -826,6 +826,37 @@ def shifts_mine_hours(request, pk):
     return _mine_row(request, assignment, "")
 
 
+@login_required
+@require_GET
+def shifts_team(request):
+    if request.user.user_type != "support" and not is_shift_manager(request.user):
+        return _forbid()
+    if is_shift_manager(request.user):
+        department = _selected_department(request)
+    else:
+        requested = request.GET.get("department")
+        if requested and str(request.user.department_id) != str(requested):
+            return _forbid()
+        if not request.user.department_id:
+            return _shell(request, "shifts/team.html", {
+                "error": _("You are not assigned to a department."),
+                "readonly": True,
+            })
+        department = request.user.department
+    view, start, dates = _rota_dates(request)
+    bundle = _rota_bundle(department, dates)
+    return _shell(request, "shifts/team.html", {
+        **bundle,
+        "department": department,
+        "departments": Department.objects.order_by("name"),
+        "view": view,
+        "start": start,
+        "readonly": True,
+        "today": timezone.localdate(),
+        "now": timezone.now(),
+    })
+
+
 def _mine_row(request, assignment, error):
     return render(request, "shifts/mine_row.html", {"assignment": assignment, "error": error})
 

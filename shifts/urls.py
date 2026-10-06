@@ -16,6 +16,7 @@ urlpatterns = [
     path("calculator/coverage/", views.shifts_calc_coverage, name="shifts_calc_coverage"),
     path("cell/", views.shifts_cell, name="shifts_cell"),
     path("mine/", views.shifts_mine, name="shifts_mine"),
+    path("team/", views.shifts_team, name="shifts_team"),
     path("mine/<int:pk>/hours/", views.shifts_mine_hours, name="shifts_mine_hours"),
     path("mine/<int:pk>/check-in/", views.shifts_check_in, name="shifts_check_in"),
     path("available/", views.shifts_available, name="shifts_available"),
