@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -78,6 +79,13 @@ class ShiftTypeNightFlagTests(TestCase):
         department = make_department()
         row = make_shift_type(department, start=time(22, 0), end=time(6, 0))
         self.assertTrue(row.is_night)
+
+    def test_colour_validator_rejects_a_non_hex_value(self):
+        department = make_department("Colour")
+        row = make_shift_type(department, name="Colour night")
+        row.colour = "blue"
+        with self.assertRaises(ValidationError):
+            row.full_clean()
 
     def test_same_day_span_is_not_night(self):
         department = make_department()
@@ -588,6 +596,11 @@ class WorkerHoursTests(TestCase):
         self.today = timezone.localdate()
         self.own = make_assignment(self.agent, self.night, self.today)
         self.client.force_login(self.agent)
+
+    def test_mine_page_shows_a_colour_swatch_not_the_hex(self):
+        response = self.client.get(reverse("shifts_mine"))
+        self.assertContains(response, "shifts-swatch")
+        self.assertNotContains(response, ">#336699<")
 
     def test_owner_can_set_same_evening_hours(self):
         response = self.client.post(reverse("shifts_mine_hours", args=[self.own.pk]), {

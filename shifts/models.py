@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -17,7 +18,12 @@ class ShiftType(TimeStampedModel):
     start_time = models.TimeField(_("Start time"))
     end_time = models.TimeField(_("End time"))
     is_night = models.BooleanField(default=False, editable=False, verbose_name=_("Night"))
-    colour = models.CharField(_("Colour"), max_length=7, default="#6366f1")
+    colour = models.CharField(
+        _("Colour"),
+        max_length=7,
+        default="#6366f1",
+        validators=[RegexValidator(r"^#[0-9A-Fa-f]{6}$")],
+    )
     archived = models.BooleanField(_("Archived"), default=False)
 
     class Meta:
