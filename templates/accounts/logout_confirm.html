@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Confirm Logout" %} - MlamehTicket{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="panel" style="max-width: 480px; margin: 2rem auto; text-align: center; padding: 2rem;">
+        <h2 style="margin-bottom: 1rem;">{% trans "Confirm Logout" %}</h2>
+        <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+            {% trans "Are you sure you want to log out?" %}
+        </p>
+        <form action="{% url 'logout' %}" method="post" class="form-actions" style="display: flex; gap: 0.75rem; justify-content: center;">
+            {% csrf_token %}
+            <button type="submit" class="danger">{% trans "Logout" %}</button>
+            <a href="{{ cancel_url }}" class="btn secondary">{% trans "Cancel" %}</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

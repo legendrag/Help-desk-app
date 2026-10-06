@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "news",
     "kb",
     "webpush",
+    "shifts",
 ]
 
 MIDDLEWARE = [

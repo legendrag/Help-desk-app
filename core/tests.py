@@ -10,7 +10,7 @@ from django.urls import reverse
 from accounts.models import User
 from config.settings import mysql_connect_host
 from core.management_views import CategoryListView
-from core.models import Category, Department
+from core.models import Category, Department, Role
 from core.version import get_app_version
 from tickets.models import Ticket
 
@@ -104,7 +104,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=8", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=10", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=23", self.base_html)
@@ -201,7 +201,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=8", html)
+        self.assertIn("js/app-shell.js?v=10", html)
         self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
@@ -269,3 +269,17 @@ class SeedDemoDataTests(TestCase):
         
         branches = set(Ticket.objects.values_list("branch__code", flat=True))
         self.assertGreater(len(branches), 1)
+
+
+class ManageShiftsFlagTests(TestCase):
+    def test_admin_role_name_forces_the_flag(self):
+        role = Role(name=" Admin ", can_manage_shifts=False)
+        role.save()
+        role.refresh_from_db()
+        self.assertTrue(role.can_manage_shifts)
+        self.assertTrue(role.can_check_in)
+
+    def test_other_role_keeps_false(self):
+        role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
+        self.assertFalse(role.can_manage_shifts)
+        self.assertFalse(role.can_check_in)

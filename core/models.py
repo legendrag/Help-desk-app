@@ -119,6 +119,9 @@ class Role(TimeStampedModel):
     # System Maintenance Permissions
     can_manage_maintenance = models.BooleanField(default=False, verbose_name=_("Manage System Maintenance"))
 
+    can_manage_shifts = models.BooleanField(default=False, verbose_name=_("Manage Shifts"))
+    can_check_in = models.BooleanField(default=False, verbose_name=_("Check in to shifts"))
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

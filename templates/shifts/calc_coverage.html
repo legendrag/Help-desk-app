@@ -1,0 +1,9 @@
+<table class="shifts-coverage">
+  {% for row in rows %}
+  <tr>
+  {% for cell in row.cells %}
+  <td id="cov-{{ cell.day|date:'Y-m-d' }}-{{ cell.hour }}"{% if cell.count == 0 %} class="shifts-gap"{% endif %}>{{ cell.count }}</td>
+  {% endfor %}
+  </tr>
+  {% endfor %}
+</table>

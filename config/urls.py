@@ -19,6 +19,7 @@ urlpatterns = [
     path("notifications/", include("notifications.urls")),
     path("news/", include("news.urls")),
     path("kb/", include("kb.urls")),
+    path("shifts/", include("shifts.urls")),
     path("webpush/", include("webpush.urls")),
     path("manifest.webmanifest", web_manifest, name="web_manifest"),
     path("sw.js", service_worker, name="sw.js"),

@@ -21,11 +21,12 @@
         <h1 class="kb-detail-title">
             {{ article.title }}
             {% if not article.is_published %}
-            <span class="pill kb-draft-pill">Draft</span>
+            <span class="pill kb-draft-pill">{% trans "Draft" %}</span>
             {% endif %}
         </h1>
         <div class="kb-detail-meta">
-            <span>{{ article.created_by.get_full_name|default:article.created_by.username|default:"System" }}</span>
+            {% trans "System" as system_label %}
+            <span>{{ article.created_by.get_full_name|default:article.created_by.username|default:system_label }}</span>
             <span class="kb-meta-dot" aria-hidden="true">&middot;</span>
             <span>{{ article.created_at|date:"M j, Y" }}</span>
             {% if article.updated_at|date:"Y-m-d H:i" != article.created_at|date:"Y-m-d H:i" %}

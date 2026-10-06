@@ -1,0 +1,97 @@
+{% extends "shifts/shell.html" %}
+{% load i18n %}
+{% block shifts_body %}
+<header class="shifts-header">
+  <h1>{% trans "Rota" %}</h1>
+  <p class="shifts-range"><bdi class="shifts-ltr" dir="ltr">{{ dates.0|date:"D j M" }} – {{ dates|last|date:"D j M Y" }}</bdi></p>
+</header>
+{% if check_in %}
+{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+{% endif %}
+{% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+{% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+{% for message in messages %}
+<p class="notice{% if 'error' in message.tags %} notice-error{% endif %}">{{ message }}</p>
+{% endfor %}
+<form method="get" class="shifts-toolbar panel" action="{% url 'shifts_rota' %}">
+  <div class="form-group">
+    <label for="rota-department">{% trans "Department" %}</label>
+    <select id="rota-department" class="no-tomselect" name="department">
+      {% for row in departments %}
+      <option value="{{ row.pk }}"{% if row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <input type="hidden" name="view" value="{{ view }}">
+  <a class="btn secondary" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view={{ view }}&start={{ prev_start|date:'Y-m-d' }}">{% trans "Previous" %}</a>
+  <a class="btn secondary" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view={{ view }}&start={{ next_start|date:'Y-m-d' }}">{% trans "Next" %}</a>
+  <div class="form-group">
+    <label for="rota-start">{% trans "Date" %}</label>
+    <input id="rota-start" type="date" name="start" value="{{ start|date:'Y-m-d' }}">
+  </div>
+  <button class="btn secondary" type="submit">{% trans "Show" %}</button>
+  <div class="shifts-segment" role="group" aria-label="{% trans "View" %}">
+    <a class="{% if view == 'week' %}is-active{% endif %}" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=week&start={{ start|date:'Y-m-d' }}">{% trans "Week" %}</a>
+    <a class="{% if view == 'month' %}is-active{% endif %}" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>
+  </div>
+</form>
+<div class="shifts-actions">
+<form method="post" action="{% url 'shifts_auto_fill' %}"
+      hx-post="{% url 'shifts_auto_fill' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="hidden" name="action" value="preview">
+  <button class="btn secondary" type="submit">{% trans "Auto-fill nights" %}</button>
+</form>
+{% if view == "week" %}
+<form method="post" action="{% url 'shifts_copy_week' %}"
+      hx-post="{% url 'shifts_copy_week' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-confirm="{% trans "Copy last week into this week?" %}"
+      data-confirm-title="{% trans "Confirm Action" %}"
+      data-confirm-ok="{% trans "Yes, Proceed" %}"
+      data-confirm-cancel="{% trans "Cancel" %}"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <button class="btn secondary" type="submit">{% trans "Copy last week" %}</button>
+</form>
+<form method="post" action="{% url 'shifts_repeat_week' %}"
+      hx-post="{% url 'shifts_repeat_week' %}"
+      hx-target="#shifts-auto-fill-result"
+      hx-swap="innerHTML"
+      hx-confirm="{% trans "Repeat this week forward?" %}"
+      data-confirm-title="{% trans "Confirm Action" %}"
+      data-confirm-ok="{% trans "Yes, Proceed" %}"
+      data-confirm-cancel="{% trans "Cancel" %}"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <label class="shifts-weeks" for="repeat-weeks">{% trans "weeks" %}
+    <input id="repeat-weeks" type="number" name="weeks" min="1" max="12" value="1">
+  </label>
+  <button class="btn secondary" type="submit">{% trans "Repeat this week forward" %}</button>
+</form>
+{% endif %}
+</div>
+<div id="shifts-auto-fill-result"></div>
+{% if skips %}
+<ul>
+  {% for item in skips %}
+  <li>{% if item.name %}{{ item.name }} {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ item.date|date:"Y-m-d" }}</bdi> {{ item.skip }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% include "shifts/rota_grid.html" %}
+{% endblock %}
