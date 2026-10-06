@@ -851,6 +851,19 @@ class AvailableNowTests(TestCase):
             self.client.get(reverse("shifts_available_board"))
         self.assertLessEqual(len(captured), 8)
 
+    def test_first_page_lists_worker_without_waiting_for_poll(self):
+        department = make_department("First paint")
+        agent = make_user("paint-agent", "support", department, first_name="Paint", last_name="Agent")
+        night = make_shift_type(department, name="Paint night")
+        make_assignment(agent, night, date(2026, 6, 1))
+        self.client.force_login(make_user("paint-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            response = self.client.get(reverse("shifts_available"))
+        self.assertContains(response, "Paint Agent")
+        self.assertContains(response, 'hx-trigger="every 20s [!document.hidden], refresh"')
+        self.assertContains(response, "data-no-progress")
+
 
 class PermissionMatrixTests(TestCase):
     def setUp(self):

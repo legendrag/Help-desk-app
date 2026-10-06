@@ -233,15 +233,7 @@ def shifts_mine(request):
     })
 
 
-@login_required
-@require_GET
-def shifts_available(request):
-    return _shell(request, "shifts/available.html", {"board_etag": ""})
-
-
-@login_required
-@require_GET
-def shifts_available_board(request):
+def _available_board(request):
     now = timezone.now()
     today = timezone.localdate()
     yesterday = today - timedelta(days=1)
@@ -278,15 +270,29 @@ def shifts_available_board(request):
             ))
         parts.append((department_id, tuple(sorted(tuples))))
     etag = etag_digest(parts)
-    if htmx_revalidation_match(request, etag):
-        request.ticket_list_304_defer_session_save = True
-        return htmx_not_modified(etag)
     cards = []
     for department in Department.objects.order_by("name"):
         people = []
         for row, end_dt in sorted(by_department.get(department.pk, []), key=lambda item: item[0].user_id):
             people.append({"name": display_name(row.user), "end": end_dt})
         cards.append({"department": department, "people": people})
+    return cards, etag
+
+
+@login_required
+@require_GET
+def shifts_available(request):
+    cards, etag = _available_board(request)
+    return _shell(request, "shifts/available.html", {"cards": cards, "board_etag": etag})
+
+
+@login_required
+@require_GET
+def shifts_available_board(request):
+    cards, etag = _available_board(request)
+    if htmx_revalidation_match(request, etag):
+        request.ticket_list_304_defer_session_save = True
+        return htmx_not_modified(etag)
     response = render(request, "shifts/available_board.html", {"cards": cards, "board_etag": etag})
     return apply_read_etag(response, etag, request)
 
