@@ -712,7 +712,7 @@ def shifts_calc_rotation(request):
             "created": 0,
             "department": department,
             "shift_type": shift_type,
-            "error": _("Enter both a start and an end time."),
+            "error": _("Enter a start and an end date."),
         })
     dates = _dates_inclusive(start, end)
     people = list(User.objects.filter(
