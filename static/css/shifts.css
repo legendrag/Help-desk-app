@@ -1,0 +1,19 @@
+#shifts-shell-pane .shifts-grid-wrap { overflow-x: auto; }
+#shifts-shell-pane .shifts-person {
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--panel-bg, #fff);
+}
+#shifts-shell-pane .shifts-cell--night {
+  outline: 2px dashed var(--warning, #fbbf24);
+}
+#shifts-shell-pane .shifts-gap {
+  background: color-mix(in srgb, var(--danger, #f87171) 25%, transparent);
+}
+#shifts-shell-pane .shifts-cell-btn { min-block-size: 44px; }
+#shifts-shell-pane .shifts-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+#shifts-shell-pane .shifts-cards { display: flex; flex-wrap: wrap; gap: 1rem; }
+@media (max-width: 720px) {
+  #shifts-shell-pane .shifts-toolbar select { inline-size: 100%; }
+  #shifts-shell-pane .shifts-cards { flex-direction: column; }
+}

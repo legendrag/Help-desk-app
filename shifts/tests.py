@@ -155,3 +155,25 @@ class WeekAndHoursTests(TestCase):
         early = interval_for(date(2026, 10, 6), time(1, 0), time(9, 0))
         self.assertFalse(overlaps(left, right))
         self.assertTrue(overlaps(left, early))
+
+
+class LandingTests(TestCase):
+    def test_each_role_lands_on_its_page(self):
+        department = make_department("Land")
+        manager_role = make_role(name="Shift lead", can_manage_shifts=True)
+        manager = make_user("lead", "support", department, manager_role)
+        support = make_user("agent", "support", department)
+        branch = make_user("branch", "branch")
+        self.client.force_login(manager)
+        self.assertRedirects(self.client.get(reverse("shifts_home")), reverse("shifts_rota"))
+        self.client.force_login(support)
+        self.assertRedirects(self.client.get(reverse("shifts_home")), reverse("shifts_mine"))
+        self.client.force_login(branch)
+        self.assertRedirects(self.client.get(reverse("shifts_home")), reverse("shifts_available"))
+
+    def test_sidebar_link_is_present_for_support(self):
+        department = make_department("Nav")
+        support = make_user("navagent", "support", department)
+        self.client.force_login(support)
+        response = self.client.get(reverse("shifts_mine"))
+        self.assertContains(response, 'data-nav-key="shifts"')

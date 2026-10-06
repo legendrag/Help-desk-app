@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load i18n static %}
+{% block extra_head %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/shifts.css' %}">{% endblock %}
+{% block content %}
+<script>
+(function () {
+  var drop = ["ticket-detail-page", "kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page"];
+  drop.forEach(function (cls) { document.body.classList.remove(cls); });
+  if (window.updateActiveNav) window.updateActiveNav();
+})();
+</script>
+<div id="shifts-shell-pane" class="shifts-page" data-etag="{{ shell_etag|default:'' }}">
+  <nav class="settings-tabs" role="tablist">
+    {% if is_manager %}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_rota' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_rota' %}"
+       hx-get="{% url 'shifts_rota' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Rota" %}</a>
+    {# Task 5: Shift types tab goes here, still inside is_manager. #}
+    {# Task 9: Calculator tab goes here, after Shift types and before Available now. #}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_available' %}"
+       hx-get="{% url 'shifts_available' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
+    {% endif %}
+    {% if user.user_type == "support" or is_manager %}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_mine' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_mine' %}"
+       hx-get="{% url 'shifts_mine' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "My shifts" %}</a>
+    {# Task 12: Team rota tab goes here, still inside support or manager. #}
+    {% endif %}
+    {% if not is_manager %}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_available' %}"
+       hx-get="{% url 'shifts_available' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
+    {% endif %}
+  </nav>
+  {% block shifts_body %}{% endblock %}
+</div>
+{% endblock %}
+{% block extra_js %}{{ block.super }}<script src="{% static 'js/shifts.js' %}"></script>{% endblock %}

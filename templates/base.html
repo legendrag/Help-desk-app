@@ -706,6 +706,18 @@
                    hx-sync="#shell-content:replace"{% endif %}
                    {% if '/kb/' in request.path %}class="active" aria-current="page"{% endif %}>{% trans "Knowledge Base" %}</a>
                 {% endif %}
+                {% if user.is_superuser or user.role.can_manage_shifts or user.user_type == 'support' or user.user_type == 'branch' %}
+                <a href="{% url 'shifts_home' %}"
+                   data-nav-key="shifts"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'shifts_home' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if '/shifts/' in request.path or request.path == '/shifts' %}class="active" aria-current="page"{% endif %}>{% trans "Shifts" %}</a>
+                {% endif %}
                 {% if user.is_superuser or user.role.can_access_dashboard %}
                 <a href="{% url 'dashboard' %}" data-nav-key="dashboard"
                    {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}>{% trans "Dashboard" %}</a>

@@ -725,6 +725,7 @@ function shellPageKindFromHtml(html) {
     if (html.indexOf('id="ticket-shell-pane"') !== -1) return "ticket";
     if (html.indexOf('id="tickets-live"') !== -1) return "tickets";
     if (html.indexOf('id="kb-shell-pane"') !== -1) return "kb";
+    if (html.indexOf('id="shifts-shell-pane"') !== -1) return "shifts";
     if (html.indexOf('id="settings-shell-pane"') !== -1) return "settings";
     if (html.indexOf('id="news-shell-pane"') !== -1) return "news";
     return "";
@@ -734,6 +735,7 @@ function shellPageKindFromDom() {
     if (document.getElementById("ticket-shell-pane")) return "ticket";
     if (document.getElementById("tickets-live")) return "tickets";
     if (document.getElementById("kb-shell-pane")) return "kb";
+    if (document.getElementById("shifts-shell-pane")) return "shifts";
     if (document.getElementById("settings-shell-pane")) return "settings";
     if (document.getElementById("news-shell-pane")) return "news";
     if (document.body.classList.contains("dashboard-page")) return "dashboard";
@@ -764,6 +766,7 @@ function updateActiveNav() {
     else if (path === "/tickets/settings" || path.indexOf("/tickets/settings/") === 0) key = "settings";
     else if (path === "/news" || path.indexOf("/news/") === 0) key = "news";
     else if (path === "/kb" || path.indexOf("/kb/") === 0) key = "kb";
+    else if (path === "/shifts" || path.indexOf("/shifts/") === 0) key = "shifts";
     else if (path === "/tickets" || path.indexOf("/tickets/") === 0) key = "tickets";
     document.querySelectorAll("#sidebar .sidebar-nav a[data-nav-key]").forEach(function (anchor) {
         var on = anchor.getAttribute("data-nav-key") === key;
@@ -942,7 +945,8 @@ function shellPaneEtag(kind) {
     var ids = {
         news: "news-shell-pane",
         kb: "kb-shell-pane",
-        settings: "settings-shell-pane"
+        settings: "settings-shell-pane",
+        shifts: "shifts-shell-pane"
     };
     var id = ids[kind];
     if (!id) return "";
