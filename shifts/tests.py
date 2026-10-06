@@ -237,3 +237,52 @@ class ShiftTypeCrudTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ShiftType.objects.filter(department=department).exists())
         self.assertContains(response, "at least 2 characters")
+
+
+class RotaGridTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Rota")
+        self.role = make_role("Rota lead", can_manage_shifts=True)
+        self.manager = make_user("rota-lead", "support", self.department, self.role)
+        self.agent = make_user("rota-agent", "support", self.department)
+        self.night = make_shift_type(self.department)
+        self.client.force_login(self.manager)
+
+    def test_week_query_normalizes_to_saturday(self):
+        response = self.client.get(reverse("shifts_rota"), {"view": "week", "start": "2026-10-07", "department": self.department.pk})
+        self.assertContains(response, "2026-10-03")
+        self.assertContains(response, "2026-10-09")
+
+    def test_cell_post_blocks_overlap(self):
+        make_assignment(self.agent, self.night, date(2026, 10, 5))
+        response = self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-10-06",
+            "department": self.department.pk,
+            "shift_type": self.night.pk,
+            "start_time_override": "01:00",
+            "end_time_override": "09:00",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "overlaps")
+        self.assertEqual(ShiftAssignment.objects.filter(user=self.agent).count(), 1)
+
+    def test_support_gets_403(self):
+        self.client.force_login(self.agent)
+        self.assertEqual(self.client.get(reverse("shifts_rota")).status_code, 403)
+
+    def test_grid_query_budget(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        for index in range(6):
+            person = make_user(f"budget-{index}", "support", self.department)
+            make_assignment(person, self.night, date(2026, 10, 5))
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get(reverse("shifts_rota_grid"), {
+                "view": "week",
+                "start": "2026-10-03",
+                "department": self.department.pk,
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(captured), 12)

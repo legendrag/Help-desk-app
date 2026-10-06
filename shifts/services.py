@@ -36,7 +36,7 @@ def month_dates(first: date) -> list[date]:
 
 
 def effective_times(assignment):
-    if assignment.start_time_override and assignment.end_time_override:
+    if assignment.start_time_override is not None and assignment.end_time_override is not None:
         return assignment.start_time_override, assignment.end_time_override
     return assignment.shift_type.start_time, assignment.shift_type.end_time
 
@@ -98,7 +98,7 @@ def clipped_day_night_minutes(assignment, range_start, range_end):
 
 
 def overrides_set_by_worker(assignment) -> bool:
-    if not assignment.start_time_override or not assignment.end_time_override:
+    if assignment.start_time_override is None or assignment.end_time_override is None:
         return False
     setter = assignment.times_set_by
     if setter is None:

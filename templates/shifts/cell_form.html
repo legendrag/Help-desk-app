@@ -1,0 +1,26 @@
+{% load i18n %}
+<form method="post" action="{% url 'shifts_cell' %}" hx-post="{% url 'shifts_cell' %}" hx-target="#modal-content">
+  {% csrf_token %}
+  <input type="hidden" name="user" value="{{ person.pk }}">
+  <input type="hidden" name="date" value="{{ on|date:'Y-m-d' }}">
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+  <label for="shift-type">{% trans "Shift type" %}</label>
+  <select id="shift-type" name="shift_type">
+    <option value="">{% trans "Clear" %}</option>
+    {% for row in types %}
+    <option value="{{ row.pk }}"{% if existing and existing.shift_type_id == row.pk %} selected{% endif %}>{{ row.name }}</option>
+    {% endfor %}
+  </select>
+  <label for="start-override">{% trans "Start override" %}</label>
+  <input id="start-override" type="time" name="start_time_override" value="{{ existing.start_time_override|time:'H:i' }}">
+  <label for="end-override">{% trans "End override" %}</label>
+  <input id="end-override" type="time" name="end_time_override" value="{{ existing.end_time_override|time:'H:i' }}">
+  <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  {% if existing %}
+  <button class="btn secondary" type="submit" name="reset_times" value="1">{% trans "Reset to shift default" %}</button>
+  {% endif %}
+  {% if existing and existing.checked_in_at and not existing.shift_type.is_night %}
+  <button class="btn secondary" type="submit" name="clear_check_in" value="1">{% trans "Clear check-in" %}</button>
+  {% endif %}
+</form>
