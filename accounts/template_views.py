@@ -1,9 +1,11 @@
+from urllib.parse import urlsplit
+
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
-from django.utils.http import url_has_allowed_host_and_scheme, urlsplit
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views import View
 
