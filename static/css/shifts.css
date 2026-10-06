@@ -33,6 +33,18 @@
   gap: 0.75rem;
 }
 
+#shifts-shell-pane .shifts-actions form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#shifts-shell-pane .shifts-actions input[type="number"] {
+  inline-size: 5rem;
+  flex: 0 0 auto;
+}
+
 #shifts-shell-pane .shifts-toolbar .form-group,
 #shifts-shell-pane .shifts-form .form-group {
   margin: 0;
@@ -52,6 +64,23 @@
   border-collapse: separate;
   border-spacing: 0;
   min-inline-size: 100%;
+}
+
+#shifts-shell-pane table {
+  background: var(--panel-bg);
+  color: var(--text-main);
+}
+
+#shifts-shell-pane th,
+#shifts-shell-pane td {
+  background: var(--panel-bg);
+  color: var(--text-main);
+  text-align: start;
+}
+
+#shifts-shell-pane tr:hover td,
+#shifts-shell-pane tr:hover th {
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel-bg));
 }
 
 #shifts-shell-pane .shifts-grid th,
@@ -76,11 +105,16 @@
   z-index: 3;
   background: var(--panel-bg);
   text-align: start;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+  color: var(--text-main);
   min-inline-size: 8rem;
 }
 
 #shifts-shell-pane .shifts-grid thead .shifts-person {
   z-index: 4;
+  text-align: start;
 }
 
 #shifts-shell-pane .shifts-day--today {
@@ -142,6 +176,7 @@
 }
 
 #shifts-shell-pane .shifts-cell .badge,
+#shifts-shell-pane .shifts-cell-btn .badge,
 #shifts-shell-pane .shifts-list .badge {
   padding: 0.05rem 0.4rem;
   font-size: 0.65rem;
@@ -213,6 +248,19 @@
 #shifts-shell-pane .shifts-list th {
   vertical-align: middle;
 }
+
+#shifts-shell-pane .shifts-hours-form {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+#shifts-shell-pane .shifts-hours-form > p {
+  flex: 1 0 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
 
 #shifts-shell-pane .shifts-gap {
   background: color-mix(in srgb, var(--danger) 25%, transparent);

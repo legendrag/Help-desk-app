@@ -13,7 +13,7 @@
       <tbody>
         {% for person in people %}
         <tr>
-          <th class="shifts-person">{{ person }}</th>
+          <th class="shifts-person">{{ person.shift_label }}</th>
           {% for item in person.cells %}
           {% with day=item.0 cell=item.1 %}
           <td class="{% if day == today %}shifts-day--today{% endif %}">

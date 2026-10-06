@@ -112,6 +112,7 @@ def _rota_bundle(department, dates):
     ordered = sorted(people.values(), key=lambda row: ((row.first_name or ""), row.username))
     by_key = {(row.user_id, row.date): row for row in visible}
     for person in ordered:
+        person.shift_label = display_name(person)
         person.cells = [(day, by_key.get((person.pk, day))) for day in dates]
     return {
         "assignments": assignments,
