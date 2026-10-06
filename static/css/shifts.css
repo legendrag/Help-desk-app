@@ -1,6 +1,15 @@
 .shifts-ltr {
   unicode-bidi: isolate;
   direction: ltr;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+#shifts-shell-pane bdi[dir="auto"] {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 #shifts-shell-pane {
@@ -373,6 +382,14 @@
   text-transform: none;
 }
 
+#shifts-shell-pane .shifts-checked-at {
+  display: inline-block;
+  max-inline-size: 100%;
+  white-space: normal;
+  text-align: start;
+  line-height: 1.35;
+}
+
 #shifts-shell-pane .shifts-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -436,6 +453,19 @@
 #shifts-shell-pane .shifts-list td,
 #shifts-shell-pane .shifts-list th {
   vertical-align: middle;
+}
+
+#shifts-shell-pane .shifts-list th {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+#shifts-shell-pane .shifts-list .shifts-date {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  min-width: 7.5rem;
 }
 
 #shifts-shell-pane .shifts-hours-form {

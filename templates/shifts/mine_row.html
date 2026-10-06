@@ -1,6 +1,6 @@
 {% load i18n shifts_extras %}
 <tr id="shift-mine-{{ assignment.pk }}">
-  <td><bdi class="shifts-ltr" dir="ltr">{{ assignment.date|date:"Y-m-d" }}</bdi></td>
+  <td class="shifts-date"><bdi class="shifts-ltr" dir="ltr">{{ assignment.date|date:"Y-m-d" }}</bdi></td>
   <td><span class="shifts-swatch" style="background-color: {{ assignment.shift_type.colour }}" aria-hidden="true"></span></td>
   <td>
     {{ assignment.shift_type.name }}
