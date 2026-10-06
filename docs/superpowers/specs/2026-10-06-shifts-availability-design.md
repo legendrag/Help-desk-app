@@ -46,10 +46,10 @@ These are the current building blocks. Names below match the code.
 6. Managers are `user.is_superuser` **or** `user.role.can_manage_shifts`. A branch user or a support user who has the flag is a manager and is not limited to the branch/support tabs. The flag is enforced on the server for every endpoint.
 7. Branch users who are not managers can open only the Available now board. Support users who are not managers can open My shifts, Team rota (own department only), and the same Available now board. They cannot open manager URLs.
 8. Available now shows the same payload to every viewer: per department, the names of people whose shift contains the current instant, and that shift’s end time. No start time, shift-type name, phone, email, hours, or any other field. No date query parameter changes the window.
-9. Week grids start on Monday in `TIME_ZONE`. Arabic RTL mirrors layout; it does not move the week start to Saturday or Sunday.
+9. Week grids start on Saturday in `TIME_ZONE` and run Saturday through Friday. Arabic RTL mirrors layout; it does not move the week start. Month grids stay calendar months (the 1st through the last day) and do not snap to a Saturday. Decision 3 is unchanged: an overnight shift is stored on its start date, whichever weekday that is.
 10. Repeat-forward accepts N from 1 through 12 inclusive.
 11. Copy, repeat, auto-fill, and the night-rotation apply never overwrite an existing assignment and never skip the overlap rule quietly. Conflicts are listed.
-12. Night vs day hours means “before local midnight on the assignment date” vs “after that midnight”. It does not mean a second night-time clock (for example 22:00–06:00 is 2 day hours + 6 night hours).
+12. Night hours are every hour of a shift whose effective interval crosses local midnight. Hours of a shift that does not cross midnight are day hours, including a 00:00–08:00 shift. Clipping to the selected range still applies: only minutes inside the range count, and every one of those minutes is night hours when the shift crosses midnight. The shift-length tool still shows “hours after midnight” as a separate informational number. That number is not the night-hours total.
 13. `ShiftType.is_night` is computed, not typed: true exactly when `end_time < start_time`.
 14. Shift-type names are unique per department, including archived rows. Archiving does not free the name.
 15. Delete is not offered for shift types. Archive only. `on_delete=PROTECT` so a department, user, or shift type that still has rows cannot be deleted out from under the rota.
@@ -261,7 +261,7 @@ Default redirect from `shifts_home`:
 
 Query strings:
 
-- Rota and team: `view=week|month` and `start=YYYY-MM-DD`. `start` is normalized to the Monday of that week, or to the first of the month when `view=month`. Missing `start` means the week (or month) that contains `timezone.localdate()`.
+- Rota and team: `view=week|month` and `start=YYYY-MM-DD`. For `view=week`, normalize `start` to the Saturday of that week: `start - timedelta(days=(start.weekday() - 5) % 7)` (`date.weekday()` is Monday `0` through Saturday `5`). A Wednesday snaps back to the preceding Saturday; a Saturday stays. For `view=month`, normalize to the first of that month. Month view does not snap to Saturday. Missing `start` means the week (or month) that contains `timezone.localdate()`.
 - Rota also takes `department=<id>`. Missing department means the first department by name. A bad id is 404.
 - Team rota has no department parameter for non-managers. Managers opening Team rota may pass `department`.
 - Calculator hours and coverage: `department`, `view`, `start`, same normalization.
@@ -329,7 +329,7 @@ Do not add a new full-page skeleton in `base.html`. The existing default skeleto
 Toolbar (managers, week view and month view):
 
 - Department `<select>` of all departments, ordered by name.
-- Previous / next, and a date input. Week view labels the Monday–Sunday range. Month view shows that month.
+- Previous / next, and a date input. Week view labels the Saturday–Friday range. Previous and next step seven days from that Saturday. Month view shows that calendar month, unchanged.
 - A week/month toggle. Switching view keeps the same anchor date.
 - **Copy last week** (week view only; hidden in month view).
 - **Repeat this week forward** with a number input N (week view only).
@@ -346,7 +346,7 @@ Grid:
 
 Queries for one grid (no per-cell queries):
 
-1. Assignments with `date__gte=first_visible_date - 1 day` and `date__lte=last_visible_date`, `shift_type__department` = selected, `select_related("user", "shift_type")`, `only()` the columns the template prints. The extra day is for overlap display and for Monday early coverage; it is not an extra column.
+1. Assignments with `date__gte=first_visible_date - 1 day` and `date__lte=last_visible_date`, `shift_type__department` = selected, `select_related("user", "shift_type")`, `only()` the columns the template prints. The extra day is for overlap display and for early-hour coverage on the first visible date (the previous day’s overnight). It is not an extra column. On a Saturday–Friday week that previous day is Friday.
 2. Users as described, `only("id", "username", "first_name", "last_name", "department_id", "user_type", "status")`.
 
 ETag for `shifts_rota_grid` and the shell pane: `etag_digest` of language, department id, view, start, assignment count, max `updated_at` of those assignments, and max `updated_at` of the department’s shift types. Use `htmx_revalidation_match` / `htmx_not_modified` / `apply_read_etag`. Do not set `ticket_list_304_defer_session_save` on rota GETs; they are not a 20s poll.
@@ -355,9 +355,9 @@ ETag for `shifts_rota_grid` and the shell pane: `etag_digest` of language, depar
 
 All three are manager POSTs, CSRF-protected, `transaction.atomic`, department-scoped.
 
-**Copy last week.** For each date D in the displayed Monday–Sunday, look at D−7 days. If that source row’s type is archived, skip it (“archived shift type”). If the target user already has a row on D, skip it (“already assigned”). If the copied interval would overlap a neighbor, skip it (“overlaps …”). Otherwise create the same user, type, and overrides on D. Source Sunday’s overnight tail is not copied onto target Monday; Monday’s cell comes only from the previous Monday. The overlap check still sees that tail.
+**Copy last week.** For each date D in the displayed Saturday–Friday week, look at D−7 days. If that source row’s type is archived, skip it (“archived shift type”). If the target user already has a row on D, skip it (“already assigned”). If the copied interval would overlap a neighbor, skip it (“overlaps …”). Otherwise create the same user, type, and overrides on D. Source Friday’s overnight tail is not copied onto target Saturday; Saturday’s cell comes only from the previous Saturday. The overlap check still sees that Friday-night tail.
 
-**Repeat this week forward.** N is an integer 1–12. Anything else is a form error `"Enter a number of weeks from 1 to 12."` For k = 1..N, copy each displayed-week assignment onto `date + 7*k days` with the same skip rules, including rows created earlier in this same transaction. Process dates in order so a copied Sunday night is visible when the next Monday is checked.
+**Repeat this week forward.** N is an integer 1–12. Anything else is a form error `"Enter a number of weeks from 1 to 12."` For k = 1..N, copy each displayed Saturday–Friday assignment onto `date + 7*k days` with the same skip rules, including rows created earlier in this same transaction. Process dates in Saturday-to-Friday order so a copied Friday night exists before the next week’s Saturday is checked.
 
 **Auto-fill nights.** Same algorithm as calculator tool 2, with these fixed inputs: the selected department, the visible date range, people = all active support users currently in that department, and a night shift type.
 
@@ -420,13 +420,13 @@ Managers only. One page, four tools, each posting or getting its own partial so 
 
 Inputs: department, week or month (same `view` and `start` as the rota).
 
-For every assignment of that department whose interval overlaps `[range_start, range_end)` — `range_end` is the start of the day after the last visible date — clip the interval to that window. Split the clipped part at local midnights.
+For every assignment of that department whose interval overlaps `[range_start, range_end)` — `range_end` is the start of the day after the last visible date — clip the interval to that window. Classify the whole shift, then count only the clipped minutes:
 
-- **Day hours:** minutes whose local calendar date equals the assignment’s `date`.
-- **Night hours:** the rest (the part after midnight, including minutes that land on the next date).
-- **Total:** day + night.
+- If `effective_is_night` (the interval crosses local midnight), every clipped minute is **night hours**. None of them are day hours, including the hours before midnight on the start date.
+- If the shift does not cross midnight, every clipped minute is **day hours**. A 00:00–08:00 shift is a day shift.
+- **Total** is day + night. A single shift contributes to only one of those two columns.
 
-A Sunday 22:00–06:00 shift clipped to a Monday–Sunday range that starts that next Monday contributes 6 night hours and 0 day hours. The same shift inside a range that includes that Sunday contributes 2 day hours (22:00–00:00) and 6 night hours. A 09:00–17:00 shift is 8 day hours and 0 night hours. A 00:00–08:00 shift does not cross midnight, so it is 8 day hours and 0 night hours.
+A Friday 22:00–06:00 shift is a night shift (8 clock hours). Clipped to the Saturday–Friday week that contains that Friday, only 22:00–00:00 is inside the week: 2 night hours and 0 day hours. The 00:00–06:00 tail falls on the next Saturday, which belongs to the next week. Clipped to that following Saturday–Friday week, the tail is 6 night hours and 0 day hours. Clipped to a month that contains both Friday and the following Saturday, all 8 hours count as night hours and 0 as day hours. A 09:00–17:00 shift does not cross midnight: 8 day hours and 0 night hours. A 00:00–08:00 shift does not cross midnight either: 8 day hours and 0 night hours.
 
 Show one row per person who has a non-zero clipped total, display name, day, night, and total, as hours and minutes (compute in integer minutes; do not use floats). Omit people with no assignments in range.
 
@@ -439,7 +439,7 @@ Constant `NIGHT_ROTATION_LOOKBACK_DAYS = 14` in `shifts/services.py`.
 Algorithm, deterministic:
 
 1. `dates` = each local date from start through end inclusive.
-2. Lookback night count for each included person = how many of their existing assignments in `[start - 14 days, start)` have `effective_is_night`. Also record the latest such date, or none.
+2. Lookback night count for each included person = how many of their existing assignments in `[start - 14 days, start)` have `effective_is_night` (the interval crosses midnight). Also record the latest such date, or none. This score counts night assignments, one per date. It does not use the hours tool’s minute split, so classifying every hour of a crossing shift as night hours does not change who is offered a night.
 3. `proposed` starts empty. Walk `dates` in order.
 4. A person is a candidate on D when all of these hold:
    - they have no existing assignment on D
@@ -477,11 +477,15 @@ Inputs: start time and end time, no date. This tool does not consult the databas
 
 Show `"%(hours)s hours %(minutes)s minutes"` and `"%(hours)s hours %(minutes)s minutes after midnight."`
 
+“Hours after midnight” is informational only. The owner asked the length tool to show the overnight portion of a start/end pair. It is not the night-hours figure from tool 1. A 22:00–06:00 pair is 8 hours total and 6 hours after midnight here; tool 1 counts all 8 hours as night hours when the whole interval sits inside the selected range.
+
 ### 4. Coverage gaps
 
 Inputs: department, week or month.
 
-Columns are the visible dates. Rows are local hours 00 through 23. A person covers hour H on date D when their interval overlaps `[D H:00, D H+1:00)`. A shift ending at 06:00 does not cover the 06:00 hour. Yesterday’s overnight (assignment date = first column − 1 day) covers the early hours of the first column. The last column’s overnight hours that fall on the next calendar date are not extra columns; they simply do not appear.
+Columns are the visible dates. Rows are local hours 00 through 23. A person covers hour H on date D when their interval overlaps `[D H:00, D H+1:00)`. A shift ending at 06:00 does not cover the 06:00 hour. Yesterday’s overnight (assignment date = first column − 1 day) covers the early hours of the first column. On a Saturday–Friday week, that is Friday night covering Saturday’s 00 through 05 rows (the half-open interval that ends at 06:00). The last column’s overnight hours that fall on the next calendar date are not extra columns; they simply do not appear. Month columns stay the calendar month.
+
+The heatmap is headcount, not the hours tool’s day/night split. A crossing shift covers every hour its interval overlaps, including hours before midnight on the start date. Those same minutes are night hours in tool 1 and occupied hours here.
 
 Cell text is the count. Count 0 uses class `shifts-gap` (highlighted) and the text `0`, so colour is not the only signal. The heatmap query is the same assignment fetch as the grid, including the day before the range.
 
@@ -523,7 +527,7 @@ Accessibility:
 RTL:
 
 - Do not set `left` / `right` or `margin-left` / `margin-right` in `shifts.css`. Use logical properties (`margin-inline`, `padding-inline`, `inset-inline-start`).
-- Do not force `direction: ltr` on the grid. `html[dir=rtl]` from `base.html` (and `rtl.css`) mirrors the table. Monday stays the first date in DOM order; in Arabic it appears on the right.
+- Do not force `direction: ltr` on the grid. `html[dir=rtl]` from `base.html` (and `rtl.css`) mirrors the table. Saturday stays the first date in DOM order; in Arabic it appears on the right. Month columns stay in calendar order and mirror the same way.
 - Every user-visible string is `{% trans %}` or `{% blocktrans trimmed %}`. Run `python scripts/i18n.py update` and `compile` in the implementation PR so `locale/ar/LC_MESSAGES/django.po` and `.mo` contain the new msgids. English remains the source language.
 
 Times on the rota, the board, and My shifts render with the `H:i` format (24-hour). Dates use Django’s localized date filters.
@@ -546,12 +550,14 @@ Times on the rota, the board, and My shifts render with the `H:i` format (24-hou
 | Repeat N outside 1–12 | Form error, no writes. |
 | Rotation vs an existing cell | Preview shows a gap or the apply step lists a skip. The existing assignment is not replaced. |
 | All candidates would work back-to-back | Allow it, mark those proposals, do not fail the whole range. |
-| DST | Assumption: this deployment uses one `TIME_ZONE` and does not rely on per-branch zones. Default is `UTC`, which has no DST. If `TIME_ZONE` is a zone with DST, intervals follow that zone’s `zoneinfo` rules with no extra compensation (a crossing shift can be 7 or 9 clock hours on the transition). A start or end that lands in a missing local hour raises `"That time does not exist on this date."` Ambiguous times use Django’s default `make_aware` (first occurrence). The length tool has no date, so it is pure clock arithmetic and ignores DST. |
+| DST | Assumption: this deployment uses one `TIME_ZONE` and does not rely on per-branch zones. Default is `UTC`, which has no DST. If `TIME_ZONE` is a zone with DST, intervals follow that zone’s `zoneinfo` rules with no extra compensation (a crossing shift can be 7 or 9 clock hours on the transition). Every one of those clock hours is still night hours. A start or end that lands in a missing local hour raises `"That time does not exist on this date."` Ambiguous times use Django’s default `make_aware` (first occurrence). The length tool has no date, so it is pure clock arithmetic and ignores DST. Its “hours after midnight” figure is not the night-hours total. |
 | MySQL timezone tables | Filter `ShiftAssignment.date` with `date__gte`, `date__lte`, and `date__in` only. Build “today” and “yesterday” in Python with `timezone.localdate()`. Do not use `__date`, `TruncDate`, or `CONVERT_TZ` lookups on datetimes. |
 | Equal start and end | Validation error, nothing saved. |
 | Colour not a 6-digit hex | Validation error. |
 | Manager is a branch user | Treated as a manager on every shifts endpoint. |
 | Admin role | Migration backfill plus `Role.save()` keep `can_manage_shifts` true. Other existing roles stay false. |
+| Week boundary | The rota week is Saturday–Friday. Friday night’s tail falls on Saturday of the next week. Copy does not turn that tail into a Saturday assignment. |
+| Night hours vs length tool | A crossing shift’s clipped minutes are all night hours. A non-crossing shift’s minutes are all day hours. The length tool’s “hours after midnight” is a separate informational number. |
 
 ## Testing
 
@@ -565,10 +571,11 @@ Unit and view tests:
 - Overlap: adjacent night vs early morning rejected; touching endpoints allowed; second row the same date rejected.
 - Department and user-type checks: branch user, support user of another department, and inactive support user cannot be assigned on a future date. A past assignment remains after the user’s department changes, and the future one is flagged in the rota HTML.
 - Archived type still rendered on a past date; POST of that type onto a future empty cell fails.
-- Hours: 22:00–06:00 inside a range that contains both dates is 2 day hours and 6 night hours (120 and 360 minutes). Clipped to the following day only, 6 night hours. 09:00–17:00 is 8 day hours.
-- Length tool: 22:00–06:00 → 8 hours total, 6 after midnight. 09:00–12:30 → 3 hours 30 minutes, 0 after midnight. Equal times → error.
-- Rotation fairness cases listed in tool 2, including “does not change an existing assignment”.
-- Coverage: the 05:00 hour on Tuesday is covered by Monday’s night shift; the 06:00 hour is not; an hour with no row has text `0` and class `shifts-gap`.
+- Week start: `view=week` with a Wednesday `start` normalizes to the preceding Saturday; a Saturday `start` stays that Saturday; `view=month` still normalizes to the first of the month. The week label runs Saturday through Friday. Copy last week reads and writes that span and does not create a Saturday assignment from the previous Friday’s overnight tail. Repeat-forward processes Saturday through Friday so the copied Friday night is visible to the next Saturday’s overlap check.
+- Hours: a 22:00–06:00 shift inside a range that contains both the start date and the following morning is 0 day hours and 8 night hours (480 minutes). Clipped to the Friday of a Saturday–Friday week, that shift is 2 night hours (120 minutes) and 0 day hours. Clipped to the following Saturday only, it is 6 night hours (360 minutes) and 0 day hours. 09:00–17:00 is 8 day hours. 00:00–08:00 does not cross midnight, so it is 8 day hours and 0 night hours.
+- Length tool: 22:00–06:00 → 8 hours total, 6 after midnight. 09:00–12:30 → 3 hours 30 minutes, 0 after midnight. Equal times → error. The after-midnight figure stays informational and is not asserted as the hours-tool night total.
+- Rotation fairness cases listed in tool 2, including “does not change an existing assignment”. Lookback scoring counts `effective_is_night` assignments, not night minutes.
+- Coverage: the 05:00 hour on Tuesday is covered by Monday’s night shift; the 06:00 hour is not; an hour with no row has text `0` and class `shifts-gap`. Friday 22:00–06:00 also covers Friday 22:00 and 23:00 (headcount), and those hours are night hours in the hours tool.
 - Permissions: for every named URL, assert status for anonymous (redirect to login), branch non-manager, support non-manager, support non-manager of another department (team rota and rota GET with `department=`), manager (`can_manage_shifts` and not superuser), and superuser. Branch responses for rota, types, calculator, mine, and team are 403 and the body does not contain another day’s schedule or an hour total. Support POST to cell, copy, repeat, auto-fill, type archive, and rotation apply is 403.
 - Available now HTML for a branch user contains the on-shift display name and end time and does not contain the shift type name or the start time.
 - ETag: GET the board with `HTTP_HX_REQUEST=true`, then repeat with `HTTP_IF_NONE_MATCH` equal to the `ETag` header, and assert 304 and an empty body. A changed assignment returns 200. A history-restore header (`HTTP_HX_HISTORY_RESTORE_REQUEST=true`) returns 200, matching `htmx_revalidation_match`.
@@ -629,4 +636,4 @@ No feature flag. The sidebar link is the rollout. Existing roles other than `adm
 
 ## Open questions
 
-None. The choices that were not spelled out in the approval (Monday week start, half-open intervals, one row per person per date, N limited to 12, rotation steps, auto-fill reusing that algorithm, 403 rather than a silent redirect, Available now showing every department to every logged-in viewer, CSS kept inside the new app) are locked above.
+None. The choices that were not spelled out in the approval (Saturday week start, half-open intervals, one row per person per date, N limited to 12, rotation steps, auto-fill reusing that algorithm, 403 rather than a silent redirect, Available now showing every department to every logged-in viewer, CSS kept inside the new app, night hours meaning the whole crossing shift) are locked above.
