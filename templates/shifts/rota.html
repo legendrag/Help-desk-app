@@ -20,6 +20,14 @@
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=week&start={{ start|date:'Y-m-d' }}">{% trans "Week" %}</a>
   <a class="settings-tab" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>
 </form>
+<form method="post" action="{% url 'shifts_auto_fill' %}">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="hidden" name="action" value="preview">
+  <button class="btn secondary" type="submit">{% trans "Auto-fill nights" %}</button>
+</form>
 {% if view == "week" %}
 <form method="post" action="{% url 'shifts_copy_week' %}">
   {% csrf_token %}

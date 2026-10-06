@@ -25,6 +25,7 @@ from shifts.services import (
     overlap_message,
     overrides_set_by_worker,
     plan_copy,
+    suggest_nights,
     week_dates,
 )
 
@@ -465,3 +466,160 @@ def shifts_repeat_week(request):
             )
     notice = _("Repeated %(count)s shifts.") % {"count": created}
     return _grid_response(request, department, retarget=False, notice=notice, skips=skips)
+
+
+def _dates_inclusive(start, end):
+    if end < start:
+        start, end = end, start
+    days = []
+    cursor = start
+    while cursor <= end:
+        days.append(cursor)
+        cursor += timedelta(days=1)
+    return days
+
+
+def _people_and_existing(people):
+    by_user = {person.pk: [] for person in people}
+    rows = ShiftAssignment.objects.filter(user__in=people).select_related("shift_type", "user")
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    return by_user
+
+
+def _apply_rotation(proposals, shift_type, department):
+    created = 0
+    skips = []
+    with transaction.atomic():
+        for item in proposals:
+            if item.get("gap"):
+                continue
+            user = User.objects.filter(pk=item["user_id"]).select_related("role").first()
+            if (
+                user is None
+                or user.user_type != User.UserType.SUPPORT
+                or user.status != User.Status.ACTIVE
+                or user.department_id != department.pk
+            ):
+                item["skip"] = _("Only active support users in this department can be assigned.")
+                skips.append(item)
+                continue
+            if shift_type.archived or not shift_type.is_night or shift_type.department_id != department.pk:
+                item["skip"] = _("Archived shift types cannot be assigned.")
+                skips.append(item)
+                continue
+            if ShiftAssignment.objects.filter(user_id=user.pk, date=item["date"]).exists():
+                item["skip"] = "already assigned"
+                skips.append(item)
+                continue
+            probe = ShiftAssignment(user=user, date=item["date"], shift_type=shift_type)
+            start_dt, end_dt = interval_for(item["date"], shift_type.start_time, shift_type.end_time)
+            other = neighbor_conflict(probe, start_dt, end_dt)
+            if other:
+                item["skip"] = overlap_message(other)
+                skips.append(item)
+                continue
+            ShiftAssignment.objects.create(
+                user=user,
+                shift_type=shift_type,
+                date=item["date"],
+                start_time_override=None,
+                end_time_override=None,
+                times_set_by=None,
+                times_set_at=None,
+                checked_in_at=None,
+            )
+            created += 1
+    return created, skips
+
+
+@login_required
+@require_POST
+def shifts_calc_rotation(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    shift_type = get_object_or_404(
+        ShiftType, pk=request.POST.get("shift_type"),
+        department=department, archived=False, is_night=True,
+    )
+    start = date.fromisoformat(request.POST.get("start"))
+    end = date.fromisoformat(request.POST.get("end"))
+    dates = _dates_inclusive(start, end)
+    people = list(User.objects.filter(
+        pk__in=request.POST.getlist("users"),
+        department=department,
+        user_type=User.UserType.SUPPORT,
+        status=User.Status.ACTIVE,
+    ))
+    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    created = 0
+    skips = []
+    if request.POST.get("action") == "apply":
+        for person in people:
+            for day in dates:
+                if ShiftAssignment.objects.filter(user=person, date=day).exists():
+                    skips.append({"date": day, "user_id": person.pk, "skip": "already assigned"})
+        created, applied_skips = _apply_rotation(
+            [item for item in proposals if not item.get("gap")],
+            shift_type,
+            department,
+        )
+        skips.extend(applied_skips)
+    return render(request, "shifts/calc_rotation.html", {
+        "proposals": proposals,
+        "skips": skips,
+        "created": created,
+        "department": department,
+        "shift_type": shift_type,
+    })
+
+
+@login_required
+@require_POST
+def shifts_auto_fill(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    _view, _start, dates = _rota_dates(request)
+    night_types = list(
+        ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
+    )
+    if not night_types:
+        return _grid_response(request, department, notice=_("This department has no night shift."))
+    chosen_id = request.POST.get("shift_type")
+    shift_type = night_types[0]
+    if chosen_id:
+        shift_type = get_object_or_404(
+            ShiftType, pk=chosen_id, department=department, archived=False, is_night=True,
+        )
+    elif len(night_types) > 1:
+        return render(request, "shifts/calc_rotation.html", {
+            "pick_types": night_types,
+            "department": department,
+            "proposals": [],
+            "skips": [],
+            "created": 0,
+        })
+    people = list(User.objects.filter(
+        department=department,
+        user_type=User.UserType.SUPPORT,
+        status=User.Status.ACTIVE,
+    ))
+    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    if request.POST.get("action") != "apply":
+        return render(request, "shifts/calc_rotation.html", {
+            "proposals": proposals,
+            "skips": [],
+            "created": 0,
+            "department": department,
+            "shift_type": shift_type,
+            "can_apply": True,
+        })
+    created, skips = _apply_rotation(proposals, shift_type, department)
+    return _grid_response(
+        request,
+        department,
+        notice=_("Filled %(count)s night shifts.") % {"count": created},
+        skips=skips,
+    )

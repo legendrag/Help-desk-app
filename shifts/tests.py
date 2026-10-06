@@ -357,3 +357,86 @@ class CopyWeekTests(TestCase):
         self.assertEqual(repeated.start_time_override, time(18, 0))
         self.assertEqual(repeated.end_time_override, time(23, 0))
         self.assertEqual(repeated.times_set_by_id, manager.pk)
+
+
+class RotationTests(TestCase):
+    def test_three_people_six_nights_are_even_and_not_consecutive(self):
+        from shifts.services import suggest_nights
+
+        department = make_department("Fair")
+        people = [make_user(f"fair-{i}", "support", department) for i in range(3)]
+        night = make_shift_type(department, name="Fair night")
+        dates = [date(2026, 10, 5) + timedelta(days=i) for i in range(6)]
+        result = suggest_nights(people, dates, night, {person.pk: [] for person in people})
+        assigned = [row for row in result if not row.get("gap")]
+        counts = {}
+        for row in assigned:
+            counts[row["user_id"]] = counts.get(row["user_id"], 0) + 1
+        self.assertEqual(sorted(counts.values()), [2, 2, 2])
+        by_date = {row["date"]: row["user_id"] for row in assigned}
+        for idx in range(1, 6):
+            self.assertNotEqual(by_date[dates[idx]], by_date[dates[idx - 1]])
+
+    def test_apply_does_not_overwrite(self):
+        department = make_department("Keep")
+        role = make_role("Keep lead", can_manage_shifts=True)
+        manager = make_user("keep-lead", "support", department, role)
+        agent = make_user("keep-agent", "support", department)
+        night = make_shift_type(department, name="Keep night")
+        existing = make_assignment(agent, night, date(2026, 10, 5))
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_calc_rotation"), {
+            "department": department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-05",
+            "shift_type": night.pk,
+            "users": [agent.pk],
+            "action": "apply",
+        })
+        self.assertContains(response, "already assigned")
+        existing.refresh_from_db()
+        self.assertEqual(existing.shift_type_id, night.pk)
+
+    def test_day_or_archived_night_type_returns_404_and_writes_nothing(self):
+        department = make_department("Gate")
+        role = make_role("Gate lead", can_manage_shifts=True)
+        manager = make_user("gate-lead", "support", department, role)
+        agent = make_user("gate-agent", "support", department)
+        day = make_shift_type(department, name="Gate day", start=time(9, 0), end=time(17, 0))
+        archived = make_shift_type(department, name="Gate old night", archived=True)
+        self.client.force_login(manager)
+        payload = {
+            "department": department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-05",
+            "users": [agent.pk],
+            "action": "apply",
+        }
+        for bad in (day, archived):
+            response = self.client.post(
+                reverse("shifts_calc_rotation"),
+                {**payload, "shift_type": bad.pk},
+            )
+            self.assertEqual(response.status_code, 404)
+        self.assertEqual(ShiftAssignment.objects.count(), 0)
+
+    def test_two_people_two_dates_are_one_each(self):
+        from shifts.services import suggest_nights
+
+        department = make_department("Pair")
+        people = [make_user(f"pair-{i}", "support", department) for i in range(2)]
+        night = make_shift_type(department, name="Pair night")
+        dates = [date(2026, 10, 5), date(2026, 10, 6)]
+        result = suggest_nights(people, dates, night, {person.pk: [] for person in people})
+        self.assertEqual([row["user_id"] for row in result], [people[0].pk, people[1].pk])
+        self.assertFalse(any(row["back_to_back"] for row in result))
+
+    def test_one_person_second_night_is_back_to_back(self):
+        from shifts.services import suggest_nights
+
+        department = make_department("Solo")
+        person = make_user("solo", "support", department)
+        night = make_shift_type(department, name="Solo night")
+        dates = [date(2026, 10, 5), date(2026, 10, 6)]
+        result = suggest_nights([person], dates, night, {person.pk: []})
+        self.assertEqual(result[1]["back_to_back"], True)

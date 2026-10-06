@@ -169,3 +169,62 @@ def overlap_message(other) -> str:
         "start": start_t.strftime("%H:%M"),
         "end": end_t.strftime("%H:%M"),
     }
+
+
+def suggest_nights(people, dates, shift_type, existing_by_user):
+    if not dates:
+        return []
+    start = dates[0]
+    lookback_from = start - timedelta(days=NIGHT_ROTATION_LOOKBACK_DAYS)
+    stats = {}
+    for person in people:
+        rows = existing_by_user.get(person.pk, [])
+        nights = [
+            row.date for row in rows
+            if lookback_from <= row.date < start and row.shift_type.is_night
+        ]
+        stats[person.pk] = {
+            "lookback": len(nights),
+            "last": max(nights) if nights else None,
+            "proposed": 0,
+            "dates": {row.date for row in rows},
+            "night_dates": {row.date for row in rows if row.shift_type.is_night},
+            "intervals": [effective_interval(row) for row in rows],
+        }
+    result = []
+    for day in dates:
+        target = interval_for(day, shift_type.start_time, shift_type.end_time)
+        preferred = []
+        backup = []
+        for person in people:
+            st = stats[person.pk]
+            if day in st["dates"]:
+                continue
+            if any(overlaps(target, existing) for existing in st["intervals"]):
+                continue
+            if (day - timedelta(days=1)) in st["night_dates"]:
+                backup.append(person)
+            else:
+                preferred.append(person)
+        pool = preferred or backup
+        if not pool:
+            result.append({"date": day, "gap": True})
+            continue
+
+        def sort_key(person, stats=stats):
+            st = stats[person.pk]
+            last = st["last"] or date.min
+            return (st["lookback"] + st["proposed"], last, person.pk)
+
+        chosen = min(pool, key=sort_key)
+        st = stats[chosen.pk]
+        st["proposed"] += 1
+        st["dates"].add(day)
+        st["night_dates"].add(day)
+        st["intervals"].append(target)
+        result.append({
+            "date": day,
+            "user_id": chosen.pk,
+            "back_to_back": not preferred,
+        })
+    return result
