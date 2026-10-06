@@ -20,6 +20,7 @@ urlpatterns = [
     path("mine/<int:pk>/hours/", views.shifts_mine_hours, name="shifts_mine_hours"),
     path("mine/<int:pk>/check-in/", views.shifts_check_in, name="shifts_check_in"),
     path("available/", views.shifts_available, name="shifts_available"),
+    path("available/board/", views.shifts_available_board, name="shifts_available_board"),
     path("types/", views.shifts_types, name="shifts_types"),
     path("types/add/", views.shifts_type_add, name="shifts_type_add"),
     path("types/<int:pk>/edit/", views.shifts_type_edit, name="shifts_type_edit"),

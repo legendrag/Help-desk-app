@@ -733,3 +733,120 @@ class TeamRotaTests(TestCase):
     def test_branch_forbidden(self):
         self.client.force_login(make_user("team-branch", "branch"))
         self.assertEqual(self.client.get(reverse("shifts_team")).status_code, 403)
+
+
+class AvailableNowTests(TestCase):
+    def test_night_shift_shows_without_check_in_until_end(self):
+        department = make_department("Now")
+        agent = make_user("now-agent", "support", department)
+        night = make_shift_type(department, name="Now night")
+        make_assignment(agent, night, date(2026, 6, 1))
+        self.client.force_login(make_user("now-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            shown = self.client.get(reverse("shifts_available_board"))
+        self.assertContains(shown, "now-agent")
+        self.assertNotContains(shown, "Now night")
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 6, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            hidden = self.client.get(reverse("shifts_available_board"))
+        self.assertNotContains(hidden, "now-agent")
+
+    def test_day_shift_needs_check_in_and_etag_changes(self):
+        department = make_department("Now day")
+        agent = make_user("day-agent", "support", department)
+        day = make_shift_type(department, name="Now day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(agent, day, date(2026, 6, 2))
+        self.client.force_login(agent)
+        noon = aware(2026, 6, 2, 12, 0)
+        with patch("django.utils.timezone.now", return_value=noon), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            before = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
+        self.assertNotContains(before, "day-agent")
+        etag_before = before["ETag"]
+        row.checked_in_at = noon
+        row.save()
+        with patch("django.utils.timezone.now", return_value=noon), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            after = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
+        self.assertContains(after, "day-agent")
+        self.assertNotEqual(after["ETag"], etag_before)
+        with patch("django.utils.timezone.now", return_value=noon), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            cached = self.client.get(
+                reverse("shifts_available_board"),
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=after["ETag"],
+            )
+        self.assertEqual(cached.status_code, 304)
+
+    def test_early_check_in_stays_hidden_until_start_and_changes_etag(self):
+        department = make_department("Early")
+        agent = make_user("early-agent", "support", department)
+        day = make_shift_type(department, name="Early day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(agent, day, date(2026, 6, 2))
+        self.client.force_login(agent)
+        early = aware(2026, 6, 2, 8, 40)
+        with patch("django.utils.timezone.now", return_value=early), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            before = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
+        row.checked_in_at = early
+        row.save()
+        with patch("django.utils.timezone.now", return_value=early), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            during = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
+        self.assertNotContains(during, "early-agent")
+        self.assertNotEqual(during["ETag"], before["ETag"])
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 9, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            started = self.client.get(reverse("shifts_available_board"))
+        self.assertContains(started, "early-agent")
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 17, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            ended = self.client.get(reverse("shifts_available_board"))
+        self.assertNotContains(ended, "early-agent")
+
+    def test_empty_department_and_no_type_name_for_branch(self):
+        empty = make_department("Empty desk")
+        staffed = make_department("Staffed")
+        agent = make_user("staffed-agent", "support", staffed, first_name="", last_name="")
+        night = make_shift_type(staffed, name="Secret type")
+        make_assignment(agent, night, date(2026, 6, 1))
+        self.client.force_login(make_user("board-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            response = self.client.get(reverse("shifts_available_board"))
+        self.assertContains(response, "Nobody on shift now")
+        self.assertContains(response, "staffed-agent")
+        self.assertNotContains(response, "Secret type")
+        self.assertContains(response, "06:00")
+
+    def test_history_restore_is_not_304(self):
+        department = make_department("Hist")
+        self.client.force_login(make_user("hist-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            first = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
+            restored = self.client.get(
+                reverse("shifts_available_board"),
+                HTTP_HX_REQUEST="true",
+                HTTP_IF_NONE_MATCH=first["ETag"],
+                HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+            )
+        self.assertEqual(restored.status_code, 200)
+
+    def test_board_query_budget(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        department = make_department("Budget board")
+        night = make_shift_type(department, name="Budget night")
+        for index in range(6):
+            person = make_user(f"board-{index}", "support", department)
+            make_assignment(person, night, date(2026, 6, 1))
+        self.client.force_login(make_user("budget-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)), \
+             CaptureQueriesContext(connection) as captured:
+            self.client.get(reverse("shifts_available_board"))
+        self.assertLessEqual(len(captured), 8)

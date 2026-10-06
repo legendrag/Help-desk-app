@@ -236,7 +236,59 @@ def shifts_mine(request):
 @login_required
 @require_GET
 def shifts_available(request):
-    return _shell(request, "shifts/available.html", {})
+    return _shell(request, "shifts/available.html", {"board_etag": ""})
+
+
+@login_required
+@require_GET
+def shifts_available_board(request):
+    now = timezone.now()
+    today = timezone.localdate()
+    yesterday = today - timedelta(days=1)
+    rows = list(
+        ShiftAssignment.objects.filter(date__in=[yesterday, today])
+        .select_related("user", "shift_type", "shift_type__department")
+    )
+    checked = [row.checked_in_at for row in rows if row.checked_in_at]
+    on_shift = []
+    for row in rows:
+        start_dt, end_dt = effective_interval(row)
+        if not (start_dt <= now < end_dt):
+            continue
+        if row.shift_type.is_night or row.checked_in_at:
+            on_shift.append((row, end_dt))
+    parts = [
+        get_language(),
+        max(checked).isoformat() if checked else "",
+        len(checked),
+    ]
+    by_department = {}
+    for row, end_dt in on_shift:
+        by_department.setdefault(row.shift_type.department_id, []).append((row, end_dt))
+    for department_id in sorted(by_department):
+        tuples = []
+        for row, end_dt in by_department[department_id]:
+            start_dt, real_end = effective_interval(row)
+            tuples.append((
+                row.user_id,
+                start_dt.isoformat(),
+                real_end.isoformat(),
+                row.times_set_at.isoformat() if row.times_set_at else "",
+                row.checked_in_at.isoformat() if row.checked_in_at else "",
+            ))
+        parts.append((department_id, tuple(sorted(tuples))))
+    etag = etag_digest(parts)
+    if htmx_revalidation_match(request, etag):
+        request.ticket_list_304_defer_session_save = True
+        return htmx_not_modified(etag)
+    cards = []
+    for department in Department.objects.order_by("name"):
+        people = []
+        for row, end_dt in sorted(by_department.get(department.pk, []), key=lambda item: item[0].user_id):
+            people.append({"name": display_name(row.user), "end": end_dt})
+        cards.append({"department": department, "people": people})
+    response = render(request, "shifts/available_board.html", {"cards": cards, "board_etag": etag})
+    return apply_read_etag(response, etag, request)
 
 
 def _selected_department(request):
