@@ -130,7 +130,7 @@ interval = [start_dt, end_dt)   # half-open
 
 Aware datetimes use `django.utils.timezone.make_aware` and `timezone.get_current_timezone()` (the active `TIME_ZONE`). “Contains now” means `start_dt <= timezone.now() < end_dt`.
 
-`effective_crosses_midnight(assignment)` is `end_t < start_t`. That flag only places the end on the next calendar day. It does **not** decide night hours. Night hours use `shift_type.is_night` (decision 12). A night type with worker times 18:00–23:00 does not cross midnight and is still night hours. A day type with a manager override of 22:00–06:00 does cross midnight and is still day hours.
+`effective_crosses_midnight(start_t, end_t)` is `end_t < start_t`. `interval_for` calls it, and only it, to decide whether the end falls on the next calendar day. Pass the assignment’s effective times. That flag only places the end on the next calendar day. It does **not** decide night hours. Night hours use `shift_type.is_night` (decision 12). A night type with worker times 18:00–23:00 does not cross midnight and is still night hours. A day type with a manager override of 22:00–06:00 does cross midnight and is still day hours.
 
 Equal start and end is a validation error (`"Start and end must differ."`) on the shift type and on a manager override in the cell modal. A single override without the other is `"Enter both start and end, or leave both blank."` The mine-hours form uses the messages in “Worker night hours” below. That endpoint always applies the 16-hour cap. The cell modal does not.
 

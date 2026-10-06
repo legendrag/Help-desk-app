@@ -34,7 +34,7 @@ Every task includes these. Copy the values. Do not invent new ones.
 - `TIME_ZONE` is `settings.TIME_ZONE`. `USE_TZ` is true. Build “today” with `timezone.localdate()`.
 - Tests: `python manage.py test <label>` uses `config.settings`. `'test' in sys.argv` sets `MIGRATION_MODULES` so migrations do not run. Do not add pytest or freezegun. Freeze time with `unittest.mock.patch` on `django.utils.timezone.now` and `django.utils.timezone.localdate`. Views call `timezone.now()` and `timezone.localdate()` on that module.
 - Do not edit `static/css/modern.css`, `dark-mode.css`, `rtl.css`, `style.css`, anything under `tickets/`, `kb/`, `news/`, `notifications/`, `webpush/`, dashboard templates, or `core/session_middleware.py`.
-- User-visible sentences are exactly these English strings (Task 14 translates them): `"Start and end must differ."`, `"Enter both start and end, or leave both blank."`, `"Only active support users in this department can be assigned."`, `"Archived shift types cannot be assigned."`, `"That time does not exist on this date."`, `"Enter a number of weeks from 1 to 12."`, `"Nothing to copy."`, `"Copied %(count)s shifts."`, `"Repeated %(count)s shifts."`, `"Filled %(count)s night shifts."`, `"This department has no night shift."`, `"Nobody available on %(date)s."`, `"You can only change hours from the last 7 days onward."`, `"Enter both a start and an end time."`, `"This shift must be longer than 0 hours and no more than 16 hours."`, `"You can check in from 30 minutes before this shift starts."`, `"This shift has ended."`, `"You are not assigned to a department."`, `"Nobody on shift now"`, `"You are on shift until %(end)s."`, `"You have no upcoming shifts."`, `"Set by worker"`, `"Not in this department"`, `"Inactive"`, `"Not checked in"`, `"Missed"`, `"Check in"`, `"Clear check-in"`, `"Set my hours"`, `"Reset to shift default"`.
+- User-visible sentences are exactly these English strings (Task 14 translates them): `"Start and end must differ."`, `"Shift type name must be at least 2 characters long."`, `"Enter both start and end, or leave both blank."`, `"Only active support users in this department can be assigned."`, `"Archived shift types cannot be assigned."`, `"That time does not exist on this date."`, `"Enter a number of weeks from 1 to 12."`, `"Nothing to copy."`, `"Copied %(count)s shifts."`, `"Repeated %(count)s shifts."`, `"Filled %(count)s night shifts."`, `"This department has no night shift."`, `"Nobody available on %(date)s."`, `"You can only change hours from the last 7 days onward."`, `"Enter both a start and an end time."`, `"This shift must be longer than 0 hours and no more than 16 hours."`, `"You can check in from 30 minutes before this shift starts."`, `"This shift has ended."`, `"You are not assigned to a department."`, `"Nobody on shift now"`, `"You are on shift until %(end)s."`, `"You have no upcoming shifts."`, `"Set by worker"`, `"Not in this department"`, `"Inactive"`, `"Not checked in"`, `"Missed"`, `"Check in"`, `"Clear check-in"`, `"Set my hours"`, `"Reset to shift default"`.
 
 This is one app, so it stays one plan. Tasks are ordered. Do not start Task N+1 before Task N’s tests pass.
 
@@ -257,7 +257,7 @@ git commit -m "Add can_manage_shifts role flag"
 ## Task 2: App scaffold, models, admin, URLs
 
 **Files:**
-- Create: `shifts/__init__.py`, `shifts/apps.py`, `shifts/admin.py`, `shifts/models.py`, `shifts/migrations/__init__.py`, `shifts/migrations/0001_initial.py`, `shifts/urls.py` (empty `urlpatterns`), `shifts/tests.py`
+- Create: `shifts/__init__.py`, `shifts/apps.py`, `shifts/admin.py`, `shifts/models.py`, `shifts/forms.py` (placeholder module; Task 5 replaces it with `ShiftTypeForm`), `shifts/migrations/__init__.py`, `shifts/migrations/0001_initial.py`, `shifts/urls.py` (empty `urlpatterns`), `shifts/tests.py`
 - Modify: `config/settings.py` (`INSTALLED_APPS` only). Do not edit `config/urls.py` in this task.
 
 **Interfaces:**
@@ -450,6 +450,12 @@ python manage.py makemigrations shifts --name initial
 Then edit `shifts/migrations/0001_initial.py` so `dependencies` includes `("core", "0023_role_can_manage_shifts")` and `("accounts", "0008_alter_requires_password_change_verbose")` plus the swappable user dependency Django already inserts. Do not add `check_in_cleared_by`.
 
 Create `shifts/urls.py` with `urlpatterns = []`. Do not add the include in `config/urls.py` until Task 4.
+
+Create `shifts/forms.py` now, before any later task imports it:
+
+```python
+"""Shift forms. Task 5 replaces this module with ShiftTypeForm."""
+```
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -652,7 +658,7 @@ def aware_on(on: date, clock: time):
 
 def interval_for(on: date, start_t: time, end_t: time):
     start_dt = aware_on(on, start_t)
-    end_day = on + timedelta(days=1) if end_t < start_t else on
+    end_day = on + timedelta(days=1) if effective_crosses_midnight(start_t, end_t) else on
     end_dt = aware_on(end_day, end_t)
     return start_dt, end_dt
 
@@ -672,7 +678,7 @@ def clock_length(start_t: time, end_t: time):
     anchor = date(2026, 1, 5)
     start_dt, end_dt = interval_for(anchor, start_t, end_t)
     total = int((end_dt - start_dt).total_seconds() // 60)
-    if end_t < start_t:
+    if effective_crosses_midnight(start_t, end_t):
         after = end_t.hour * 60 + end_t.minute
     else:
         after = 0
@@ -833,6 +839,7 @@ def display_name(user) -> str:
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET
 
@@ -917,6 +924,17 @@ urlpatterns = [
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Rota" %}</a>
+    {# Task 5: Shift types tab goes here, still inside is_manager. #}
+    {# Task 9: Calculator tab goes here, after Shift types and before Available now. #}
+    <a class="settings-tab" role="tab" tabindex="0"
+       aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
+       href="{% url 'shifts_available' %}"
+       hx-get="{% url 'shifts_available' %}"
+       hx-target="#shell-content"
+       hx-swap="innerHTML show:window:top settle:0"
+       hx-push-url="true"
+       hx-sync="#shell-content:replace"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
     {% endif %}
     {% if user.user_type == "support" or is_manager %}
     <a class="settings-tab" role="tab" tabindex="0"
@@ -928,7 +946,9 @@ urlpatterns = [
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "My shifts" %}</a>
+    {# Task 12: Team rota tab goes here, still inside support or manager. #}
     {% endif %}
+    {% if not is_manager %}
     <a class="settings-tab" role="tab" tabindex="0"
        aria-selected="{% if request.resolver_match.url_name == 'shifts_available' %}true{% else %}false{% endif %}"
        href="{% url 'shifts_available' %}"
@@ -938,6 +958,7 @@ urlpatterns = [
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
+    {% endif %}
   </nav>
   {% block shifts_body %}{% endblock %}
 </div>
@@ -945,7 +966,7 @@ urlpatterns = [
 {% block extra_js %}{{ block.super }}<script src="{% static 'js/shifts.js' %}"></script>{% endblock %}
 ```
 
-`shell.html` extends `base.html`. Later tasks insert more `<a class="settings-tab">` nodes into this nav. Each new tab repeats the `hx-get` / `hx-target="#shell-content"` / `hx-swap="innerHTML show:window:top settle:0"` / `hx-push-url="true"` / `hx-sync="#shell-content:replace"` / `tabindex="0"` / `onkeydown` attributes. Do not set `hx-trigger="shell-nav"` on a tab. That trigger is only for the sidebar link. Branch users see only Available now, because the Rota and My shifts links are inside the `{% if %}` blocks. Pass `is_manager` from a tiny context helper used by every shifts render:
+The two Available now links are mutually exclusive. A manager sees the one inside `{% if is_manager %}`, after Rota and before My shifts. A non-manager sees only the one inside `{% if not is_manager %}`. Do not render both. Finished order: manager is Rota, Shift types, Calculator, Available now, My shifts, Team rota. Support who is not a manager is My shifts, Team rota, Available now. A branch user sees Available now only. Later tasks insert a tab at the comment that names that task. Each new tab repeats the `hx-get` / `hx-target="#shell-content"` / `hx-swap="innerHTML show:window:top settle:0"` / `hx-push-url="true"` / `hx-sync="#shell-content:replace"` / `tabindex="0"` / `onkeydown` attributes. Do not set `hx-trigger="shell-nav"` on a tab. Pass `is_manager` from a tiny context helper used by every shifts render:
 
 ```python
 def _shell(request, template, context):
@@ -1100,6 +1121,22 @@ class ShiftTypeCrudTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ShiftType.objects.filter(name="Bad").exists())
         self.assertContains(response, "Start and end must differ.")
+
+    def test_short_name_rejected(self):
+        department = make_department("Types4")
+        role = make_role("Types lead 3", can_manage_shifts=True)
+        manager = make_user("types-lead-3", "support", department, role)
+        self.client.force_login(manager)
+        response = self.client.post(reverse("shifts_type_add"), {
+            "department": department.pk,
+            "name": " N ",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "colour": "#336699",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ShiftType.objects.filter(department=department).exists())
+        self.assertContains(response, "at least 2 characters")
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1110,7 +1147,7 @@ Expected: FAIL with `NoReverseMatch: 'shifts_types'`.
 
 - [ ] **Step 3: Write the minimal implementation**
 
-Append to `shifts/forms.py`:
+Replace the Task 2 placeholder `shifts/forms.py` with:
 
 ```python
 import re
@@ -1133,6 +1170,12 @@ class ShiftTypeForm(forms.ModelForm):
         if not self.instance.pk:
             self.fields.pop("archived")
 
+    def clean_name(self):
+        name = self.cleaned_data.get("name")
+        if not name or len(name.strip()) < 2:
+            raise forms.ValidationError(_("Shift type name must be at least 2 characters long."))
+        return name.strip()
+
     def clean(self):
         cleaned = super().clean()
         start = cleaned.get("start_time")
@@ -1148,6 +1191,7 @@ class ShiftTypeForm(forms.ModelForm):
 Append to `shifts/views.py`. `is_night` is set by `ShiftType.save()`, not by the form.
 
 ```python
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -1162,7 +1206,6 @@ def _selected_department(request):
         return get_object_or_404(Department, pk=raw)
     department = Department.objects.order_by("name").first()
     if department is None:
-        from django.http import Http404
         raise Http404(_("No department exists."))
     return department
 
@@ -1232,9 +1275,30 @@ path("types/<int:pk>/edit/", views.shifts_type_edit, name="shifts_type_edit"),
 path("types/<int:pk>/archive/", views.shifts_type_archive, name="shifts_type_archive"),
 ```
 
-`templates/shifts/type_form.html` renders `{{ form.as_p }}` so the equal-times error is in the response. Help text is the exact sentence `"A shift that ends before its start is a night shift and runs into the next morning."` Buttons that open the form use `hx-get`, `hx-target="#modal-content"`, and `onclick="openModal()"`, matching `templates/core/management/list_partial_v2.html`. Archive is a POST with `{% csrf_token %}`. Clearing the archived checkbox on edit and saving is the only restore path. There is no delete view.
+`templates/shifts/type_form.html`. The test client posts without HTMX and reads the error text from `form.as_p`. Every POST form includes `{% csrf_token %}`, matching `templates/news/form_partial.html`. This project has no global HTMX CSRF header.
 
-Inside the manager `{% if is_manager %}` block in `shell.html`, immediately after the Rota link, insert:
+```html
+{% load i18n %}
+<form method="post" hx-post="." hx-target="#modal-content">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p class="help">{% trans "A shift that ends before its start is a night shift and runs into the next morning." %}</p>
+  <button class="btn primary" type="submit">{% trans "Save" %}</button>
+</form>
+```
+
+Archive in `types.html` is its own POST form:
+
+```html
+<form method="post" action="{% url 'shifts_type_archive' row.pk %}">
+  {% csrf_token %}
+  <button class="btn secondary" type="submit">{% trans "Archive" %}</button>
+</form>
+```
+
+Buttons that open the form use `hx-get`, `hx-target="#modal-content"`, and `onclick="openModal()"`, matching `templates/core/management/list_partial_v2.html`. Clearing the archived checkbox on edit and saving is the only restore path. There is no delete view.
+
+Inside `{% if is_manager %}`, immediately after the Rota link and before the manager Available now link, insert:
 
 ```html
 <a class="settings-tab" role="tab" tabindex="0"
@@ -1264,7 +1328,7 @@ git commit -m "Add shift type management"
 ## Task 6: Rota grid, cell modal, ETag
 
 **Files:**
-- Modify: `shifts/views.py`, `shifts/urls.py`, `shifts/forms.py`, `shifts/tests.py`
+- Modify: `shifts/views.py`, `shifts/urls.py`, `shifts/tests.py`
 - Create: `templates/shifts/rota.html`, `templates/shifts/rota_grid.html`, `templates/shifts/cell_form.html`
 
 **Interfaces:**
@@ -1318,17 +1382,15 @@ Expected: FAIL. The rota page from Task 4 does not contain the Saturday date, an
 Replace the Task 4 `shifts_rota` stub with the functions below. Do not call `QuerySet.union()`. Merge the two user querysets in Python.
 
 ```python
-from datetime import date, datetime, time, timedelta
+from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Max
-
-User = get_user_model()
 from django.utils.translation import get_language
 
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from shifts.access import display_name
-from shifts.models import ShiftAssignment
+from shifts.models import ShiftAssignment, ShiftType
 from shifts.services import (
     effective_times,
     interval_for,
@@ -1339,6 +1401,8 @@ from shifts.services import (
     overrides_set_by_worker,
     week_dates,
 )
+
+User = get_user_model()
 
 
 def _rota_dates(request):
@@ -1545,19 +1609,53 @@ def shifts_cell(request):
             "error": error,
         })
     row = existing or ShiftAssignment(user=user, date=on)
+    was_day = bool(existing and not existing.shift_type.is_night)
     row.shift_type = shift_type
     if start_t and end_t:
         row.start_time_override = start_t
         row.end_time_override = end_t
         row.times_set_by = request.user
         row.times_set_at = timezone.now()
+    if was_day and shift_type.is_night:
+        row.checked_in_at = None
     row.save()
     response = _grid_response(request, department, retarget=True)
     response["HX-Trigger"] = "closeModal"
     return response
 ```
 
-`cell_form.html` is the modal body. It shows `{{ error }}` inside `<p class="notice notice-error">` when set, so the overlap test finds the word `overlaps`. The open button is `hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}" hx-target="#modal-content" onclick="openModal()"`. Empty shift type posts as a clear. `reset_times=1` is a separate button labeled `{% trans "Reset to shift default" %}`.
+`templates/shifts/cell_form.html`. The overlap test finds the word `overlaps` in `error`. The grid opens it with `hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}" hx-target="#modal-content" onclick="openModal()"`.
+
+```html
+{% load i18n %}
+<form method="post" action="{% url 'shifts_cell' %}" hx-post="{% url 'shifts_cell' %}" hx-target="#modal-content">
+  {% csrf_token %}
+  <input type="hidden" name="user" value="{{ person.pk }}">
+  <input type="hidden" name="date" value="{{ on|date:'Y-m-d' }}">
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+  <label for="shift-type">{% trans "Shift type" %}</label>
+  <select id="shift-type" name="shift_type">
+    <option value="">{% trans "Clear" %}</option>
+    {% for row in types %}
+    <option value="{{ row.pk }}"{% if existing and existing.shift_type_id == row.pk %} selected{% endif %}>{{ row.name }}</option>
+    {% endfor %}
+  </select>
+  <label for="start-override">{% trans "Start override" %}</label>
+  <input id="start-override" type="time" name="start_time_override" value="{{ existing.start_time_override|time:'H:i' }}">
+  <label for="end-override">{% trans "End override" %}</label>
+  <input id="end-override" type="time" name="end_time_override" value="{{ existing.end_time_override|time:'H:i' }}">
+  <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  {% if existing %}
+  <button class="btn secondary" type="submit" name="reset_times" value="1">{% trans "Reset to shift default" %}</button>
+  {% endif %}
+  {% if existing and existing.checked_in_at and not existing.shift_type.is_night %}
+  <button class="btn secondary" type="submit" name="clear_check_in" value="1">{% trans "Clear check-in" %}</button>
+  {% endif %}
+</form>
+```
+
+Empty `shift_type` clears the assignment. `reset_times=1` keeps the row and clears overrides. `clear_check_in=1` is handled in Task 11 and does not delete the row. Changing times does not clear `checked_in_at`. The save path above clears `checked_in_at` only when the previous type was a day type and the new type is a night type.
 
 Append:
 
@@ -1595,7 +1693,7 @@ Expected: `OK`.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add shifts/views.py shifts/urls.py shifts/forms.py shifts/tests.py templates/shifts/rota.html templates/shifts/rota_grid.html templates/shifts/cell_form.html
+git add shifts/views.py shifts/urls.py shifts/tests.py templates/shifts/rota.html templates/shifts/rota_grid.html templates/shifts/cell_form.html
 git commit -m "Add rota grid and cell editor"
 ```
 
@@ -1655,6 +1753,33 @@ class CopyWeekTests(TestCase):
         copied = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 16))
         self.assertIsNone(copied.checked_in_at)
         self.assertIsNone(copied.start_time_override)
+
+    def test_manager_set_override_is_copied_and_repeated(self):
+        department = make_department("Mgr copy")
+        manager = make_user("mgr-copy-lead", "support", department, make_role("Mgr copy lead", can_manage_shifts=True))
+        agent = make_user("mgr-copy-agent", "support", department)
+        night = make_shift_type(department, name="Mgr night")
+        source = make_assignment(agent, night, date(2026, 10, 3), time(18, 0), time(23, 0))
+        source.times_set_by = manager
+        source.save()
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_copy_week"), {
+            "department": department.pk,
+            "start": "2026-10-10",
+        })
+        copied = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 10))
+        self.assertEqual(copied.start_time_override, time(18, 0))
+        self.assertEqual(copied.end_time_override, time(23, 0))
+        self.assertEqual(copied.times_set_by_id, manager.pk)
+        self.client.post(reverse("shifts_repeat_week"), {
+            "department": department.pk,
+            "start": "2026-10-10",
+            "weeks": "1",
+        })
+        repeated = ShiftAssignment.objects.get(user=agent, date=date(2026, 10, 17))
+        self.assertEqual(repeated.start_time_override, time(18, 0))
+        self.assertEqual(repeated.end_time_override, time(23, 0))
+        self.assertEqual(repeated.times_set_by_id, manager.pk)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1836,8 +1961,6 @@ path("rota/copy-week/", views.shifts_copy_week, name="shifts_copy_week"),
 path("rota/repeat-week/", views.shifts_repeat_week, name="shifts_repeat_week"),
 ```
 
-Delete the comment line `response.content = response.content`. The template reads `notice` from the context. Extend `_grid_response` with `notice=""` and `skips=None` and put both in the context.
-
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python manage.py test shifts.tests.CopyWeekTests -v 1`
@@ -1972,9 +2095,218 @@ def suggest_nights(people, dates, shift_type, existing_by_user):
     return result
 ```
 
-`shifts_calc_rotation` and `shifts_auto_fill` are manager POSTs. `action=preview` writes nothing and renders `calc_rotation.html` with one row per proposal and `{% trans "Back-to-back" %}` when `back_to_back` is true. A gap renders `"Nobody available on %(date)s."`. `action=apply` calls the same function, then inside `transaction.atomic` inserts only rows that still pass: no existing user+date row, no `neighbor_conflict`, user still active support in the department, type still a non-archived night type. Skips use `"already assigned"`, `overlap_message`, or `"Only active support users in this department can be assigned."` / `"Archived shift types cannot be assigned."`. New rows use the type’s times and null overrides, null audit, and null `checked_in_at`. Do not update an existing row.
+Append these imports if they are not already at the top of `shifts/views.py`:
 
-Auto-fill posts to `shifts_auto_fill` with the visible `start` and the last visible date. People are every active support user in the department. If the department has no non-archived night type, set notice to `"This department has no night shift."` and write nothing. If it has one, preview it. If it has several, the rota button opens `#modal-content` to pick `shift_type`, then posts `action=preview`. Apply is a second post with `action=apply`. The success notice is `"Filled %(count)s night shifts."`.
+```python
+from django.db import transaction
+
+from shifts.services import interval_for, neighbor_conflict, overlap_message, suggest_nights
+```
+
+`timezone` is already imported in the Task 4 header. `get_object_or_404`, `User`, and `ShiftType` are already imported.
+
+```python
+def _dates_inclusive(start, end):
+    if end < start:
+        start, end = end, start
+    days = []
+    cursor = start
+    while cursor <= end:
+        days.append(cursor)
+        cursor += timedelta(days=1)
+    return days
+
+
+def _people_and_existing(people):
+    by_user = {person.pk: [] for person in people}
+    rows = ShiftAssignment.objects.filter(user__in=people).select_related("shift_type", "user")
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    return by_user
+
+
+def _apply_rotation(proposals, shift_type, department):
+    created = 0
+    skips = []
+    with transaction.atomic():
+        for item in proposals:
+            if item.get("gap"):
+                continue
+            user = User.objects.filter(pk=item["user_id"]).select_related("role").first()
+            if (
+                user is None
+                or user.user_type != User.UserType.SUPPORT
+                or user.status != User.Status.ACTIVE
+                or user.department_id != department.pk
+            ):
+                item["skip"] = _("Only active support users in this department can be assigned.")
+                skips.append(item)
+                continue
+            if shift_type.archived or not shift_type.is_night or shift_type.department_id != department.pk:
+                item["skip"] = _("Archived shift types cannot be assigned.")
+                skips.append(item)
+                continue
+            if ShiftAssignment.objects.filter(user_id=user.pk, date=item["date"]).exists():
+                item["skip"] = "already assigned"
+                skips.append(item)
+                continue
+            probe = ShiftAssignment(user=user, date=item["date"], shift_type=shift_type)
+            start_dt, end_dt = interval_for(item["date"], shift_type.start_time, shift_type.end_time)
+            other = neighbor_conflict(probe, start_dt, end_dt)
+            if other:
+                item["skip"] = overlap_message(other)
+                skips.append(item)
+                continue
+            ShiftAssignment.objects.create(
+                user=user,
+                shift_type=shift_type,
+                date=item["date"],
+                start_time_override=None,
+                end_time_override=None,
+                times_set_by=None,
+                times_set_at=None,
+                checked_in_at=None,
+            )
+            created += 1
+    return created, skips
+
+
+@login_required
+@require_POST
+def shifts_calc_rotation(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    shift_type = get_object_or_404(ShiftType, pk=request.POST.get("shift_type"), department=department)
+    start = date.fromisoformat(request.POST.get("start"))
+    end = date.fromisoformat(request.POST.get("end"))
+    dates = _dates_inclusive(start, end)
+    people = list(User.objects.filter(
+        pk__in=request.POST.getlist("users"),
+        department=department,
+        user_type=User.UserType.SUPPORT,
+        status=User.Status.ACTIVE,
+    ))
+    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    created = 0
+    skips = []
+    if request.POST.get("action") == "apply":
+        for person in people:
+            for day in dates:
+                if ShiftAssignment.objects.filter(user=person, date=day).exists():
+                    skips.append({"date": day, "user_id": person.pk, "skip": "already assigned"})
+        created, applied_skips = _apply_rotation(
+            [item for item in proposals if not item.get("gap")],
+            shift_type,
+            department,
+        )
+        skips.extend(applied_skips)
+    return render(request, "shifts/calc_rotation.html", {
+        "proposals": proposals,
+        "skips": skips,
+        "created": created,
+        "department": department,
+        "shift_type": shift_type,
+    })
+
+
+@login_required
+@require_POST
+def shifts_auto_fill(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    _view, _start, dates = _rota_dates(request)
+    night_types = list(
+        ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
+    )
+    if not night_types:
+        return _grid_response(request, department, notice=_("This department has no night shift."))
+    chosen_id = request.POST.get("shift_type")
+    shift_type = night_types[0]
+    if chosen_id:
+        shift_type = get_object_or_404(
+            ShiftType, pk=chosen_id, department=department, archived=False, is_night=True,
+        )
+    elif len(night_types) > 1:
+        return render(request, "shifts/calc_rotation.html", {
+            "pick_types": night_types,
+            "department": department,
+            "proposals": [],
+            "skips": [],
+            "created": 0,
+        })
+    people = list(User.objects.filter(
+        department=department,
+        user_type=User.UserType.SUPPORT,
+        status=User.Status.ACTIVE,
+    ))
+    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
+    if request.POST.get("action") != "apply":
+        return render(request, "shifts/calc_rotation.html", {
+            "proposals": proposals,
+            "skips": [],
+            "created": 0,
+            "department": department,
+            "shift_type": shift_type,
+            "can_apply": True,
+        })
+    created, skips = _apply_rotation(proposals, shift_type, department)
+    return _grid_response(
+        request,
+        department,
+        notice=_("Filled %(count)s night shifts.") % {"count": created},
+        skips=skips,
+    )
+```
+
+`calc_rotation.html` renders each non-gap proposal as a row. When `back_to_back` is true the row contains `{% trans "Back-to-back" %}`. A gap renders `{% blocktrans trimmed with date=row.date|date:"Y-m-d" %}Nobody available on {{ date }}.{% endblocktrans %}`. Each skip renders `{{ skip.skip }}`, which is how the apply test finds `already assigned`. Preview (`action` other than `apply`) does not call `_apply_rotation` and does not write. Apply never calls `save()` or `update()` on an existing row.
+
+Auto-fill uses the visible rota dates from `_rota_dates` (POST `view` and `start`). People are every active support user in the department. Zero non-archived night types: notice `"This department has no night shift."` and no writes. One night type: preview immediately. Several, and no `shift_type` posted: the response is the picker. The rota toolbar form posts `action=preview` with `{% csrf_token %}`. Apply is a second POST with `action=apply` and the same token.
+
+```html
+<form method="post" action="{% url 'shifts_auto_fill' %}">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="hidden" name="action" value="preview">
+  <button class="btn secondary" type="submit">{% trans "Auto-fill nights" %}</button>
+</form>
+```
+
+The apply form in `calc_rotation.html`, shown when `can_apply` is true:
+
+```html
+<form method="post" action="{% url 'shifts_auto_fill' %}">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <input type="hidden" name="view" value="{{ request.POST.view }}">
+  <input type="hidden" name="start" value="{{ request.POST.start }}">
+  <input type="hidden" name="shift_type" value="{{ shift_type.pk }}">
+  <input type="hidden" name="action" value="apply">
+  <button class="btn primary" type="submit">{% trans "Apply" %}</button>
+</form>
+```
+
+Calculator rotation form in `calculator.html`:
+
+```html
+<form method="post" action="{% url 'shifts_calc_rotation' %}" hx-post="{% url 'shifts_calc_rotation' %}" hx-target="#shifts-rotation">
+  {% csrf_token %}
+  <input type="hidden" name="department" value="{{ department.pk }}">
+  <label for="rot-start">{% trans "Start" %}</label>
+  <input id="rot-start" type="date" name="start">
+  <label for="rot-end">{% trans "End" %}</label>
+  <input id="rot-end" type="date" name="end">
+  <label for="rot-type">{% trans "Shift type" %}</label>
+  <select id="rot-type" name="shift_type"></select>
+  <label for="rot-users">{% trans "People" %}</label>
+  <select id="rot-users" name="users" multiple></select>
+  <button class="btn secondary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
+  <button class="btn primary" type="submit" name="action" value="apply">{% trans "Apply" %}</button>
+</form>
+```
 
 Append:
 
@@ -2098,9 +2430,95 @@ def shifts_calc_length(request):
     })
 ```
 
-`shifts_calc_hours` uses `_rota_dates` and `_rota_bundle`. Range start is midnight on `dates[0]`. Range end is midnight on the day after `dates[-1]`. Sum `clipped_day_night_minutes` per user. Skip a person whose day and night minutes are both 0. Render `calc_hours.html` with `display_name` and `"%(hours)s hours %(minutes)s minutes"` for day, night, and total. Do not read `checked_in_at`.
+Append these imports if they are not already at the top of `shifts/views.py`. `timezone` is already imported.
 
-`shifts_calc_coverage` uses the same bundle, including the extra day before the range. For each date D and hour H in 0..23, count assignments whose `effective_interval` overlaps `[aware_on(D, time(H, 0)), aware_on(D, time(H, 0)) + 1 hour)`. Hour 23 ends at midnight on D+1. A shift ending at 06:00 does not increment hour 6. Cell text is the integer count. Count 0 has class `shifts-gap`. Do not read `checked_in_at`.
+```python
+from shifts.services import aware_on, clipped_day_night_minutes, clock_length, effective_interval
+```
+
+```python
+def _format_minutes(minutes):
+    hours, mins = _hours_minutes(minutes)
+    return _("%(hours)s hours %(minutes)s minutes") % {"hours": hours, "minutes": mins}
+
+
+@login_required
+@require_GET
+def shifts_calc_hours(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    view, start, dates = _rota_dates(request)
+    bundle = _rota_bundle(department, dates)
+    range_start = aware_on(dates[0], time(0, 0))
+    range_end = aware_on(dates[-1] + timedelta(days=1), time(0, 0))
+    totals = {}
+    for row in bundle["assignments"]:
+        day_m, night_m = clipped_day_night_minutes(row, range_start, range_end)
+        bucket = totals.setdefault(row.user_id, {"user": row.user, "day": 0, "night": 0})
+        bucket["day"] += day_m
+        bucket["night"] += night_m
+    people = []
+    for bucket in totals.values():
+        if bucket["day"] == 0 and bucket["night"] == 0:
+            continue
+        people.append({
+            "name": display_name(bucket["user"]),
+            "day": _format_minutes(bucket["day"]),
+            "night": _format_minutes(bucket["night"]),
+            "total": _format_minutes(bucket["day"] + bucket["night"]),
+        })
+    return render(request, "shifts/calc_hours.html", {
+        "people": people,
+        "department": department,
+        "view": view,
+        "start": start,
+    })
+
+
+@login_required
+@require_GET
+def shifts_calc_coverage(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = _selected_department(request)
+    view, start, dates = _rota_dates(request)
+    bundle = _rota_bundle(department, dates)
+    intervals = [effective_interval(row) for row in bundle["assignments"]]
+    rows = []
+    for hour in range(24):
+        cells = []
+        for day in dates:
+            bucket_start = aware_on(day, time(hour, 0))
+            bucket_end = bucket_start + timedelta(hours=1)
+            count = 0
+            for start_dt, end_dt in intervals:
+                if start_dt < bucket_end and bucket_start < end_dt:
+                    count += 1
+            cells.append({"day": day, "hour": hour, "count": count})
+        rows.append({"hour": hour, "cells": cells})
+    return render(request, "shifts/calc_coverage.html", {
+        "rows": rows,
+        "dates": dates,
+        "department": department,
+        "view": view,
+        "start": start,
+    })
+```
+
+`_rota_bundle` already loads the day before the first visible date, so a Friday night covers Saturday 00:00 through 05:00. The overlap test is half-open: `start_dt < bucket_end and bucket_start < end_dt`. A shift that ends at 06:00 overlaps hour 5 and does not overlap hour 6. Neither view reads `checked_in_at`.
+
+`calc_hours.html` prints `{{ person.name }}`, `{{ person.day }}`, `{{ person.night }}`, and `{{ person.total }}`. `calc_coverage.html` is:
+
+```html
+{% for row in rows %}
+  {% for cell in row.cells %}
+  <td id="cov-{{ cell.day|date:'Y-m-d' }}-{{ cell.hour }}"{% if cell.count == 0 %} class="shifts-gap"{% endif %}>{{ cell.count }}</td>
+  {% endfor %}
+{% endfor %}
+```
+
+That renders `id="cov-2026-10-06-5">1` and `id="cov-2026-10-06-6" class="shifts-gap">0`. Hours and coverage GET forms in `calculator.html` include `department`, `view`, and `start`. They are GET forms, so they do not need a CSRF token.
 
 Append:
 
@@ -2113,7 +2531,7 @@ path("calculator/coverage/", views.shifts_calc_coverage, name="shifts_calc_cover
 
 `calculator.html` extends the shell and contains four sections. Length is a GET form to `shifts_calc_length`. Hours and coverage forms GET their partials with `department`, `view`, and `start`. Rotation’s form is the Task 8 POST.
 
-Inside the manager block of `shell.html`, after the Shift types tab, insert:
+Inside `{% if is_manager %}`, after the Shift types tab and before the manager Available now link, insert:
 
 ```html
 <a class="settings-tab" role="tab" tabindex="0"
@@ -2154,12 +2572,6 @@ def test_coverage_counts_overnight_until_but_not_including_06(self):
     self.assertContains(response, 'id="cov-2026-10-06-6" class="shifts-gap">0')
 ```
 
-`calc_coverage.html` cells are exactly:
-
-```html
-<td id="cov-{{ day|date:'Y-m-d' }}-{{ hour }}"{% if count == 0 %} class="shifts-gap"{% endif %}>{{ count }}</td>
-```
-
 Also append this test. 18:00–23:00 covers hours 18 through 22 only:
 
 ```python
@@ -2178,6 +2590,23 @@ def test_same_evening_covers_18_through_22(self):
     self.assertContains(response, 'id="cov-2026-10-06-18">1')
     self.assertContains(response, 'id="cov-2026-10-06-22">1')
     self.assertContains(response, 'id="cov-2026-10-06-23" class="shifts-gap">0')
+
+def test_check_in_does_not_change_hours_or_coverage(self):
+    department = make_department("Same hours")
+    manager = make_user("same-lead", "support", department, make_role("Same lead", can_manage_shifts=True))
+    agent = make_user("same-agent", "support", department)
+    day = make_shift_type(department, name="Same day", start=time(9, 0), end=time(17, 0))
+    row = make_assignment(agent, day, date(2026, 10, 5))
+    self.client.force_login(manager)
+    params = {"department": department.pk, "view": "week", "start": "2026-10-03"}
+    before_hours = self.client.get(reverse("shifts_calc_hours"), params).content
+    before_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
+    row.checked_in_at = aware(2026, 10, 5, 9, 0)
+    row.save()
+    after_hours = self.client.get(reverse("shifts_calc_hours"), params).content
+    after_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
+    self.assertEqual(before_hours, after_hours)
+    self.assertEqual(before_coverage, after_coverage)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -2379,12 +2808,23 @@ Ignore posted `user`, `date`, and `shift_type`. The 7-day window and the 16-hour
 `mine.html` lists the caller’s assignments with `date >= today`, plus that user’s night rows with `date >= today - 7 days` and `date < today`. Empty set: `{% trans "You have no upcoming shifts." %}`. When an effective interval contains `timezone.now()`, show `"You are on shift until %(end)s."` with the effective end in `H:i`. Night rows include `mine_row.html` with `id="shift-mine-{{ assignment.pk }}"` and:
 
 ```html
-<form hx-post="{% url 'shifts_mine_hours' assignment.pk %}"
+<form method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"
+      hx-post="{% url 'shifts_mine_hours' assignment.pk %}"
       hx-target="#shift-mine-{{ assignment.pk }}"
       hx-swap="outerHTML">
+  {% csrf_token %}
+  <p>{% trans "Set my hours" %}</p>
+  <label for="mine-start-{{ assignment.pk }}">{% trans "Start time" %}</label>
+  <input id="mine-start-{{ assignment.pk }}" type="time" name="start_time" value="{{ assignment.start_time_override|default:assignment.shift_type.start_time|time:'H:i' }}">
+  <label for="mine-end-{{ assignment.pk }}">{% trans "End time" %}</label>
+  <input id="mine-end-{{ assignment.pk }}" type="time" name="end_time" value="{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:'H:i' }}">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+  <button class="btn primary" type="submit" name="action" value="save">{% trans "Save" %}</button>
+  <button class="btn secondary" type="submit" name="action" value="reset">{% trans "Reset to shift default" %}</button>
+</form>
 ```
 
-Heading `{% trans "Set my hours" %}`. Buttons `{% trans "Save" %}` (`name="action" value="save"`) and `{% trans "Reset to shift default" %}` (`name="action" value="reset"`). Day rows have no form. The POST response is the row partial. `{% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}`.
+The row id is `shift-mine-{{ assignment.pk }}` on the `<tr>`. Day rows have no form. The POST response is that row partial. Save and Reset are the two submit buttons in the form above. Both ride the same `{% csrf_token %}`.
 
 Append:
 
@@ -2575,7 +3015,40 @@ if request.method == "POST" and request.POST.get("clear_check_in") == "1":
     return response
 ```
 
-When a cell save changes the type from day to night, set `row.checked_in_at = None` before `row.save()`. Changing times does not clear it.
+The `shifts_cell` save tail from Task 6 already clears check-in on a day-to-night type change, and only then. Do not add a second `row.save()`. Changing times does not clear `checked_in_at`. The tail is:
+
+```python
+    row = existing or ShiftAssignment(user=user, date=on)
+    was_day = bool(existing and not existing.shift_type.is_night)
+    row.shift_type = shift_type
+    if start_t and end_t:
+        row.start_time_override = start_t
+        row.end_time_override = end_t
+        row.times_set_by = request.user
+        row.times_set_at = timezone.now()
+    if was_day and shift_type.is_night:
+        row.checked_in_at = None
+    row.save()
+```
+
+Add this test to `CheckInTests`:
+
+```python
+def test_day_to_night_clears_check_in(self):
+    self.row.checked_in_at = aware(2026, 6, 2, 9, 0)
+    self.row.save()
+    manager = make_user("type-lead", "support", self.department, make_role("Type lead", can_manage_shifts=True))
+    self.client.force_login(manager)
+    self.client.post(reverse("shifts_cell"), {
+        "user": self.agent.pk,
+        "date": "2026-06-02",
+        "department": self.department.pk,
+        "shift_type": self.night.pk,
+    })
+    self.row.refresh_from_db()
+    self.assertEqual(self.row.shift_type_id, self.night.pk)
+    self.assertIsNone(self.row.checked_in_at)
+```
 
 ```python
 def check_in_marker(assignment, now) -> str:
@@ -2701,7 +3174,7 @@ Append:
 path("team/", views.shifts_team, name="shifts_team"),
 ```
 
-In `shell.html`, show Team rota to support users and managers. Place it after My shifts for support, and after Calculator for managers. Use this anchor:
+In `shell.html`, insert Team rota at the Task 12 comment, after My shifts and still inside `{% if user.user_type == "support" or is_manager %}`, before `{% if not is_manager %}`. Use this anchor:
 
 ```html
 {% if user.user_type == "support" or is_manager %}
@@ -2717,13 +3190,13 @@ In `shell.html`, show Team rota to support users and managers. Place it after My
 {% endif %}
 ```
 
-Final tab order inside the nav:
+That insertion leaves the order from Task 4:
 
 - Manager: Rota, Shift types, Calculator, Available now, My shifts, Team rota.
 - Support, not manager: My shifts, Team rota, Available now.
 - Branch, not manager: Available now only.
 
-Available now stays outside the support/manager `{% if %}` so every logged-in shifts user sees it. Rota, Shift types, and Calculator stay inside `{% if is_manager %}`. My shifts and Team rota stay inside `{% if user.user_type == "support" or is_manager %}`.
+The manager Available now link stays inside `{% if is_manager %}`. The other Available now link stays inside `{% if not is_manager %}`. Do not add a third one.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -2855,13 +3328,7 @@ def test_history_restore_is_not_304(self):
     self.assertEqual(restored.status_code, 200)
 ```
 
-`make_user` does not take `first_name`. Set `agent.first_name = ""` and `agent.last_name = ""` before `agent.save()`, or leave the names empty by assigning after create. The display name then falls back to `username`. Do not pass `first_name` into `make_user` unless you add those parameters to the helper. Add them:
-
-```python
-def make_user(username, user_type, department=None, role=None, superuser=False, first_name="", last_name=""):
-```
-
-and pass `first_name=first_name, last_name=last_name` to `create_user`.
+`make_user` already accepts `first_name` and `last_name`. The empty names in `test_empty_department_and_no_type_name_for_branch` make the board show `staffed-agent`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -2921,7 +3388,6 @@ def shifts_available_board(request):
         request.ticket_list_304_defer_session_save = True
         return htmx_not_modified(etag)
     cards = []
-    listed = {row.pk: end_dt for row, end_dt in on_shift}
     for department in Department.objects.order_by("name"):
         people = []
         for row, end_dt in sorted(by_department.get(department.pk, []), key=lambda item: item[0].user_id):
@@ -2931,9 +3397,7 @@ def shifts_available_board(request):
     return apply_read_etag(response, etag, request)
 ```
 
-Do not set the session-defer flag on the 200 path. `available.html` `{% include "shifts/available_board.html" %}`. The end filter prints `{{ person.end|date:"H:i" }}`. Empty `people` renders `{% trans "Nobody on shift now" %}`. Do not render start, type name, colour, phone, or check-in status. `listed` in the snippet is unused. Delete that line.
-
-A day row is kept only when `checked_in_at` is set and the interval contains now. The `if row.shift_type.is_night or row.checked_in_at` line does that, because a day row with a null check-in fails the `or`.
+Do not set the session-defer flag on the 200 path. `available.html` `{% include "shifts/available_board.html" %}`. The end filter prints `{{ person.end|date:"H:i" }}`. Empty `people` renders `{% trans "Nobody on shift now" %}`. Do not render start, type name, colour, phone, or check-in status. A day row is kept only when `checked_in_at` is set and the interval contains now. The `if row.shift_type.is_night or row.checked_in_at` line does that, because a day row with a null check-in fails the `or`.
 
 Query budget, append to `AvailableNowTests`. Create six assignments first. The count must stay at or below 8, which includes the test client’s session and user queries:
 
@@ -3009,17 +3473,7 @@ git commit -m "Add available-now board with ETag polling"
 
 - [ ] **Step 1: Write the failing permission test, then the catalog check**
 
-Append `PermissionMatrixTests` to `shifts/tests.py`. Anonymous requests redirect to the login page (`302` and `"/accounts/login/"` in `Location`). Build one department, one support user, one support user in a second department, one branch user, one manager (`can_manage_shifts=True`, `is_superuser=False`), and one superuser. Create one night `ShiftType` and one assignment so POST targets exist.
-
-For each of `shifts_rota`, `shifts_rota_grid`, `shifts_types`, `shifts_calculator`, `shifts_mine`, and `shifts_team`:
-
-- branch GET is 403 and the body does not contain `"hours"` (the hours tool label) and does not contain a foreign assignment date such as `"2099-01-01"` (do not put that date in the fixtures)
-- support GET of `shifts_rota`, `shifts_rota_grid`, `shifts_types`, and `shifts_calculator` is 403
-- support GET of `shifts_mine` and `shifts_team` is 200
-- support GET of `shifts_team` with the other department’s id is 403
-- manager and superuser GET of each of those six is 200
-
-Support POST to `shifts_cell`, `shifts_copy_week`, `shifts_repeat_week`, `shifts_auto_fill`, `shifts_type_archive` (use the type pk), and `shifts_calc_rotation` is 403. Manager POST of `shifts_repeat_week` with `weeks=13` is 200.
+Append `PermissionMatrixTests`. It covers every name in the spec URL table. Anonymous requests are 302 to `/accounts/login/`. A branch non-manager gets 200 only on `shifts_home` (redirect), `shifts_available`, and `shifts_available_board`. Support non-manager also gets 200 on `shifts_mine`, `shifts_team`, their own `shifts_mine_hours`, and their own `shifts_check_in`. Manager and superuser get 200 on the manager GETs and on preview POSTs. Support and branch POSTs to manager actions are 403. A 403 body does not contain `2099-01-01`.
 
 ```python
 class PermissionMatrixTests(TestCase):
@@ -3032,38 +3486,102 @@ class PermissionMatrixTests(TestCase):
         self.manager = make_user("perm-lead", "support", self.department, make_role("Perm lead", can_manage_shifts=True))
         self.superuser = make_user("perm-root", "support", self.department, superuser=True)
         self.night = make_shift_type(self.department, name="Perm night")
-        self.row = make_assignment(self.support, self.night, date(2026, 10, 5))
+        self.day = make_shift_type(self.department, name="Perm day", start=time(0, 0), end=time(23, 59))
+        self.row = make_assignment(self.support, self.night, date(2026, 1, 10))
+        self.today_row = make_assignment(self.support, self.day, timezone.localdate())
 
-    def test_anonymous_redirects(self):
-        response = self.client.get(reverse("shifts_rota"))
+    def _assert_login(self, response):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response["Location"])
 
-    def test_branch_cannot_open_manager_or_support_pages(self):
-        self.client.force_login(self.branch)
-        for name in ("shifts_rota", "shifts_types", "shifts_calculator", "shifts_mine", "shifts_team"):
-            response = self.client.get(reverse(name))
-            self.assertEqual(response.status_code, 403, name)
-            self.assertNotContains(response, "2099-01-01", status_code=403)
+    def test_anonymous_redirects_every_named_url(self):
+        gets = [
+            reverse("shifts_home"),
+            reverse("shifts_rota"),
+            reverse("shifts_rota_grid"),
+            reverse("shifts_cell"),
+            reverse("shifts_types"),
+            reverse("shifts_type_add"),
+            reverse("shifts_type_edit", args=[self.night.pk]),
+            reverse("shifts_calculator"),
+            reverse("shifts_calc_hours"),
+            reverse("shifts_calc_length"),
+            reverse("shifts_calc_coverage"),
+            reverse("shifts_available"),
+            reverse("shifts_available_board"),
+            reverse("shifts_mine"),
+            reverse("shifts_team"),
+        ]
+        for url in gets:
+            self._assert_login(self.client.get(url))
+        posts = [
+            reverse("shifts_cell"),
+            reverse("shifts_copy_week"),
+            reverse("shifts_repeat_week"),
+            reverse("shifts_auto_fill"),
+            reverse("shifts_type_archive", args=[self.night.pk]),
+            reverse("shifts_calc_rotation"),
+            reverse("shifts_mine_hours", args=[self.row.pk]),
+            reverse("shifts_check_in", args=[self.today_row.pk]),
+        ]
+        for url in posts:
+            self._assert_login(self.client.post(url, {}))
 
-    def test_support_post_to_manager_actions_is_403(self):
+    def test_branch_support_and_manager_statuses(self):
+        manager_gets = [
+            "shifts_rota", "shifts_rota_grid", "shifts_types", "shifts_type_add",
+            "shifts_calculator", "shifts_calc_hours", "shifts_calc_length", "shifts_calc_coverage",
+        ]
+        shared_gets = ["shifts_available", "shifts_available_board"]
+        support_gets = ["shifts_mine", "shifts_team"]
+        for user, forbidden in (
+            (self.branch, manager_gets + support_gets),
+            (self.support, manager_gets),
+        ):
+            self.client.force_login(user)
+            home = self.client.get(reverse("shifts_home"))
+            self.assertEqual(home.status_code, 302, user.username)
+            for name in shared_gets:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
+            for name in forbidden:
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 403, f"{user.username} {name}")
+                self.assertNotContains(response, "2099-01-01", status_code=403)
         self.client.force_login(self.support)
+        self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("shifts_team")).status_code, 200)
         self.assertEqual(self.client.get(reverse("shifts_team"), {"department": self.other.pk}).status_code, 403)
-        self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06"}).status_code, 403)
-        self.assertEqual(self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "2026-10-03"}).status_code, 403)
-        self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "1"}).status_code, 403)
-        self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "apply"}).status_code, 403)
+        self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 200)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[make_assignment(self.outsider, self.night, date(2026, 10, 6)).pk]), {"action": "reset"}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 200)
+        for name, payload in (
+            ("shifts_cell", {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}),
+            ("shifts_copy_week", {"department": self.department.pk, "start": "2026-10-03"}),
+            ("shifts_repeat_week", {"department": self.department.pk, "start": "2026-10-03", "weeks": "1"}),
+            ("shifts_auto_fill", {"department": self.department.pk, "action": "apply", "start": "2026-10-03", "view": "week"}),
+            ("shifts_calc_rotation", {"action": "apply", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05"}),
+        ):
+            self.assertEqual(self.client.post(reverse(name), payload).status_code, 403, name)
         self.assertEqual(self.client.post(reverse("shifts_type_archive", args=[self.night.pk])).status_code, 403)
-        self.assertEqual(self.client.post(reverse("shifts_calc_rotation"), {"action": "apply", "department": self.department.pk}).status_code, 403)
-        self.night.refresh_from_db()
-        self.assertFalse(self.night.archived)
-
-    def test_manager_and_superuser_can_open_manager_pages(self):
+        self.client.force_login(self.branch)
+        self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)
         for user in (self.manager, self.superuser):
             self.client.force_login(user)
-            for name in ("shifts_rota", "shifts_rota_grid", "shifts_types", "shifts_calculator", "shifts_mine", "shifts_team"):
-                response = self.client.get(reverse(name))
-                self.assertEqual(response.status_code, 200, f"{user.username} {name}")
+            self.assertEqual(self.client.get(reverse("shifts_home")).status_code, 302)
+            for name in manager_gets + shared_gets + support_gets:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200, f"{user.username} {name}")
+            self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 200)
+            self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "2026-10-03"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "13"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "preview", "start": "2026-10-03", "view": "week"}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_calc_rotation"), {"action": "preview", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05", "users": [self.support.pk]}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
+            self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)
 ```
 
 Run: `python manage.py test shifts.tests.PermissionMatrixTests -v 1`
@@ -3110,6 +3628,7 @@ Fill Arabic `msgstr` values for the new msgids. Do not leave them empty. `script
 | Calculator | الحاسبة |
 | Team rota | جدول الفريق |
 | Start and end must differ. | يجب أن يختلف وقت البداية عن وقت النهاية. |
+| Shift type name must be at least 2 characters long. | يجب أن يكون اسم نوع المناوبة حرفين على الأقل. |
 | Enter both start and end, or leave both blank. | أدخل البداية والنهاية معاً، أو اتركهما فارغين. |
 | Only active support users in this department can be assigned. | يمكن تعيين موظفي الدعم النشطين في هذا القسم فقط. |
 | Archived shift types cannot be assigned. | لا يمكن تعيين أنواع المناوبات المؤرشفة. |
