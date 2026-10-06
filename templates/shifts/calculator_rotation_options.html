@@ -1,12 +1,12 @@
 {% load i18n %}
 <label for="rot-type">{% trans "Shift type" %}</label>
-<select id="rot-type" name="shift_type">
+<select id="rot-type" class="no-tomselect" name="shift_type">
   {% for row in night_types %}
   <option value="{{ row.pk }}">{{ row.name }}</option>
   {% endfor %}
 </select>
 <label for="rot-users">{% trans "People" %}</label>
-<select id="rot-users" name="users" multiple>
+<select id="rot-users" class="no-tomselect" name="users" multiple>
   {% for person in people %}
   <option value="{{ person.pk }}">{{ person.shift_label }}</option>
   {% endfor %}

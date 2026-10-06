@@ -8,16 +8,19 @@
      aria-live="polite">
   <div class="shifts-cards">
     {% for card in cards %}
-    <section class="panel">
+    <section class="panel shifts-card">
       <h2>{{ card.department.name }}</h2>
       {% if card.people %}
       <ul>
         {% for person in card.people %}
-        <li>{{ person.name }} {{ person.end|date:"H:i" }}</li>
+        <li class="shifts-person-line">
+          <span class="shifts-person-name">{{ person.name }}</span>
+          <span class="shifts-until">{% blocktrans trimmed with end=person.end|date:"H:i" %}until {{ end }}{% endblocktrans %}</span>
+        </li>
         {% endfor %}
       </ul>
       {% else %}
-      <p>{% trans "Nobody on shift now" %}</p>
+      <p class="shifts-empty">{% trans "Nobody on shift now" %}</p>
       {% endif %}
     </section>
     {% endfor %}

@@ -1,24 +1,28 @@
 {% extends "shifts/shell.html" %}
 {% load i18n %}
 {% block shifts_body %}
-<h1>{% trans "Team rota" %}</h1>
+<header class="shifts-header">
+  <h1>{% trans "Team rota" %}</h1>
+  {% if dates %}<p class="shifts-range">{{ dates.0|date:"Y-m-d" }}–{{ dates|last|date:"Y-m-d" }}</p>{% endif %}
+</header>
 {% if error %}
-<p>{{ error }}</p>
+<p class="notice notice-error">{{ error }}</p>
 {% else %}
 {% if is_manager %}
-<form method="get" class="shifts-toolbar" action="{% url 'shifts_team' %}">
-  <label for="team-department">{% trans "Department" %}</label>
-  <select id="team-department" name="department">
-    {% for row in departments %}
-    <option value="{{ row.pk }}"{% if department.pk == row.pk %} selected{% endif %}>{{ row.name }}</option>
-    {% endfor %}
-  </select>
+<form method="get" class="shifts-toolbar panel" action="{% url 'shifts_team' %}">
+  <div class="form-group">
+    <label for="team-department">{% trans "Department" %}</label>
+    <select id="team-department" class="no-tomselect" name="department">
+      {% for row in departments %}
+      <option value="{{ row.pk }}"{% if row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
   <input type="hidden" name="view" value="{{ view }}">
   <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
   <button class="btn secondary" type="submit">{% trans "Show" %}</button>
 </form>
 {% endif %}
-<p>{{ dates.0|date:"Y-m-d" }}–{{ dates|last|date:"Y-m-d" }}</p>
 {% include "shifts/rota_grid.html" %}
 {% endif %}
 {% endblock %}

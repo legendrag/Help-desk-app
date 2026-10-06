@@ -1,16 +1,190 @@
-#shifts-shell-pane .shifts-grid-wrap { overflow-x: auto; }
+#shifts-shell-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+#shifts-shell-pane .shifts-header h1,
+#shifts-shell-pane .shifts-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+#shifts-shell-pane .shifts-range {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-toolbar,
+#shifts-shell-pane .shifts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-toolbar .form-group,
+#shifts-shell-pane .shifts-form .form-group {
+  margin: 0;
+  min-inline-size: 10rem;
+}
+
+#shifts-shell-pane .panel {
+  padding: 1rem 1.1rem;
+}
+
+#shifts-shell-pane .shifts-grid-wrap {
+  overflow-x: auto;
+  max-block-size: 70vh;
+}
+
+#shifts-shell-pane .shifts-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-inline-size: 100%;
+}
+
+#shifts-shell-pane .shifts-grid th,
+#shifts-shell-pane .shifts-grid td {
+  padding: 0.35rem;
+  vertical-align: top;
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-grid thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--panel-bg);
+  text-align: center;
+  white-space: nowrap;
+}
+
 #shifts-shell-pane .shifts-person {
   position: sticky;
   inset-inline-start: 0;
-  background: var(--panel-bg, #fff);
+  z-index: 3;
+  background: var(--panel-bg);
+  text-align: start;
+  min-inline-size: 8rem;
 }
-#shifts-shell-pane .shifts-cell--night {
-  outline: 2px dashed var(--warning, #fbbf24);
+
+#shifts-shell-pane .shifts-grid thead .shifts-person {
+  z-index: 4;
 }
-#shifts-shell-pane .shifts-gap {
-  background: color-mix(in srgb, var(--danger, #f87171) 25%, transparent);
+
+#shifts-shell-pane .shifts-day--today {
+  box-shadow: inset 0 -3px 0 var(--primary);
 }
-#shifts-shell-pane .shifts-cell-btn { min-block-size: 44px; }
+
+#shifts-shell-pane .shifts-cell,
+#shifts-shell-pane .shifts-cell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  inline-size: 100%;
+  min-inline-size: 7.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  text-align: start;
+}
+
+#shifts-shell-pane .shifts-cell-btn {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+#shifts-shell-pane .shifts-cell--empty {
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-inline-size: 100%;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+#shifts-shell-pane .shifts-chip--night {
+  outline: 2px dashed var(--warning, var(--primary));
+  outline-offset: 1px;
+}
+
+#shifts-shell-pane .shifts-chip--on-light {
+  color: #0f172a;
+}
+
+#shifts-shell-pane .shifts-chip--on-dark {
+  color: #f8fafc;
+}
+
+#shifts-shell-pane .shifts-times {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-cell .badge,
+#shifts-shell-pane .shifts-list .badge {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#shifts-shell-pane .shifts-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+#shifts-shell-pane .shifts-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+#shifts-shell-pane .shifts-person-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-until {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 #shifts-shell-pane .shifts-swatch {
   display: inline-block;
   inline-size: 1.25rem;
@@ -19,9 +193,96 @@
   border: 1px solid var(--border);
   vertical-align: middle;
 }
-#shifts-shell-pane .shifts-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-#shifts-shell-pane .shifts-cards { display: flex; flex-wrap: wrap; gap: 1rem; }
+
+#shifts-shell-pane .shifts-checkin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+#shifts-shell-pane .shifts-checkin .btn,
+#shifts-shell-pane .shifts-form .btn,
+#shifts-shell-pane .shifts-actions .btn,
+#shifts-shell-pane .shifts-toolbar .btn {
+  min-block-size: 44px;
+}
+
+#shifts-shell-pane .shifts-list td,
+#shifts-shell-pane .shifts-list th {
+  vertical-align: middle;
+}
+
+#shifts-shell-pane .shifts-gap {
+  background: color-mix(in srgb, var(--danger) 25%, transparent);
+}
+
+#shifts-shell-pane .shifts-archived {
+  opacity: 0.6;
+}
+
+.shifts-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--text-main);
+}
+
+.shifts-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.shifts-form input,
+.shifts-form select,
+#shifts-shell-pane input,
+#shifts-shell-pane select {
+  min-block-size: 44px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding-inline: 0.7rem;
+}
+
+#shifts-shell-pane .shifts-coverage {
+  overflow-x: auto;
+}
+
+#shifts-shell-pane .shifts-coverage td {
+  min-inline-size: 1.6rem;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  #shifts-shell-pane .btn,
+  #shifts-shell-pane .shifts-cell-btn,
+  #shifts-shell-pane input,
+  #shifts-shell-pane select,
+  .shifts-form .btn,
+  .shifts-form input,
+  .shifts-form select {
+    min-block-size: 44px;
+  }
+
+  #shifts-shell-pane .btn:hover,
+  #shifts-shell-pane .shifts-cell-btn:hover,
+  .shifts-form .btn:hover {
+    transform: none;
+  }
+}
+
 @media (max-width: 720px) {
-  #shifts-shell-pane .shifts-toolbar select { inline-size: 100%; }
-  #shifts-shell-pane .shifts-cards { flex-direction: column; }
+  #shifts-shell-pane .shifts-toolbar,
+  #shifts-shell-pane .shifts-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #shifts-shell-pane .shifts-cards {
+    grid-template-columns: 1fr;
+  }
 }

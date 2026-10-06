@@ -1,5 +1,13 @@
 {% load i18n %}
-<table>
+<table class="shifts-list">
+  <thead>
+    <tr>
+      <th>{% trans "Person" %}</th>
+      <th>{% trans "Day" %}</th>
+      <th>{% trans "Night" %}</th>
+      <th>{% trans "Times" %}</th>
+    </tr>
+  </thead>
   {% for person in people %}
   <tr>
     <td>{{ person.name }}</td>

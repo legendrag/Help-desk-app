@@ -1,7 +1,13 @@
 {% load i18n %}
-<form method="post" hx-post="." hx-target="#modal-content">
+<form class="shifts-form" method="post" hx-post="." hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
   {% csrf_token %}
-  {{ form.as_p }}
-  <p class="help">{% trans "A shift that ends before its start is a night shift and runs into the next morning." %}</p>
+  {% for field in form %}
+  <div class="form-group">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {{ field.errors }}
+  </div>
+  {% endfor %}
+  <p class="help-text">{% trans "A shift that ends before its start is a night shift and runs into the next morning." %}</p>
   <button class="btn primary" type="submit">{% trans "Save" %}</button>
 </form>

@@ -1,12 +1,12 @@
-{% load i18n %}
-<div id="shifts-rota-grid">
+{% load i18n shifts_extras %}
+<div id="shifts-rota-grid" class="panel">
   <div class="table-wrap shifts-grid-wrap">
-    <table>
+    <table class="shifts-grid">
       <thead>
         <tr>
           <th class="shifts-person">{% trans "Person" %}</th>
           {% for day in dates %}
-          <th>{{ day|date:"D" }} {{ day|date:"j" }}</th>
+          <th class="{% if day == today %}shifts-day--today{% endif %}">{{ day|date:"D" }} {{ day|date:"j" }}</th>
           {% endfor %}
         </tr>
       </thead>
@@ -15,50 +15,31 @@
         <tr>
           <th class="shifts-person">{{ person }}</th>
           {% for item in person.cells %}
-          <td>
-            {% with day=item.0 cell=item.1 %}
+          {% with day=item.0 cell=item.1 %}
+          <td class="{% if day == today %}shifts-day--today{% endif %}">
             {% if cell %}
               {% if readonly %}
-              <span class="{% if cell.shift_type.is_night %}shifts-cell--night{% endif %}" style="background-color: {{ cell.shift_type.colour }}">
-                {{ person }} {{ day|date:"Y-m-d" }} {{ cell.shift_type.name }}
-                {% if cell.shift_type.is_night %}{% trans "Night" %}{% endif %}
-                {% if cell.start_time_override %}{{ cell.start_time_override|time:"H:i" }}–{{ cell.end_time_override|time:"H:i" }}{% else %}{{ cell.shift_type.start_time|time:"H:i" }}–{{ cell.shift_type.end_time|time:"H:i" }}{% endif %}
-                {% if cell.set_by_worker %}<span class="badge">{% trans "Set by worker" %}</span>{% endif %}
-                {% if cell.check_marker == "checked" %}<span class="badge">{% blocktrans trimmed with time=cell.checked_in_at|date:"H:i" %}Checked in at {{ time }}{% endblocktrans %}</span>
-                {% elif cell.check_marker == "not" %}<span class="badge">{% trans "Not checked in" %}</span>
-                {% elif cell.check_marker == "missed" %}<span class="badge">{% trans "Missed" %}</span>{% endif %}
-                {% if cell.shift_type.archived %}<span class="badge">{% trans "Archived" %}</span>{% endif %}
-                {% if day >= today and cell.user.department_id != department.pk %}<span class="badge">{% trans "Not in this department" %}</span>
-                {% elif day >= today and cell.user.status != "active" %}<span class="badge">{% trans "Inactive" %}</span>{% endif %}
+              <span class="shifts-cell{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}">
+                {% include "shifts/cell_bits.html" %}
               </span>
               {% else %}
               <button type="button" class="shifts-cell-btn{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
-                      style="background-color: {{ cell.shift_type.colour }}"
                       hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
                       hx-target="#modal-content"
                       onclick="openModal()">
-                {{ person }} {{ day|date:"Y-m-d" }} {{ cell.shift_type.name }}
-                {% if cell.shift_type.is_night %}{% trans "Night" %}{% endif %}
-                {% if cell.start_time_override %}{{ cell.start_time_override|time:"H:i" }}–{{ cell.end_time_override|time:"H:i" }}{% else %}{{ cell.shift_type.start_time|time:"H:i" }}–{{ cell.shift_type.end_time|time:"H:i" }}{% endif %}
-                {% if cell.set_by_worker %}<span class="badge">{% trans "Set by worker" %}</span>{% endif %}
-                {% if cell.check_marker == "checked" %}<span class="badge">{% blocktrans trimmed with time=cell.checked_in_at|date:"H:i" %}Checked in at {{ time }}{% endblocktrans %}</span>
-                {% elif cell.check_marker == "not" %}<span class="badge">{% trans "Not checked in" %}</span>
-                {% elif cell.check_marker == "missed" %}<span class="badge">{% trans "Missed" %}</span>{% endif %}
-                {% if cell.shift_type.archived %}<span class="badge">{% trans "Archived" %}</span>{% endif %}
-                {% if day >= today and cell.user.department_id != department.pk %}<span class="badge">{% trans "Not in this department" %}</span>
-                {% elif day >= today and cell.user.status != "active" %}<span class="badge">{% trans "Inactive" %}</span>{% endif %}
+                {% include "shifts/cell_bits.html" %}
               </button>
               {% endif %}
             {% elif not readonly %}
-            <button type="button" class="shifts-cell-btn"
+            <button type="button" class="shifts-cell-btn shifts-cell--empty"
                     hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
                     hx-target="#modal-content"
-                    onclick="openModal()">{{ person }} {{ day|date:"Y-m-d" }} {% trans "Empty" %}</button>
+                    onclick="openModal()">{% trans "Empty" %}</button>
             {% else %}
-            {{ person }} {{ day|date:"Y-m-d" }} {% trans "Empty" %}
+            <span class="shifts-cell shifts-cell--empty">{% trans "Empty" %}</span>
             {% endif %}
-            {% endwith %}
           </td>
+          {% endwith %}
           {% endfor %}
         </tr>
         {% endfor %}

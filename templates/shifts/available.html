@@ -1,6 +1,8 @@
 {% extends "shifts/shell.html" %}
 {% load i18n %}
 {% block shifts_body %}
-<h1>{% trans "Available now" %}</h1>
+<header class="shifts-header">
+  <h1>{% trans "Available now" %}</h1>
+</header>
 {% include "shifts/available_board.html" %}
 {% endblock %}
