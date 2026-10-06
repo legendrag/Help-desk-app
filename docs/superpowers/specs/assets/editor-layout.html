@@ -1,0 +1,74 @@
+<h2>Write / edit article — which editor chrome?</h2>
+<p class="subtitle">Home = compact hub. Article = wide + sticky TOC. Keep TinyMCE and the existing side fields (visibility, category, ticket, attachments).</p>
+
+<div class="cards">
+  <div class="card" data-choice="editor-publish-bar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:0;background:#f4f6f8;font-size:11px;color:#333;min-height:175px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff;border-bottom:1px solid #dde3ea">
+            <span style="opacity:.7">← Back · Draft autosaved</span>
+            <div style="display:flex;gap:6px">
+              <span class="mock-button" style="padding:3px 8px;font-size:10px;background:#e8eef5;color:#333">Save draft</span>
+              <span class="mock-button" style="padding:3px 8px;font-size:10px">Publish</span>
+            </div>
+          </div>
+          <div style="display:flex;min-height:140px">
+            <div style="flex:1;padding:10px">
+              <div class="mock-input" style="height:26px;margin-bottom:8px">Title</div>
+              <div class="placeholder" style="height:90px;border-radius:6px">Editor</div>
+            </div>
+            <div style="width:30%;padding:10px;border-left:1px solid #dde3ea;background:#fff;font-size:10px;line-height:1.8">
+              Visibility<br>Category<br>Ticket<br>Attachments
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Sticky publish bar + side panel</h3>
+      <p>Closest to today, cleaned up: top bar for Save draft / Publish, editor left, settings right. Clear for managers.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="editor-bottom-sheet" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:10px;background:#f4f6f8;font-size:11px;color:#333;min-height:175px;position:relative">
+          <div class="mock-input" style="height:26px;margin-bottom:8px">Title</div>
+          <div class="placeholder" style="height:100px;border-radius:6px">Full-width editor</div>
+          <div style="position:absolute;left:10px;right:10px;bottom:10px;background:#fff;border:1px solid #dde3ea;border-radius:8px;padding:8px;display:flex;justify-content:space-between;align-items:center;font-size:10px">
+            <span>Visibility · Category · Files</span>
+            <span class="mock-button" style="padding:3px 8px;font-size:10px">Publish</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Full-width editor + bottom tray</h3>
+      <p>Writing takes the whole page; visibility/category/attachments collapse into a bottom tray. More focus, slightly more clicks for settings.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="editor-preview-split" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:0;background:#f4f6f8;font-size:11px;color:#333;display:flex;min-height:175px">
+          <div style="flex:1;padding:10px;border-right:1px solid #dde3ea">
+            <div style="font-weight:600;margin-bottom:6px">Edit</div>
+            <div class="mock-input" style="height:22px;margin-bottom:6px"></div>
+            <div class="placeholder" style="height:90px"></div>
+          </div>
+          <div style="flex:1;padding:10px;background:#fff">
+            <div style="font-weight:600;margin-bottom:6px">Preview</div>
+            <div style="opacity:.7;line-height:1.6">Rendered article as readers see it…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Edit | live preview split</h3>
+      <p>Side-by-side edit and reader preview. Nicest polish, heaviest to build and keep in sync with TinyMCE.</p>
+    </div>
+  </div>
+</div>

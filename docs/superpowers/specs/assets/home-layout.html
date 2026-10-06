@@ -1,0 +1,79 @@
+<h2>Knowledge Base home — which layout?</h2>
+<p class="subtitle">Help-center hub: categories first, search-led. Click the one that feels right.</p>
+
+<div class="cards">
+  <div class="card" data-choice="hero-search" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:12px;background:#f4f6f8;font-size:11px;color:#333">
+          <div style="text-align:center;padding:18px 8px 12px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px">How can we help?</div>
+            <div class="mock-input" style="max-width:90%;margin:0 auto;height:28px"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px">
+            <div class="placeholder" style="height:48px;border-radius:8px">Passwords</div>
+            <div class="placeholder" style="height:48px;border-radius:8px">Email</div>
+            <div class="placeholder" style="height:48px;border-radius:8px">VPN</div>
+            <div class="placeholder" style="height:48px;border-radius:8px">Hardware</div>
+          </div>
+          <div style="padding:4px 8px 8px;opacity:.7">Recently updated ↓</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Hero search + category grid</h3>
+      <p>Classic Zendesk/Intercom home. Search dominates; categories are big tiles; recent articles below.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="compact-hub" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:12px;background:#f4f6f8;font-size:11px;color:#333">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <strong>Knowledge Base</strong>
+            <span class="mock-button" style="padding:4px 8px;font-size:10px">New article</span>
+          </div>
+          <div class="mock-input" style="height:28px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+              <div class="placeholder" style="height:36px;border-radius:6px">Passwords · 12</div>
+              <div class="placeholder" style="height:36px;border-radius:6px">Email · 8</div>
+              <div class="placeholder" style="height:36px;border-radius:6px">VPN · 5</div>
+            </div>
+            <div style="flex:1.2" class="placeholder" style="min-height:120px;border-radius:8px;padding:8px">
+              Recent / Drafts
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Compact hub + drafts rail</h3>
+      <p>Same search-led idea, but denser: category list beside a “recent / drafts” column. Better for managers who live here.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="split-browse" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:none;box-shadow:none">
+        <div class="mockup-body" style="padding:0;background:#f4f6f8;font-size:11px;color:#333;display:flex;min-height:160px">
+          <div style="width:28%;padding:10px;border-right:1px solid #dde3ea;background:#fff">
+            <div style="font-weight:600;margin-bottom:8px">Categories</div>
+            <div style="opacity:.8;line-height:1.8">All<br>Passwords<br>Email<br>VPN</div>
+          </div>
+          <div style="flex:1;padding:12px">
+            <div class="mock-input" style="height:26px;margin-bottom:10px"></div>
+            <div class="placeholder" style="height:24px;margin-bottom:6px"></div>
+            <div class="placeholder" style="height:24px;margin-bottom:6px"></div>
+            <div class="placeholder" style="height:24px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Always-on category rail</h3>
+      <p>Search still on top of results, but categories stay in a left rail. Closer to docs; less “landing page.”</p>
+    </div>
+  </div>
+</div>
