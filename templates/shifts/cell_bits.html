@@ -1,12 +1,17 @@
 {% load i18n shifts_extras %}
-<span class="shifts-chip {{ cell.shift_type.colour|chip_ink }}{% if cell.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ cell.shift_type.colour }}">{{ cell.shift_type.name }}</span>
-<span class="shifts-times">{% if cell.start_time_override %}{% shifts_time_range cell.start_time_override cell.end_time_override %}{% else %}{% shifts_time_range cell.shift_type.start_time cell.shift_type.end_time %}{% endif %}</span>
-<span class="shifts-badges">
-{% if cell.set_by_worker %}<span class="badge" title="{% trans "Set by worker" %}">{% trans "Set by worker" %}</span>{% endif %}
-{% if cell.check_marker == "checked" %}<span class="badge shifts-checked-at" title="{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock_text %}Checked in at {{ time }}{% endblocktrans %}">{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</span>
-{% elif cell.check_marker == "not" %}<span class="badge" title="{% trans "Not checked in" %}">{% trans "Not checked in" %}</span>
-{% elif cell.check_marker == "missed" %}<span class="badge badge-danger" title="{% trans "Missed" %}">{% trans "Missed" %}</span>{% endif %}
-{% if cell.shift_type.archived %}<span class="badge" title="{% trans "Archived" %}">{% trans "Archived" %}</span>{% endif %}
-{% if day >= today and cell.user.department_id != department.pk %}<span class="badge badge-warning" title="{% trans "Not in this department" %}">{% trans "Not in this department" %}</span>
-{% elif day >= today and cell.user.status != "active" %}<span class="badge badge-danger" title="{% trans "Inactive" %}">{% trans "Inactive" %}</span>{% endif %}
+<span class="shifts-cell-name">
+  <span class="shifts-dot{% if cell.shift_type.is_night %} shifts-dot--night{% endif %}" aria-hidden="true">{% if cell.shift_type.is_night %}☾{% endif %}</span>
+  <span class="shifts-cell-name-text">{{ cell.shift_type.name }}</span>
 </span>
+<span class="shifts-times">{% if cell.start_time_override %}{% shifts_time_range cell.start_time_override cell.end_time_override %}{% else %}{% shifts_time_range cell.shift_type.start_time cell.shift_type.end_time %}{% endif %}</span>
+{% if cell.set_by_worker or cell.check_marker or cell.shift_type.archived or day >= today and cell.user.department_id != department.pk or day >= today and cell.user.status != "active" %}
+<span class="shifts-badges">
+{% if cell.check_marker == "checked" %}<span class="badge badge-open shifts-checked-at" title="{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock_text %}Checked in at {{ time }}{% endblocktrans %}"><span class="visually-hidden">{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock_text %}Checked in at {{ time }}{% endblocktrans %}</span><span aria-hidden="true">✓ {{ cell.checked_in_at|shifts_clock }}</span></span>
+{% elif cell.check_marker == "not" %}<span class="badge badge-waiting_for_branch" title="{% trans "Not checked in" %}">{% trans "Not checked in" %}</span>
+{% elif cell.check_marker == "missed" %}<span class="badge badge-expired" title="{% trans "Missed" %}">{% trans "Missed" %}</span>{% endif %}
+{% if cell.set_by_worker %}<span class="badge badge-merged" title="{% trans "Set by worker" %}">{% trans "Set by worker" %}</span>{% endif %}
+{% if cell.shift_type.archived %}<span class="badge badge-closed" title="{% trans "Archived" %}">{% trans "Archived" %}</span>{% endif %}
+{% if day >= today and cell.user.department_id != department.pk %}<span class="badge badge-waiting_for_branch" title="{% trans "Not in this department" %}">{% trans "Not in this department" %}</span>
+{% elif day >= today and cell.user.status != "active" %}<span class="badge badge-expired" title="{% trans "Inactive" %}">{% trans "Inactive" %}</span>{% endif %}
+</span>
+{% endif %}

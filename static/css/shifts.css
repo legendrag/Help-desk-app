@@ -298,11 +298,79 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 }
 
 #shifts-shell-pane .shifts-cell--filled {
-  border: 1px solid color-mix(in srgb, var(--shift-colour, var(--primary)) 35%, var(--border));
-  border-inline-start: 4px solid var(--shift-colour, var(--primary));
-  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 10%, var(--panel-bg));
+  gap: 0.2rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--shift-colour, var(--primary)) 28%, var(--border));
+  border-inline-start: 3px solid var(--shift-colour, var(--primary));
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 8%, var(--panel-bg));
   color: var(--text-main);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Name row: colour dot (or moon for nights) + name that truncates, never overlaps. */
+#shifts-shell-pane .shifts-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-cell-name-text {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-dot {
+  flex: 0 0 auto;
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  border-radius: 999px;
+  background: var(--shift-colour, var(--primary));
+}
+
+#shifts-shell-pane .shifts-dot--night {
+  inline-size: auto;
+  block-size: auto;
+  background: none;
+  /* Lift dark shift colours toward the text colour so the moon stays visible. */
+  color: color-mix(in srgb, var(--shift-colour, var(--primary)) 55%, var(--text-main));
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+#shifts-shell-pane .shifts-cell--filled .shifts-times {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+#shifts-shell-pane .shifts-cell--filled .shifts-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-block-start: 0.15rem;
+  max-inline-size: 100%;
+}
+
+#shifts-shell-pane .shifts-cell--filled .shifts-badges .badge {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  padding: 0.05rem 0.4rem;
 }
 
 #shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
@@ -314,7 +382,8 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 
 #shifts-shell-pane .shifts-cell-stack[data-count="2"] .shifts-cell--filled,
 #shifts-shell-pane .shifts-cell-stack[data-count="3"] .shifts-cell--filled {
-  padding: 0.25rem 0.4rem;
+  padding: 0.3rem 0.45rem;
+  gap: 0.1rem;
 }
 
 #shifts-shell-pane .shifts-cell-btn.shifts-cell--empty {
@@ -367,164 +436,21 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 }
 
 /* ==========================================================================
-   DIAGONAL SPLIT CELL (WHEN DAY HAS EXACTLY TWO SHIFTS)
+   TWO SHIFTS ON ONE DAY: two compact cards stacked, earlier one on top.
+   (Replaces the diagonal split, whose overlapping triangles let text collide.)
    ========================================================================== */
 
 #shifts-shell-pane .shifts-cell-stack--split {
-  position: relative;
-  block-size: 5.6rem;
-  min-block-size: 5.6rem;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  gap: 0.25rem;
 }
 
 #shifts-shell-pane .shifts-cell-stack--split .shifts-half {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  border: 0;
-  border-radius: 0;
-  padding: 0.35rem 0.5rem;
-  box-sizing: border-box;
-  text-decoration: none;
+  flex: 1 1 auto;
 }
 
-/* Triangle A: Top-Start (earlier shift) */
-#shifts-shell-pane .shifts-half--a {
-  clip-path: polygon(0 0, 100% 0, 0 100%);
-  background: color-mix(in srgb, var(--c1, var(--primary)) 20%, var(--panel-bg));
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  text-align: start;
-  z-index: 1;
-  border-block-start: 3px solid var(--c1, var(--primary));
-}
-
-/* Triangle B: Bottom-End (later shift) */
-#shifts-shell-pane .shifts-half--b {
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
-  background: color-mix(in srgb, var(--c2, var(--primary)) 20%, var(--panel-bg));
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: flex-end;
-  text-align: end;
-  z-index: 1;
-  border-block-end: 3px solid var(--c2, var(--primary));
-}
-
-/* Diagonal divider line */
-#shifts-shell-pane .shifts-cell-stack--split::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background: linear-gradient(to top right,
-    transparent calc(50% - 0.75px),
-    var(--border) 50%,
-    transparent calc(50% + 0.75px)
-  );
-}
-
-/* RTL mirroring for diagonal polygons and divider */
-html[dir="rtl"] #shifts-shell-pane .shifts-half--a {
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
-  align-items: flex-start;
-  text-align: start;
-}
-
-html[dir="rtl"] #shifts-shell-pane .shifts-half--b {
-  clip-path: polygon(0 0, 0 100%, 100% 100%);
-  align-items: flex-end;
-  text-align: end;
-}
-
-html[dir="rtl"] #shifts-shell-pane .shifts-cell-stack--split::after {
-  background: linear-gradient(to bottom right,
-    transparent calc(50% - 0.75px),
-    var(--border) 50%,
-    transparent calc(50% + 0.75px)
-  );
-}
-
-/* Hover & Focus states on triangle buttons */
-#shifts-shell-pane .shifts-half--a:hover {
-  background: color-mix(in srgb, var(--c1, var(--primary)) 30%, var(--panel-bg));
-  z-index: 3;
-}
-
-#shifts-shell-pane .shifts-half--b:hover {
-  background: color-mix(in srgb, var(--c2, var(--primary)) 30%, var(--panel-bg));
-  z-index: 3;
-}
-
-#shifts-shell-pane .shifts-half:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--primary);
-  z-index: 4;
-}
-
-/* Text inside diagonal split cell */
-#shifts-shell-pane .shifts-cell-stack--split .shifts-chip {
-  background: transparent !important;
-  padding: 0 !important;
-  color: var(--text-main) !important;
-  font-size: 0.76rem;
-  font-weight: 700;
-  max-inline-size: 75%;
-}
-
-#shifts-shell-pane .shifts-cell-stack--split .shifts-times {
-  font-size: 0.68rem;
-  font-weight: 600;
-  max-inline-size: 70%;
-}
-
-/* Badges inside split cell: compact dots with tooltips */
-#shifts-shell-pane .shifts-cell-stack--split .shifts-badges {
-  gap: 0.2rem;
-  margin-block-start: 0;
-}
-
-#shifts-shell-pane .shifts-cell-stack--split .shifts-badges .badge {
-  display: inline-block;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  min-inline-size: 0.5rem;
-  min-block-size: 0.5rem;
-  padding: 0;
-  border-radius: 999px;
-  overflow: hidden;
-  text-indent: -9999px;
-  border: 1px solid currentColor;
-}
-
-/* Add button inside diagonal split cell (corner button) */
+/* The add button sits under the two cards and shows on hover, like every other cell. */
 #shifts-shell-pane .shifts-cell-btn.shifts-cell-btn--split-add {
-  position: absolute;
-  inset-block-start: 4px;
-  inset-inline-end: 4px;
-  inline-size: 1.35rem;
-  block-size: 1.35rem;
-  min-inline-size: 1.35rem;
-  min-block-size: 1.35rem;
-  border-radius: 999px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  z-index: 5;
-  opacity: 0;
-}
-
-#shifts-shell-pane td:hover .shifts-cell-btn--split-add,
-#shifts-shell-pane td:focus-within .shifts-cell-btn--split-add {
-  opacity: 1;
+  flex: 0 0 auto;
 }
 
 #shifts-shell-pane .shifts-chip {
@@ -1013,6 +939,23 @@ input[type="color"].shifts-color {
   min-block-size: 1.5rem;
 }
 
+/* Narrow month columns: up to two lines, whole words where they fit, then "…". */
+#shifts-shell-pane .shifts-grid--month .shifts-cell-name-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-name {
+  align-items: flex-start;
+  font-size: 0.7rem;
+}
+
 #shifts-shell-pane .shifts-grid--month .shifts-chip {
   display: block;
   font-size: 0.7rem;
@@ -1026,14 +969,8 @@ input[type="color"].shifts-color {
   text-overflow: clip;
 }
 
-#shifts-shell-pane .shifts-grid--month .shifts-cell-stack--split {
-  block-size: 3.6rem;
-  min-block-size: 3.6rem;
-}
-
-#shifts-shell-pane .shifts-grid--month .shifts-half .shifts-chip {
-  font-size: 0.68rem;
-  max-inline-size: 85%;
+#shifts-shell-pane .shifts-grid--month .shifts-dot {
+  margin-block-start: 0.2rem;
 }
 
 /* ==========================================================================
@@ -1047,22 +984,6 @@ input[type="color"].shifts-color {
 
 [data-theme="dark"] #shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
   background: color-mix(in srgb, var(--shift-colour, var(--primary)) 24%, var(--panel-bg));
-}
-
-[data-theme="dark"] #shifts-shell-pane .shifts-half--a {
-  background: color-mix(in srgb, var(--c1, var(--primary)) 26%, var(--panel-bg));
-}
-
-[data-theme="dark"] #shifts-shell-pane .shifts-half--b {
-  background: color-mix(in srgb, var(--c2, var(--primary)) 26%, var(--panel-bg));
-}
-
-[data-theme="dark"] #shifts-shell-pane .shifts-half--a:hover {
-  background: color-mix(in srgb, var(--c1, var(--primary)) 36%, var(--panel-bg));
-}
-
-[data-theme="dark"] #shifts-shell-pane .shifts-half--b:hover {
-  background: color-mix(in srgb, var(--c2, var(--primary)) 36%, var(--panel-bg));
 }
 
 /* ==========================================================================
