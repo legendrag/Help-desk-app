@@ -1,0 +1,10 @@
+{% load i18n shifts_extras %}
+<div id="shifts-check-in" class="shifts-checkin-list"{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document" hx-swap="outerHTML"{% endif %}>
+  {% for check_in in check_ins %}
+  {% if forloop.first %}
+  {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
+  {% else %}
+  {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+  {% endif %}
+  {% endfor %}
+</div>

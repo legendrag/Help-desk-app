@@ -1081,6 +1081,63 @@ class CheckInTests(TestCase):
         self.assertEqual(self.row.shift_type_id, self.night.pk)
         self.assertIsNone(self.row.checked_in_at)
 
+    def test_day_shift_check_in_window_30_minutes(self):
+        # 08:29 is 31 minutes before 09:00 - check-in panel should NOT be visible
+        with self._at(8, 29):
+            res_early = self.client.get(reverse("shifts_mine"))
+            self.assertNotContains(res_early, f'id="shifts-check-in-{self.row.pk}"')
+            post_early = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+            self.assertContains(post_early, "30 minutes")
+        self.row.refresh_from_db()
+        self.assertIsNone(self.row.checked_in_at)
+
+        # 08:30 is exactly 30 minutes before 09:00 - check-in panel appears and POST succeeds
+        with self._at(8, 30):
+            res_open = self.client.get(reverse("shifts_mine"))
+            self.assertContains(res_open, f'id="shifts-check-in-{self.row.pk}"')
+            post_open = self.client.post(reverse("shifts_check_in", args=[self.row.pk]))
+            self.assertContains(post_open, "Checked in at")
+        self.row.refresh_from_db()
+        self.assertIsNotNone(self.row.checked_in_at)
+
+    def test_night_shift_cross_midnight_check_in_window(self):
+        night_row = make_assignment(self.agent, self.night, self.today)
+        # 21:29 is 31 minutes before 22:00 - check-in is early/hidden
+        with self._at(21, 29):
+            res_early = self.client.get(reverse("shifts_mine"))
+            self.assertNotContains(res_early, f'id="shifts-check-in-{night_row.pk}"')
+            post_early = self.client.post(reverse("shifts_check_in", args=[night_row.pk]))
+            self.assertContains(post_early, "30 minutes")
+        night_row.refresh_from_db()
+        self.assertIsNone(night_row.checked_in_at)
+
+        # 21:30 is 30 minutes before 22:00 - check-in opens
+        with self._at(21, 30):
+            res_open = self.client.get(reverse("shifts_mine"))
+            self.assertContains(res_open, f'id="shifts-check-in-{night_row.pk}"')
+
+        # Next day at 00:30 (cross-midnight, during the 22:00-06:00 shift)
+        next_day = date(2026, 6, 3)
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 3, 0, 30)), \
+             patch("django.utils.timezone.localdate", return_value=next_day):
+            res_cross = self.client.get(reverse("shifts_mine"))
+            self.assertContains(res_cross, f'id="shifts-check-in-{night_row.pk}"')
+            post_cross = self.client.post(reverse("shifts_check_in", args=[night_row.pk]))
+            self.assertContains(post_cross, "Checked in at")
+        night_row.refresh_from_db()
+        self.assertIsNotNone(night_row.checked_in_at)
+
+    def test_check_in_panels_htmx_partial_endpoint(self):
+        with self._at(8, 20):
+            res = self.client.get(reverse("shifts_check_in_panels"))
+            self.assertEqual(res.status_code, 200)
+            self.assertNotContains(res, f'id="shifts-check-in-{self.row.pk}"')
+
+        with self._at(8, 35):
+            res = self.client.get(reverse("shifts_check_in_panels"))
+            self.assertEqual(res.status_code, 200)
+            self.assertContains(res, f'id="shifts-check-in-{self.row.pk}"')
+
 
 class AutoCheckOutTests(TestCase):
     def setUp(self):
@@ -1764,15 +1821,17 @@ class SameDayShiftTests(TestCase):
             mine = self.client.get(reverse("shifts_mine"))
             day_in = self.client.post(reverse("shifts_check_in", args=[day_row.pk]))
         self.assertContains(mine, f'id="shifts-check-in-{day_row.pk}"')
-        self.assertContains(mine, f'id="shifts-check-in-{night_row.pk}"')
+        self.assertNotContains(mine, f'id="shifts-check-in-{night_row.pk}"')
         self.assertContains(day_in, "Checked in at")
         day_row.refresh_from_db()
         night_row.refresh_from_db()
         self.assertIsNotNone(day_row.checked_in_at)
         self.assertIsNone(night_row.checked_in_at)
         with _both_clocks(aware(2026, 6, 2, 22, 5), on):
-            self.client.get(reverse("shifts_mine"))
+            night_page = self.client.get(reverse("shifts_mine"))
             night_in = self.client.post(reverse("shifts_check_in", args=[night_row.pk]))
+        self.assertContains(night_page, f'id="shifts-check-in-{night_row.pk}"')
+        self.assertNotContains(night_page, f'id="shifts-check-in-{day_row.pk}"')
         self.assertContains(night_in, "Checked in at")
         day_row.refresh_from_db()
         night_row.refresh_from_db()

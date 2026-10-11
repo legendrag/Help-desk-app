@@ -26,17 +26,23 @@ from shifts.services import (
     clipped_day_night_minutes,
     clock_length,
     check_in_marker,
+    check_in_opens_at,
     check_in_state,
+    check_in_visible,
     effective_interval,
     settle_check_in,
     effective_times,
     interval_for,
     month_dates,
     neighbor_conflict,
+    next_check_in_change,
+    night_cutoff_for,
     normalize_start,
     overlap_message,
     overrides_set_by_worker,
     plan_copy,
+    saturday_of,
+    split_day_night_minutes,
     suggest_nights,
     week_dates,
 )
@@ -158,6 +164,9 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
     if not retarget and htmx_revalidation_match(request, etag):
         return htmx_not_modified(etag)
     prev_start, next_start = _step_start(view, start)
+    now = timezone.now()
+    check_ins = _open_check_ins(request.user, now)
+    refresh_in = next_check_in_change(bundle["assignments"], now)
     context = {
         **bundle,
         "department": department,
@@ -168,13 +177,14 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
         "next_start": next_start,
         "readonly": False,
         "shell_etag": etag,
-        "now": timezone.now(),
+        "now": now,
         "today": timezone.localdate(),
         "notice": notice,
         "skips": skips or [],
         "error": error,
         "display_name": display_name,
-        "check_ins": _open_check_ins(request.user, timezone.now()),
+        "check_ins": check_ins,
+        "refresh_in": refresh_in,
     }
     template = "shifts/rota_grid.html" if retarget else "shifts/rota.html"
     response = _shell(request, template, context)
@@ -223,7 +233,9 @@ def shifts_mine(request):
     today = timezone.localdate()
     lookback = today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS)
     upcoming = list(
-        ShiftAssignment.objects.filter(user=request.user, date__gte=today).select_related("shift_type")
+        ShiftAssignment.objects.filter(user=request.user, date__gte=today).select_related(
+            "shift_type", "shift_type__department", "times_set_by"
+        )
     )
     past_nights = list(
         ShiftAssignment.objects.filter(
@@ -231,24 +243,139 @@ def shifts_mine(request):
             shift_type__is_night=True,
             date__gte=lookback,
             date__lt=today,
-        ).select_related("shift_type")
+        ).select_related("shift_type", "shift_type__department", "times_set_by")
     )
-    rows = sorted(upcoming + past_nights, key=lambda row: (row.date, row.pk))
+    yesterday_shifts = list(
+        ShiftAssignment.objects.filter(
+            user=request.user,
+            date=today - timedelta(days=1),
+        ).select_related("shift_type", "shift_type__department", "times_set_by")
+    )
+    all_recent = {r.pk: r for r in upcoming + past_nights + yesterday_shifts}
+    rows = sorted(all_recent.values(), key=lambda row: (row.date, row.pk))
     now = timezone.now()
     for row in rows:
         settle_check_in(row, now)
+
+    for row in rows:
+        s_dt, e_dt = effective_interval(row)
+        row.interval_start = s_dt
+        row.interval_end = e_dt
+        row.crosses_midnight = e_dt.date() > s_dt.date()
+        total_m, _ = clock_length(*effective_times(row))
+        row.duration_hours = total_m // 60
+        row.duration_mins = total_m % 60
+        row.is_active = (s_dt <= now < e_dt)
+        row.is_past = (e_dt <= now)
+        row.is_future = (now < s_dt)
+        row.opens_at = check_in_opens_at(row)
+        row.can_check_in = (row.opens_at <= now < e_dt and not row.checked_out_at and can_check_in(request.user))
+        row.edited_by_me = overrides_set_by_worker(row)
+
+    banner_end = None
+    for row in rows:
+        if row.interval_start <= now < row.interval_end:
+            banner_end = row.interval_end
+            break
+
+    # Determine "Hero / Next shift":
+    active_shifts = [r for r in rows if r.interval_start <= now < r.interval_end]
+    future_shifts = [r for r in rows if r.interval_end > now and r not in active_shifts]
+    future_shifts.sort(key=lambda r: (r.interval_start, r.pk))
+
+    hero_shift = None
+    if active_shifts:
+        hero_shift = active_shifts[0]
+    elif future_shifts:
+        hero_shift = future_shifts[0]
+
+    hero_data = None
+    if hero_shift:
+        total_sec = max(1, int((hero_shift.interval_end - hero_shift.interval_start).total_seconds()))
+        elapsed_sec = max(0, int((now - hero_shift.interval_start).total_seconds()))
+        pct = min(100, int((elapsed_sec / total_sec) * 100)) if hero_shift.is_active else 0
+        hero_data = {
+            "assignment": hero_shift,
+            "progress_percent": pct,
+            "can_check_in": hero_shift.can_check_in,
+            "is_checked_in": bool(hero_shift.checked_in_at),
+            "is_active": hero_shift.is_active,
+            "time_to_start": int((hero_shift.interval_start - now).total_seconds()),
+            "time_to_end": int((hero_shift.interval_end - now).total_seconds()),
+        }
+
+    # Groupings for timeline:
+    tomorrow = today + timedelta(days=1)
+    week_start = saturday_of(today)
+    week_end = week_start + timedelta(days=6)
+
+    today_cards = [r for r in rows if r.date == today]
+    tomorrow_cards = [r for r in rows if r.date == tomorrow]
+    later_this_week_cards = [r for r in rows if tomorrow < r.date <= week_end]
+    upcoming_later_cards = [r for r in rows if r.date > week_end]
+    past_night_cards = [r for r in rows if r.date < today and r.shift_type.is_night]
+
+    # Weekly Summary Stats:
+    week_rows = [r for r in rows if week_start <= r.date <= week_end]
+    week_total_m = sum(clock_length(*effective_times(r))[0] for r in week_rows)
+    week_night_m = sum(
+        split_day_night_minutes(*effective_interval(r), night_cutoff_for(r.shift_type.department))[1]
+        for r in week_rows
+    )
+    summary_stats = {
+        "count": len(week_rows),
+        "total_hours": f"{week_total_m // 60}h" + (f" {week_total_m % 60}m" if week_total_m % 60 else ""),
+        "night_hours": f"{week_night_m // 60}h" + (f" {week_night_m % 60}m" if week_night_m % 60 else ""),
+    }
+
+    check_ins = _open_check_ins(request.user, now)
+    refresh_in = next_check_in_change(rows, now)
+
+    return _shell(request, "shifts/mine.html", {
+        "assignments": rows,
+        "hero_data": hero_data,
+        "today_cards": today_cards,
+        "tomorrow_cards": tomorrow_cards,
+        "later_this_week_cards": later_this_week_cards,
+        "upcoming_later_cards": upcoming_later_cards,
+        "past_night_cards": past_night_cards,
+        "summary_stats": summary_stats,
+        "banner_end": banner_end,
+        "today": today,
+        "check_ins": check_ins,
+        "refresh_in": refresh_in,
+    })
+
+
+@login_required
+@require_GET
+def shifts_check_in_panels(request):
+    if request.user.user_type != "support" and not is_shift_manager(request.user):
+        return _forbid()
+    now = timezone.now()
+    today = timezone.localdate()
+    rows = list(
+        ShiftAssignment.objects.filter(
+            user=request.user,
+            date__in=[today - timedelta(days=1), today, today + timedelta(days=1)],
+        ).select_related("shift_type", "user")
+    )
+    for r in rows:
+        settle_check_in(r, now)
+    check_ins = _open_check_ins(request.user, now)
+    refresh_in = next_check_in_change(rows, now)
     banner_end = None
     for row in rows:
         start_dt, end_dt = effective_interval(row)
         if start_dt <= now < end_dt:
             banner_end = end_dt
             break
-    return _shell(request, "shifts/mine.html", {
-        "assignments": rows,
+    return render(request, "shifts/check_ins_partial.html", {
+        "check_ins": check_ins,
         "banner_end": banner_end,
-        "today": today,
-        "check_ins": _open_check_ins(request.user, now),
+        "refresh_in": refresh_in,
     })
+
 
 
 def _available_board(request):
@@ -1222,7 +1349,30 @@ def shifts_team(request):
 
 
 def _mine_row(request, assignment, error):
-    return render(request, "shifts/mine_row.html", {"assignment": assignment, "error": error})
+    now = timezone.now()
+    s_dt, e_dt = effective_interval(assignment)
+    assignment.interval_start = s_dt
+    assignment.interval_end = e_dt
+    assignment.crosses_midnight = e_dt.date() > s_dt.date()
+    total_m, _ = clock_length(*effective_times(assignment))
+    assignment.duration_hours = total_m // 60
+    assignment.duration_mins = total_m % 60
+    assignment.is_active = (s_dt <= now < e_dt)
+    assignment.is_past = (e_dt <= now)
+    assignment.is_future = (now < s_dt)
+    assignment.opens_at = check_in_opens_at(assignment)
+    assignment.can_check_in = (
+        assignment.opens_at <= now < e_dt
+        and not assignment.checked_out_at
+        and can_check_in(request.user)
+    )
+    assignment.edited_by_me = overrides_set_by_worker(assignment)
+    return render(request, "shifts/mine_card.html", {
+        "assignment": assignment,
+        "error": error,
+        "now": now,
+        "today": timezone.localdate(),
+    })
 
 
 def _can_restore_check_in(assignment, now) -> bool:
@@ -1262,7 +1412,10 @@ def _open_check_ins(user, now):
         return []
     today = timezone.localdate()
     rows = list(
-        ShiftAssignment.objects.filter(user=user, date=today).select_related("shift_type")
+        ShiftAssignment.objects.filter(
+            user=user,
+            date__in=[today - timedelta(days=1), today, today + timedelta(days=1)],
+        ).select_related("shift_type", "user")
     )
     rows.sort(key=lambda row: (effective_interval(row)[0], row.pk))
     panels = []
@@ -1272,7 +1425,7 @@ def _open_check_ins(user, now):
             settle_check_in(row, now)
             continue
         context = _check_in_context(row, now, user)
-        if context and context["state"] != "closed":
+        if context and context["state"] in ("open", "checked", "spent"):
             panels.append(context)
     return panels
 
@@ -1288,11 +1441,15 @@ def shifts_check_in(request, pk):
         return _forbid()
     if request.user.user_type != "support":
         return _forbid()
-    if assignment.date != timezone.localdate():
+    today = timezone.localdate()
+    if assignment.date not in (today - timedelta(days=1), today, today + timedelta(days=1)):
         return _forbid()
     if not can_check_in(request.user):
         return _forbid()
     now = timezone.now()
+    state = check_in_state(assignment, now)
+    if assignment.date != today and state != "open":
+        return _forbid()
     settle_check_in(assignment, now)
     if assignment.checked_out_at and not assignment.checked_in_at:
         return render(request, "shifts/check_in_panel.html", {
@@ -1319,3 +1476,4 @@ def shifts_check_in(request, pk):
     assignment.checked_out_at = None
     assignment.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
     return render(request, "shifts/check_in_panel.html", {"assignment": assignment, "state": "checked"})
+

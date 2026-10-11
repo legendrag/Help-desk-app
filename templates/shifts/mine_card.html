@@ -1,0 +1,85 @@
+{% load i18n shifts_extras %}
+<article id="shift-mine-{{ assignment.pk }}" class="shifts-mine-card{% if assignment.is_active %} is-active{% elif assignment.is_past %} is-past{% endif %}" style="--shift-colour: {{ assignment.shift_type.colour }};">
+  <div class="shifts-card-main">
+    <div class="shifts-card-header">
+      <div class="shifts-card-type-row">
+        <span class="shifts-chip {{ assignment.shift_type.colour|chip_ink }}{% if assignment.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ assignment.shift_type.colour }}">
+          {{ assignment.shift_type.name }}
+        </span>
+        <span class="shifts-card-day-badge">
+          <bdi class="shifts-ltr" dir="ltr">{{ assignment.date|date:"D, j M Y" }}</bdi>
+        </span>
+      </div>
+      <div class="shifts-card-status">
+        {% if assignment.checked_in_at %}
+        <span class="badge badge-success"><span aria-hidden="true">✓ </span>{% trans "On shift" %}</span>
+        {% elif assignment.can_check_in %}
+        <span class="badge badge-primary">● {% trans "Check-in open" %}</span>
+        {% elif assignment.checked_out_at %}
+        <span class="badge badge-secondary">{% trans "Completed" %}</span>
+        {% elif assignment.is_past %}
+        <span class="badge badge-danger">{% trans "Missed" %}</span>
+        {% else %}
+        <span class="badge badge-muted">{% trans "Upcoming" %}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="shifts-card-time-row">
+      <div class="shifts-card-times">
+        <span class="shifts-card-clock-icon" aria-hidden="true">⏱</span>
+        <span class="shifts-card-interval">
+          {% shifts_time_range assignment.start_time_override|default:assignment.shift_type.start_time assignment.end_time_override|default:assignment.shift_type.end_time %}
+        </span>
+        {% if assignment.crosses_midnight %}
+        <span class="badge badge-subtle" title="{% trans "Ends next day" %}">+1d</span>
+        {% endif %}
+      </div>
+      <div class="shifts-card-duration">
+        {% if assignment.duration_hours or assignment.duration_mins %}
+        {{ assignment.duration_hours }}h{% if assignment.duration_mins %} {{ assignment.duration_mins }}m{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    {% if assignment.edited_by_me %}
+    <div class="shifts-card-note">
+      <span class="badge badge-info"><span aria-hidden="true">✎ </span>{% trans "Hours adjusted by you" %}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if assignment.shift_type.is_night %}
+  <details class="shifts-hours-accordion"{% if error %} open{% endif %}>
+    <summary class="shifts-hours-summary">
+      <span class="shifts-hours-toggle-text">{% trans "Adjust hours" %}</span>
+      <span class="shifts-hours-toggle-icon" aria-hidden="true">▾</span>
+    </summary>
+    <div class="shifts-hours-drawer">
+      <form class="shifts-form shifts-hours-form" method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"
+            hx-post="{% url 'shifts_mine_hours' assignment.pk %}"
+            hx-target="#shift-mine-{{ assignment.pk }}"
+            hx-swap="outerHTML"
+            hx-disabled-elt="this"
+            hx-sync="this:replace">
+        {% csrf_token %}
+        <div class="shifts-hours-grid">
+          <div class="form-group">
+            <label for="mine-start-{{ assignment.pk }}">{% trans "Start time" %}</label>
+            <input id="mine-start-{{ assignment.pk }}" class="form-control" type="time" name="start_time" value="{{ assignment.start_time_override|default:assignment.shift_type.start_time|time:'H:i' }}" required>
+          </div>
+          <div class="form-group">
+            <label for="mine-end-{{ assignment.pk }}">{% trans "End time" %}</label>
+            <input id="mine-end-{{ assignment.pk }}" class="form-control" type="time" name="end_time" value="{{ assignment.end_time_override|default:assignment.shift_type.end_time|time:'H:i' }}" required>
+          </div>
+        </div>
+        {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+        <div class="shifts-hours-actions">
+          <button class="btn primary" type="submit" name="action" value="save">{% trans "Save hours" %}</button>
+          <button class="btn secondary" type="submit" name="action" value="reset">{% trans "Reset to default" %}</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</article>

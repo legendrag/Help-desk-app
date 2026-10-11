@@ -1,0 +1,77 @@
+{% load i18n shifts_extras %}
+<section class="shifts-hero-card{% if hero_data.is_active %} is-active{% endif %}" style="--shift-colour: {{ hero_data.assignment.shift_type.colour }};" aria-labelledby="shifts-hero-heading">
+  <div class="shifts-hero-badge-row">
+    <span class="shifts-hero-kicker">
+      {% if hero_data.is_active %}
+      <span class="shifts-hero-pulse" aria-hidden="true"></span>{% trans "CURRENT SHIFT" %}
+      {% else %}
+      {% trans "NEXT SHIFT" %}
+      {% endif %}
+    </span>
+    <span class="shifts-chip {{ hero_data.assignment.shift_type.colour|chip_ink }}{% if hero_data.assignment.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ hero_data.assignment.shift_type.colour }};">
+      {{ hero_data.assignment.shift_type.name }}
+    </span>
+  </div>
+
+  <div class="shifts-hero-grid">
+    <div class="shifts-hero-info">
+      <h2 id="shifts-hero-heading" class="shifts-hero-title">
+        <bdi class="shifts-ltr" dir="ltr">{{ hero_data.assignment.date|date:"l, j F" }}</bdi>
+      </h2>
+      <p class="shifts-hero-times">
+        <span aria-hidden="true">⏱ </span>
+        {% shifts_time_range hero_data.assignment.start_time_override|default:hero_data.assignment.shift_type.start_time hero_data.assignment.end_time_override|default:hero_data.assignment.shift_type.end_time %}
+        {% if hero_data.assignment.crosses_midnight %}<span class="badge badge-subtle" title="{% trans "Ends next day" %}">+1d</span>{% endif %}
+      </p>
+    </div>
+
+    <div class="shifts-hero-action-box">
+      {% if hero_data.is_checked_in %}
+      <div class="shifts-hero-status-checked">
+        <div class="shifts-hero-status-badge">
+          <span class="badge badge-success"><span aria-hidden="true">✓ </span>{% trans "On shift" %}</span>
+        </div>
+        <p class="shifts-hero-checked-meta">
+          {% blocktrans trimmed with time=hero_data.assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}
+        </p>
+        <div class="shifts-hero-progress" role="progressbar" aria-valuenow="{{ hero_data.progress_percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% trans "Shift progress" %}">
+          <div class="shifts-hero-progress-bar" style="width: {{ hero_data.progress_percent }}%;"></div>
+        </div>
+        <p class="shifts-hero-end-meta">
+          {% trans "Ends at" %} {{ hero_data.assignment.interval_end|shifts_clock }}
+        </p>
+      </div>
+
+      {% elif hero_data.can_check_in %}
+      <div class="shifts-hero-status-open">
+        <div class="shifts-hero-countdown-tag">
+          {% if hero_data.time_to_start > 0 %}
+          <span class="badge badge-primary">● {% trans "Check-in is open" %}</span>
+          {% else %}
+          <span class="badge badge-warning">● {% trans "Shift is running" %}</span>
+          {% endif %}
+        </div>
+        <form method="post" action="{% url 'shifts_check_in' hero_data.assignment.pk %}"
+              hx-post="{% url 'shifts_check_in' hero_data.assignment.pk %}"
+              hx-target="#shifts-check-in-{{ hero_data.assignment.pk }}"
+              hx-swap="outerHTML"
+              hx-disabled-elt="this"
+              hx-sync="this:replace">
+          {% csrf_token %}
+          <button class="btn primary shifts-hero-btn" type="submit">
+            <span aria-hidden="true">✓ </span>{% trans "Check in now" %}
+          </button>
+        </form>
+      </div>
+
+      {% else %}
+      <div class="shifts-hero-status-upcoming">
+        <span class="badge badge-muted">{% trans "Upcoming" %}</span>
+        <p class="shifts-hero-hint">
+          {% trans "Check-in opens 30 minutes before shift starts" %}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>

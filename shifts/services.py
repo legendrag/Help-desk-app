@@ -197,14 +197,45 @@ def check_in_marker(assignment, now) -> str:
     return ""
 
 
+def check_in_opens_at(assignment) -> datetime:
+    start_dt, _ = effective_interval(assignment)
+    return start_dt - timedelta(minutes=CHECK_IN_EARLY_MINUTES)
+
+
 def check_in_state(assignment, now) -> str:
-    start_dt, end_dt = effective_interval(assignment)
-    opens = start_dt - timedelta(minutes=CHECK_IN_EARLY_MINUTES)
+    _start_dt, end_dt = effective_interval(assignment)
+    opens = check_in_opens_at(assignment)
     if now < opens:
         return "early"
     if now >= end_dt:
         return "closed"
     return "open"
+
+
+def check_in_visible(assignment, now) -> bool:
+    if assignment is None:
+        return False
+    _start_dt, end_dt = effective_interval(assignment)
+    if now >= end_dt:
+        return False
+    opens = check_in_opens_at(assignment)
+    return now >= opens
+
+
+def next_check_in_change(assignments, now) -> int | None:
+    transitions = []
+    for a in assignments:
+        opens = check_in_opens_at(a)
+        _start_dt, end_dt = effective_interval(a)
+        if opens > now:
+            transitions.append(opens)
+        if end_dt > now:
+            transitions.append(end_dt)
+    if not transitions:
+        return None
+    earliest = min(transitions)
+    diff = int((earliest - now).total_seconds()) + 2
+    return max(5, min(diff, 86400))
 
 
 def neighbor_conflict(assignment, start_dt, end_dt, exclude_pk=None):
