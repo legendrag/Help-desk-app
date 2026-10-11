@@ -6,22 +6,16 @@
   <div class="shifts-title-wrap">
     <h1>{% trans "My shifts" %}</h1>
     <p class="shifts-range">
-      <bdi class="shifts-ltr" dir="ltr">{{ today|date:"D, j F Y" }}</bdi>
+      <bdi>{{ today|date:"l, j F Y" }}</bdi>
     </p>
   </div>
-  {% if is_manager %}
   <div class="shifts-header-actions">
-    <a class="btn secondary" href="{% url 'shifts_rota' %}">{% trans "Team rota" %} →</a>
+    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %} →</a>
   </div>
-  {% else %}
-  <div class="shifts-header-actions">
-    <a class="btn secondary" href="{% url 'shifts_team' %}">{% trans "Team rota" %} →</a>
-  </div>
-  {% endif %}
 </header>
 
 {% if check_ins or refresh_in %}
-<div id="shifts-check-in" class="shifts-checkin-list"{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document" hx-swap="outerHTML"{% endif %}>
+<div id="shifts-check-in" class="shifts-checkin-list"{% if not check_ins %} hidden{% endif %}{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document, shiftsChanged from:body" hx-swap="outerHTML"{% endif %}>
   {% for check_in in check_ins %}
   {% if forloop.first %}
   {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
@@ -34,30 +28,49 @@
 <p class="notice">{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
 {% endif %}
 
-{% if assignments %}
-<div class="panel">
-  <div class="table-wrap">
-    <table class="shifts-list">
-      <thead>
-        <tr>
-          <th>{% trans "Date" %}</th>
-          <th>{% trans "Colour" %}</th>
-          <th>{% trans "Shift type" %}</th>
-          <th>{% trans "Times" %}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for assignment in assignments %}
-        {% include "shifts/mine_row.html" %}
-        {% endfor %}
-      </tbody>
-    </table>
+{% if this_week or later or recent %}
+  {% if this_week %}
+  <section class="panel shifts-mine-section" aria-labelledby="mine-this-week">
+    <div class="panel-header">
+      <h2 id="mine-this-week">{% trans "This week" %}</h2>
+      <span class="pill">{{ this_week|length }}</span>
+    </div>
+    {% include "shifts/mine_table.html" with rows=this_week %}
+  </section>
+  {% endif %}
+
+  {% if later %}
+  <section class="panel shifts-mine-section" aria-labelledby="mine-later">
+    <div class="panel-header">
+      <h2 id="mine-later">{% trans "Later" %}</h2>
+      <span class="pill">{{ later|length }}</span>
+    </div>
+    {% include "shifts/mine_table.html" with rows=later %}
+  </section>
+  {% endif %}
+
+  {% if not this_week and not later %}
+  <div class="panel">
+    <p class="empty-state">{% trans "You have no upcoming shifts." %}</p>
   </div>
-</div>
+  {% endif %}
+
+  {% if recent %}
+  <details class="panel shifts-mine-section shifts-recent">
+    <summary class="panel-header">
+      <h2>{% trans "Recent shifts" %}</h2>
+      <span class="pill">{{ recent|length }}</span>
+      <span class="shifts-muted shifts-recent-hint">{% trans "You can still change night hours from the last 7 days." %}</span>
+    </summary>
+    {% include "shifts/mine_table.html" with rows=recent %}
+  </details>
+  {% endif %}
 {% else %}
 <div class="panel">
-  <p class="shifts-empty">{% trans "You have no upcoming shifts." %}</p>
+  <div class="empty-state">
+    <p>{% trans "You have no upcoming shifts." %}</p>
+    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %} →</a>
+  </div>
 </div>
 {% endif %}
 {% endblock %}

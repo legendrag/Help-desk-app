@@ -1,0 +1,19 @@
+{% load i18n %}
+<div class="table-wrap">
+  <table class="shifts-list shifts-mine-table">
+    <thead>
+      <tr>
+        <th scope="col">{% trans "Date" %}</th>
+        <th scope="col">{% trans "Shift type" %}</th>
+        <th scope="col">{% trans "Times" %}</th>
+        <th scope="col">{% trans "Status" %}</th>
+        <th scope="col"><span class="visually-hidden">{% trans "Actions" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in rows %}
+      {% include "shifts/mine_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,14 +1,18 @@
 {% load i18n shifts_extras %}
-<div id="shifts-check-in-{{ assignment.pk }}" class="panel shifts-checkin">
-  <div>
-    <h2 class="shifts-title">{% trans "Check in" %}</h2>
+<div id="shifts-check-in-{{ assignment.pk }}" class="panel shifts-checkin" role="region" aria-label="{% trans "Check in" %}">
+  <div class="shifts-checkin-main">
+    <div class="shifts-checkin-shift">
+      <span class="shifts-chip {{ assignment.shift_type.colour|chip_ink }}{% if assignment.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ assignment.shift_type.colour }}">{{ assignment.shift_type.name }}</span>
+      {% shifts_time_range assignment.start_time_override|default:assignment.shift_type.start_time assignment.end_time_override|default:assignment.shift_type.end_time %}
+      {% if state == "checked" %}<span class="badge badge-open">{% trans "On shift" %}</span>
+      {% elif state == "open" %}<span class="badge badge-waiting_for_branch">{% trans "Check-in open" %}</span>
+      {% elif state == "spent" %}<span class="badge badge-closed">{% trans "Completed" %}</span>{% endif %}
+    </div>
     {% if state == "checked" %}
-    <p>{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</p>
-    {% elif hint %}
-    <p>{{ hint }}</p>
-    {% endif %}
-    {% if banner_end %}
-    <p>{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
+    <p class="shifts-sub">{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}{% if banner_end %} · {% trans "You are on shift until" %} {{ banner_end|shifts_clock }}{% endif %}</p>
+    {% else %}
+    {% if hint %}<p class="shifts-sub">{{ hint }}</p>{% endif %}
+    {% if banner_end %}<p class="shifts-sub">{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}</p>{% endif %}
     {% endif %}
   </div>
   {% if state != "checked" and state != "spent" %}

@@ -127,4 +127,6 @@ class DepartmentShiftSettings(TimeStampedModel):
         verbose_name_plural = _("Shift settings")
 
     def __str__(self):
-        return f"{self.department} · {self.night_starts_at:%H:%M}"
+        from shifts.clock import format_clock
+
+        return f"{self.department} · {format_clock(self.night_starts_at)}"

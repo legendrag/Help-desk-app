@@ -1,7 +1,7 @@
 from django import template
 from django.utils.safestring import mark_safe
 
-from shifts.clock import clock_html, clock_range_html
+from shifts.clock import clock_html, clock_range_html, format_clock
 
 register = template.Library()
 
@@ -9,6 +9,12 @@ register = template.Library()
 @register.filter
 def shifts_clock(value):
     return mark_safe(clock_html(value))
+
+
+@register.filter
+def shifts_clock_text(value):
+    """Plain 12-hour clock for attributes such as title, where markup would show as text."""
+    return format_clock(value)
 
 
 @register.simple_tag

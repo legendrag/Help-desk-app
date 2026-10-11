@@ -756,6 +756,150 @@ html[dir="rtl"] #shifts-shell-pane .shifts-cell-stack--split::after {
   gap: 0.75rem 1rem;
 }
 
+#shifts-shell-pane .shifts-checkin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-checkin-shift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-checkin .shifts-sub {
+  margin: 0;
+}
+
+/* ── My shifts ─────────────────────────────────────────────────────────── */
+
+#shifts-shell-pane .shifts-mine-section .panel-header {
+  margin-bottom: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .pill {
+  background: color-mix(in srgb, var(--text-muted) 16%, var(--panel-bg));
+  color: var(--text-muted);
+  min-width: 0;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+}
+
+#shifts-shell-pane .shifts-sub {
+  display: block;
+  margin-block-start: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+#shifts-shell-pane .shifts-mine-table .shifts-date-text {
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-day-pill {
+  background: color-mix(in srgb, var(--text-muted) 16%, var(--panel-bg));
+  color: var(--text-muted);
+  min-width: 0;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  margin-inline-start: 0.4rem;
+  padding-inline: 0.55rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .shifts-day-pill--today {
+  background: color-mix(in srgb, var(--primary) 14%, var(--panel-bg));
+  color: var(--primary);
+}
+
+/* Table cells are centred app-wide; keep the stacked bits centred with them. */
+#shifts-shell-pane .shifts-mine-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+#shifts-shell-pane .shifts-row-actions {
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-mine-table .badge {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+#shifts-shell-pane .shifts-recent > summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+}
+
+#shifts-shell-pane .shifts-recent > summary::-webkit-details-marker {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-recent > summary::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-recent[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-recent[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+[dir="rtl"] #shifts-shell-pane .shifts-recent:not([open]) > summary::before {
+  transform: scaleX(-1);
+}
+
+#shifts-shell-pane .shifts-recent-hint {
+  flex: 1 1 100%;
+  font-size: 0.8rem;
+}
+
+#shifts-shell-pane .empty-state .btn {
+  margin-block-start: 0.75rem;
+}
+
+/* Phones: the app stacks every table into cards (modern.css, 768px).
+   Each cell holds one block so its label and value sit side by side. */
+@media (max-width: 768px) {
+  #shifts-shell-pane .shifts-mine-table .shifts-mine-cell {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    text-align: start;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-mine-times {
+    justify-content: flex-start;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-row-actions:empty {
+    display: none !important;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-row-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
 #shifts-shell-pane .shifts-checkin .btn,
 #shifts-shell-pane .shifts-form .btn,
 #shifts-shell-pane .shifts-actions .btn,
@@ -779,24 +923,6 @@ html[dir="rtl"] #shifts-shell-pane .shifts-cell-stack--split::after {
   word-break: normal;
   overflow-wrap: normal;
   min-width: 7.5rem;
-}
-
-#shifts-shell-pane .shifts-hours-form {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-#shifts-shell-pane .shifts-hours-form > p {
-  flex: 1 0 100%;
-  margin: 0;
-  font-weight: 600;
-}
-
-#shifts-shell-pane .shifts-hours-form .form-group {
-  flex: 1 1 8rem;
-  min-inline-size: 8rem;
-  max-inline-size: 12rem;
 }
 
 #shifts-shell-pane .shifts-form > #shifts-rotation-options {
@@ -888,10 +1014,16 @@ input[type="color"].shifts-color {
 }
 
 #shifts-shell-pane .shifts-grid--month .shifts-chip {
+  display: block;
   font-size: 0.7rem;
   padding: 0;
   background: transparent !important;
   color: var(--text-main) !important;
+  /* Month columns are narrow: wrap the name rather than clipping it ("Nigh"). */
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }
 
 #shifts-shell-pane .shifts-grid--month .shifts-cell-stack--split {

@@ -25,17 +25,17 @@
             <option value="">{% trans "Choose a shift" %}</option>
             {% endif %}
             {% for row in types %}
-            <option value="{{ row.pk }}"{% if existing and existing.shift_type_id == row.pk %} selected{% endif %}>{{ row.name }}</option>
+            <option value="{{ row.pk }}"{% if selected_type == row.pk %} selected{% endif %}>{{ row.name }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label for="start-override">{% trans "Start override" %}</label>
-          <input id="start-override" type="time" name="start_time_override" value="{{ existing.start_time_override|time:'H:i' }}">
+          <input id="start-override" type="time" name="start_time_override" value="{{ start_value }}">
         </div>
         <div class="form-group">
           <label for="end-override">{% trans "End override" %}</label>
-          <input id="end-override" type="time" name="end_time_override" value="{{ existing.end_time_override|time:'H:i' }}">
+          <input id="end-override" type="time" name="end_time_override" value="{{ end_value }}">
         </div>
       </div>
     </div>

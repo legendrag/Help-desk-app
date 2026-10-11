@@ -800,9 +800,10 @@ class WorkerHoursTests(TestCase):
         self.own = make_assignment(self.agent, self.night, self.today)
         self.client.force_login(self.agent)
 
-    def test_mine_page_shows_a_colour_swatch_not_the_hex(self):
+    def test_mine_page_shows_a_colour_chip_not_the_hex(self):
         response = self.client.get(reverse("shifts_mine"))
-        self.assertContains(response, "shifts-swatch")
+        self.assertContains(response, 'class="shifts-chip')
+        self.assertContains(response, "background-color: #336699")
         self.assertNotContains(response, ">#336699<")
 
     def test_time_ranges_keep_start_before_end_in_an_ltr_wrapper(self):
@@ -1839,3 +1840,233 @@ class SameDayShiftTests(TestCase):
         self.assertIsNotNone(day_row.checked_out_at)
         self.assertIsNotNone(night_row.checked_in_at)
         self.assertIsNone(night_row.checked_out_at)
+
+
+class ReviewFixTests(TestCase):
+    """Regressions from the shifts review: bad input, tooltips, sticky forms, tabs."""
+
+    def setUp(self):
+        self.department = make_department("Review")
+        self.manager = make_user(
+            "review-lead",
+            "support",
+            self.department,
+            make_role("Review lead", can_manage_shifts=True),
+        )
+        self.agent = make_user(
+            "review-agent",
+            "support",
+            self.department,
+            make_role("Review agent", can_check_in=True),
+        )
+        self.day = make_shift_type(self.department, name="Review day", start=time(8, 0), end=time(16, 0))
+        self.night = make_shift_type(self.department, name="Review night", start=time(22, 0), end=time(6, 0))
+        self.on = date(2026, 6, 2)
+        self.client.force_login(self.manager)
+
+    def test_bad_input_never_500s(self):
+        cell = reverse("shifts_cell")
+        base = {"department": self.department.pk, "user": self.agent.pk}
+        for url, params in [
+            (reverse("shifts_rota"), {"start": "2026-02-30"}),
+            (reverse("shifts_rota"), {"department": "abc"}),
+            (reverse("shifts_team"), {"start": "bad"}),
+            (reverse("shifts_rota_grid"), {"start": "nope"}),
+            (reverse("shifts_calc_hours"), {"start": "x"}),
+            (reverse("shifts_calc_coverage"), {"start": "x"}),
+            (cell, {**base}),
+            (cell, {**base, "date": "garbage"}),
+            (cell, {**base, "date": "2026-06-02", "assignment": "zz"}),
+            (cell, {"department": self.department.pk, "user": "zz", "date": "2026-06-02"}),
+        ]:
+            response = self.client.get(url, params)
+            self.assertIn(response.status_code, (200, 404), f"{url} {params}")
+        posted = self.client.post(cell, {
+            **base, "date": "2026-06-02", "shift_type": self.day.pk,
+            "start_time_override": "99:00", "end_time_override": "10:00",
+        })
+        self.assertEqual(posted.status_code, 200)
+        self.assertContains(posted, "Enter a valid time.")
+        self.assertFalse(ShiftAssignment.objects.filter(user=self.agent).exists())
+        copied = self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "bad"})
+        self.assertIn(copied.status_code, (200, 302))
+
+    def test_bad_hours_shows_error_and_keeps_typed_values(self):
+        row = make_assignment(self.agent, self.night, self.on)
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 6, 2, 12, 0), self.on):
+            bad = self.client.post(
+                reverse("shifts_mine_hours", args=[row.pk]),
+                {"action": "save", "start_time": "25:99", "end_time": "05:00"},
+                HTTP_HX_REQUEST="true",
+            )
+            long = self.client.post(
+                reverse("shifts_mine_hours", args=[row.pk]),
+                {"action": "save", "start_time": "06:00", "end_time": "23:30"},
+                HTTP_HX_REQUEST="true",
+            )
+            saved = self.client.post(
+                reverse("shifts_mine_hours", args=[row.pk]),
+                {"action": "save", "start_time": "21:00", "end_time": "05:00"},
+                HTTP_HX_REQUEST="true",
+            )
+        self.assertContains(bad, "Enter a valid time.")
+        self.assertContains(bad, 'value="25:99"')
+        self.assertContains(long, 'value="06:00"')
+        self.assertContains(long, 'value="23:30"')
+        self.assertTemplateUsed(long, "shifts/mine_hours_form.html")
+        self.assertNotIn("HX-Trigger", long)
+        self.assertEqual(saved["HX-Trigger"], "closeModal, shiftsChanged")
+        self.assertEqual(saved["HX-Retarget"], f"#shift-mine-{row.pk}")
+        self.assertTemplateUsed(saved, "shifts/mine_row.html")
+        row.refresh_from_db()
+        self.assertEqual(row.start_time_override, time(21, 0))
+
+    def test_overlap_error_keeps_chosen_type_and_times(self):
+        make_assignment(self.agent, self.day, self.on)
+        clash = make_shift_type(self.department, name="Review clash", start=time(9, 0), end=time(12, 0))
+        response = self.client.post(reverse("shifts_cell"), {
+            "department": self.department.pk,
+            "user": self.agent.pk,
+            "date": "2026-06-02",
+            "shift_type": clash.pk,
+            "start_time_override": "09:30",
+            "end_time_override": "11:00",
+        })
+        self.assertContains(response, "overlaps")
+        self.assertContains(response, f'<option value="{clash.pk}" selected>')
+        self.assertContains(response, 'value="09:30"')
+        self.assertContains(response, 'value="11:00"')
+
+    def test_checked_in_tooltip_is_plain_text(self):
+        row = make_assignment(self.agent, self.day, self.on)
+        row.checked_in_at = aware(2026, 6, 2, 8, 5)
+        row.save()
+        with _both_clocks(aware(2026, 6, 2, 9, 0), self.on):
+            grid = self.client.get(reverse("shifts_rota"), {
+                "department": self.department.pk, "start": "2026-06-02",
+            })
+        html = grid.content.decode()
+        self.assertIn('title="Checked in at 8:05 AM"', html)
+        self.assertNotIn('title="Checked in at <bdi', html)
+
+    def test_check_in_swaps_whole_list_for_htmx(self):
+        row = make_assignment(self.agent, self.day, self.on)
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 6, 2, 8, 40), self.on):
+            response = self.client.post(reverse("shifts_check_in", args=[row.pk]), HTTP_HX_REQUEST="true")
+        self.assertEqual(response["HX-Retarget"], "#shifts-check-in")
+        self.assertContains(response, 'id="shifts-check-in"')
+        self.assertContains(response, "Checked in at")
+        self.assertContains(response, "You are on shift until")
+        self.assertEqual(response.content.decode().count('type="submit"'), 0)
+
+    def test_check_in_list_hidden_when_nothing_to_show(self):
+        make_assignment(self.agent, self.day, self.on)
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 6, 2, 6, 0), self.on):
+            mine = self.client.get(reverse("shifts_mine"))
+        self.assertContains(mine, 'class="shifts-checkin-list" hidden')
+
+    def test_types_tab_stays_active_after_saving_night_start(self):
+        response = self.client.post(
+            reverse("shifts_night_starts"),
+            {"department": self.department.pk, "night_starts_at": "19:00"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertRegex(
+            response.content.decode(),
+            r'class="settings-tab active"[^>]*\n\s*aria-current="page"[^>]*\n[^\n]*\n\s*href="/shifts/types/"',
+        )
+
+    def test_coverage_rows_use_12_hour_labels(self):
+        response = self.client.get(reverse("shifts_calc_coverage"), {
+            "department": self.department.pk, "start": "2026-06-06",
+        })
+        self.assertContains(response, "1:00 PM")
+        self.assertNotContains(response, ">13<")
+
+
+class MyShiftsLayoutTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Layout")
+        self.agent = make_user(
+            "layout-agent",
+            "support",
+            self.department,
+            make_role("Layout agent", can_check_in=True),
+        )
+        self.day = make_shift_type(self.department, name="Layout day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Layout night", start=time(22, 0), end=time(6, 0))
+        # Tuesday; the rota week runs Saturday 2026-05-30 to Friday 2026-06-05.
+        self.today = date(2026, 6, 2)
+        self.client.force_login(self.agent)
+
+    def _get(self, hh, mm=0):
+        with _both_clocks(aware(2026, 6, 2, hh, mm), self.today):
+            return self.client.get(reverse("shifts_mine"))
+
+    def test_groups_this_week_later_and_recent(self):
+        make_assignment(self.agent, self.day, self.today)
+        make_assignment(self.agent, self.day, date(2026, 6, 10))
+        make_assignment(self.agent, self.night, date(2026, 5, 29))
+        response = self._get(7)
+        self.assertEqual([row.date for row in response.context["this_week"]], [self.today])
+        self.assertEqual([row.date for row in response.context["later"]], [date(2026, 6, 10)])
+        self.assertEqual([row.date for row in response.context["recent"]], [date(2026, 5, 29)])
+        self.assertContains(response, "This week")
+        self.assertContains(response, "Later")
+        self.assertContains(response, '<details class="panel shifts-mine-section shifts-recent">')
+
+    def test_running_night_from_yesterday_stays_in_this_week(self):
+        make_assignment(self.agent, self.night, date(2026, 6, 1))
+        response = self._get(2)
+        self.assertEqual([row.date for row in response.context["this_week"]], [date(2026, 6, 1)])
+        self.assertEqual(response.context["recent"], [])
+        self.assertContains(response, "Yesterday")
+        self.assertContains(response, "Next day")
+
+    def test_status_badges(self):
+        row = make_assignment(self.agent, self.day, self.today)
+        self.assertContains(self._get(7), "Upcoming")
+        self.assertContains(self._get(8, 40), "badge-waiting_for_branch")
+        row.checked_in_at = aware(2026, 6, 2, 8, 45)
+        row.save()
+        on_shift = self._get(10)
+        self.assertContains(on_shift, '<span class="badge badge-open">On shift</span>')
+        row.checked_in_at = None
+        row.save()
+        self.assertContains(self._get(18), '<span class="badge badge-expired">Missed</span>')
+
+    def test_today_row_is_marked_and_labelled(self):
+        make_assignment(self.agent, self.day, self.today)
+        response = self._get(7)
+        self.assertContains(response, "shifts-day-pill--today")
+        self.assertContains(response, "shifts-day--today")
+        self.assertContains(response, "8 hours")
+
+    def test_edit_hours_opens_a_dialog_for_night_rows_only(self):
+        day_row = make_assignment(self.agent, self.day, self.today)
+        night_row = make_assignment(self.agent, self.night, self.today)
+        response = self._get(7)
+        self.assertContains(response, reverse("shifts_mine_hours", args=[night_row.pk]))
+        self.assertNotContains(response, reverse("shifts_mine_hours", args=[day_row.pk]))
+        self.assertNotContains(response, 'name="start_time"')
+        with _both_clocks(aware(2026, 6, 2, 7, 0), self.today):
+            dialog = self.client.get(reverse("shifts_mine_hours", args=[night_row.pk]))
+        self.assertContains(dialog, 'class="modal-header"')
+        self.assertContains(dialog, 'value="22:00"')
+        self.assertContains(dialog, "Save hours")
+        self.assertNotContains(dialog, "Reset to shift default")
+
+    def test_check_in_panel_has_one_check_in_control(self):
+        make_assignment(self.agent, self.day, self.today)
+        html = self._get(8, 40).content.decode()
+        panel = html[html.index('id="shifts-check-in"'):html.index("shifts-mine-section")]
+        self.assertEqual(panel.count(">Check in<"), 1)
+        self.assertIn("Check-in open", panel)
+
+    def test_empty_state(self):
+        response = self._get(7)
+        self.assertContains(response, 'class="empty-state"')
+        self.assertContains(response, "You have no upcoming shifts.")

@@ -140,7 +140,7 @@ msgstr "حذف الإشعار"
 msgid "Just now"
 msgstr "الآن"
 
-#: templates/base.html:75
+#: shifts/views.py:346 templates/base.html:75
 msgid "Yesterday"
 msgstr "أمس"
 
@@ -246,9 +246,9 @@ msgstr "عاجلة"
 #: templates/core/management/delete_confirm_partial.html:20
 #: templates/core/management/form_partial.html:420 templates/kb/form.html:140
 #: templates/news/form_partial.html:61 templates/shifts/cell_form.html:44
-#: templates/shifts/rota.html:75 templates/shifts/rota.html:90
-#: templates/shifts/type_form.html:36 templates/tickets/create.html:71
-#: templates/tickets/create_partial.html:69
+#: templates/shifts/mine_hours_form.html:33 templates/shifts/rota.html:75
+#: templates/shifts/rota.html:90 templates/shifts/type_form.html:36
+#: templates/tickets/create.html:71 templates/tickets/create_partial.html:69
 #: templates/tickets/detail_pane.html:225
 #: templates/tickets/detail_pane.html:752
 #: templates/tickets/detail_pane.html:796
@@ -286,7 +286,8 @@ msgstr "تعديل"
 msgid "Delete"
 msgstr "حذف"
 
-#: templates/base.html:588 templates/tickets/detail_pane.html:321
+#: templates/base.html:588 templates/shifts/mine_hours_form.html:4
+#: templates/tickets/detail_pane.html:321
 #: templates/tickets/detail_pane.html:331
 msgid "Close"
 msgstr "إغلاق"
@@ -297,9 +298,8 @@ msgstr "إغلاق"
 msgid "Apply"
 msgstr "تطبيق"
 
-#: templates/shifts/cell_form.html:54 templates/shifts/mine_row.html:28
-#: templates/shifts/type_form.html:37 templates/shifts/types.html:40
-#: templates/tickets/detail_pane.html:232
+#: templates/shifts/cell_form.html:54 templates/shifts/type_form.html:37
+#: templates/shifts/types.html:40 templates/tickets/detail_pane.html:232
 msgid "Save"
 msgstr "حفظ"
 
@@ -385,8 +385,9 @@ msgid "Ticket ID"
 msgstr "رقم التذكرة"
 
 #: shifts/models.py:73 templates/news/list_content.html:36
-#: templates/news/list_content.html:71 templates/shifts/mine.html:43
-#: templates/shifts/rota.html:39 templates/tickets/list_append.html:27
+#: templates/news/list_content.html:71 templates/shifts/mine_row.html:3
+#: templates/shifts/mine_table.html:6 templates/shifts/rota.html:39
+#: templates/tickets/list_append.html:27
 #: templates/tickets/list_live_partial.html:20
 #: templates/tickets/list_live_partial.html:50
 msgid "Date"
@@ -806,6 +807,7 @@ msgstr "لا فئات بعد"
 
 #: accounts/models.py:65 templates/kb/list_content.html:55
 #: templates/news/list_content.html:32 templates/news/list_content.html:44
+#: templates/shifts/mine_row.html:17 templates/shifts/mine_table.html:9
 #: templates/tickets/list_append.html:14
 #: templates/tickets/list_live_partial.html:17
 #: templates/tickets/list_live_partial.html:37
@@ -1740,6 +1742,7 @@ msgstr "إضافة"
 #: templates/core/management/list_partial_v2.html:33
 #: templates/core/management/list_partial_v2.html:60
 #: templates/news/list_content.html:37 templates/news/list_content.html:77
+#: templates/shifts/mine_row.html:25 templates/shifts/mine_table.html:10
 msgid "Actions"
 msgstr "الإجراءات"
 
@@ -2816,8 +2819,8 @@ msgstr "حدّث المحتوى، ثم انشره أو أبقِه كمسودة."
 msgid "Shift type name must be at least 2 characters long."
 msgstr "يجب أن يكون اسم نوع المناوبة حرفين على الأقل."
 
-#: shifts/forms.py:42 shifts/models.py:109 shifts/views.py:611
-#: shifts/views.py:1126
+#: shifts/forms.py:42 shifts/models.py:109 shifts/views.py:717
+#: shifts/views.py:1255
 msgid "Start and end must differ."
 msgstr "يجب أن يختلف وقت البداية عن وقت النهاية."
 
@@ -2825,11 +2828,11 @@ msgstr "يجب أن يختلف وقت البداية عن وقت النهاية.
 msgid "Colour must be a 6-digit hex value."
 msgstr "يجب أن يكون اللون قيمة سداسية من 6 أرقام."
 
-#: shifts/models.py:20 templates/shifts/mine_row.html:20
+#: shifts/models.py:20 templates/shifts/mine_hours_form.html:21
 msgid "Start time"
 msgstr "وقت البداية"
 
-#: shifts/models.py:21 templates/shifts/mine_row.html:24
+#: shifts/models.py:21 templates/shifts/mine_hours_form.html:25
 msgid "End time"
 msgstr "وقت النهاية"
 
@@ -2838,8 +2841,7 @@ msgstr "وقت النهاية"
 msgid "Night"
 msgstr "ليلي"
 
-#: shifts/models.py:24 templates/shifts/mine.html:44
-#: templates/shifts/types.html:51
+#: shifts/models.py:24 templates/shifts/types.html:51
 msgid "Colour"
 msgstr "اللون"
 
@@ -2851,11 +2853,12 @@ msgstr "مؤرشف"
 #: shifts/models.py:33 shifts/models.py:71
 #: templates/shifts/calc_rotation.html:16
 #: templates/shifts/calculator_rotation_options.html:3
-#: templates/shifts/cell_form.html:20 templates/shifts/mine.html:45
+#: templates/shifts/cell_form.html:20 templates/shifts/mine_row.html:7
+#: templates/shifts/mine_table.html:7
 msgid "Shift type"
 msgstr "نوع المناوبة"
 
-#: shifts/models.py:34 templates/shifts/shell.html:35
+#: shifts/models.py:34 templates/shifts/shell.html:36
 #: templates/shifts/types.html:5
 msgid "Shift types"
 msgstr "أنواع المناوبات"
@@ -2888,7 +2891,7 @@ msgstr "تعيين مناوبة"
 msgid "Shift assignments"
 msgstr "تعيينات المناوبات"
 
-#: shifts/models.py:107 shifts/views.py:609
+#: shifts/models.py:107 shifts/views.py:715
 msgid "Enter both start and end, or leave both blank."
 msgstr "أدخل البداية والنهاية معاً، أو اتركهما فارغين."
 
@@ -2909,80 +2912,80 @@ msgstr "هذا الوقت غير موجود في هذا التاريخ."
 msgid "This shift overlaps %(name)s on %(date)s (%(start)s–%(end)s)."
 msgstr "تتعارض هذه المناوبة مع %(name)s في %(date)s (%(start)s–%(end)s)."
 
-#: shifts/views.py:54
+#: shifts/views.py:56
 msgid "You cannot open this page."
 msgstr "لا يمكنك فتح هذه الصفحة."
 
-#: shifts/views.py:384
+#: shifts/views.py:462 shifts/views.py:472
 msgid "No department exists."
 msgstr "لا يوجد قسم."
 
-#: shifts/views.py:620 shifts/views.py:806
+#: shifts/views.py:726 shifts/views.py:934
 msgid "Only active support users in this department can be assigned."
 msgstr "يمكن تعيين موظفي الدعم النشطين في هذا القسم فقط."
 
-#: shifts/views.py:622 shifts/views.py:810 shifts/views.py:876
+#: shifts/views.py:728 shifts/views.py:938 shifts/views.py:1004
 msgid "Archived shift types cannot be assigned."
 msgstr "لا يمكن تعيين أنواع المناوبات المؤرشفة."
 
-#: shifts/views.py:722
+#: shifts/views.py:850
 msgid "Nothing to copy."
 msgstr "لا يوجد ما يُنسخ."
 
-#: shifts/views.py:724
+#: shifts/views.py:852
 #, python-format
 msgid "Copied %(count)s shifts."
 msgstr "تم نسخ %(count)s مناوبات."
 
-#: shifts/views.py:743
+#: shifts/views.py:871
 msgid "Enter a number of weeks from 1 to 12."
 msgstr "أدخل عدد أسابيع من 1 إلى 12."
 
-#: shifts/views.py:767
+#: shifts/views.py:895
 #, python-format
 msgid "Repeated %(count)s shifts."
 msgstr "تم تكرار %(count)s مناوبات."
 
-#: shifts/views.py:1027
+#: shifts/views.py:1155
 msgid "This department has no night shift."
 msgstr "لا توجد مناوبة ليلية لهذا القسم."
 
-#: shifts/views.py:1078
+#: shifts/views.py:1206
 #, python-format
 msgid "Filled %(count)s night shifts."
 msgstr "تم ملء %(count)s مناوبات ليلية."
 
-#: shifts/views.py:1088 shifts/views.py:1131
+#: shifts/views.py:314 shifts/views.py:1216 shifts/views.py:1260
 #, python-format
 msgid "%(hours)s hours %(minutes)s minutes"
 msgstr "%(hours)s ساعة و%(minutes)s دقيقة"
 
-#: shifts/views.py:1132
+#: shifts/views.py:1261
 #, python-format
 msgid "%(hours)s hours %(minutes)s minutes after midnight."
 msgstr "%(hours)s ساعة و%(minutes)s دقيقة بعد منتصف الليل."
 
-#: shifts/views.py:1218
+#: shifts/views.py:1347
 msgid "You can only change hours from the last 7 days onward."
 msgstr "يمكنك تغيير الساعات من آخر 7 أيام فصاعداً فقط."
 
-#: shifts/views.py:1229
+#: shifts/views.py:1361
 msgid "Enter both a start and an end time."
 msgstr "أدخل وقت البداية ووقت النهاية معاً."
 
-#: shifts/views.py:1234
+#: shifts/views.py:1371
 msgid "This shift must be longer than 0 hours and no more than 16 hours."
 msgstr "يجب أن تكون هذه المناوبة أطول من 0 ساعة ولا تتجاوز 16 ساعة."
 
-#: shifts/views.py:1263
+#: shifts/views.py:1401
 msgid "You are not assigned to a department."
 msgstr "لست معيناً في قسم."
 
-#: shifts/views.py:1311 shifts/views.py:1374
+#: shifts/views.py:1472 shifts/views.py:1535
 msgid "You can check in from 30 minutes before this shift starts."
 msgstr "يمكنك تسجيل الحضور ابتداءً من 30 دقيقة قبل بدء هذه المناوبة."
 
-#: shifts/views.py:1313 shifts/views.py:1380
+#: shifts/views.py:1474 shifts/views.py:1541
 msgid "This shift has ended."
 msgstr "انتهت هذه المناوبة."
 
@@ -3025,8 +3028,8 @@ msgstr "لم تُحفظ المسودة بعد"
 msgid "You have unsaved changes. Leave this page?"
 msgstr "لديك تغييرات غير محفوظة. هل تريد مغادرة هذه الصفحة؟"
 
-#: templates/shifts/available.html:5 templates/shifts/shell.html:55
-#: templates/shifts/shell.html:89
+#: templates/shifts/available.html:5 templates/shifts/shell.html:56
+#: templates/shifts/shell.html:90
 msgid "Available now"
 msgstr "المتاحون الآن"
 
@@ -3034,7 +3037,7 @@ msgstr "المتاحون الآن"
 msgid "Nobody on shift now"
 msgstr "لا أحد في مناوبة الآن"
 
-#: templates/shifts/calculator.html:5 templates/shifts/shell.html:45
+#: templates/shifts/calculator.html:5 templates/shifts/shell.html:46
 msgid "Calculator"
 msgstr "الحاسبة"
 
@@ -3077,7 +3080,7 @@ msgstr "الأشخاص"
 msgid "Coverage"
 msgstr "التغطية"
 
-#: templates/shifts/cell_form.html:46 templates/shifts/mine_row.html:29
+#: templates/shifts/cell_form.html:46 templates/shifts/mine_hours_form.html:35
 msgid "Reset to shift default"
 msgstr "إعادة الضبط إلى وقت المناوبة"
 
@@ -3085,25 +3088,26 @@ msgstr "إعادة الضبط إلى وقت المناوبة"
 msgid "Clear check-in"
 msgstr "إلغاء تسجيل الحضور"
 
-#: templates/shifts/cell_bits.html:6 templates/shifts/check_in_panel.html:6
+#: templates/shifts/cell_bits.html:6 templates/shifts/check_in_panel.html:12
+#: templates/shifts/mine_row.html:23
 #, python-format
 msgid "Checked in at %(time)s"
 msgstr "تم تسجيل الحضور في %(time)s"
 
-#: templates/shifts/cell_form.html:52 templates/shifts/check_in_panel.html:4
-#: templates/shifts/check_in_panel.html:21
+#: templates/shifts/cell_form.html:52 templates/shifts/check_in_panel.html:2
+#: templates/shifts/check_in_panel.html:25
 msgid "Check in"
 msgstr "تسجيل الحضور"
 
-#: templates/shifts/mine.html:7 templates/shifts/shell.html:67
+#: templates/shifts/mine.html:7 templates/shifts/shell.html:68
 msgid "My shifts"
 msgstr "مناوباتي"
 
-#: templates/shifts/mine.html:60
+#: templates/shifts/mine.html:54 templates/shifts/mine.html:71
 msgid "You have no upcoming shifts."
 msgstr "لا توجد مناوبات قادمة."
 
-#: templates/shifts/rota.html:5 templates/shifts/shell.html:25
+#: templates/shifts/rota.html:5 templates/shifts/shell.html:26
 msgid "Rota"
 msgstr "جدول المناوبات"
 
@@ -3139,7 +3143,7 @@ msgstr "حدده الموظف"
 msgid "Not checked in"
 msgstr "لم يُسجَّل الحضور"
 
-#: templates/shifts/cell_bits.html:8
+#: templates/shifts/cell_bits.html:8 templates/shifts/mine_row.html:21
 msgid "Missed"
 msgstr "غياب"
 
@@ -3151,8 +3155,8 @@ msgstr "ليس في هذا القسم"
 msgid "Empty"
 msgstr "فارغ"
 
-#: templates/shifts/mine.html:14 templates/shifts/mine.html:18
-#: templates/shifts/shell.html:77 templates/shifts/team.html:5
+#: templates/shifts/mine.html:13 templates/shifts/mine.html:72
+#: templates/shifts/shell.html:78 templates/shifts/team.html:5
 msgid "Team rota"
 msgstr "جدول الفريق"
 
@@ -3160,7 +3164,7 @@ msgstr "جدول الفريق"
 msgid "Add shift type"
 msgstr "إضافة نوع مناوبة"
 
-#: templates/shifts/calc_hours.html:8 templates/shifts/mine.html:46
+#: templates/shifts/mine_row.html:10 templates/shifts/mine_table.html:8
 #: templates/shifts/types.html:49
 msgid "Times"
 msgstr "الأوقات"
@@ -3174,11 +3178,11 @@ msgstr "أرشفة"
 msgid "Manage Users"
 msgstr "إدارة المستخدمين"
 
-#: shifts/views.py:1035 shifts/views.py:1041
+#: shifts/views.py:1163 shifts/views.py:1169
 msgid "Choose a night shift type on the rota."
 msgstr "اختر نوع المناوبة الليلية من جدول المناوبات."
 
-#: shifts/views.py:1065
+#: shifts/views.py:1193
 msgid "Open the rota to review the night rotation."
 msgstr "افتح جدول المناوبات لمراجعة التناوب الليلي."
 
@@ -3215,7 +3219,7 @@ msgstr "لا توجد تحديثات."
 msgid "Day"
 msgstr "نهاري"
 
-#: shifts/views.py:906
+#: shifts/views.py:1034
 msgid "Enter a start and an end date."
 msgstr "أدخل تاريخ البداية وتاريخ النهاية."
 
@@ -3235,7 +3239,8 @@ msgstr "الآخرون معينون بالفعل في هذا التاريخ"
 msgid "Select all"
 msgstr "تحديد الكل"
 
-#: templates/shifts/check_in_panel.html:11 templates/shifts/mine.html:34
+#: templates/shifts/check_in_panel.html:12
+#: templates/shifts/check_in_panel.html:15 templates/shifts/mine.html:28
 msgid "You are on shift until"
 msgstr "أنت في مناوبة حتى"
 
@@ -3262,15 +3267,15 @@ msgstr[3] "%(count)s دقائق للقراءة"
 msgstr[4] "%(count)s دقيقة للقراءة"
 msgstr[5] "%(count)s دقيقة للقراءة"
 
-#: shifts/views.py:1007
+#: shifts/views.py:1135
 msgid "skipped (past)"
 msgstr "تم التخطي (تاريخ سابق)"
 
-#: shifts/views.py:1009
+#: shifts/views.py:1137
 msgid "skipped (already assigned)"
 msgstr "تم التخطي (معين بالفعل)"
 
-#: shifts/views.py:1058
+#: shifts/views.py:1186
 msgid "This department has no one to assign."
 msgstr "لا يوجد أحد في هذا القسم للتعيين."
 
@@ -3294,7 +3299,7 @@ msgstr "تسجيل الحضور في المناوبات"
 msgid "Checked out at"
 msgstr "وقت تسجيل الانصراف"
 
-#: shifts/views.py:1306 shifts/views.py:1365
+#: shifts/views.py:1467 shifts/views.py:1526
 msgid "You cannot check in again on this shift."
 msgstr "لا يمكنك تسجيل الحضور مرة أخرى في هذه المناوبة."
 
@@ -3306,7 +3311,7 @@ msgstr "يبدأ الليل في"
 msgid "Shift settings"
 msgstr "إعدادات المناوبات"
 
-#: shifts/views.py:638
+#: shifts/views.py:744
 msgid "This shift is already on that day."
 msgstr "هذه المناوبة موجودة بالفعل في هذا اليوم."
 
@@ -3338,18 +3343,100 @@ msgstr ""
 "تُحتسب الساعات من وقت بدء الليل في هذا القسم حتى منتصف الليل كساعات ليلية. "
 "المناوبة التي تنتهي قبل وقت بدئها تستمر حتى صباح اليوم التالي."
 
-#: templates/shifts/mine_row.html:18
-msgid "Set my hours"
-msgstr "حدد ساعاتي"
+#: shifts/views.py:631 shifts/views.py:662 shifts/views.py:694
+msgid "That shift no longer exists."
+msgstr "لم تعد هذه المناوبة موجودة."
+
+#: shifts/views.py:711 shifts/views.py:1366
+msgid "Enter a valid time."
+msgstr "أدخل وقتًا صالحًا."
+
+#: templates/shifts/calc_hours.html:8
+msgid "Total"
+msgstr "الإجمالي"
+
+#: templates/shifts/check_in_panel.html:8 templates/shifts/mine_row.html:19
+msgid "Check-in open"
+msgstr "تسجيل الحضور متاح"
+
+#: templates/shifts/check_in_panel.html:9 templates/shifts/mine_row.html:20
+msgid "Completed"
+msgstr "مكتملة"
+
+#: shifts/views.py:342
+msgid "Today"
+msgstr "اليوم"
+
+#: shifts/views.py:344
+msgid "Tomorrow"
+msgstr "غداً"
+
+#: templates/shifts/mine_row.html:22
+msgid "Upcoming"
+msgstr "القادمة"
+
+#: templates/shifts/check_in_panel.html:7 templates/shifts/mine_row.html:18
+msgid "On shift"
+msgstr "في المناوبة"
+
+#: templates/shifts/mine_hours_form.html:37
+msgid "Save hours"
+msgstr "حفظ الساعات"
+
+#: shifts/views.py:315
+#, python-format
+msgid "%(hours)s hours"
+msgstr "%(hours)s ساعات"
+
+#: templates/shifts/mine.html:35
+msgid "This week"
+msgstr "هذا الأسبوع"
+
+#: templates/shifts/mine.html:45
+msgid "Later"
+msgstr "لاحقًا"
+
+#: templates/shifts/mine.html:61
+msgid "Recent shifts"
+msgstr "المناوبات الأخيرة"
+
+#: templates/shifts/mine.html:63
+msgid "You can still change night hours from the last 7 days."
+msgstr "لا يزال بإمكانك تعديل ساعات المناوبات الليلية خلال آخر 7 أيام."
+
+#: templates/shifts/mine_hours_form.html:3 templates/shifts/mine_row.html:30
+msgid "Edit hours"
+msgstr "تعديل الساعات"
+
+#: templates/shifts/mine_hours_form.html:17
+msgid "Shift default"
+msgstr "الوقت الافتراضي للمناوبة"
+
+#: templates/shifts/mine_hours_form.html:29
+msgid ""
+"An end time earlier than the start runs into the next morning. A shift can "
+"be up to 16 hours."
+msgstr ""
+"وقت الانتهاء الأسبق من وقت البدء يمتد إلى صباح اليوم التالي. يمكن أن تصل "
+"المناوبة إلى 16 ساعة."
+
+#: templates/shifts/mine_row.html:13
+msgid "Ends the next day"
+msgstr "تنتهي في اليوم التالي"
+
+#: templates/shifts/mine_row.html:13
+msgid "Next day"
+msgstr "اليوم التالي"
+
+#: templates/shifts/mine_row.html:15
+msgid "Hours changed by you"
+msgstr "عدّلت الساعات بنفسك"
+
+#~ msgid "Set my hours"
+#~ msgstr "حدد ساعاتي"
 
 #~ msgid "Checked in"
 #~ msgstr "تم تسجيل الحضور"
-
-#~ msgid "Check-in open"
-#~ msgstr "تسجيل الحضور متاح"
-
-#~ msgid "Completed"
-#~ msgstr "مكتملة"
 
 #~ msgid "Weekly shift summary"
 #~ msgstr "ملخص المناوبات الأسبوعي"
@@ -3363,17 +3450,8 @@ msgstr "حدد ساعاتي"
 #~ msgid "night hours"
 #~ msgstr "ساعات ليلية"
 
-#~ msgid "Today"
-#~ msgstr "اليوم"
-
-#~ msgid "Tomorrow"
-#~ msgstr "غداً"
-
 #~ msgid "Later this week"
 #~ msgstr "لاحقاً هذا الأسبوع"
-
-#~ msgid "Upcoming"
-#~ msgstr "القادمة"
 
 #~ msgid "Past nights (last 7 days)"
 #~ msgstr "المناوبات الليلية السابقة (آخر 7 أيام)"
@@ -3389,17 +3467,11 @@ msgstr "حدد ساعاتي"
 #~ msgid "Open team rota"
 #~ msgstr "فتح جدول الفريق"
 
-#~ msgid "On shift"
-#~ msgstr "في المناوبة"
-
 #~ msgid "Ends next day"
 #~ msgstr "تنتهي في اليوم التالي"
 
 #~ msgid "Hours adjusted by you"
 #~ msgstr "تم تعديل الساعات بواسطتك"
-
-#~ msgid "Save hours"
-#~ msgstr "حفظ الساعات"
 
 #~ msgid "CURRENT SHIFT"
 #~ msgstr "المناوبة الحالية"

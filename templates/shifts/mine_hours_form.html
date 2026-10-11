@@ -1,0 +1,39 @@
+{% load i18n shifts_extras %}
+<div class="modal-header">
+  <h2>{% trans "Edit hours" %}</h2>
+  <button type="button" class="modal-close" onclick="closeModal()" aria-label="{% trans "Close" %}">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+</div>
+<form method="post" action="{% url 'shifts_mine_hours' assignment.pk %}"
+      hx-post="{% url 'shifts_mine_hours' assignment.pk %}"
+      hx-target="#modal-content"
+      hx-disabled-elt="this"
+      hx-sync="this:replace">
+  {% csrf_token %}
+  <div class="modal-body">
+    <div class="form-stack">
+      <p>{{ assignment.shift_type.name }} · <bdi>{{ assignment.date|date:"l, j F Y" }}</bdi></p>
+      <p class="help-text">{% trans "Shift default" %}: {% shifts_time_range assignment.shift_type.start_time assignment.shift_type.end_time %}</p>
+      {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="mine-start-{{ assignment.pk }}">{% trans "Start time" %}</label>
+          <input id="mine-start-{{ assignment.pk }}" class="form-control" type="time" name="start_time" value="{{ start_value }}" required>
+        </div>
+        <div class="form-group">
+          <label for="mine-end-{{ assignment.pk }}">{% trans "End time" %}</label>
+          <input id="mine-end-{{ assignment.pk }}" class="form-control" type="time" name="end_time" value="{{ end_value }}" required>
+        </div>
+      </div>
+      <p class="help-text">{% trans "An end time earlier than the start runs into the next morning. A shift can be up to 16 hours." %}</p>
+    </div>
+  </div>
+  <div class="form-actions--end">
+    <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+    {% if assignment.start_time_override %}
+    <button class="btn secondary" type="submit" name="action" value="reset" formnovalidate>{% trans "Reset to shift default" %}</button>
+    {% endif %}
+    <button class="btn primary" type="submit" name="action" value="save">{% trans "Save hours" %}</button>
+  </div>
+</form>
