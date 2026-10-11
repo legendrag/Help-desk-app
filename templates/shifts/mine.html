@@ -2,7 +2,7 @@
 {% load i18n shifts_extras %}
 
 {% block shifts_body %}
-<header class="shifts-header shifts-mine-header">
+<header class="shifts-header">
   <div class="shifts-title-wrap">
     <h1>{% trans "My shifts" %}</h1>
     <p class="shifts-range">
@@ -20,34 +20,6 @@
   {% endif %}
 </header>
 
-<!-- Weekly Summary Strip -->
-{% if summary_stats %}
-<div class="shifts-summary-strip" role="region" aria-label="{% trans "Weekly shift summary" %}">
-  <div class="shifts-summary-stat">
-    <span class="shifts-stat-icon" aria-hidden="true">📅</span>
-    <div>
-      <span class="shifts-stat-value">{{ summary_stats.count }}</span>
-      <span class="shifts-stat-label">{% trans "shifts this week" %}</span>
-    </div>
-  </div>
-  <div class="shifts-summary-stat">
-    <span class="shifts-stat-icon" aria-hidden="true">⏱</span>
-    <div>
-      <span class="shifts-stat-value">{{ summary_stats.total_hours }}</span>
-      <span class="shifts-stat-label">{% trans "total scheduled" %}</span>
-    </div>
-  </div>
-  <div class="shifts-summary-stat">
-    <span class="shifts-stat-icon" aria-hidden="true">☾</span>
-    <div>
-      <span class="shifts-stat-value">{{ summary_stats.night_hours }}</span>
-      <span class="shifts-stat-label">{% trans "night hours" %}</span>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Check-in Panels (Self-refreshing when 30-min window opens) -->
 {% if check_ins or refresh_in %}
 <div id="shifts-check-in" class="shifts-checkin-list"{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document" hx-swap="outerHTML"{% endif %}>
   {% for check_in in check_ins %}
@@ -58,84 +30,34 @@
   {% endif %}
   {% endfor %}
 </div>
+{% elif banner_end %}
+<p class="notice">{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
 {% endif %}
 
-<!-- Hero Card: Current or Next Shift -->
-{% if hero_data %}
-{% include "shifts/mine_hero.html" %}
-{% endif %}
-
-<!-- Timeline of Shifts -->
-<div class="shifts-timeline-wrap">
-  {% if today_cards %}
-  <section class="shifts-timeline-group">
-    <h2 class="shifts-group-title"><span aria-hidden="true">⚡ </span>{% trans "Today" %}</h2>
-    <div class="shifts-card-list">
-      {% for assignment in today_cards %}
-      {% include "shifts/mine_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {% if tomorrow_cards %}
-  <section class="shifts-timeline-group">
-    <h2 class="shifts-group-title"><span aria-hidden="true">📅 </span>{% trans "Tomorrow" %}</h2>
-    <div class="shifts-card-list">
-      {% for assignment in tomorrow_cards %}
-      {% include "shifts/mine_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {% if later_this_week_cards %}
-  <section class="shifts-timeline-group">
-    <h2 class="shifts-group-title"><span aria-hidden="true">🗓 </span>{% trans "Later this week" %}</h2>
-    <div class="shifts-card-list">
-      {% for assignment in later_this_week_cards %}
-      {% include "shifts/mine_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {% if upcoming_later_cards %}
-  <section class="shifts-timeline-group">
-    <h2 class="shifts-group-title"><span aria-hidden="true">✦ </span>{% trans "Upcoming" %}</h2>
-    <div class="shifts-card-list">
-      {% for assignment in upcoming_later_cards %}
-      {% include "shifts/mine_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {% if past_night_cards %}
-  <details class="shifts-timeline-group shifts-past-group">
-    <summary class="shifts-group-title shifts-past-summary">
-      <span><span aria-hidden="true">☾ </span>{% trans "Past nights (last 7 days)" %} <span class="shifts-count">({{ past_night_cards|length }})</span></span>
-      <span class="shifts-past-hint">{% trans "Adjust hours" %} ▾</span>
-    </summary>
-    <div class="shifts-card-list">
-      {% for assignment in past_night_cards %}
-      {% include "shifts/mine_card.html" %}
-      {% endfor %}
-    </div>
-  </details>
-  {% endif %}
-
-  {% if not today_cards and not tomorrow_cards and not later_this_week_cards and not upcoming_later_cards and not past_night_cards %}
-  <div class="panel shifts-empty-state">
-    <span class="shifts-empty-icon" aria-hidden="true">🏖</span>
-    <h2>{% trans "You have no upcoming shifts." %}</h2>
-    <p>{% trans "Your schedule is currently clear. You can check the team rota to see team assignments." %}</p>
-    {% if is_manager %}
-    <a class="btn primary" href="{% url 'shifts_rota' %}">{% trans "Open team rota" %}</a>
-    {% else %}
-    <a class="btn primary" href="{% url 'shifts_team' %}">{% trans "Open team rota" %}</a>
-    {% endif %}
+{% if assignments %}
+<div class="panel">
+  <div class="table-wrap">
+    <table class="shifts-list">
+      <thead>
+        <tr>
+          <th>{% trans "Date" %}</th>
+          <th>{% trans "Colour" %}</th>
+          <th>{% trans "Shift type" %}</th>
+          <th>{% trans "Times" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in assignments %}
+        {% include "shifts/mine_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  {% endif %}
 </div>
+{% else %}
+<div class="panel">
+  <p class="shifts-empty">{% trans "You have no upcoming shifts." %}</p>
+</div>
+{% endif %}
 {% endblock %}

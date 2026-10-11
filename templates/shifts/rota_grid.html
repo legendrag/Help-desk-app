@@ -25,13 +25,13 @@
                 {% if readonly %}
                 <span class="shifts-cell shifts-cell--filled{% if cells|length == 2 %}{% if forloop.first %} shifts-half shifts-half--a{% else %} shifts-half shifts-half--b{% endif %}{% endif %}{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
                       style="--shift-colour: {{ cell.shift_type.colour }};"
-                      title="{{ cell.shift_type.name }}{% if cell.start_time_override %} ({{ cell.start_time_override|time:'H:i' }}–{{ cell.end_time_override|time:'H:i' }}){% else %} ({{ cell.shift_type.start_time|time:'H:i' }}–{{ cell.shift_type.end_time|time:'H:i' }}){% endif %}">
+                      title="{{ cell.shift_type.name }}">
                   {% include "shifts/cell_bits.html" %}
                 </span>
                 {% else %}
                 <button type="button" class="shifts-cell-btn shifts-cell--filled{% if cells|length == 2 %}{% if forloop.first %} shifts-half shifts-half--a{% else %} shifts-half shifts-half--b{% endif %}{% endif %}{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
                         style="--shift-colour: {{ cell.shift_type.colour }};"
-                        title="{{ cell.shift_type.name }}{% if cell.start_time_override %} ({{ cell.start_time_override|time:'H:i' }}–{{ cell.end_time_override|time:'H:i' }}){% else %} ({{ cell.shift_type.start_time|time:'H:i' }}–{{ cell.shift_type.end_time|time:'H:i' }}){% endif %}"
+                        title="{{ cell.shift_type.name }}"
                         hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}&assignment={{ cell.pk }}"
                         hx-target="#modal-content"
                         onclick="openModal()">

@@ -1,27 +1,14 @@
 {% load i18n shifts_extras %}
-<div id="shifts-check-in-{{ assignment.pk }}" class="panel shifts-checkin{% if state == 'checked' %} shifts-checkin--active{% endif %}" style="--shift-colour: {{ assignment.shift_type.colour }};">
-  <div class="shifts-checkin-details">
-    <div class="shifts-checkin-badge-row">
-      <span class="shifts-chip {{ assignment.shift_type.colour|chip_ink }}{% if assignment.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ assignment.shift_type.colour }}">{{ assignment.shift_type.name }}</span>
-      {% if state == "checked" %}
-      <span class="badge badge-success"><span aria-hidden="true">✓ </span>{% trans "Checked in" %}</span>
-      {% elif state == "open" %}
-      <span class="badge badge-primary">● {% trans "Check-in open" %}</span>
-      {% elif state == "spent" %}
-      <span class="badge badge-warning">{% trans "Completed" %}</span>
-      {% endif %}
-    </div>
+<div id="shifts-check-in-{{ assignment.pk }}" class="panel shifts-checkin">
+  <div>
     <h2 class="shifts-title">{% trans "Check in" %}</h2>
-    <p class="shifts-checkin-meta">
-      {% shifts_time_range assignment.start_time_override|default:assignment.shift_type.start_time assignment.end_time_override|default:assignment.shift_type.end_time %}
-    </p>
     {% if state == "checked" %}
-    <p class="shifts-checkin-status">
-      {% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}
-      {% if banner_end %} · {% trans "You are on shift until" %} {{ banner_end|shifts_clock }}{% endif %}
-    </p>
+    <p>{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</p>
     {% elif hint %}
-    <p class="shifts-checkin-hint">{{ hint }}</p>
+    <p>{{ hint }}</p>
+    {% endif %}
+    {% if banner_end %}
+    <p>{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
     {% endif %}
   </div>
   {% if state != "checked" and state != "spent" %}
@@ -31,10 +18,7 @@
         hx-disabled-elt="this"
         hx-sync="this:replace">
     {% csrf_token %}
-    <button class="btn primary shifts-checkin-btn" type="submit"{% if state != "open" %} disabled{% endif %}>
-      <span aria-hidden="true">✓ </span>{% trans "Check in" %}
-    </button>
+    <button class="btn primary" type="submit"{% if state != "open" %} disabled{% endif %}>{% trans "Check in" %}</button>
   </form>
   {% endif %}
 </div>
-
