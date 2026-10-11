@@ -1721,6 +1721,9 @@ class SameDayShiftTests(TestCase):
         })
         self.assertContains(grid, "Day desk")
         self.assertContains(grid, "Night desk")
+        self.assertContains(grid, "shifts-cell-stack--split")
+        self.assertContains(grid, "shifts-half--a")
+        self.assertContains(grid, "shifts-half--b")
         clash = self.client.post(reverse("shifts_cell"), {
             "user": self.agent.pk,
             "date": "2026-10-06",

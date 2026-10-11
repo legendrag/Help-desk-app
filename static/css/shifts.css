@@ -73,22 +73,30 @@
 
 #shifts-shell-pane .shifts-grid-wrap {
   overflow-x: auto;
-  max-block-size: 70vh;
+  max-block-size: calc(100dvh - 12rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.05);
+  background: var(--panel-bg);
 }
 
 #shifts-shell-pane .shifts-grid {
+  --person-col: 11rem;
+  --day-col: 9.75rem;
   display: table;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  inline-size: max(100%, calc(10rem + 7 * 6.75rem));
-  width: max(100%, calc(10rem + 7 * 6.75rem));
+  inline-size: max(100%, calc(var(--person-col) + 7 * var(--day-col)));
+  width: max(100%, calc(var(--person-col) + 7 * var(--day-col)));
   min-inline-size: 100%;
+  background: var(--panel-bg);
 }
 
 #shifts-shell-pane .shifts-grid--month {
-  inline-size: max(100%, calc(10rem + 31 * 6.75rem));
-  width: max(100%, calc(10rem + 31 * 6.75rem));
+  --day-col: 4.75rem;
+  inline-size: max(100%, calc(var(--person-col) + 31 * var(--day-col)));
+  width: max(100%, calc(var(--person-col) + 31 * var(--day-col)));
 }
 
 #shifts-shell-pane .shifts-grid thead {
@@ -141,9 +149,16 @@
   display: table-cell;
   inline-size: auto;
   width: auto;
-  padding: 0.35rem;
+  padding: 0.4rem;
   vertical-align: top;
   border-block-end: 1px solid var(--border);
+  border-inline-end: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background-color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-grid th:last-child,
+#shifts-shell-pane .shifts-grid td:last-child {
+  border-inline-end: none;
 }
 
 #shifts-shell-pane .shifts-grid td::before {
@@ -157,6 +172,48 @@
   background: var(--panel-bg);
   text-align: center;
   white-space: nowrap;
+  padding: 0.55rem 0.4rem;
+  border-block-end: 2px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+#shifts-shell-pane .shifts-th-weekday {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+#shifts-shell-pane .shifts-th-daynum {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+#shifts-shell-pane .shifts-day--today {
+  background: color-mix(in srgb, var(--primary) 5%, var(--panel-bg));
+}
+
+#shifts-shell-pane thead th.shifts-day--today {
+  background: color-mix(in srgb, var(--primary) 12%, var(--panel-bg));
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+#shifts-shell-pane thead th.shifts-day--today .shifts-th-daynum {
+  color: var(--primary);
+}
+
+#shifts-shell-pane .shifts-day--weekend {
+  background: color-mix(in srgb, var(--text-muted) 4%, var(--panel-bg));
+}
+
+#shifts-shell-pane thead th.shifts-day--weekend {
+  background: color-mix(in srgb, var(--text-muted) 8%, var(--panel-bg));
 }
 
 #shifts-shell-pane .shifts-grid .shifts-person {
@@ -167,26 +224,34 @@
   text-align: start;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--text-main);
-  inline-size: 10rem;
-  width: 10rem;
-  min-inline-size: 10rem;
-  max-inline-size: 10rem;
+  inline-size: var(--person-col);
+  width: var(--person-col);
+  min-inline-size: var(--person-col);
+  max-inline-size: var(--person-col);
+  border-inline-end: 2px solid var(--border);
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
+html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
+  box-shadow: -2px 0 6px -2px rgba(0, 0, 0, 0.08);
 }
 
 #shifts-shell-pane .shifts-grid thead .shifts-person {
   z-index: 4;
   text-align: start;
   background-color: var(--bg);
+  vertical-align: middle;
 }
 
 #shifts-shell-pane tr:hover .shifts-person {
   background-color: color-mix(in srgb, var(--primary) 8%, var(--bg));
 }
 
-#shifts-shell-pane .shifts-day--today {
-  box-shadow: inset 0 -3px 0 var(--primary);
+#shifts-shell-pane tbody tr:nth-child(even) td:not(.shifts-day--today):not(.shifts-day--weekend) {
+  background-color: color-mix(in srgb, var(--text-muted) 2%, var(--panel-bg));
 }
 
 #shifts-shell-pane .shifts-cell-stack {
@@ -194,6 +259,8 @@
   flex-direction: column;
   gap: 0.35rem;
   min-inline-size: 0;
+  min-block-size: 5.6rem;
+  position: relative;
 }
 
 #shifts-shell-pane .shifts-checkin-list {
@@ -211,13 +278,16 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.15rem;
   inline-size: 100%;
   min-inline-size: 0;
   max-inline-size: 100%;
-  padding: 0.35rem 0.45rem;
+  padding: 0.35rem 0.5rem;
   border-radius: 8px;
   text-align: start;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 #shifts-shell-pane .shifts-cell-btn {
@@ -227,8 +297,234 @@
   cursor: pointer;
 }
 
-#shifts-shell-pane .shifts-cell--empty {
+#shifts-shell-pane .shifts-cell--filled {
+  border: 1px solid color-mix(in srgb, var(--shift-colour, var(--primary)) 35%, var(--border));
+  border-inline-start: 4px solid var(--shift-colour, var(--primary));
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 10%, var(--panel-bg));
+  color: var(--text-main);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 18%, var(--panel-bg));
+  border-color: var(--shift-colour, var(--primary));
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.1);
+  transform: none;
+}
+
+#shifts-shell-pane .shifts-cell-stack[data-count="2"] .shifts-cell--filled,
+#shifts-shell-pane .shifts-cell-stack[data-count="3"] .shifts-cell--filled {
+  padding: 0.25rem 0.4rem;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--empty {
+  border: 1px dashed var(--border);
+  background: transparent;
   color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  min-block-size: 1.4rem;
+  block-size: 1.4rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-cell.shifts-cell--empty {
+  color: var(--text-muted);
+  min-block-size: 5.6rem;
+  block-size: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed transparent;
+}
+
+#shifts-shell-pane .shifts-cell-stack[data-count="0"] .shifts-cell-btn.shifts-cell--empty {
+  opacity: 1;
+  min-block-size: 5.6rem;
+  block-size: 100%;
+}
+
+#shifts-shell-pane .shifts-cell-stack[data-count="0"] .shifts-cell-btn.shifts-cell--empty:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+#shifts-shell-pane td:hover .shifts-cell-btn.shifts-cell--empty,
+#shifts-shell-pane td:focus-within .shifts-cell-btn.shifts-cell--empty {
+  opacity: 1;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--empty:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel-bg));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ==========================================================================
+   DIAGONAL SPLIT CELL (WHEN DAY HAS EXACTLY TWO SHIFTS)
+   ========================================================================== */
+
+#shifts-shell-pane .shifts-cell-stack--split {
+  position: relative;
+  block-size: 5.6rem;
+  min-block-size: 5.6rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+#shifts-shell-pane .shifts-cell-stack--split .shifts-half {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0.35rem 0.5rem;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+/* Triangle A: Top-Start (earlier shift) */
+#shifts-shell-pane .shifts-half--a {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  background: color-mix(in srgb, var(--c1, var(--primary)) 20%, var(--panel-bg));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: start;
+  z-index: 1;
+  border-block-start: 3px solid var(--c1, var(--primary));
+}
+
+/* Triangle B: Bottom-End (later shift) */
+#shifts-shell-pane .shifts-half--b {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  background: color-mix(in srgb, var(--c2, var(--primary)) 20%, var(--panel-bg));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  text-align: end;
+  z-index: 1;
+  border-block-end: 3px solid var(--c2, var(--primary));
+}
+
+/* Diagonal divider line */
+#shifts-shell-pane .shifts-cell-stack--split::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(to top right,
+    transparent calc(50% - 0.75px),
+    var(--border) 50%,
+    transparent calc(50% + 0.75px)
+  );
+}
+
+/* RTL mirroring for diagonal polygons and divider */
+html[dir="rtl"] #shifts-shell-pane .shifts-half--a {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  align-items: flex-start;
+  text-align: start;
+}
+
+html[dir="rtl"] #shifts-shell-pane .shifts-half--b {
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  align-items: flex-end;
+  text-align: end;
+}
+
+html[dir="rtl"] #shifts-shell-pane .shifts-cell-stack--split::after {
+  background: linear-gradient(to bottom right,
+    transparent calc(50% - 0.75px),
+    var(--border) 50%,
+    transparent calc(50% + 0.75px)
+  );
+}
+
+/* Hover & Focus states on triangle buttons */
+#shifts-shell-pane .shifts-half--a:hover {
+  background: color-mix(in srgb, var(--c1, var(--primary)) 30%, var(--panel-bg));
+  z-index: 3;
+}
+
+#shifts-shell-pane .shifts-half--b:hover {
+  background: color-mix(in srgb, var(--c2, var(--primary)) 30%, var(--panel-bg));
+  z-index: 3;
+}
+
+#shifts-shell-pane .shifts-half:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--primary);
+  z-index: 4;
+}
+
+/* Text inside diagonal split cell */
+#shifts-shell-pane .shifts-cell-stack--split .shifts-chip {
+  background: transparent !important;
+  padding: 0 !important;
+  color: var(--text-main) !important;
+  font-size: 0.76rem;
+  font-weight: 700;
+  max-inline-size: 75%;
+}
+
+#shifts-shell-pane .shifts-cell-stack--split .shifts-times {
+  font-size: 0.68rem;
+  font-weight: 600;
+  max-inline-size: 70%;
+}
+
+/* Badges inside split cell: compact dots with tooltips */
+#shifts-shell-pane .shifts-cell-stack--split .shifts-badges {
+  gap: 0.2rem;
+  margin-block-start: 0;
+}
+
+#shifts-shell-pane .shifts-cell-stack--split .shifts-badges .badge {
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  min-inline-size: 0.5rem;
+  min-block-size: 0.5rem;
+  padding: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  text-indent: -9999px;
+  border: 1px solid currentColor;
+}
+
+/* Add button inside diagonal split cell (corner button) */
+#shifts-shell-pane .shifts-cell-btn.shifts-cell-btn--split-add {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  min-inline-size: 1.35rem;
+  min-block-size: 1.35rem;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+  opacity: 0;
+}
+
+#shifts-shell-pane td:hover .shifts-cell-btn--split-add,
+#shifts-shell-pane td:focus-within .shifts-cell-btn--split-add {
+  opacity: 1;
 }
 
 #shifts-shell-pane .shifts-chip {
@@ -238,15 +534,19 @@
   max-inline-size: 100%;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #shifts-shell-pane .shifts-chip--night::before {
   content: "☾";
   margin-inline-end: 0.25em;
 }
+
 
 #shifts-shell-pane .settings-tabs {
   flex-wrap: nowrap;
@@ -316,13 +616,7 @@
   inline-size: 4.5rem;
 }
 
-#shifts-shell-pane .shifts-cell--empty {
-  min-block-size: 44px;
-  min-inline-size: 44px;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-}
+/* Core empty cell styles defined above */
 
 #shifts-shell-pane .shifts-people {
   display: flex;
@@ -574,25 +868,103 @@ input[type="color"].shifts-color {
   }
 }
 
-@media (max-width: 768px) {
+/* ==========================================================================
+   MONTH VIEW COMPACT STYLING
+   ========================================================================== */
+
+#shifts-shell-pane .shifts-grid--month .shifts-times,
+#shifts-shell-pane .shifts-grid--month .shifts-badges {
+  display: none !important;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-stack {
+  min-block-size: 3.6rem;
+  gap: 0.2rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell--filled {
+  padding: 0.2rem 0.35rem;
+  min-block-size: 1.5rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-chip {
+  font-size: 0.7rem;
+  padding: 0;
+  background: transparent !important;
+  color: var(--text-main) !important;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-stack--split {
+  block-size: 3.6rem;
+  min-block-size: 3.6rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-half .shifts-chip {
+  font-size: 0.68rem;
+  max-inline-size: 85%;
+}
+
+/* ==========================================================================
+   DARK MODE ADAPTATIONS
+   ========================================================================== */
+
+[data-theme="dark"] #shifts-shell-pane .shifts-cell--filled {
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 16%, var(--panel-bg));
+  border-color: color-mix(in srgb, var(--shift-colour, var(--primary)) 40%, var(--border));
+}
+
+[data-theme="dark"] #shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 24%, var(--panel-bg));
+}
+
+[data-theme="dark"] #shifts-shell-pane .shifts-half--a {
+  background: color-mix(in srgb, var(--c1, var(--primary)) 26%, var(--panel-bg));
+}
+
+[data-theme="dark"] #shifts-shell-pane .shifts-half--b {
+  background: color-mix(in srgb, var(--c2, var(--primary)) 26%, var(--panel-bg));
+}
+
+[data-theme="dark"] #shifts-shell-pane .shifts-half--a:hover {
+  background: color-mix(in srgb, var(--c1, var(--primary)) 36%, var(--panel-bg));
+}
+
+[data-theme="dark"] #shifts-shell-pane .shifts-half--b:hover {
+  background: color-mix(in srgb, var(--c2, var(--primary)) 36%, var(--panel-bg));
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERRIDES (Preserves table integrity below 900px)
+   ========================================================================== */
+
+@media (max-width: 900px) {
   #shifts-shell-pane .shifts-grid-wrap {
     overflow-x: auto !important;
+    max-block-size: calc(100dvh - 10rem);
   }
 
   #shifts-shell-pane .shifts-grid {
     display: table !important;
-    inline-size: max(100%, calc(10rem + 7 * 6.75rem)) !important;
-    width: max(100%, calc(10rem + 7 * 6.75rem)) !important;
+    inline-size: max(100%, calc(8.5rem + 7 * 8.5rem)) !important;
+    width: max(100%, calc(8.5rem + 7 * 8.5rem)) !important;
     background: var(--panel-bg) !important;
   }
 
   #shifts-shell-pane .shifts-grid--month {
-    inline-size: max(100%, calc(10rem + 31 * 6.75rem)) !important;
-    width: max(100%, calc(10rem + 31 * 6.75rem)) !important;
+    inline-size: max(100%, calc(8.5rem + 31 * 4.25rem)) !important;
+    width: max(100%, calc(8.5rem + 31 * 4.25rem)) !important;
   }
 
   #shifts-shell-pane .shifts-grid thead {
     display: table-header-group !important;
+    position: static !important;
+    inline-size: auto !important;
+    width: auto !important;
+    block-size: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
   }
 
   #shifts-shell-pane .shifts-grid tbody {
@@ -605,6 +977,10 @@ input[type="color"].shifts-color {
     width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
 
   #shifts-shell-pane .shifts-grid th,
@@ -613,14 +989,23 @@ input[type="color"].shifts-color {
     inline-size: auto !important;
     width: auto !important;
     text-align: start !important;
+    vertical-align: top !important;
+  }
+
+  #shifts-shell-pane .shifts-grid td::before {
+    content: none !important;
+    display: none !important;
   }
 
   #shifts-shell-pane .shifts-grid .shifts-person {
-    inline-size: 10rem !important;
-    width: 10rem !important;
-  }
-
-  #shifts-shell-pane .shifts-grid .shifts-person {
+    inline-size: 8.5rem !important;
+    width: 8.5rem !important;
+    min-inline-size: 8.5rem !important;
     background-color: var(--bg) !important;
+  }
+
+  /* Override modern.css global button 48px height for shift cards */
+  #shifts-shell-pane .shifts-grid button.shifts-cell-btn {
+    min-height: unset !important;
   }
 }
