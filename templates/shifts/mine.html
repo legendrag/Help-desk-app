@@ -4,8 +4,16 @@
 <header class="shifts-header">
   <h1>{% trans "My shifts" %}</h1>
 </header>
-{% if check_in %}
-{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
+{% if check_ins %}
+<div id="shifts-check-in" class="shifts-checkin-list">
+  {% for check_in in check_ins %}
+  {% if forloop.first %}
+  {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint banner_end=banner_end %}
+  {% else %}
+  {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+  {% endif %}
+  {% endfor %}
+</div>
 {% elif banner_end %}
 <p class="notice">{% trans "You are on shift until" %} {{ banner_end|shifts_clock }}.</p>
 {% endif %}

@@ -1,3 +1,5 @@
+from datetime import time
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -44,7 +46,14 @@ class ShiftType(TimeStampedModel):
         return self.name
 
     def save(self, *args, **kwargs):
-        self.is_night = self.end_time < self.start_time
+        if self.start_time and self.end_time and self.department_id:
+            from shifts.services import night_cutoff_for, type_includes_night
+
+            self.is_night = type_includes_night(
+                self.start_time,
+                self.end_time,
+                night_cutoff_for(self.department),
+            )
         super().save(*args, **kwargs)
 
 
@@ -82,8 +91,8 @@ class ShiftAssignment(TimeStampedModel):
         verbose_name_plural = _("Shift assignments")
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "date"],
-                name="uniq_shift_assignment_user_date",
+                fields=["user", "date", "shift_type"],
+                name="uniq_shift_assignment_user_date_type",
             ),
         ]
         indexes = [
@@ -102,3 +111,20 @@ class ShiftAssignment(TimeStampedModel):
             raise ValidationError(_("Clear the audit fields when the override is cleared."))
         if start is not None and not (self.times_set_by_id and self.times_set_at):
             raise ValidationError(_("Record who set the times."))
+
+
+class DepartmentShiftSettings(TimeStampedModel):
+    department = models.OneToOneField(
+        "core.Department",
+        on_delete=models.CASCADE,
+        related_name="shift_settings",
+        verbose_name=_("Department"),
+    )
+    night_starts_at = models.TimeField(_("Night starts at"), default=time(18, 0))
+
+    class Meta:
+        verbose_name = _("Shift settings")
+        verbose_name_plural = _("Shift settings")
+
+    def __str__(self):
+        return f"{self.department} · {self.night_starts_at:%H:%M}"

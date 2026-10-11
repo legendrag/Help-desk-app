@@ -5,8 +5,12 @@
   <h1>{% trans "Rota" %}</h1>
   <p class="shifts-range"><bdi class="shifts-ltr" dir="ltr">{{ dates.0|date:"D j M" }} – {{ dates|last|date:"D j M Y" }}</bdi></p>
 </header>
-{% if check_in %}
-{% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+{% if check_ins %}
+<div id="shifts-check-in" class="shifts-checkin-list">
+  {% for check_in in check_ins %}
+  {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
+  {% endfor %}
+</div>
 {% endif %}
 {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
 {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
@@ -16,7 +20,13 @@
 <form method="get" class="shifts-toolbar panel" action="{% url 'shifts_rota' %}">
   <div class="form-group">
     <label for="rota-department">{% trans "Department" %}</label>
-    <select id="rota-department" class="no-tomselect" name="department">
+    <select id="rota-department" name="department"
+            hx-get="{% url 'shifts_rota' %}"
+            hx-trigger="change"
+            hx-include="closest form"
+            hx-target="#shell-content"
+            hx-swap="innerHTML show:window:top settle:0"
+            hx-push-url="true">
       {% for row in departments %}
       <option value="{{ row.pk }}"{% if row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
       {% endfor %}
@@ -27,9 +37,14 @@
   <a class="btn secondary" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view={{ view }}&start={{ next_start|date:'Y-m-d' }}">{% trans "Next" %}</a>
   <div class="form-group">
     <label for="rota-start">{% trans "Date" %}</label>
-    <input id="rota-start" type="date" name="start" value="{{ start|date:'Y-m-d' }}">
+    <input id="rota-start" type="date" name="start" value="{{ start|date:'Y-m-d' }}"
+           hx-get="{% url 'shifts_rota' %}"
+           hx-trigger="change"
+           hx-include="closest form"
+           hx-target="#shell-content"
+           hx-swap="innerHTML show:window:top settle:0"
+           hx-push-url="true">
   </div>
-  <button class="btn secondary" type="submit">{% trans "Show" %}</button>
   <div class="shifts-segment" role="group" aria-label="{% trans "View" %}">
     <a class="{% if view == 'week' %}is-active{% endif %}" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=week&start={{ start|date:'Y-m-d' }}">{% trans "Week" %}</a>
     <a class="{% if view == 'month' %}is-active{% endif %}" href="{% url 'shifts_rota' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>

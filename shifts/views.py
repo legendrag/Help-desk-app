@@ -17,7 +17,7 @@ from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htm
 from core.models import Department
 from shifts.access import can_check_in, display_name, home_target, is_shift_manager
 from shifts.forms import ShiftTypeForm
-from shifts.models import ShiftAssignment, ShiftType
+from shifts.models import DepartmentShiftSettings, ShiftAssignment, ShiftType
 from shifts.services import (
     REPEAT_WEEKS_MAX,
     WORKER_HOURS_LOOKBACK_DAYS,
@@ -93,7 +93,13 @@ def _rota_bundle(department, dates):
             shift_type__department=department,
             date__gte=first - timedelta(days=1),
             date__lte=last,
-        ).select_related("user", "shift_type", "times_set_by", "times_set_by__role")
+        ).select_related(
+            "user",
+            "shift_type",
+            "shift_type__department",
+            "times_set_by",
+            "times_set_by__role",
+        )
     )
     visible = [row for row in assignments if first <= row.date <= last]
     now = timezone.now()
@@ -113,10 +119,14 @@ def _rota_bundle(department, dates):
     )
     people = {row.pk: row for row in list(active) + list(extra)}
     ordered = sorted(people.values(), key=lambda row: ((row.first_name or ""), row.username))
-    by_key = {(row.user_id, row.date): row for row in visible}
+    by_key = {}
+    for row in visible:
+        by_key.setdefault((row.user_id, row.date), []).append(row)
+    for rows in by_key.values():
+        rows.sort(key=lambda row: (effective_interval(row)[0], row.pk))
     for person in ordered:
         person.shift_label = display_name(person)
-        person.cells = [(day, by_key.get((person.pk, day))) for day in dates]
+        person.cells = [(day, by_key.get((person.pk, day), [])) for day in dates]
     return {
         "assignments": assignments,
         "people": ordered,
@@ -164,7 +174,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
         "skips": skips or [],
         "error": error,
         "display_name": display_name,
-        "check_in": _viewer_check_in(request),
+        "check_ins": _open_check_ins(request.user, timezone.now()),
     }
     template = "shifts/rota_grid.html" if retarget else "shifts/rota.html"
     response = _shell(request, template, context)
@@ -179,7 +189,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
 def shifts_rota(request):
     if not is_shift_manager(request.user):
         return _forbid()
-    return _grid_response(request, _selected_department(request), retarget=False)
+    return _grid_response(request, _types_department(request), retarget=False)
 
 
 @login_required
@@ -233,14 +243,11 @@ def shifts_mine(request):
         if start_dt <= now < end_dt:
             banner_end = end_dt
             break
-    check_in = None
-    if request.user.user_type == "support":
-        check_in = next((row for row in rows if row.date == today and not row.shift_type.is_night), None)
     return _shell(request, "shifts/mine.html", {
         "assignments": rows,
         "banner_end": banner_end,
         "today": today,
-        "check_in": _check_in_context(check_in, now, request.user),
+        "check_ins": _open_check_ins(request.user, now),
     })
 
 
@@ -260,7 +267,7 @@ def _available_board(request):
         start_dt, end_dt = effective_interval(row)
         if not (start_dt <= now < end_dt):
             continue
-        if row.shift_type.is_night or row.checked_in_at:
+        if row.checked_in_at:
             on_shift.append((row, end_dt))
     parts = [
         get_language(),
@@ -371,8 +378,24 @@ def shifts_type_archive(request, pk):
     return redirect("shifts_types")
 
 
+def _department_with_shift_types():
+    return (
+        Department.objects.filter(shift_types__isnull=False)
+        .distinct()
+        .order_by("name")
+        .first()
+    )
+
+
+def _types_department(request):
+    raw = request.POST.get("department") or request.GET.get("department")
+    if raw:
+        return get_object_or_404(Department, pk=raw)
+    return _department_with_shift_types() or _selected_department(request)
+
+
 def _render_types(request):
-    department = _selected_department(request)
+    department = _types_department(request)
     rows = (
         ShiftType.objects.filter(department=department)
         .select_related("department")
@@ -382,6 +405,7 @@ def _render_types(request):
         "department": department,
         "types": rows,
         "departments": Department.objects.order_by("name"),
+        "night_starts_at": _night_starts_at(department),
     })
 
 
@@ -393,10 +417,78 @@ def shifts_types(request):
     return _render_types(request)
 
 
+def _night_starts_at(department):
+    try:
+        return department.shift_settings.night_starts_at
+    except DepartmentShiftSettings.DoesNotExist:
+        return time(18, 0)
+
+
+@login_required
+@require_POST
+def shifts_night_starts(request):
+    if not is_shift_manager(request.user):
+        return _forbid()
+    department = get_object_or_404(Department, pk=request.POST.get("department"))
+    raw = (request.POST.get("night_starts_at") or "").strip()
+    try:
+        cutoff = time.fromisoformat(raw)
+    except ValueError:
+        cutoff = None
+    if cutoff is None:
+        return _render_types(request)
+    if hasattr(department, "_night_cutoff"):
+        del department._night_cutoff
+    settings, _created = DepartmentShiftSettings.objects.get_or_create(
+        department=department,
+        defaults={"night_starts_at": cutoff},
+    )
+    settings.night_starts_at = time(cutoff.hour, cutoff.minute)
+    settings.save(update_fields=["night_starts_at", "updated_at"])
+    department._night_cutoff = settings.night_starts_at
+    for row in ShiftType.objects.filter(department=department):
+        row.department = department
+        row.save()
+    if request.headers.get("HX-Request"):
+        response = _render_types(request)
+        response["HX-Retarget"] = "#shell-content"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+    query = urlencode({"department": department.pk})
+    return redirect(f"{reverse('shifts_types')}?{query}")
+
+
 def _parse_clock(raw):
     if not raw:
         return None
     return time.fromisoformat(raw)
+
+
+def _cell_existing(user, on, request):
+    rows = list(
+        ShiftAssignment.objects.filter(user=user, date=on).select_related("shift_type")
+    )
+    raw = request.POST.get("assignment") or request.GET.get("assignment")
+    if raw:
+        for row in rows:
+            if str(row.pk) == str(raw):
+                return row
+        return get_object_or_404(ShiftAssignment, pk=raw, user=user, date=on)
+    if request.method == "GET":
+        return None
+    shift_type_id = request.POST.get("shift_type") or ""
+    editing_action = (
+        request.POST.get("clear_check_in") == "1"
+        or request.POST.get("restore_check_in") == "1"
+        or request.POST.get("reset_times") == "1"
+        or not shift_type_id
+    )
+    if editing_action and len(rows) == 1:
+        return rows[0]
+    matches = [row for row in rows if shift_type_id and str(row.shift_type_id) == str(shift_type_id)]
+    if len(matches) == 1:
+        return matches[0]
+    return None
 
 
 @login_required
@@ -407,11 +499,7 @@ def shifts_cell(request):
     department = _selected_department(request)
     user = get_object_or_404(User, pk=request.POST.get("user") or request.GET.get("user"))
     on = date.fromisoformat(request.POST.get("date") or request.GET.get("date"))
-    existing = (
-        ShiftAssignment.objects.filter(user=user, date=on)
-        .select_related("shift_type")
-        .first()
-    )
+    existing = _cell_existing(user, on, request)
     now = timezone.now()
     if existing:
         settle_check_in(existing, now)
@@ -425,7 +513,7 @@ def shifts_cell(request):
             "can_restore": _can_restore_check_in(existing, now),
         })
     if request.method == "POST" and request.POST.get("clear_check_in") == "1":
-        if existing and not existing.shift_type.is_night and existing.checked_in_at:
+        if existing and existing.checked_in_at:
             existing.checked_in_at = None
             existing.checked_out_at = now
             existing.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
@@ -487,6 +575,10 @@ def shifts_cell(request):
             other = neighbor_conflict(probe, start_dt, end_dt, exclude_pk=getattr(existing, "pk", None))
             if other:
                 error = overlap_message(other)
+            elif ShiftAssignment.objects.filter(
+                user=user, date=on, shift_type=shift_type
+            ).exclude(pk=getattr(existing, "pk", None)).exists():
+                error = _("This shift is already on that day.")
     if error:
         return render(request, "shifts/cell_form.html", {
             "department": department,
@@ -497,14 +589,14 @@ def shifts_cell(request):
             "error": error,
         })
     row = existing or ShiftAssignment(user=user, date=on)
-    was_day = bool(existing and not existing.shift_type.is_night)
+    type_changed = bool(existing and existing.shift_type_id != shift_type.pk)
     row.shift_type = shift_type
     if start_t is not None and end_t is not None:
         row.start_time_override = start_t
         row.end_time_override = end_t
         row.times_set_by = request.user
         row.times_set_at = timezone.now()
-    if was_day and shift_type.is_night:
+    if type_changed:
         row.checked_in_at = None
         row.checked_out_at = None
     row.save()
@@ -520,7 +612,11 @@ def _write_planned(planned):
         if item["skip"]:
             skips.append(item)
             continue
-        if ShiftAssignment.objects.filter(user_id=item["user_id"], date=item["date"]).exists():
+        if ShiftAssignment.objects.filter(
+            user_id=item["user_id"],
+            date=item["date"],
+            shift_type_id=item["shift_type_id"],
+        ).exists():
             item["skip"] = "already assigned"
             skips.append(item)
             continue
@@ -657,7 +753,9 @@ def _apply_rotation(proposals, shift_type, department):
                 item["skip"] = _("Archived shift types cannot be assigned.")
                 skips.append(item)
                 continue
-            if ShiftAssignment.objects.filter(user_id=user.pk, date=item["date"]).exists():
+            if ShiftAssignment.objects.filter(
+                user_id=user.pk, date=item["date"], shift_type=shift_type
+            ).exists():
                 item["skip"] = "already assigned"
                 skips.append(item)
                 continue
@@ -763,7 +861,7 @@ def shifts_calc_rotation(request):
     if request.POST.get("action") == "apply":
         for person in people:
             for day in dates:
-                if ShiftAssignment.objects.filter(user=person, date=day).exists():
+                if ShiftAssignment.objects.filter(user=person, date=day, shift_type=shift_type).exists():
                     skips.append({
                         "date": day,
                         "user_id": person.pk,
@@ -938,10 +1036,8 @@ def _format_minutes(minutes):
 def shifts_calculator(request):
     if not is_shift_manager(request.user):
         return _forbid()
-    raw = request.GET.get("department")
-    if raw:
-        department = get_object_or_404(Department, pk=raw)
-    else:
+    department = _department_with_shift_types() if not request.GET.get("department") else get_object_or_404(Department, pk=request.GET.get("department"))
+    if department is None:
         department = Department.objects.order_by("name").first()
     night_types, people = _rotation_choices(department)
     context = {
@@ -960,9 +1056,13 @@ def shifts_calculator(request):
 def shifts_calc_length(request):
     if not is_shift_manager(request.user):
         return _forbid()
+    raw_start = request.GET.get("start", "")
+    raw_end = request.GET.get("end", "")
+    if not raw_start or not raw_end:
+        return render(request, "shifts/calc_length.html", {})
     try:
-        start_t = time.fromisoformat(request.GET.get("start", ""))
-        end_t = time.fromisoformat(request.GET.get("end", ""))
+        start_t = time.fromisoformat(raw_start)
+        end_t = time.fromisoformat(raw_end)
     except ValueError:
         start_t = end_t = None
     if start_t is None or end_t is None or start_t == end_t:
@@ -1096,7 +1196,7 @@ def shifts_team(request):
     if request.user.user_type != "support" and not is_shift_manager(request.user):
         return _forbid()
     if is_shift_manager(request.user):
-        department = _selected_department(request)
+        department = _types_department(request)
     else:
         requested = request.GET.get("department")
         if requested and str(request.user.department_id) != str(requested):
@@ -1126,7 +1226,7 @@ def _mine_row(request, assignment, error):
 
 
 def _can_restore_check_in(assignment, now) -> bool:
-    if assignment is None or assignment.shift_type.is_night:
+    if assignment is None:
         return False
     if assignment.checked_in_at or not assignment.checked_out_at:
         return False
@@ -1157,16 +1257,24 @@ def _check_in_context(assignment, now, user):
     return {"assignment": assignment, "state": state, "hint": hint}
 
 
-def _viewer_check_in(request):
-    if request.user.user_type != "support":
-        return None
+def _open_check_ins(user, now):
+    if getattr(user, "user_type", None) != "support":
+        return []
     today = timezone.localdate()
-    assignment = (
-        ShiftAssignment.objects.filter(user=request.user, date=today, shift_type__is_night=False)
-        .select_related("shift_type")
-        .first()
+    rows = list(
+        ShiftAssignment.objects.filter(user=user, date=today).select_related("shift_type")
     )
-    return _check_in_context(assignment, timezone.now(), request.user)
+    rows.sort(key=lambda row: (effective_interval(row)[0], row.pk))
+    panels = []
+    for row in rows:
+        _start_dt, end_dt = effective_interval(row)
+        if now >= end_dt:
+            settle_check_in(row, now)
+            continue
+        context = _check_in_context(row, now, user)
+        if context and context["state"] != "closed":
+            panels.append(context)
+    return panels
 
 
 @login_required
@@ -1179,8 +1287,6 @@ def shifts_check_in(request, pk):
     if assignment.user_id != request.user.id:
         return _forbid()
     if request.user.user_type != "support":
-        return _forbid()
-    if assignment.shift_type.is_night:
         return _forbid()
     if assignment.date != timezone.localdate():
         return _forbid()

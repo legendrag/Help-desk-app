@@ -8,17 +8,38 @@
           hx-target="#modal-content"
           onclick="openModal()">{% trans "Add shift type" %}</button>
 </header>
-<form method="get" class="shifts-toolbar panel">
-  <div class="form-group">
-    <label for="shift-type-department">{% trans "Department" %}</label>
-    <select id="shift-type-department" class="no-tomselect" name="department">
-      {% for row in departments %}
-      <option value="{{ row.pk }}"{% if department.pk == row.pk %} selected{% endif %}>{{ row.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <button class="btn secondary" type="submit">{% trans "Show" %}</button>
-</form>
+<div class="shifts-toolbar panel">
+  <form method="get" action="{% url 'shifts_types' %}">
+    <div class="form-group">
+      <label for="shift-type-department">{% trans "Department" %}</label>
+      <select id="shift-type-department" name="department"
+              hx-get="{% url 'shifts_types' %}"
+              hx-trigger="change"
+              hx-include="this"
+              hx-target="#shell-content"
+              hx-swap="innerHTML show:window:top settle:0"
+              hx-push-url="true">
+        {% for row in departments %}
+        <option value="{{ row.pk }}"{% if department.pk == row.pk %} selected{% endif %}>{{ row.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+  <form method="post" class="shifts-night-start" action="{% url 'shifts_night_starts' %}"
+        hx-post="{% url 'shifts_night_starts' %}"
+        hx-target="#shell-content"
+        hx-swap="innerHTML show:window:top settle:0"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    <input type="hidden" name="department" value="{{ department.pk }}">
+    <div class="form-group">
+      <label for="night-starts">{% trans "Night starts at" %}</label>
+      <input id="night-starts" type="time" name="night_starts_at" value="{{ night_starts_at|time:'H:i' }}" required>
+    </div>
+    <button class="btn secondary" type="submit">{% trans "Save" %}</button>
+  </form>
+</div>
 <div class="panel">
   <div class="table-wrap">
     <table class="shifts-list">

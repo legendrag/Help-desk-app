@@ -87,16 +87,70 @@ def clock_length(start_t: time, end_t: time):
     return total, after
 
 
+def night_cutoff_for(department):
+    cached = getattr(department, "_night_cutoff", None)
+    if cached is not None:
+        return cached
+    from shifts.models import DepartmentShiftSettings
+
+    try:
+        cutoff = department.shift_settings.night_starts_at
+    except DepartmentShiftSettings.DoesNotExist:
+        cutoff = time(18, 0)
+    department._night_cutoff = time(cutoff.hour, cutoff.minute)
+    return department._night_cutoff
+
+
+def split_day_night_minutes(start_dt, end_dt, night_starts_at):
+    """Split an interval into day minutes and night minutes.
+
+    Night is from the cutoff through midnight. Midnight until the cutoff is day.
+    """
+    if end_dt <= start_dt:
+        return 0, 0
+    cutoff_clock = time(night_starts_at.hour, night_starts_at.minute)
+    tz = timezone.get_current_timezone()
+    first = timezone.localtime(start_dt, tz).date()
+    last = timezone.localtime(end_dt - timedelta(microseconds=1), tz).date()
+    day_m = 0
+    night_m = 0
+    cursor = first
+    while cursor <= last:
+        midnight = aware_on(cursor, time(0, 0))
+        cutoff = aware_on(cursor, cutoff_clock)
+        next_midnight = aware_on(cursor + timedelta(days=1), time(0, 0))
+        for seg_start, seg_end, is_night in (
+            (midnight, cutoff, False),
+            (cutoff, next_midnight, True),
+        ):
+            clip_start = max(start_dt, seg_start)
+            clip_end = min(end_dt, seg_end)
+            if clip_end <= clip_start:
+                continue
+            minutes = int((clip_end - clip_start).total_seconds() // 60)
+            if is_night:
+                night_m += minutes
+            else:
+                day_m += minutes
+        cursor += timedelta(days=1)
+    return day_m, night_m
+
+
+def type_includes_night(start_t, end_t, night_starts_at) -> bool:
+    anchor = date(2026, 1, 5)
+    start_dt, end_dt = interval_for(anchor, start_t, end_t)
+    _day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at)
+    return night_m > 0
+
+
 def clipped_day_night_minutes(assignment, range_start, range_end):
     start_dt, end_dt = effective_interval(assignment)
     clip_start = max(start_dt, range_start)
     clip_end = min(end_dt, range_end)
     if clip_end <= clip_start:
         return 0, 0
-    minutes = int((clip_end - clip_start).total_seconds() // 60)
-    if assignment.shift_type.is_night:
-        return 0, minutes
-    return minutes, 0
+    cutoff = night_cutoff_for(assignment.shift_type.department)
+    return split_day_night_minutes(clip_start, clip_end, cutoff)
 
 
 def overrides_set_by_worker(assignment) -> bool:
@@ -109,14 +163,14 @@ def overrides_set_by_worker(assignment) -> bool:
 
 
 def settle_check_in(assignment, now) -> bool:
-    """Clear a day-shift check-in once its effective end has passed.
+    """Clear a check-in once its effective end has passed.
 
     ``checked_out_at`` stays set so a later edit of the end time cannot
-    look like a shift that was never checked in. Night shifts are left alone.
+    look like a shift that was never checked in.
     """
     if assignment is None or not getattr(assignment, "pk", None):
         return False
-    if assignment.shift_type.is_night or not assignment.checked_in_at:
+    if not assignment.checked_in_at:
         return False
     _start_dt, end_dt = effective_interval(assignment)
     if now < end_dt:
@@ -128,8 +182,6 @@ def settle_check_in(assignment, now) -> bool:
 
 
 def check_in_marker(assignment, now) -> str:
-    if assignment.shift_type.is_night:
-        return ""
     today = timezone.localdate()
     if assignment.date > today:
         return ""
@@ -237,8 +289,6 @@ def suggest_nights(people, dates, shift_type, existing_by_user):
         backup = []
         for person in people:
             st = stats[person.pk]
-            if day in st["dates"]:
-                continue
             if any(overlaps(target, existing) for existing in st["intervals"]):
                 continue
             if (day - timedelta(days=1)) in st["night_dates"]:

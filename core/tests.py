@@ -201,7 +201,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=10", html)
+        self.assertIn("js/app-shell.js?v=12", html)
         self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)

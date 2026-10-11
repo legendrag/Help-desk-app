@@ -634,8 +634,9 @@ function initializeChoices(targetElement) {
             searchField: []
         };
 
-        // Modal/offcanvas use overflow:hidden — keep the menu outside so it isn't clipped
-        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas')) {
+        // Modal/offcanvas use overflow:hidden. Shift panels use backdrop-filter,
+        // which is its own layer, so a menu inside one card paints under the next.
+        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas, #shifts-shell-pane')) {
             options.dropdownParent = 'body';
         }
 
@@ -658,7 +659,20 @@ function initializeChoices(targetElement) {
             options.dropdownParent = 'body';
         }
 
+        const label = select.id
+            ? document.querySelector('label[for="' + CSS.escape(select.id) + '"]')
+            : null;
+
         new TomSelect(select, options);
+
+        // Tom Select opens the menu when its label is clicked. On the shifts
+        // toolbars that makes the caption above the field open the list too.
+        if (label && select.closest('#shifts-shell-pane')) {
+            label.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }, true);
+        }
     });
 }
 

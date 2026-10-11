@@ -129,14 +129,14 @@ class WeekAndHoursTests(TestCase):
         row = make_assignment(user, night, friday)
         start, end = interval_for(friday, time(22, 0), time(6, 0))
         day, night_m = clipped_day_night_minutes(row, start, end)
-        self.assertEqual((day, night_m), (0, 480))
+        self.assertEqual((day, night_m), (360, 120))
         week_end = timezone.make_aware(datetime(2026, 10, 10, 0, 0))
         week_start = timezone.make_aware(datetime(2026, 10, 3, 0, 0))
         day, night_m = clipped_day_night_minutes(row, week_start, week_end)
         self.assertEqual((day, night_m), (0, 120))
         next_week_end = timezone.make_aware(datetime(2026, 10, 17, 0, 0))
         day, night_m = clipped_day_night_minutes(row, week_end, next_week_end)
-        self.assertEqual((day, night_m), (0, 360))
+        self.assertEqual((day, night_m), (360, 0))
 
     def test_same_evening_on_a_night_type_is_all_night_hours(self):
         from shifts.services import clipped_day_night_minutes
@@ -149,7 +149,7 @@ class WeekAndHoursTests(TestCase):
         end = timezone.make_aware(datetime(2026, 10, 7, 0, 0))
         self.assertEqual(clipped_day_night_minutes(row, start, end), (0, 300))
 
-    def test_day_type_crossing_midnight_stays_day_hours(self):
+    def test_clock_split_ignores_the_type_flag(self):
         from shifts.services import clipped_day_night_minutes, clock_length
 
         department = make_department("Day cross")
@@ -158,7 +158,7 @@ class WeekAndHoursTests(TestCase):
         row = make_assignment(user, day_type, date(2026, 10, 6), time(22, 0), time(6, 0))
         start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
         end = timezone.make_aware(datetime(2026, 10, 8, 0, 0))
-        self.assertEqual(clipped_day_night_minutes(row, start, end), (480, 0))
+        self.assertEqual(clipped_day_night_minutes(row, start, end), (360, 120))
         self.assertEqual(clock_length(time(22, 0), time(6, 0)), (480, 360))
         self.assertEqual(clock_length(time(9, 0), time(12, 30)), (210, 0))
 
@@ -196,6 +196,17 @@ class LandingTests(TestCase):
 
 
 class ShiftTypeCrudTests(TestCase):
+    def test_types_page_opens_on_a_department_that_has_types(self):
+        make_department("Aaa empty")
+        filled = make_department("Zzz filled")
+        make_shift_type(filled, name="Desk night")
+        role = make_role("Types default", can_manage_shifts=True)
+        manager = make_user("types-default", "support", filled, role)
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_types"))
+        self.assertContains(response, "Desk night")
+        self.assertContains(response, f'value="{filled.pk}" selected')
+
     def test_support_cannot_open_types(self):
         department = make_department("Types")
         support = make_user("types-agent", "support", department)
@@ -263,6 +274,13 @@ class RotaGridTests(TestCase):
         self.agent = make_user("rota-agent", "support", self.department)
         self.night = make_shift_type(self.department)
         self.client.force_login(self.manager)
+
+    def test_rota_opens_on_a_department_that_has_types(self):
+        empty = make_department("Aaa empty rota")
+        response = self.client.get(reverse("shifts_rota"))
+        self.assertContains(response, f'value="{self.department.pk}" selected')
+        self.assertNotContains(response, f'value="{empty.pk}" selected')
+        self.assertNotIn(">Show<", response.content.decode())
 
     def test_week_query_normalizes_to_saturday(self):
         response = self.client.get(reverse("shifts_rota"), {"view": "week", "start": "2026-10-07", "department": self.department.pk})
@@ -650,9 +668,20 @@ class RotationTests(TestCase):
             night,
             {veteran.pk: [existing_night], other.pk: [existing_day]},
         )
-        self.assertEqual(result[0]["user_id"], veteran.pk)
-        self.assertTrue(result[0]["back_to_back"])
-        self.assertEqual(str(result[0]["reason"]), "Others already assigned on this date")
+        self.assertEqual(result[0]["user_id"], other.pk)
+        self.assertFalse(result[0]["back_to_back"])
+        both_nights = suggest_nights(
+            [veteran, other],
+            [date(2026, 10, 6)],
+            night,
+            {
+                veteran.pk: [existing_night],
+                other.pk: [make_assignment(other, night, date(2026, 10, 5)), existing_day],
+            },
+        )
+        self.assertEqual(both_nights[0]["user_id"], veteran.pk)
+        self.assertTrue(both_nights[0]["back_to_back"])
+        self.assertEqual(str(both_nights[0]["reason"]), "Others already assigned on this date")
 
     def test_missing_rotation_dates_ask_for_dates(self):
         department = make_department("Dates")
@@ -1045,6 +1074,7 @@ class CheckInTests(TestCase):
             "user": self.agent.pk,
             "date": "2026-06-02",
             "department": self.department.pk,
+            "assignment": self.row.pk,
             "shift_type": self.night.pk,
         })
         self.row.refresh_from_db()
@@ -1205,6 +1235,7 @@ class AutoCheckOutTests(TestCase):
                 "user": self.agent.pk,
                 "date": "2026-06-02",
                 "department": self.department.pk,
+                "assignment": self.row.pk,
             })
         self.assertContains(form, 'name="restore_check_in"')
         self.assertNotContains(form, "Clear check-in")
@@ -1227,7 +1258,7 @@ class AutoCheckOutTests(TestCase):
         self.assertContains(board, "Nada Farid")
 
     @override_settings(TIME_ZONE="Africa/Cairo")
-    def test_night_shift_is_not_auto_checked_out(self):
+    def test_night_shift_checks_out_when_it_ends(self):
         night = make_assignment(self.agent, self.night, date(2026, 6, 1))
         night.checked_in_at = timezone.make_aware(datetime(2026, 6, 1, 22, 5))
         night.save(update_fields=["checked_in_at"])
@@ -1237,8 +1268,8 @@ class AutoCheckOutTests(TestCase):
             posted = self.client.post(reverse("shifts_check_in", args=[night.pk]))
         self.assertEqual(posted.status_code, 403)
         night.refresh_from_db()
-        self.assertIsNotNone(night.checked_in_at)
-        self.assertIsNone(night.checked_out_at)
+        self.assertIsNone(night.checked_in_at)
+        self.assertEqual(night.checked_out_at, timezone.make_aware(datetime(2026, 6, 2, 6, 0)))
 
 
 class CheckInPermissionTests(TestCase):
@@ -1318,6 +1349,17 @@ class CheckInPermissionTests(TestCase):
 
 
 class TeamRotaTests(TestCase):
+    def test_manager_opens_on_a_department_that_has_types(self):
+        make_department("Aaa empty team")
+        filled = make_department("Zzz filled team")
+        make_shift_type(filled, name="Team night")
+        role = make_role("Team default", can_manage_shifts=True)
+        manager = make_user("team-default", "support", filled, role)
+        self.client.force_login(manager)
+        response = self.client.get(reverse("shifts_team"))
+        self.assertContains(response, f'value="{filled.pk}" selected')
+        self.assertNotIn(">Show<", response.content.decode())
+
     def test_support_cannot_switch_department(self):
         home = make_department("Home team")
         other = make_department("Other team")
@@ -1332,12 +1374,18 @@ class TeamRotaTests(TestCase):
 
 
 class AvailableNowTests(TestCase):
-    def test_night_shift_shows_without_check_in_until_end(self):
+    def test_night_shift_needs_check_in_until_end(self):
         department = make_department("Now")
         agent = make_user("now-agent", "support", department)
         night = make_shift_type(department, name="Now night")
-        make_assignment(agent, night, date(2026, 6, 1))
+        row = make_assignment(agent, night, date(2026, 6, 1))
         self.client.force_login(make_user("now-branch", "branch"))
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
+             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
+            hidden = self.client.get(reverse("shifts_available_board"))
+        self.assertNotContains(hidden, "now-agent")
+        row.checked_in_at = aware(2026, 6, 1, 22, 10)
+        row.save(update_fields=["checked_in_at"])
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
             shown = self.client.get(reverse("shifts_available_board"))
@@ -1345,8 +1393,8 @@ class AvailableNowTests(TestCase):
         self.assertNotContains(shown, "Now night")
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 6, 0)), \
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            hidden = self.client.get(reverse("shifts_available_board"))
-        self.assertNotContains(hidden, "now-agent")
+            ended = self.client.get(reverse("shifts_available_board"))
+        self.assertNotContains(ended, "now-agent")
 
     def test_day_shift_needs_check_in_and_etag_changes(self):
         department = make_department("Now day")
@@ -1407,7 +1455,9 @@ class AvailableNowTests(TestCase):
         staffed = make_department("Staffed")
         agent = make_user("staffed-agent", "support", staffed, first_name="", last_name="")
         night = make_shift_type(staffed, name="Secret type")
-        make_assignment(agent, night, date(2026, 6, 1))
+        row = make_assignment(agent, night, date(2026, 6, 1))
+        row.checked_in_at = aware(2026, 6, 1, 22, 10)
+        row.save(update_fields=["checked_in_at"])
         self.client.force_login(make_user("board-branch", "branch"))
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
@@ -1451,7 +1501,9 @@ class AvailableNowTests(TestCase):
         department = make_department("First paint")
         agent = make_user("paint-agent", "support", department, first_name="Paint", last_name="Agent")
         night = make_shift_type(department, name="Paint night")
-        make_assignment(agent, night, date(2026, 6, 1))
+        row = make_assignment(agent, night, date(2026, 6, 1))
+        row.checked_in_at = aware(2026, 6, 1, 22, 10)
+        row.save(update_fields=["checked_in_at"])
         self.client.force_login(make_user("paint-branch", "branch"))
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
@@ -1510,6 +1562,7 @@ class PermissionMatrixTests(TestCase):
             reverse("shifts_repeat_week"),
             reverse("shifts_auto_fill"),
             reverse("shifts_type_archive", args=[self.night.pk]),
+            reverse("shifts_night_starts"),
             reverse("shifts_calc_rotation"),
             reverse("shifts_mine_hours", args=[self.row.pk]),
             reverse("shifts_check_in", args=[self.today_row.pk]),
@@ -1552,6 +1605,7 @@ class PermissionMatrixTests(TestCase):
             ("shifts_repeat_week", {"department": self.department.pk, "start": "2026-10-03", "weeks": "1"}),
             ("shifts_auto_fill", {"department": self.department.pk, "action": "apply", "start": "2026-10-03", "view": "week"}),
             ("shifts_calc_rotation", {"action": "apply", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05"}),
+            ("shifts_night_starts", {"department": self.department.pk, "night_starts_at": "18:00"}),
         ):
             self.assertEqual(self.client.post(reverse(name), payload).status_code, 403, name)
         self.assertEqual(self.client.post(reverse("shifts_type_archive", args=[self.night.pk])).status_code, 403)
@@ -1570,5 +1624,156 @@ class PermissionMatrixTests(TestCase):
             self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "13"}).status_code, 302)
             self.assertEqual(self.client.post(reverse("shifts_auto_fill"), {"department": self.department.pk, "action": "preview", "start": "2026-10-03", "view": "week"}).status_code, 302)
             self.assertEqual(self.client.post(reverse("shifts_calc_rotation"), {"action": "preview", "department": self.department.pk, "shift_type": self.night.pk, "start": "2026-10-05", "end": "2026-10-05", "users": [self.support.pk]}).status_code, 200)
+            self.assertEqual(self.client.post(reverse("shifts_night_starts"), {"department": self.department.pk, "night_starts_at": "19:00"}).status_code, 302)
             self.assertEqual(self.client.post(reverse("shifts_mine_hours", args=[self.row.pk]), {"action": "reset"}).status_code, 403)
             self.assertEqual(self.client.post(reverse("shifts_check_in", args=[self.today_row.pk])).status_code, 403)
+
+
+class NightCutoffTests(TestCase):
+    def test_cutoff_splits_evening_and_morning_hours(self):
+        from shifts.services import clipped_day_night_minutes
+
+        department = make_department("Split")
+        user = make_user("split-agent", "support", department)
+        evening = make_shift_type(department, name="Evening", start=time(16, 0), end=time(0, 0))
+        overnight = make_shift_type(department, name="Overnight", start=time(22, 0), end=time(6, 0))
+        self.assertTrue(evening.is_night)
+        self.assertTrue(overnight.is_night)
+        day_only = make_shift_type(department, name="Morning", start=time(8, 0), end=time(16, 0))
+        self.assertFalse(day_only.is_night)
+        evening_row = make_assignment(user, evening, date(2026, 10, 6))
+        window_start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
+        window_end = timezone.make_aware(datetime(2026, 10, 7, 0, 0))
+        self.assertEqual(clipped_day_night_minutes(evening_row, window_start, window_end), (120, 360))
+        overnight_row = make_assignment(user, overnight, date(2026, 10, 7))
+        full_start = timezone.make_aware(datetime(2026, 10, 7, 22, 0))
+        full_end = timezone.make_aware(datetime(2026, 10, 8, 6, 0))
+        self.assertEqual(clipped_day_night_minutes(overnight_row, full_start, full_end), (360, 120))
+
+    def test_changing_the_cutoff_recomputes_types(self):
+        from shifts.models import DepartmentShiftSettings
+
+        department = make_department("Cutoff page")
+        manager = make_user(
+            "cutoff-lead",
+            "support",
+            department,
+            make_role("Cutoff lead", can_manage_shifts=True),
+        )
+        afternoon = make_shift_type(department, name="Afternoon", start=time(15, 0), end=time(17, 0))
+        self.assertFalse(afternoon.is_night)
+        self.client.force_login(manager)
+        page = self.client.get(reverse("shifts_types"), {"department": department.pk})
+        self.assertContains(page, 'id="night-starts"')
+        self.assertContains(page, 'value="18:00"')
+        saved = self.client.post(reverse("shifts_night_starts"), {
+            "department": department.pk,
+            "night_starts_at": "15:00",
+        })
+        self.assertEqual(saved.status_code, 302)
+        afternoon.refresh_from_db()
+        self.assertTrue(afternoon.is_night)
+        self.assertEqual(
+            DepartmentShiftSettings.objects.get(department=department).night_starts_at,
+            time(15, 0),
+        )
+
+
+class SameDayShiftTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Double")
+        self.manager = make_user(
+            "double-lead",
+            "support",
+            self.department,
+            make_role("Double lead", can_manage_shifts=True),
+        )
+        self.agent = make_user(
+            "double-agent",
+            "support",
+            self.department,
+            make_role("Double agent", can_check_in=True),
+        )
+        self.day = make_shift_type(self.department, name="Day desk", start=time(8, 0), end=time(16, 0))
+        self.night = make_shift_type(self.department, name="Night desk", start=time(22, 0), end=time(6, 0))
+        self.client.force_login(self.manager)
+
+    def test_two_shifts_stack_and_overlap_is_rejected(self):
+        on = date(2026, 10, 6)
+        self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-10-06",
+            "department": self.department.pk,
+            "shift_type": self.day.pk,
+        })
+        added = self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-10-06",
+            "department": self.department.pk,
+            "shift_type": self.night.pk,
+        })
+        self.assertEqual(added.status_code, 200)
+        self.assertEqual(ShiftAssignment.objects.filter(user=self.agent, date=on).count(), 2)
+        grid = self.client.get(reverse("shifts_rota_grid"), {
+            "department": self.department.pk,
+            "view": "week",
+            "start": "2026-10-03",
+        })
+        self.assertContains(grid, "Day desk")
+        self.assertContains(grid, "Night desk")
+        clash = self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-10-06",
+            "department": self.department.pk,
+            "shift_type": make_shift_type(self.department, name="Late morning", start=time(9, 0), end=time(12, 0)).pk,
+        })
+        self.assertContains(clash, "overlaps")
+        self.assertEqual(ShiftAssignment.objects.filter(user=self.agent, date=on).count(), 2)
+        day_row = ShiftAssignment.objects.get(user=self.agent, date=on, shift_type=self.day)
+        removed = self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk,
+            "date": "2026-10-06",
+            "department": self.department.pk,
+            "assignment": day_row.pk,
+            "shift_type": "",
+        })
+        self.assertEqual(removed.status_code, 200)
+        self.assertFalse(ShiftAssignment.objects.filter(pk=day_row.pk).exists())
+        self.assertTrue(ShiftAssignment.objects.filter(user=self.agent, date=on, shift_type=self.night).exists())
+
+    def test_copy_keeps_both_shifts(self):
+        on = date(2026, 10, 3)
+        make_assignment(self.agent, self.day, on)
+        make_assignment(self.agent, self.night, on)
+        self.client.post(reverse("shifts_copy_week"), {
+            "department": self.department.pk,
+            "start": "2026-10-10",
+        })
+        copied = ShiftAssignment.objects.filter(user=self.agent, date=date(2026, 10, 10))
+        self.assertEqual(set(copied.values_list("shift_type_id", flat=True)), {self.day.pk, self.night.pk})
+
+    def test_each_shift_checks_in_on_its_own(self):
+        on = date(2026, 6, 2)
+        day_row = make_assignment(self.agent, self.day, on)
+        night_row = make_assignment(self.agent, self.night, on)
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 6, 2, 9, 0), on):
+            mine = self.client.get(reverse("shifts_mine"))
+            day_in = self.client.post(reverse("shifts_check_in", args=[day_row.pk]))
+        self.assertContains(mine, f'id="shifts-check-in-{day_row.pk}"')
+        self.assertContains(mine, f'id="shifts-check-in-{night_row.pk}"')
+        self.assertContains(day_in, "Checked in at")
+        day_row.refresh_from_db()
+        night_row.refresh_from_db()
+        self.assertIsNotNone(day_row.checked_in_at)
+        self.assertIsNone(night_row.checked_in_at)
+        with _both_clocks(aware(2026, 6, 2, 22, 5), on):
+            self.client.get(reverse("shifts_mine"))
+            night_in = self.client.post(reverse("shifts_check_in", args=[night_row.pk]))
+        self.assertContains(night_in, "Checked in at")
+        day_row.refresh_from_db()
+        night_row.refresh_from_db()
+        self.assertIsNone(day_row.checked_in_at)
+        self.assertIsNotNone(day_row.checked_out_at)
+        self.assertIsNotNone(night_row.checked_in_at)
+        self.assertIsNone(night_row.checked_out_at)

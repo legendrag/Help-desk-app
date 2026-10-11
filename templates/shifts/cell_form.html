@@ -1,35 +1,56 @@
 {% load i18n %}
-<form class="shifts-form" method="post" action="{% url 'shifts_cell' %}" hx-post="{% url 'shifts_cell' %}" hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
+<div class="modal-header">
+  <h2>{% if existing %}{% trans "Edit shift" %}{% else %}{% trans "Add shift" %}{% endif %}</h2>
+  <button type="button" class="modal-close" onclick="closeModal()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+</div>
+<form method="post" action="{% url 'shifts_cell' %}" hx-post="{% url 'shifts_cell' %}" hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
   {% csrf_token %}
   <input type="hidden" name="user" value="{{ person.pk }}">
   <input type="hidden" name="date" value="{{ on|date:'Y-m-d' }}">
   <input type="hidden" name="department" value="{{ department.pk }}">
-  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
-  <div class="form-group">
-    <label for="shift-type">{% trans "Shift type" %}</label>
-    <select id="shift-type" class="no-tomselect" name="shift_type">
-      <option value="">{% trans "Clear" %}</option>
-      {% for row in types %}
-      <option value="{{ row.pk }}"{% if existing and existing.shift_type_id == row.pk %} selected{% endif %}>{{ row.name }}</option>
-      {% endfor %}
-    </select>
+  {% if existing %}<input type="hidden" name="assignment" value="{{ existing.pk }}">{% endif %}
+  <div class="modal-body">
+    <div class="form-stack">
+      <p>{{ person.get_full_name|default:person.username }} · <bdi class="shifts-ltr" dir="ltr">{{ on|date:"D j M Y" }}</bdi></p>
+      {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="shift-type">{% trans "Shift type" %}</label>
+          <select id="shift-type" name="shift_type">
+            {% if existing %}
+            <option value="">{% trans "Remove this shift" %}</option>
+            {% else %}
+            <option value="">{% trans "Choose a shift" %}</option>
+            {% endif %}
+            {% for row in types %}
+            <option value="{{ row.pk }}"{% if existing and existing.shift_type_id == row.pk %} selected{% endif %}>{{ row.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="start-override">{% trans "Start override" %}</label>
+          <input id="start-override" type="time" name="start_time_override" value="{{ existing.start_time_override|time:'H:i' }}">
+        </div>
+        <div class="form-group">
+          <label for="end-override">{% trans "End override" %}</label>
+          <input id="end-override" type="time" name="end_time_override" value="{{ existing.end_time_override|time:'H:i' }}">
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="form-group">
-    <label for="start-override">{% trans "Start override" %}</label>
-    <input id="start-override" type="time" name="start_time_override" value="{{ existing.start_time_override|time:'H:i' }}">
+  <div class="form-actions--end">
+    <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+    {% if existing %}
+    <button class="btn secondary" type="submit" name="reset_times" value="1">{% trans "Reset to shift default" %}</button>
+    {% endif %}
+    {% if existing and existing.checked_in_at %}
+    <button class="btn secondary" type="submit" name="clear_check_in" value="1">{% trans "Clear check-in" %}</button>
+    {% endif %}
+    {% if can_restore %}
+    <button class="btn primary" type="submit" name="restore_check_in" value="1">{% trans "Check in" %}</button>
+    {% endif %}
+    <button class="btn primary" type="submit">{% trans "Save" %}</button>
   </div>
-  <div class="form-group">
-    <label for="end-override">{% trans "End override" %}</label>
-    <input id="end-override" type="time" name="end_time_override" value="{{ existing.end_time_override|time:'H:i' }}">
-  </div>
-  <button class="btn primary" type="submit">{% trans "Save" %}</button>
-  {% if existing %}
-  <button class="btn secondary" type="submit" name="reset_times" value="1">{% trans "Reset to shift default" %}</button>
-  {% endif %}
-  {% if existing and existing.checked_in_at and not existing.shift_type.is_night %}
-  <button class="btn secondary" type="submit" name="clear_check_in" value="1">{% trans "Clear check-in" %}</button>
-  {% endif %}
-  {% if can_restore %}
-  <button class="btn primary" type="submit" name="restore_check_in" value="1">{% trans "Check in" %}</button>
-  {% endif %}
 </form>

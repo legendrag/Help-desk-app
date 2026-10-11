@@ -7,7 +7,7 @@
 <div class="shifts-tools">
 <section id="shifts-length" class="panel">
   <h2>{% trans "Shift length" %}</h2>
-  <form class="shifts-form" method="get" action="{% url 'shifts_calc_length' %}" hx-get="{% url 'shifts_calc_length' %}" hx-target="#shifts-length-result">
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_length' %}" hx-get="{% url 'shifts_calc_length' %}" hx-trigger="change" hx-target="#shifts-length-result">
     <div class="form-group">
       <label for="len-start">{% trans "Start" %}</label>
       <input id="len-start" type="time" name="start">
@@ -16,24 +16,23 @@
       <label for="len-end">{% trans "End" %}</label>
       <input id="len-end" type="time" name="end">
     </div>
-    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
   </form>
   <div id="shifts-length-result"></div>
 </section>
 <section id="shifts-hours" class="panel">
   <h2>{% trans "Hours per person" %}</h2>
-  <form class="shifts-form" method="get" action="{% url 'shifts_calc_hours' %}" hx-get="{% url 'shifts_calc_hours' %}" hx-target="#shifts-hours-result">
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_hours' %}" hx-get="{% url 'shifts_calc_hours' %}" hx-trigger="change" hx-target="#shifts-hours-result">
     <div class="form-group">
       <label for="hours-department">{% trans "Department" %}</label>
-      <select id="hours-department" class="no-tomselect" name="department">
+      <select id="hours-department" name="department">
         {% for row in departments %}
-        <option value="{{ row.pk }}">{{ row.name }}</option>
+        <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="form-group">
       <label for="hours-view">{% trans "View" %}</label>
-      <select id="hours-view" class="no-tomselect" name="view">
+      <select id="hours-view" name="view">
         <option value="week">{% trans "Week" %}</option>
         <option value="month">{% trans "Month" %}</option>
       </select>
@@ -42,7 +41,6 @@
       <label for="hours-start">{% trans "Start" %}</label>
       <input id="hours-start" type="date" name="start">
     </div>
-    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
   </form>
   <div id="shifts-hours-result" class="table-wrap"></div>
 </section>
@@ -56,7 +54,7 @@
     {% csrf_token %}
     <div class="form-group">
       <label for="rot-department">{% trans "Department" %}</label>
-      <select id="rot-department" class="no-tomselect" name="department"
+      <select id="rot-department" name="department"
               hx-get="{% url 'shifts_calculator' %}?part=rotation"
               hx-target="#shifts-rotation-options"
               hx-swap="innerHTML"
@@ -85,18 +83,18 @@
 </section>
 <section id="shifts-coverage" class="panel">
   <h2>{% trans "Coverage" %}</h2>
-  <form class="shifts-form" method="get" action="{% url 'shifts_calc_coverage' %}" hx-get="{% url 'shifts_calc_coverage' %}" hx-target="#shifts-coverage-result">
+  <form class="shifts-form" method="get" action="{% url 'shifts_calc_coverage' %}" hx-get="{% url 'shifts_calc_coverage' %}" hx-trigger="change" hx-target="#shifts-coverage-result">
     <div class="form-group">
       <label for="cov-department">{% trans "Department" %}</label>
-      <select id="cov-department" class="no-tomselect" name="department">
+      <select id="cov-department" name="department">
         {% for row in departments %}
-        <option value="{{ row.pk }}">{{ row.name }}</option>
+        <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="form-group">
       <label for="cov-view">{% trans "View" %}</label>
-      <select id="cov-view" class="no-tomselect" name="view">
+      <select id="cov-view" name="view">
         <option value="week">{% trans "Week" %}</option>
         <option value="month">{% trans "Month" %}</option>
       </select>
@@ -105,7 +103,6 @@
       <label for="cov-start">{% trans "Start" %}</label>
       <input id="cov-start" type="date" name="start">
     </div>
-    <button class="btn secondary" type="submit">{% trans "Show" %}</button>
   </form>
   <div id="shifts-coverage-result" class="table-wrap shifts-coverage"></div>
 </section>

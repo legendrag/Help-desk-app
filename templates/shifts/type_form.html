@@ -1,13 +1,39 @@
 {% load i18n %}
-<form class="shifts-form" method="post" hx-post="." hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
+<div class="modal-header">
+  <h2>{% if editing %}{% trans "Edit shift type" %}{% else %}{% trans "Add shift type" %}{% endif %}</h2>
+  <button type="button" class="modal-close" onclick="closeModal()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+</div>
+<form method="post" hx-post="{{ request.path }}" hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
   {% csrf_token %}
-  {% for field in form %}
-  <div class="form-group">
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field }}
-    {{ field.errors }}
+  <div class="modal-body">
+    <div class="form-stack">
+      {% if form.non_field_errors %}
+      <div class="notice notice-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-group checkbox-field">
+          {{ field }}
+          <label for="{{ field.id_for_label }}" class="checkbox-label">{{ field.label }}</label>
+          {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="form-group">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <p class="help-text">{% trans "Hours from this department's night start time until midnight count as night hours. A shift that ends before it starts still runs into the next morning." %}</p>
+    </div>
   </div>
-  {% endfor %}
-  <p class="help-text">{% trans "A shift that ends before its start is a night shift and runs into the next morning." %}</p>
-  <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  <div class="form-actions--end">
+    <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+    <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  </div>
 </form>
