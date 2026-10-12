@@ -366,3 +366,31 @@ class ProductionStaticConfigTests(SimpleTestCase):
     def test_production_uses_compressed_static_storage(self):
         source = self._settings_source()
         self.assertIn("whitenoise.storage.CompressedManifestStaticFilesStorage", source)
+
+
+class LoginPageFromHtmxTests(TestCase):
+    """An HTMX request that hits the login page after the session expired."""
+
+    def test_htmx_get_redirects_the_whole_page_back_to_where_the_user_was(self):
+        response = self.client.get(
+            reverse("login") + "?next=/shifts/mine/check-in/",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_CURRENT_URL="http://testserver/shifts/mine/?tab=1",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("login") + "?next=%2Fshifts%2Fmine%2F%3Ftab%3D1")
+        self.assertEqual(response.content, b"")
+
+    def test_htmx_get_ignores_a_current_url_on_another_host(self):
+        response = self.client.get(
+            reverse("login") + "?next=/shifts/mine/",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_CURRENT_URL="https://evil.example/steal",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("login") + "?next=/shifts/mine/")
+
+    def test_plain_get_still_renders_the_login_page(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("HX-Redirect", response.headers)

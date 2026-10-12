@@ -2301,3 +2301,14 @@ class DirectVisitAndReadOnlyTests(TestCase):
         row.refresh_from_db()
         self.assertIsNotNone(row.checked_in_at)
         self.assertIsNone(row.checked_out_at)
+
+
+class PhoneCardLabelTests(TestCase):
+    def test_shift_types_cells_carry_labels_for_phone_cards(self):
+        department = make_department("Labels")
+        manager = make_user("labels-lead", "support", department, make_role("Labels lead", can_manage_shifts=True))
+        make_shift_type(department, name="Labels day", start=time(9, 0), end=time(17, 0))
+        self.client.force_login(manager)
+        page = self.client.get(reverse("shifts_types"), {"department": department.pk})
+        for label in ("Name", "Times", "Night", "Colour", "Actions"):
+            self.assertContains(page, f'data-label="{label}"')

@@ -1,6 +1,6 @@
 {% extends base_template|default:"base.html" %}
 {% load i18n static %}
-{% block extra_head %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=12">{% endblock %}
+{% block extra_head %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=13">{% endblock %}
 {% block content %}
 <script>
 (function () {
@@ -10,7 +10,7 @@
 })();
 </script>
 <div id="shifts-shell-pane" class="shifts-page" data-etag="{{ shell_etag|default:'' }}">
-  <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=13">
   {% with active_tab=active_tab|default:request.resolver_match.url_name %}
   <nav class="settings-tabs" role="tablist">
     {% if is_manager %}

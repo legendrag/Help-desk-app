@@ -10,10 +10,10 @@
   </thead>
   {% for person in people %}
   <tr>
-    <td>{{ person.name }}</td>
-    <td>{{ person.day }}</td>
-    <td>{{ person.night }}</td>
-    <td>{{ person.total }}</td>
+    <td data-label="{% trans "Person" %}">{{ person.name }}</td>
+    <td data-label="{% trans "Day" %}">{{ person.day }}</td>
+    <td data-label="{% trans "Night" %}">{{ person.night }}</td>
+    <td data-label="{% trans "Total" %}">{{ person.total }}</td>
   </tr>
   {% endfor %}
 </table>

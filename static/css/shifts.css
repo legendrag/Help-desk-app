@@ -855,6 +855,35 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   #shifts-shell-pane .shifts-mine-table .shifts-row-actions .btn {
     flex: 1 1 auto;
   }
+
+  /* Shift types cards: a dot, not a bar; Edit and Archive side by side. */
+  #shifts-shell-pane .shifts-list .shifts-swatch {
+    flex: 0 0 auto;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  /* The buttons name themselves; the label column would squeeze them. */
+  #shifts-shell-pane .shifts-list td.shifts-actions::before {
+    display: none !important;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions .btn {
+    white-space: nowrap;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions > .btn,
+  #shifts-shell-pane .shifts-list td.shifts-actions > form {
+    flex: 1 1 0;
+    margin: 0;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions > form .btn {
+    inline-size: 100%;
+  }
 }
 
 #shifts-shell-pane .shifts-checkin .btn,

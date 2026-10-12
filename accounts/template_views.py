@@ -1,4 +1,4 @@
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.http import HttpResponse
@@ -31,6 +31,26 @@ class UserLoginView(LoginView):
         htmx_response = HttpResponse(status=204)
         htmx_response["HX-Redirect"] = redirect_to
         return htmx_response
+
+    def get(self, request, *args, **kwargs):
+        # An HTMX request lands here when the session expired mid-page (a poll or
+        # a click followed the login redirect). Swapping this full page into a
+        # fragment would run base.html's scripts twice, so load it as a page.
+        if request.headers.get("HX-Request") and not request.user.is_authenticated:
+            response = HttpResponse(status=204)
+            response["HX-Redirect"] = self._login_url_for_htmx(request)
+            return response
+        return super().get(request, *args, **kwargs)
+
+    @staticmethod
+    def _login_url_for_htmx(request):
+        """Login URL that returns to the page the user was on, not the fragment URL."""
+        current = urlsplit(request.headers.get("HX-Current-URL") or "")
+        if current.path and (not current.netloc or current.netloc == request.get_host()):
+            next_path = current.path + (f"?{current.query}" if current.query else "")
+            if url_has_allowed_host_and_scheme(next_path, allowed_hosts={request.get_host()}):
+                return f"{reverse('login')}?{urlencode({'next': next_path})}"
+        return request.get_full_path()
 
     def get_template_names(self):
         if self.request.headers.get("HX-Request") and self.request.method == "POST":

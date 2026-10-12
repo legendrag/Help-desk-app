@@ -60,11 +60,11 @@
       <tbody>
         {% for row in types %}
         <tr{% if row.archived %} class="shifts-archived"{% endif %}>
-          <td>{{ row.name }}</td>
-          <td>{% shifts_time_range row.start_time row.end_time %}</td>
-          <td>{% if row.is_night %}<span class="badge shifts-type-badge"><span class="shifts-moon" aria-hidden="true"></span>{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}{% if row.night_mode != "auto" %}<span class="shifts-sub">{% trans "Set manually" %}</span>{% endif %}</td>
-          <td><span class="shifts-swatch" style="background-color: {{ row.colour }}" aria-hidden="true"></span></td>
-          <td class="shifts-actions">
+          <td data-label="{% trans "Name" %}">{{ row.name }}</td>
+          <td data-label="{% trans "Times" %}">{% shifts_time_range row.start_time row.end_time %}</td>
+          <td data-label="{% trans "Night" %}">{% if row.is_night %}<span class="badge shifts-type-badge"><span class="shifts-moon" aria-hidden="true"></span>{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}{% if row.night_mode != "auto" %}<span class="shifts-sub">{% trans "Set manually" %}</span>{% endif %}</td>
+          <td data-label="{% trans "Colour" %}"><span class="shifts-swatch" style="background-color: {{ row.colour }}" aria-hidden="true"></span></td>
+          <td class="shifts-actions" data-label="{% trans "Actions" %}">
             <button class="btn secondary" type="button"
                     hx-get="{% url 'shifts_type_edit' row.pk %}"
                     hx-target="#modal-content"
