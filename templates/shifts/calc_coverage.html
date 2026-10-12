@@ -1,9 +1,10 @@
+{% load shifts_extras %}
 <table class="shifts-coverage">
   <thead>
     <tr>
       <th></th>
       {% for day in dates %}
-      <th><bdi class="shifts-ltr" dir="ltr">{{ day|date:"D j" }}</bdi></th>
+      <th><bdi>{{ day|shifts_weekday }} {{ day|date:"j" }}</bdi></th>
       {% endfor %}
     </tr>
   </thead>

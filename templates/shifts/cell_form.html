@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n shifts_extras %}
 <div class="modal-header">
   <h2>{% if existing %}{% trans "Edit shift" %}{% else %}{% trans "Add shift" %}{% endif %}</h2>
   <button type="button" class="modal-close" onclick="closeModal()">
@@ -13,7 +13,7 @@
   {% if existing %}<input type="hidden" name="assignment" value="{{ existing.pk }}">{% endif %}
   <div class="modal-body">
     <div class="form-stack">
-      <p>{{ person.get_full_name|default:person.username }} · <bdi class="shifts-ltr" dir="ltr">{{ on|date:"D j M Y" }}</bdi></p>
+      <p>{{ person.get_full_name|default:person.username }} · <bdi>{{ on|shifts_day_year }}</bdi></p>
       {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
       <div class="form-grid">
         <div class="form-group">

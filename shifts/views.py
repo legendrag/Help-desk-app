@@ -38,13 +38,12 @@ from shifts.services import (
     month_dates,
     neighbor_conflict,
     next_check_in_change,
-    night_cutoff_for,
+    night_window_for,
     normalize_start,
     overlap_message,
     overrides_set_by_worker,
     plan_copy,
     saturday_of,
-    split_day_night_minutes,
     suggest_nights,
     week_dates,
 )
@@ -199,6 +198,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
         "error": error,
         "display_name": display_name,
         "check_ins": check_ins,
+        "check_in_sig": _check_in_sig(check_ins),
         "refresh_in": refresh_in,
     }
     template = "shifts/rota_grid.html" if retarget else "shifts/rota.html"
@@ -297,6 +297,7 @@ def shifts_mine(request):
     refresh_in = next_check_in_change(rows, now) if may_check_in else None
 
     return _shell(request, "shifts/mine.html", {
+        "check_in_sig": _check_in_sig(check_ins),
         "assignments": rows,
         "this_week": this_week,
         "later": later,
@@ -334,7 +335,8 @@ def _decorate_mine(row, now, today, may_check_in):
     """Attach what one My shifts row shows: status, day label, length, edit rights."""
     start_t, end_t = effective_times(row)
     row.starts_at, row.ends_at = effective_interval(row)
-    row.ends_next_day = effective_crosses_midnight(start_t, end_t)
+    # Ending at exactly 12:00 AM is the end of this day, not a run into the next one.
+    row.ends_next_day = effective_crosses_midnight(start_t, end_t) and end_t != time(0, 0)
     row.length_text = _length_text(clock_length(start_t, end_t)[0])
     row.status = _mine_status(row, now, may_check_in)
     row.is_today = row.date == today
@@ -347,6 +349,8 @@ def _decorate_mine(row, now, today, may_check_in):
     else:
         row.day_label = ""
     row.set_by_me = overrides_set_by_worker(row)
+    # Check-in can change these rows' status while the page is open.
+    row.live = today - timedelta(days=1) <= row.date <= today + timedelta(days=1)
     row.can_edit_hours = (
         row.shift_type.is_night
         and row.date >= today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS)
@@ -383,6 +387,7 @@ def _check_ins_partial(request):
             break
     return render(request, "shifts/check_ins_partial.html", {
         "check_ins": check_ins,
+        "check_in_sig": _check_in_sig(check_ins),
         "banner_end": banner_end,
         "refresh_in": refresh_in,
     })
@@ -539,7 +544,7 @@ def _types_department(request):
     return _department_with_shift_types() or _selected_department(request)
 
 
-def _render_types(request):
+def _render_types(request, night_error=""):
     department = _types_department(request)
     rows = (
         ShiftType.objects.filter(department=department)
@@ -550,7 +555,9 @@ def _render_types(request):
         "department": department,
         "types": rows,
         "departments": Department.objects.order_by("name"),
-        "night_starts_at": _night_starts_at(department),
+        "night_starts_at": night_window_for(department)[0],
+        "night_ends_at": night_window_for(department)[1],
+        "night_error": night_error,
         # Also rendered after add/edit/night-start posts, whose URL names differ.
         "active_tab": "shifts_types",
     })
@@ -564,35 +571,26 @@ def shifts_types(request):
     return _render_types(request)
 
 
-def _night_starts_at(department):
-    try:
-        return department.shift_settings.night_starts_at
-    except DepartmentShiftSettings.DoesNotExist:
-        return time(18, 0)
-
-
 @login_required
 @require_POST
 def shifts_night_starts(request):
+    """Save the department's night window, then recompute its shift types."""
     if not is_shift_manager(request.user):
         return _forbid()
     department = _department_or_404(request.POST.get("department"))
-    raw = (request.POST.get("night_starts_at") or "").strip()
+    current_starts, current_ends = night_window_for(department)
     try:
-        cutoff = time.fromisoformat(raw)
-    except ValueError:
-        cutoff = None
-    if cutoff is None:
-        return _render_types(request)
-    if hasattr(department, "_night_cutoff"):
-        del department._night_cutoff
-    settings, _created = DepartmentShiftSettings.objects.get_or_create(
-        department=department,
-        defaults={"night_starts_at": cutoff},
-    )
-    settings.night_starts_at = time(cutoff.hour, cutoff.minute)
-    settings.save(update_fields=["night_starts_at", "updated_at"])
-    department._night_cutoff = settings.night_starts_at
+        starts = _parse_clock(request.POST.get("night_starts_at")) or current_starts
+        ends = _parse_clock(request.POST.get("night_ends_at")) or current_ends
+    except _BadClock:
+        starts = ends = None
+    if starts is None or ends is None or starts == ends:
+        return _render_types(request, _("Enter a night start and a night end that differ."))
+    settings, _created = DepartmentShiftSettings.objects.get_or_create(department=department)
+    settings.night_starts_at = time(starts.hour, starts.minute)
+    settings.night_ends_at = time(ends.hour, ends.minute)
+    settings.save(update_fields=["night_starts_at", "night_ends_at", "updated_at"])
+    department._night_window = (settings.night_starts_at, settings.night_ends_at)
     for row in ShiftType.objects.filter(department=department):
         row.department = department
         row.save()
@@ -1416,6 +1414,22 @@ def shifts_team(request):
     })
 
 
+@login_required
+@require_GET
+def shifts_mine_row(request, pk):
+    """One My shifts row, re-fetched when a check-in changes its status."""
+    assignment = get_object_or_404(
+        ShiftAssignment.objects.select_related("shift_type", "shift_type__department", "times_set_by", "user"),
+        pk=pk,
+    )
+    if assignment.user_id != request.user.id:
+        return _forbid()
+    now = timezone.now()
+    settle_check_in(assignment, now)
+    _decorate_mine(assignment, now, timezone.localdate(), can_check_in(request.user))
+    return render(request, "shifts/mine_row.html", {"assignment": assignment})
+
+
 def _mine_hours_form(request, assignment, error="", typed=None):
     """The Edit hours dialog. After an error the inputs keep what the worker typed."""
     start_t, end_t = effective_times(assignment)
@@ -1473,6 +1487,11 @@ def _check_in_context(assignment, now, user):
     elif state == "closed":
         hint = _("This shift has ended.")
     return {"assignment": assignment, "state": state, "hint": hint}
+
+
+def _check_in_sig(check_ins):
+    """Which panels show and in what state. My shifts reloads nearby rows when it changes."""
+    return ",".join(f"{item['assignment'].pk}:{item['state']}" for item in check_ins)
 
 
 def _open_check_ins(user, now):

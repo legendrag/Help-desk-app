@@ -29,7 +29,8 @@
         {% endif %}
         {% endfor %}
       </div>
-      <p class="help-text">{% trans "Hours from this department's night start time until midnight count as night hours. A shift that ends before it starts still runs into the next morning." %}</p>
+      <p class="help-text">{% trans "Night hours run from this department's night start to its night end. Automatic makes this a night shift when more than half of its hours are night hours; Always and Never override that. Night hours are counted either way." %}</p>
+      <p class="help-text">{% trans "A shift that ends before it starts runs into the next morning." %}</p>
     </div>
   </div>
   <div class="form-actions--end">

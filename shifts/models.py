@@ -10,6 +10,11 @@ from core.models import TimeStampedModel
 
 
 class ShiftType(TimeStampedModel):
+    class NightMode(models.TextChoices):
+        AUTO = "auto", _("Automatic")
+        ALWAYS = "always", _("Always")
+        NEVER = "never", _("Never")
+
     department = models.ForeignKey(
         "core.Department",
         on_delete=models.PROTECT,
@@ -20,6 +25,12 @@ class ShiftType(TimeStampedModel):
     start_time = models.TimeField(_("Start time"))
     end_time = models.TimeField(_("End time"))
     is_night = models.BooleanField(default=False, editable=False, verbose_name=_("Night"))
+    night_mode = models.CharField(
+        _("Counts as night shift"),
+        max_length=10,
+        choices=NightMode.choices,
+        default=NightMode.AUTO,
+    )
     colour = models.CharField(
         _("Colour"),
         max_length=7,
@@ -47,12 +58,13 @@ class ShiftType(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if self.start_time and self.end_time and self.department_id:
-            from shifts.services import night_cutoff_for, type_includes_night
+            from shifts.services import is_night_shift, night_window_for
 
-            self.is_night = type_includes_night(
+            self.is_night = is_night_shift(
                 self.start_time,
                 self.end_time,
-                night_cutoff_for(self.department),
+                *night_window_for(self.department),
+                mode=self.night_mode,
             )
         super().save(*args, **kwargs)
 
@@ -121,6 +133,7 @@ class DepartmentShiftSettings(TimeStampedModel):
         verbose_name=_("Department"),
     )
     night_starts_at = models.TimeField(_("Night starts at"), default=time(18, 0))
+    night_ends_at = models.TimeField(_("Night ends at"), default=time(6, 0))
 
     class Meta:
         verbose_name = _("Shift settings")
@@ -129,4 +142,4 @@ class DepartmentShiftSettings(TimeStampedModel):
     def __str__(self):
         from shifts.clock import format_clock
 
-        return f"{self.department} · {format_clock(self.night_starts_at)}"
+        return f"{self.department} · {format_clock(self.night_starts_at)}–{format_clock(self.night_ends_at)}"

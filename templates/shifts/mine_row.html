@@ -1,8 +1,8 @@
 {% load i18n shifts_extras %}
-<tr id="shift-mine-{{ assignment.pk }}">
+<tr id="shift-mine-{{ assignment.pk }}"{% if assignment.live %} hx-get="{% url 'shifts_mine_row' assignment.pk %}" hx-trigger="shiftsCheckIn from:body" hx-swap="outerHTML"{% endif %}>
   <td class="shifts-date{% if assignment.is_today %} shifts-day--today{% endif %}" data-label="{% trans "Date" %}">
     <div class="shifts-mine-cell">
-      <bdi class="shifts-date-text">{{ assignment.date|date:"D j M" }}</bdi>
+      <bdi class="shifts-date-text">{{ assignment.date|shifts_day }}</bdi>
       {% if assignment.day_label %}<span class="pill shifts-day-pill{% if assignment.is_today %} shifts-day-pill--today{% endif %}">{{ assignment.day_label }}</span>{% endif %}
     </div>
   </td>

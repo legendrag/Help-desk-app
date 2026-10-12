@@ -5,7 +5,7 @@ from .models import ShiftAssignment, ShiftType
 
 @admin.register(ShiftType)
 class ShiftTypeAdmin(admin.ModelAdmin):
-    list_display = ("name", "department", "start_time", "end_time", "is_night", "archived")
+    list_display = ("name", "department", "start_time", "end_time", "is_night", "night_mode", "archived")
     list_filter = ("archived", "is_night", "department")
 
 

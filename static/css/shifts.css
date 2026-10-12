@@ -297,21 +297,40 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   cursor: pointer;
 }
 
+/* Quiet list: each shift is an entry with a coloured edge and no box.
+   Two shifts on one day are simply two entries. */
 #shifts-shell-pane .shifts-cell--filled {
-  gap: 0.2rem;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--shift-colour, var(--primary)) 28%, var(--border));
+  flex: 0 0 auto;
+  gap: 0.1rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.6rem;
+  border: 0;
   border-inline-start: 3px solid var(--shift-colour, var(--primary));
-  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 8%, var(--panel-bg));
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  background: transparent;
   color: var(--text-main);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
-/* Name row: colour dot (or moon for nights) + name that truncates, never overlaps. */
+/* With no box, the hover tint is what tells a manager the entry opens. */
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 12%, transparent);
+  border-inline-start-color: var(--shift-colour, var(--primary));
+  box-shadow: none;
+  transform: none;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 #shifts-shell-pane .shifts-cell-name {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   inline-size: 100%;
   min-inline-size: 0;
   font-size: 0.8rem;
@@ -327,22 +346,30 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   white-space: nowrap;
 }
 
-#shifts-shell-pane .shifts-dot {
+/* Night marker: a drawn crescent (the "☾" text glyph sat crooked and changed with the font).
+   It is a mask, so it takes the colour of whatever it sits in. */
+#shifts-shell-pane .shifts-moon,
+#shifts-shell-pane .shifts-chip--night::before {
+  content: "";
+  display: inline-block;
   flex: 0 0 auto;
-  inline-size: 0.55rem;
-  block-size: 0.55rem;
-  border-radius: 999px;
-  background: var(--shift-colour, var(--primary));
+  inline-size: 0.85em;
+  block-size: 0.85em;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z'/%3E%3C/svg%3E") center / contain no-repeat;
+  vertical-align: -0.1em;
 }
 
-#shifts-shell-pane .shifts-dot--night {
-  inline-size: auto;
-  block-size: auto;
-  background: none;
-  /* Lift dark shift colours toward the text colour so the moon stays visible. */
+/* In a rota entry, lift dark shift colours toward the text colour so the moon stays visible. */
+#shifts-shell-pane .shifts-cell-name .shifts-moon {
   color: color-mix(in srgb, var(--shift-colour, var(--primary)) 55%, var(--text-main));
-  font-size: 0.85rem;
-  line-height: 1;
+  inline-size: 0.8rem;
+  block-size: 0.8rem;
+}
+
+#shifts-shell-pane .shifts-type-badge .shifts-moon {
+  margin-inline-end: 0.3em;
 }
 
 #shifts-shell-pane .shifts-cell--filled .shifts-times {
@@ -355,35 +382,43 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   font-size: 0.72rem;
 }
 
-#shifts-shell-pane .shifts-cell--filled .shifts-badges {
+/* Status is spelled out as a coloured word, so nothing needs learning. */
+#shifts-shell-pane .shifts-status {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-block-start: 0.15rem;
+  gap: 0.05rem 0.5rem;
   max-inline-size: 100%;
 }
 
-#shifts-shell-pane .shifts-cell--filled .shifts-badges .badge {
-  max-inline-size: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.65rem;
-  line-height: 1.3;
-  padding: 0.05rem 0.4rem;
+#shifts-shell-pane .shifts-st {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
-#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
-  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 18%, var(--panel-bg));
-  border-color: var(--shift-colour, var(--primary));
-  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.1);
-  transform: none;
+#shifts-shell-pane .shifts-st--miss {
+  color: color-mix(in srgb, var(--danger) 80%, var(--text-main));
 }
 
-#shifts-shell-pane .shifts-cell-stack[data-count="2"] .shifts-cell--filled,
-#shifts-shell-pane .shifts-cell-stack[data-count="3"] .shifts-cell--filled {
-  padding: 0.3rem 0.45rem;
-  gap: 0.1rem;
+#shifts-shell-pane .shifts-st--not {
+  color: color-mix(in srgb, var(--warning) 70%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--in {
+  color: color-mix(in srgb, var(--success) 75%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--info {
+  color: color-mix(in srgb, var(--primary) 80%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--muted {
+  color: var(--text-muted);
+}
+
+/* The add button sits under the entries and shows on hover. */
+#shifts-shell-pane .shifts-cell-stack:not([data-count="0"]) > .shifts-cell--empty {
+  margin-block-start: auto;
 }
 
 #shifts-shell-pane .shifts-cell-btn.shifts-cell--empty {
@@ -435,24 +470,6 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   color: var(--primary);
 }
 
-/* ==========================================================================
-   TWO SHIFTS ON ONE DAY: two compact cards stacked, earlier one on top.
-   (Replaces the diagonal split, whose overlapping triangles let text collide.)
-   ========================================================================== */
-
-#shifts-shell-pane .shifts-cell-stack--split {
-  gap: 0.25rem;
-}
-
-#shifts-shell-pane .shifts-cell-stack--split .shifts-half {
-  flex: 1 1 auto;
-}
-
-/* The add button sits under the two cards and shows on hover, like every other cell. */
-#shifts-shell-pane .shifts-cell-btn.shifts-cell-btn--split-add {
-  flex: 0 0 auto;
-}
-
 #shifts-shell-pane .shifts-chip {
   display: inline-flex;
   align-items: center;
@@ -469,8 +486,7 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 }
 
 #shifts-shell-pane .shifts-chip--night::before {
-  content: "☾";
-  margin-inline-end: 0.25em;
+  margin-inline-end: 0.3em;
 }
 
 
@@ -921,11 +937,11 @@ input[type="color"].shifts-color {
 }
 
 /* ==========================================================================
-   MONTH VIEW COMPACT STYLING
+   MONTH VIEW COMPACT STYLING: names only, one line each, full name in the tooltip.
    ========================================================================== */
 
 #shifts-shell-pane .shifts-grid--month .shifts-times,
-#shifts-shell-pane .shifts-grid--month .shifts-badges {
+#shifts-shell-pane .shifts-grid--month .shifts-status {
   display: none !important;
 }
 
@@ -935,55 +951,17 @@ input[type="color"].shifts-color {
 }
 
 #shifts-shell-pane .shifts-grid--month .shifts-cell--filled {
-  padding: 0.2rem 0.35rem;
-  min-block-size: 1.5rem;
-}
-
-/* Narrow month columns: up to two lines, whole words where they fit, then "…". */
-#shifts-shell-pane .shifts-grid--month .shifts-cell-name-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  white-space: normal;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  word-break: normal;
+  padding: 0.15rem 0.2rem 0.15rem 0.35rem;
 }
 
 #shifts-shell-pane .shifts-grid--month .shifts-cell-name {
-  align-items: flex-start;
-  font-size: 0.7rem;
+  gap: 0.15rem;
+  font-size: 0.68rem;
 }
 
-#shifts-shell-pane .shifts-grid--month .shifts-chip {
-  display: block;
-  font-size: 0.7rem;
-  padding: 0;
-  background: transparent !important;
-  color: var(--text-main) !important;
-  /* Month columns are narrow: wrap the name rather than clipping it ("Nigh"). */
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-}
-
-#shifts-shell-pane .shifts-grid--month .shifts-dot {
-  margin-block-start: 0.2rem;
-}
-
-/* ==========================================================================
-   DARK MODE ADAPTATIONS
-   ========================================================================== */
-
-[data-theme="dark"] #shifts-shell-pane .shifts-cell--filled {
-  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 16%, var(--panel-bg));
-  border-color: color-mix(in srgb, var(--shift-colour, var(--primary)) 40%, var(--border));
-}
-
-[data-theme="dark"] #shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
-  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 24%, var(--panel-bg));
+#shifts-shell-pane .shifts-grid--month .shifts-cell-name .shifts-moon {
+  inline-size: 0.68rem;
+  block-size: 0.68rem;
 }
 
 /* ==========================================================================

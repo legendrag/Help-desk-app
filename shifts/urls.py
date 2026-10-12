@@ -19,6 +19,7 @@ urlpatterns = [
     path("mine/check-in/", views.shifts_check_in_panels, name="shifts_check_in_panels"),
     path("team/", views.shifts_team, name="shifts_team"),
     path("mine/<int:pk>/hours/", views.shifts_mine_hours, name="shifts_mine_hours"),
+    path("mine/<int:pk>/row/", views.shifts_mine_row, name="shifts_mine_row"),
     path("mine/<int:pk>/check-in/", views.shifts_check_in, name="shifts_check_in"),
     path("available/", views.shifts_available, name="shifts_available"),
     path("available/board/", views.shifts_available_board, name="shifts_available_board"),

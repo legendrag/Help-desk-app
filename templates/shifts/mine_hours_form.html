@@ -13,7 +13,7 @@
   {% csrf_token %}
   <div class="modal-body">
     <div class="form-stack">
-      <p>{{ assignment.shift_type.name }} · <bdi>{{ assignment.date|date:"l, j F Y" }}</bdi></p>
+      <p>{{ assignment.shift_type.name }} · <bdi>{{ assignment.date|shifts_long_date }}</bdi></p>
       <p class="help-text">{% trans "Shift default" %}: {% shifts_time_range assignment.shift_type.start_time assignment.shift_type.end_time %}</p>
       {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
       <div class="form-grid">

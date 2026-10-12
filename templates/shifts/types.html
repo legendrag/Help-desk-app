@@ -37,9 +37,14 @@
       <label for="night-starts">{% trans "Night starts at" %}</label>
       <input id="night-starts" type="time" name="night_starts_at" value="{{ night_starts_at|time:'H:i' }}" required>
     </div>
+    <div class="form-group">
+      <label for="night-ends">{% trans "Night ends at" %}</label>
+      <input id="night-ends" type="time" name="night_ends_at" value="{{ night_ends_at|time:'H:i' }}" required>
+    </div>
     <button class="btn secondary" type="submit">{% trans "Save" %}</button>
   </form>
 </div>
+{% if night_error %}<p class="notice notice-error">{{ night_error }}</p>{% endif %}
 <div class="panel">
   <div class="table-wrap">
     <table class="shifts-list">
@@ -57,7 +62,7 @@
         <tr{% if row.archived %} class="shifts-archived"{% endif %}>
           <td>{{ row.name }}</td>
           <td>{% shifts_time_range row.start_time row.end_time %}</td>
-          <td>{% if row.is_night %}<span class="badge shifts-type-badge">{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}</td>
+          <td>{% if row.is_night %}<span class="badge shifts-type-badge"><span class="shifts-moon" aria-hidden="true"></span>{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}{% if row.night_mode != "auto" %}<span class="shifts-sub">{% trans "Set manually" %}</span>{% endif %}</td>
           <td><span class="shifts-swatch" style="background-color: {{ row.colour }}" aria-hidden="true"></span></td>
           <td class="shifts-actions">
             <button class="btn secondary" type="button"

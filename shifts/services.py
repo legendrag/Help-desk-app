@@ -87,59 +87,86 @@ def clock_length(start_t: time, end_t: time):
     return total, after
 
 
-def night_cutoff_for(department):
-    cached = getattr(department, "_night_cutoff", None)
+DEFAULT_NIGHT_STARTS = time(18, 0)
+DEFAULT_NIGHT_ENDS = time(6, 0)
+
+
+def night_window_for(department):
+    """(night starts, night ends) for a department, cached on the instance."""
+    cached = getattr(department, "_night_window", None)
     if cached is not None:
         return cached
     from shifts.models import DepartmentShiftSettings
 
     try:
-        cutoff = department.shift_settings.night_starts_at
+        settings = department.shift_settings
+        starts, ends = settings.night_starts_at, settings.night_ends_at
     except DepartmentShiftSettings.DoesNotExist:
-        cutoff = time(18, 0)
-    department._night_cutoff = time(cutoff.hour, cutoff.minute)
-    return department._night_cutoff
+        starts, ends = DEFAULT_NIGHT_STARTS, DEFAULT_NIGHT_ENDS
+    department._night_window = (time(starts.hour, starts.minute), time(ends.hour, ends.minute))
+    return department._night_window
 
 
-def split_day_night_minutes(start_dt, end_dt, night_starts_at):
+def _night_segments(day, night_starts_at, night_ends_at):
+    """The night stretches that fall on one calendar day."""
+    starts = time(night_starts_at.hour, night_starts_at.minute)
+    ends = time(night_ends_at.hour, night_ends_at.minute)
+    if starts == ends:
+        return []
+    if ends < starts:
+        # The usual case, e.g. 6 PM to 6 AM: early morning plus late evening.
+        return [
+            (aware_on(day, time(0, 0)), aware_on(day, ends)),
+            (aware_on(day, starts), aware_on(day + timedelta(days=1), time(0, 0))),
+        ]
+    return [(aware_on(day, starts), aware_on(day, ends))]
+
+
+def split_day_night_minutes(start_dt, end_dt, night_starts_at, night_ends_at=DEFAULT_NIGHT_ENDS):
     """Split an interval into day minutes and night minutes.
 
-    Night is from the cutoff through midnight. Midnight until the cutoff is day.
+    Night runs from the department's night start to its night end, across
+    midnight (by default 6 PM to 6 AM). Everything else is day.
     """
     if end_dt <= start_dt:
         return 0, 0
-    cutoff_clock = time(night_starts_at.hour, night_starts_at.minute)
     tz = timezone.get_current_timezone()
     first = timezone.localtime(start_dt, tz).date()
     last = timezone.localtime(end_dt - timedelta(microseconds=1), tz).date()
-    day_m = 0
+    total = int((end_dt - start_dt).total_seconds() // 60)
     night_m = 0
     cursor = first
     while cursor <= last:
-        midnight = aware_on(cursor, time(0, 0))
-        cutoff = aware_on(cursor, cutoff_clock)
-        next_midnight = aware_on(cursor + timedelta(days=1), time(0, 0))
-        for seg_start, seg_end, is_night in (
-            (midnight, cutoff, False),
-            (cutoff, next_midnight, True),
-        ):
+        for seg_start, seg_end in _night_segments(cursor, night_starts_at, night_ends_at):
             clip_start = max(start_dt, seg_start)
             clip_end = min(end_dt, seg_end)
-            if clip_end <= clip_start:
-                continue
-            minutes = int((clip_end - clip_start).total_seconds() // 60)
-            if is_night:
-                night_m += minutes
-            else:
-                day_m += minutes
+            if clip_end > clip_start:
+                night_m += int((clip_end - clip_start).total_seconds() // 60)
         cursor += timedelta(days=1)
-    return day_m, night_m
+    return total - night_m, night_m
+
+
+def is_night_shift(start_t, end_t, night_starts_at, night_ends_at, mode="auto") -> bool:
+    """Whether a shift type counts as a night shift.
+
+    Automatic: more than half of its hours are night hours. A manager can
+    override that with Always or Never; night hours are counted either way.
+    """
+    if mode == "always":
+        return True
+    if mode == "never":
+        return False
+    anchor = date(2026, 1, 5)
+    start_dt, end_dt = interval_for(anchor, start_t, end_t)
+    day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at, night_ends_at)
+    return night_m * 2 > day_m + night_m
 
 
 def type_includes_night(start_t, end_t, night_starts_at) -> bool:
+    """Old rule (any minute after the night start). Kept for migration 0004 only."""
     anchor = date(2026, 1, 5)
     start_dt, end_dt = interval_for(anchor, start_t, end_t)
-    _day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at)
+    _day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at, time(0, 0))
     return night_m > 0
 
 
@@ -149,8 +176,8 @@ def clipped_day_night_minutes(assignment, range_start, range_end):
     clip_end = min(end_dt, range_end)
     if clip_end <= clip_start:
         return 0, 0
-    cutoff = night_cutoff_for(assignment.shift_type.department)
-    return split_day_night_minutes(clip_start, clip_end, cutoff)
+    starts, ends = night_window_for(assignment.shift_type.department)
+    return split_day_night_minutes(clip_start, clip_end, starts, ends)
 
 
 def overrides_set_by_worker(assignment) -> bool:

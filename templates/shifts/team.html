@@ -1,9 +1,9 @@
 {% extends "shifts/shell.html" %}
-{% load i18n %}
+{% load i18n shifts_extras %}
 {% block shifts_body %}
 <header class="shifts-header">
   <h1>{% trans "Team rota" %}</h1>
-  {% if dates %}<p class="shifts-range"><bdi class="shifts-ltr" dir="ltr">{{ dates.0|date:"D j M" }} – {{ dates|last|date:"D j M Y" }}</bdi></p>{% endif %}
+  {% if dates %}<p class="shifts-range"><bdi>{{ dates.0|shifts_day }}</bdi> – <bdi>{{ dates|last|shifts_day_year }}</bdi></p>{% endif %}
 </header>
 {% if error %}
 <p class="notice notice-error">{{ error }}</p>

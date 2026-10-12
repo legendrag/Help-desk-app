@@ -129,14 +129,15 @@ class WeekAndHoursTests(TestCase):
         row = make_assignment(user, night, friday)
         start, end = interval_for(friday, time(22, 0), time(6, 0))
         day, night_m = clipped_day_night_minutes(row, start, end)
-        self.assertEqual((day, night_m), (360, 120))
+        # Night runs 6 PM to 6 AM, so the whole 10 PM to 6 AM shift is night.
+        self.assertEqual((day, night_m), (0, 480))
         week_end = timezone.make_aware(datetime(2026, 10, 10, 0, 0))
         week_start = timezone.make_aware(datetime(2026, 10, 3, 0, 0))
         day, night_m = clipped_day_night_minutes(row, week_start, week_end)
         self.assertEqual((day, night_m), (0, 120))
         next_week_end = timezone.make_aware(datetime(2026, 10, 17, 0, 0))
         day, night_m = clipped_day_night_minutes(row, week_end, next_week_end)
-        self.assertEqual((day, night_m), (360, 0))
+        self.assertEqual((day, night_m), (0, 360))
 
     def test_same_evening_on_a_night_type_is_all_night_hours(self):
         from shifts.services import clipped_day_night_minutes
@@ -158,7 +159,7 @@ class WeekAndHoursTests(TestCase):
         row = make_assignment(user, day_type, date(2026, 10, 6), time(22, 0), time(6, 0))
         start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
         end = timezone.make_aware(datetime(2026, 10, 8, 0, 0))
-        self.assertEqual(clipped_day_night_minutes(row, start, end), (360, 120))
+        self.assertEqual(clipped_day_night_minutes(row, start, end), (0, 480))
         self.assertEqual(clock_length(time(22, 0), time(6, 0)), (480, 360))
         self.assertEqual(clock_length(time(9, 0), time(12, 30)), (210, 0))
 
@@ -1706,7 +1707,7 @@ class NightCutoffTests(TestCase):
         overnight_row = make_assignment(user, overnight, date(2026, 10, 7))
         full_start = timezone.make_aware(datetime(2026, 10, 7, 22, 0))
         full_end = timezone.make_aware(datetime(2026, 10, 8, 6, 0))
-        self.assertEqual(clipped_day_night_minutes(overnight_row, full_start, full_end), (360, 120))
+        self.assertEqual(clipped_day_night_minutes(overnight_row, full_start, full_end), (0, 480))
 
     def test_changing_the_cutoff_recomputes_types(self):
         from shifts.models import DepartmentShiftSettings
@@ -1779,9 +1780,8 @@ class SameDayShiftTests(TestCase):
         })
         self.assertContains(grid, "Day desk")
         self.assertContains(grid, "Night desk")
-        self.assertContains(grid, "shifts-cell-stack--split")
-        self.assertContains(grid, "shifts-half--a")
-        self.assertContains(grid, "shifts-half--b")
+        self.assertContains(grid, 'data-count="2"')
+        self.assertContains(grid, "shifts-cell--filled", count=2)
         clash = self.client.post(reverse("shifts_cell"), {
             "user": self.agent.pk,
             "date": "2026-10-06",
@@ -1966,7 +1966,7 @@ class ReviewFixTests(TestCase):
         self.client.force_login(self.agent)
         with _both_clocks(aware(2026, 6, 2, 6, 0), self.on):
             mine = self.client.get(reverse("shifts_mine"))
-        self.assertContains(mine, 'class="shifts-checkin-list" hidden')
+        self.assertContains(mine, 'class="shifts-checkin-list" data-sig="" hidden')
 
     def test_types_tab_stays_active_after_saving_night_start(self):
         response = self.client.post(
@@ -2070,3 +2070,166 @@ class MyShiftsLayoutTests(TestCase):
         response = self._get(7)
         self.assertContains(response, 'class="empty-state"')
         self.assertContains(response, "You have no upcoming shifts.")
+
+
+class RowRefreshAndDateTests(TestCase):
+    def setUp(self):
+        self.department = make_department("Refresh")
+        self.agent = make_user(
+            "refresh-agent",
+            "support",
+            self.department,
+            make_role("Refresh agent", can_check_in=True),
+        )
+        self.day = make_shift_type(self.department, name="Refresh day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Refresh night", start=time(22, 0), end=time(6, 0))
+        self.today = date(2026, 10, 12)  # a Monday
+        self.client.force_login(self.agent)
+
+    def test_nearby_rows_reload_after_check_in(self):
+        row = make_assignment(self.agent, self.day, self.today)
+        later = make_assignment(self.agent, self.day, date(2026, 10, 20))
+        with _both_clocks(aware(2026, 10, 12, 8, 40), self.today):
+            page = self.client.get(reverse("shifts_mine"))
+            self.client.post(reverse("shifts_check_in", args=[row.pk]), HTTP_HX_REQUEST="true")
+            refreshed = self.client.get(reverse("shifts_mine_row", args=[row.pk]))
+        self.assertContains(page, f'data-sig="{row.pk}:open"')
+        self.assertContains(page, f'hx-get="{reverse("shifts_mine_row", args=[row.pk])}"')
+        self.assertNotContains(page, reverse("shifts_mine_row", args=[later.pk]))
+        self.assertContains(refreshed, '<span class="badge badge-open">On shift</span>')
+        self.assertNotContains(refreshed, "Check-in open")
+
+    def test_row_endpoint_is_owner_only(self):
+        other = make_user("refresh-other", "support", self.department)
+        row = make_assignment(other, self.day, self.today)
+        self.assertEqual(self.client.get(reverse("shifts_mine_row", args=[row.pk])).status_code, 403)
+
+    def test_arabic_dates_use_full_weekday_and_arabic_comma(self):
+        make_assignment(self.agent, self.day, self.today)
+        self.client.cookies["django_language"] = "ar"
+        with _both_clocks(aware(2026, 10, 12, 7, 0), self.today):
+            html = self.client.get(reverse("shifts_mine")).content.decode()
+        self.assertIn("الاثنين، 12 أكتوبر 2026", html)
+        self.assertIn("الاثنين 12 أكتوبر", html)
+        self.assertNotIn("إثنين", html)
+        self.assertNotIn("الاثنين, ", html)
+
+    def test_english_dates(self):
+        make_assignment(self.agent, self.day, self.today)
+        with _both_clocks(aware(2026, 10, 12, 7, 0), self.today):
+            html = self.client.get(reverse("shifts_mine")).content.decode()
+        self.assertIn("Monday, 12 October 2026", html)
+        self.assertIn("Mon 12 Oct", html)
+
+    def test_two_shifts_are_two_entries(self):
+        manager = make_user(
+            "refresh-lead", "support", self.department, make_role("Refresh lead", can_manage_shifts=True),
+        )
+        make_assignment(self.agent, self.day, self.today)
+        make_assignment(self.agent, self.night, self.today)
+        self.client.force_login(manager)
+        grid = self.client.get(reverse("shifts_rota_grid"), {
+            "department": self.department.pk, "view": "week", "start": "2026-10-12",
+        })
+        self.assertContains(grid, 'data-count="2"', count=1)
+        self.assertContains(grid, "shifts-cell--filled", count=2)
+        self.assertContains(grid, '<span class="shifts-moon" aria-hidden="true"></span>', count=1)
+        self.assertNotContains(grid, "shifts-split")
+
+
+class NightWindowRuleTests(TestCase):
+    """Night hours run night start to night end; a night shift is more than half night."""
+
+    def setUp(self):
+        self.department = make_department("Window")
+
+    def _type(self, name, start, end, mode="auto"):
+        row = ShiftType(
+            department=self.department, name=name, start_time=start, end_time=end,
+            colour="#336699", night_mode=mode,
+        )
+        row.save()
+        return row
+
+    def test_majority_rule(self):
+        self.assertFalse(self._type("Late", time(14, 0), time(22, 0)).is_night)  # 4 of 8
+        self.assertFalse(self._type("Noon to midnight", time(12, 0), time(0, 0)).is_night)  # 6 of 12
+        self.assertFalse(self._type("Midnight to noon", time(0, 0), time(12, 0)).is_night)  # 6 of 12
+        self.assertTrue(self._type("Evening", time(18, 0), time(23, 0)).is_night)  # 5 of 5
+        self.assertTrue(self._type("Overnight", time(22, 0), time(6, 0)).is_night)  # 8 of 8
+        self.assertTrue(self._type("Long night", time(20, 0), time(8, 0)).is_night)  # 10 of 12
+
+    def test_early_morning_counts_as_night(self):
+        from shifts.services import interval_for, split_day_night_minutes
+
+        start, end = interval_for(date(2026, 10, 16), time(0, 0), time(12, 0))
+        self.assertEqual(split_day_night_minutes(start, end, time(18, 0), time(6, 0)), (360, 360))
+        start, end = interval_for(date(2026, 10, 16), time(12, 0), time(0, 0))
+        self.assertEqual(split_day_night_minutes(start, end, time(18, 0), time(6, 0)), (360, 360))
+
+    def test_manual_override_changes_the_label_only(self):
+        from shifts.services import clipped_day_night_minutes
+
+        always = self._type("Late always", time(14, 0), time(22, 0), mode="always")
+        never = self._type("Overnight never", time(22, 0), time(6, 0), mode="never")
+        self.assertTrue(always.is_night)
+        self.assertFalse(never.is_night)
+        user = make_user("window-agent", "support", self.department)
+        row = make_assignment(user, never, date(2026, 10, 6))
+        start = timezone.make_aware(datetime(2026, 10, 6, 0, 0))
+        end = timezone.make_aware(datetime(2026, 10, 8, 0, 0))
+        self.assertEqual(clipped_day_night_minutes(row, start, end), (0, 480))
+
+    def test_saving_the_night_window_recomputes_types(self):
+        from shifts.models import DepartmentShiftSettings
+
+        manager = make_user(
+            "window-lead", "support", self.department, make_role("Window lead", can_manage_shifts=True),
+        )
+        early = self._type("Early", time(4, 0), time(10, 0))  # 2 of 6 night with a 6 AM end
+        self.assertFalse(early.is_night)
+        self.client.force_login(manager)
+        page = self.client.get(reverse("shifts_types"), {"department": self.department.pk})
+        self.assertContains(page, 'id="night-ends"')
+        self.assertContains(page, 'value="06:00"')
+        self.client.post(reverse("shifts_night_starts"), {
+            "department": self.department.pk, "night_starts_at": "18:00", "night_ends_at": "08:00",
+        })
+        early.refresh_from_db()
+        self.assertTrue(early.is_night)  # 4 of 6 night with an 8 AM end
+        settings = DepartmentShiftSettings.objects.get(department=self.department)
+        self.assertEqual((settings.night_starts_at, settings.night_ends_at), (time(18, 0), time(8, 0)))
+        same = self.client.post(reverse("shifts_night_starts"), {
+            "department": self.department.pk, "night_starts_at": "18:00", "night_ends_at": "18:00",
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(same, "Enter a night start and a night end that differ.")
+
+    def test_type_form_saves_night_mode(self):
+        manager = make_user(
+            "window-lead2", "support", self.department, make_role("Window lead2", can_manage_shifts=True),
+        )
+        self.client.force_login(manager)
+        self.client.post(reverse("shifts_type_add"), {
+            "department": self.department.pk, "name": "Late", "start_time": "14:00",
+            "end_time": "22:00", "colour": "#112233", "night_mode": "always",
+        })
+        row = ShiftType.objects.get(department=self.department, name="Late")
+        self.assertEqual(row.night_mode, "always")
+        self.assertTrue(row.is_night)
+        page = self.client.get(reverse("shifts_types"), {"department": self.department.pk})
+        self.assertContains(page, "Set manually")
+
+    def test_no_next_day_badge_when_ending_at_midnight(self):
+        # Dates stay before today: a clock ahead of real time trips session expiry.
+        agent = make_user("window-agent2", "support", self.department)
+        noon = self._type("Noon to midnight", time(12, 0), time(0, 0))
+        overnight = self._type("Overnight", time(22, 0), time(6, 0))
+        make_assignment(agent, noon, date(2026, 10, 9))
+        self.client.force_login(agent)
+        with _both_clocks(aware(2026, 10, 9, 9, 0), date(2026, 10, 9)):
+            page = self.client.get(reverse("shifts_mine"))
+        self.assertNotContains(page, "Next day")
+        make_assignment(agent, overnight, date(2026, 10, 10))
+        with _both_clocks(aware(2026, 10, 9, 9, 0), date(2026, 10, 9)):
+            page = self.client.get(reverse("shifts_mine"))
+        self.assertContains(page, "Next day", count=1)
