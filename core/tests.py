@@ -283,3 +283,11 @@ class ManageShiftsFlagTests(TestCase):
         role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
         self.assertFalse(role.can_manage_shifts)
         self.assertFalse(role.can_check_in)
+
+
+class SettingsListsLoggedOutTests(TestCase):
+    def test_settings_lists_send_anonymous_users_to_login(self):
+        for name in ("department_list", "role_list", "branch_list", "category_list"):
+            response = self.client.get(reverse(name))
+            self.assertEqual(response.status_code, 302, name)
+            self.assertIn(reverse("login"), response["Location"], name)

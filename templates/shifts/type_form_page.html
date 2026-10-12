@@ -1,0 +1,18 @@
+{% extends "shifts/shell.html" %}
+{% load i18n %}
+{% comment %}The shift type form when its URL is opened directly (a bookmark or a new tab), not in the modal.{% endcomment %}
+{% block shifts_body %}
+<header class="shifts-header">
+  <h1>{% if editing %}{% trans "Edit shift type" %}{% else %}{% trans "Add shift type" %}{% endif %}</h1>
+</header>
+<form method="post" class="panel shifts-page-form">
+  {% csrf_token %}
+  <div class="form-stack">
+    {% include "shifts/type_form_fields.html" %}
+  </div>
+  <div class="shifts-page-form-actions">
+    <a class="btn secondary" href="{% url 'shifts_types' %}{% if form.instance.department_id %}?department={{ form.instance.department_id }}{% endif %}">{% trans "Cancel" %}</a>
+    <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  </div>
+</form>
+{% endblock %}

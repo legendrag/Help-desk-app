@@ -189,11 +189,12 @@ def overrides_set_by_worker(assignment) -> bool:
     return not is_shift_manager(setter)
 
 
-def settle_check_in(assignment, now) -> bool:
+def settle_check_in(assignment, now, save=True) -> bool:
     """Clear a check-in once its effective end has passed.
 
     ``checked_out_at`` stays set so a later edit of the end time cannot
-    look like a shift that was never checked in.
+    look like a shift that was never checked in. With ``save=False`` only
+    the in-memory row changes, for read-only endpoints.
     """
     if assignment is None or not getattr(assignment, "pk", None):
         return False
@@ -204,7 +205,8 @@ def settle_check_in(assignment, now) -> bool:
         return False
     assignment.checked_in_at = None
     assignment.checked_out_at = end_dt
-    assignment.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
+    if save:
+        assignment.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
     return True
 
 

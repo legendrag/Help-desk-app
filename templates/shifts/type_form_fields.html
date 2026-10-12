@@ -1,0 +1,23 @@
+{% load i18n %}
+{% if form.non_field_errors %}
+<div class="notice notice-error">{{ form.non_field_errors }}</div>
+{% endif %}
+<div class="form-grid">
+  {% for field in form %}
+  {% if field.field.widget.input_type == "checkbox" %}
+  <div class="form-group checkbox-field">
+    {{ field }}
+    <label for="{{ field.id_for_label }}" class="checkbox-label">{{ field.label }}</label>
+    {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+  </div>
+  {% else %}
+  <div class="form-group">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+<p class="help-text">{% trans "Night hours run from this department's night start to its night end. Automatic makes this a night shift when more than half of its hours are night hours; Always and Never override that. Night hours are counted either way." %}</p>
+<p class="help-text">{% trans "A shift that ends before it starts runs into the next morning." %}</p>

@@ -494,7 +494,7 @@ def shifts_type_add(request):
             return response
         query = urlencode({"department": saved.department_id})
         return redirect(f"{reverse('shifts_types')}?{query}")
-    return render(request, "shifts/type_form.html", {"form": form})
+    return _type_form_response(request, form)
 
 
 @login_required
@@ -514,7 +514,16 @@ def shifts_type_edit(request, pk):
             return response
         query = urlencode({"department": saved.department_id})
         return redirect(f"{reverse('shifts_types')}?{query}")
-    return render(request, "shifts/type_form.html", {"form": form, "editing": True})
+    return _type_form_response(request, form, editing=True)
+
+
+def _type_form_response(request, form, editing=False):
+    context = {"form": form, "editing": editing}
+    if request.headers.get("HX-Request"):
+        return render(request, "shifts/type_form.html", context)
+    # Opened directly (a bookmark or a new tab): the same form as a full page.
+    context["active_tab"] = "shifts_types"
+    return _shell(request, "shifts/type_form_page.html", context)
 
 
 @login_required
@@ -544,8 +553,10 @@ def _types_department(request):
     return _department_with_shift_types() or _selected_department(request)
 
 
-def _render_types(request, night_error=""):
+def _render_types(request, night_error="", typed=None):
     department = _types_department(request)
+    saved_starts, saved_ends = night_window_for(department)
+    typed = typed or {}
     rows = (
         ShiftType.objects.filter(department=department)
         .select_related("department")
@@ -555,8 +566,8 @@ def _render_types(request, night_error=""):
         "department": department,
         "types": rows,
         "departments": Department.objects.order_by("name"),
-        "night_starts_at": night_window_for(department)[0],
-        "night_ends_at": night_window_for(department)[1],
+        "night_starts_value": typed.get("starts", saved_starts.strftime("%H:%M")),
+        "night_ends_value": typed.get("ends", saved_ends.strftime("%H:%M")),
         "night_error": night_error,
         # Also rendered after add/edit/night-start posts, whose URL names differ.
         "active_tab": "shifts_types",
@@ -585,7 +596,11 @@ def shifts_night_starts(request):
     except _BadClock:
         starts = ends = None
     if starts is None or ends is None or starts == ends:
-        return _render_types(request, _("Enter a night start and a night end that differ."))
+        typed = {
+            "starts": (request.POST.get("night_starts_at") or "").strip(),
+            "ends": (request.POST.get("night_ends_at") or "").strip(),
+        }
+        return _render_types(request, _("Enter a night start and a night end that differ."), typed)
     settings, _created = DepartmentShiftSettings.objects.get_or_create(department=department)
     settings.night_starts_at = time(starts.hour, starts.minute)
     settings.night_ends_at = time(ends.hour, ends.minute)
@@ -664,6 +679,9 @@ def shifts_cell(request):
     if existing:
         settle_check_in(existing, now)
     if request.method == "GET":
+        if not request.headers.get("HX-Request"):
+            # The dialog only works inside the rota; a direct visit goes to that week.
+            return _rota_redirect(request, department, "week", normalize_start(on, "week"))
         return _cell_form(request, department, user, on, existing, now)
     if request.method == "POST" and request.POST.get("clear_check_in") == "1":
         if existing and existing.checked_in_at:
@@ -1344,6 +1362,9 @@ def shifts_mine_hours(request, pk):
     if assignment.date < today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS):
         return _mine_hours_form(request, assignment, _("You can only change hours from the last 7 days onward."))
     if request.method == "GET":
+        if not request.headers.get("HX-Request"):
+            # The dialog only works inside My shifts; a direct visit goes there.
+            return redirect("shifts_mine")
         return _mine_hours_form(request, assignment)
     if request.POST.get("action") == "reset":
         assignment.start_time_override = None
@@ -1425,7 +1446,7 @@ def shifts_mine_row(request, pk):
     if assignment.user_id != request.user.id:
         return _forbid()
     now = timezone.now()
-    settle_check_in(assignment, now)
+    settle_check_in(assignment, now, save=False)
     _decorate_mine(assignment, now, timezone.localdate(), can_check_in(request.user))
     return render(request, "shifts/mine_row.html", {"assignment": assignment})
 

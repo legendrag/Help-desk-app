@@ -32,6 +32,9 @@ from .forms import (
 
 class BaseSettingsRequiredMixin(UserPassesTestMixin):
     def test_func(self):
+        # AnonymousUser has no role; failing here sends them to the login page.
+        if not self.request.user.is_authenticated:
+            return False
         return self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_access_settings)
 
 class BranchPermissionMixin(BaseSettingsRequiredMixin):

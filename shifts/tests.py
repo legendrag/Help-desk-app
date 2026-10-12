@@ -1295,7 +1295,7 @@ class AutoCheckOutTests(TestCase):
                 "date": "2026-06-02",
                 "department": self.department.pk,
                 "assignment": self.row.pk,
-            })
+            }, HTTP_HX_REQUEST="true")
         self.assertContains(form, 'name="restore_check_in"')
         self.assertNotContains(form, "Clear check-in")
         with _both_clocks(during, self.today):
@@ -1677,7 +1677,7 @@ class PermissionMatrixTests(TestCase):
             for name in manager_gets + shared_gets + support_gets:
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200, f"{user.username} {name}")
             self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 200)
-            self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}).status_code, 200)
+            self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}, HTTP_HX_REQUEST="true").status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_copy_week"), {"department": self.department.pk, "start": "2026-10-03"}).status_code, 302)
             self.assertEqual(self.client.post(reverse("shifts_repeat_week"), {"department": self.department.pk, "start": "2026-10-03", "weeks": "13"}).status_code, 302)
@@ -2053,7 +2053,7 @@ class MyShiftsLayoutTests(TestCase):
         self.assertNotContains(response, reverse("shifts_mine_hours", args=[day_row.pk]))
         self.assertNotContains(response, 'name="start_time"')
         with _both_clocks(aware(2026, 6, 2, 7, 0), self.today):
-            dialog = self.client.get(reverse("shifts_mine_hours", args=[night_row.pk]))
+            dialog = self.client.get(reverse("shifts_mine_hours", args=[night_row.pk]), HTTP_HX_REQUEST="true")
         self.assertContains(dialog, 'class="modal-header"')
         self.assertContains(dialog, 'value="22:00"')
         self.assertContains(dialog, "Save hours")
@@ -2233,3 +2233,71 @@ class NightWindowRuleTests(TestCase):
         with _both_clocks(aware(2026, 10, 9, 9, 0), date(2026, 10, 9)):
             page = self.client.get(reverse("shifts_mine"))
         self.assertContains(page, "Next day", count=1)
+
+
+class DirectVisitAndReadOnlyTests(TestCase):
+    """Dialog URLs opened directly, the night-window error, and the read-only row reload."""
+
+    def setUp(self):
+        self.department = make_department("Direct")
+        self.manager = make_user(
+            "direct-lead", "support", self.department, make_role("Direct lead", can_manage_shifts=True),
+        )
+        self.agent = make_user(
+            "direct-agent", "support", self.department, make_role("Direct agent", can_check_in=True),
+        )
+        self.day = make_shift_type(self.department, name="Direct day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Direct night")
+
+    def test_type_edit_opened_directly_is_a_full_page(self):
+        self.client.force_login(self.manager)
+        page = self.client.get(reverse("shifts_type_edit", args=[self.day.pk]))
+        self.assertTemplateUsed(page, "shifts/type_form_page.html")
+        self.assertContains(page, 'id="shifts-shell-pane"')
+        self.assertContains(page, 'class="settings-tab active"')
+        self.assertNotContains(page, 'class="modal-header"')
+        dialog = self.client.get(reverse("shifts_type_edit", args=[self.day.pk]), HTTP_HX_REQUEST="true")
+        self.assertTemplateUsed(dialog, "shifts/type_form.html")
+        self.assertNotContains(dialog, 'id="shifts-shell-pane"')
+        saved = self.client.post(reverse("shifts_type_edit", args=[self.day.pk]), {
+            "department": self.department.pk, "name": "Direct day", "start_time": "09:00",
+            "end_time": "17:00", "colour": "#336699", "night_mode": "auto",
+        })
+        self.assertRedirects(saved, f"{reverse('shifts_types')}?department={self.department.pk}")
+        bad = self.client.post(reverse("shifts_type_add"), {"department": self.department.pk, "name": "x"})
+        self.assertTemplateUsed(bad, "shifts/type_form_page.html")
+
+    def test_dialog_only_urls_redirect_when_opened_directly(self):
+        self.client.force_login(self.manager)
+        cell = self.client.get(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": "2026-06-02", "department": self.department.pk,
+        })
+        self.assertEqual(cell.status_code, 302)
+        self.assertIn(reverse("shifts_rota"), cell["Location"])
+        self.assertIn("start=2026-05-30", cell["Location"])
+        row = make_assignment(self.agent, self.night, timezone.localdate())
+        self.client.force_login(self.agent)
+        hours = self.client.get(reverse("shifts_mine_hours", args=[row.pk]))
+        self.assertRedirects(hours, reverse("shifts_mine"))
+
+    def test_night_window_error_keeps_what_was_typed(self):
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse("shifts_night_starts"), {
+            "department": self.department.pk, "night_starts_at": "19:30", "night_ends_at": "19:30",
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(response, "Enter a night start and a night end that differ.")
+        self.assertContains(response, 'name="night_starts_at" value="19:30"')
+        self.assertContains(response, 'name="night_ends_at" value="19:30"')
+
+    def test_row_reload_does_not_write(self):
+        on = date(2026, 6, 2)
+        row = make_assignment(self.agent, self.day, on)
+        row.checked_in_at = aware(2026, 6, 2, 8, 50)
+        row.save()
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 6, 2, 18, 0), on):
+            response = self.client.get(reverse("shifts_mine_row", args=[row.pk]))
+        self.assertContains(response, '<span class="badge badge-closed">Completed</span>')
+        row.refresh_from_db()
+        self.assertIsNotNone(row.checked_in_at)
+        self.assertIsNone(row.checked_out_at)
