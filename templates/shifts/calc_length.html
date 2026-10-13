@@ -1,3 +1,11 @@
-{% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
-{% if total_text %}<p>{{ total_text }}</p>{% endif %}
-{% if after_text %}<p>{{ after_text }}</p>{% endif %}
+{% load i18n %}
+{% if error %}
+<p class="notice notice-error">{{ error }}</p>
+{% elif total_text %}
+<div class="shifts-length-result">
+  <p class="shifts-length-total">{{ total_text }}</p>
+  {% if after_text %}<p class="shifts-muted">{{ after_text }}</p>{% endif %}
+</div>
+{% else %}
+<p class="shifts-muted">{% trans "Enter a start and an end time." %}</p>
+{% endif %}

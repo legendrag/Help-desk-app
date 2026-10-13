@@ -17,10 +17,23 @@ def can_check_in(user) -> bool:
     return bool(role and role.can_check_in)
 
 
+def has_own_shifts(user) -> bool:
+    """Whether the user can be put on the rota, and so has a My shifts page.
+
+    Superusers run the system and are not rostered, even though the seeded
+    admin is a support-type account.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return False
+    return getattr(user, "user_type", "") == "support"
+
+
 def home_target(user) -> str:
     if is_shift_manager(user):
         return "shifts_rota"
-    if getattr(user, "user_type", "") == "support":
+    if has_own_shifts(user):
         return "shifts_mine"
     if getattr(user, "user_type", "") == "branch":
         return "shifts_available"

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Max
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -16,15 +16,14 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.models import Department
 from shifts.clock import format_clock
-from shifts.access import can_check_in, display_name, home_target, is_shift_manager
+from shifts.access import can_check_in, display_name, has_own_shifts, home_target, is_shift_manager
 from shifts.forms import ShiftTypeForm
 from shifts.models import DepartmentShiftSettings, ShiftAssignment, ShiftType
+from shifts.reports import build_report, report_filename, report_workbook
 from shifts.services import (
     REPEAT_WEEKS_MAX,
     WORKER_HOURS_LOOKBACK_DAYS,
     WORKER_HOURS_MAX_MINUTES,
-    aware_on,
-    clipped_day_night_minutes,
     clock_length,
     check_in_marker,
     check_in_opens_at,
@@ -57,6 +56,7 @@ def _forbid():
 
 def _shell(request, template, context):
     context["is_manager"] = is_shift_manager(request.user)
+    context["has_own_shifts"] = has_own_shifts(request.user)
     if request.headers.get("HX-Request"):
         context["base_template"] = "shifts/hx_base.html"
     return render(request, template, context)
@@ -243,7 +243,10 @@ def shifts_rota_grid(request):
 @login_required
 @require_GET
 def shifts_mine(request):
-    if request.user.user_type != "support" and not is_shift_manager(request.user):
+    if not has_own_shifts(request.user):
+        # Admins and other managers who are not rostered go to the rota instead.
+        if is_shift_manager(request.user):
+            return redirect("shifts_rota")
         return _forbid()
     today = timezone.localdate()
     lookback = today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS)
@@ -361,7 +364,7 @@ def _decorate_mine(row, now, today, may_check_in):
 @login_required
 @require_GET
 def shifts_check_in_panels(request):
-    if request.user.user_type != "support" and not is_shift_manager(request.user):
+    if not has_own_shifts(request.user):
         return _forbid()
     return _check_ins_partial(request)
 
@@ -1227,11 +1230,6 @@ def _hours_minutes(minutes):
     return minutes // 60, minutes % 60
 
 
-def _format_minutes(minutes):
-    hours, mins = _hours_minutes(minutes)
-    return _("%(hours)s hours %(minutes)s minutes") % {"hours": hours, "minutes": mins}
-
-
 @login_required
 @require_GET
 def shifts_calculator(request):
@@ -1250,7 +1248,89 @@ def shifts_calculator(request):
     }
     if request.GET.get("part") == "rotation":
         return render(request, "shifts/calculator_rotation_options.html", context)
+    context["work_people"] = _work_hours_people(department)
+    if request.GET.get("part") == "work_people":
+        context["reset_result"] = True
+        return render(request, "shifts/calc_work_people.html", context)
+    first, last = _this_month()
+    context.update({"work_start": first, "work_end": last})
     return _shell(request, "shifts/calculator.html", context)
+
+
+def _this_month():
+    first = timezone.localdate().replace(day=1)
+    return first, month_dates(first)[-1]
+
+
+def _work_hours_people(department):
+    """Support staff in one department for the work hours report, inactive ones last."""
+    if department is None:
+        return []
+    people = list(
+        User.objects.filter(user_type=User.UserType.SUPPORT, department=department)
+        .order_by("first_name", "last_name", "username")
+    )
+    people.sort(key=lambda person: person.status != User.Status.ACTIVE)
+    for person in people:
+        person.shift_label = display_name(person)
+    return people
+
+
+def _work_hours_request(request):
+    """Person, date range and shift filter from the query string."""
+    person_pk = _parse_pk(request.GET.get("person"))
+    person = None
+    if person_pk is not None:
+        person = (
+            User.objects.filter(pk=person_pk, user_type=User.UserType.SUPPORT)
+            .select_related("role", "department")
+            .first()
+        )
+    first, last = _this_month()
+    start = _parse_day(request.GET.get("start")) or first
+    end = _parse_day(request.GET.get("end")) or last
+    night_only = request.GET.get("shifts") == "night"
+    return person, start, end, night_only
+
+
+@login_required
+@require_GET
+def shifts_calc_work(request):
+    """One person's shifts in a date range, laid out like the paper statement."""
+    if not is_shift_manager(request.user):
+        return _forbid()
+    person, start, end, night_only = _work_hours_request(request)
+    if person is None:
+        return render(request, "shifts/calc_work.html", {"error": _("Choose a person.")})
+    report = build_report(person, start, end, night_only)
+    export_query = urlencode({
+        "person": person.pk,
+        "start": report.start.isoformat(),
+        "end": report.end.isoformat(),
+        "shifts": "night" if night_only else "all",
+    })
+    return render(request, "shifts/calc_work.html", {
+        "report": report,
+        "export_url": f"{reverse('shifts_calc_work_export')}?{export_query}",
+    })
+
+
+@login_required
+@require_GET
+def shifts_calc_work_export(request):
+    """The same report as an Excel file."""
+    if not is_shift_manager(request.user):
+        return _forbid()
+    person, start, end, night_only = _work_hours_request(request)
+    if person is None:
+        raise Http404(_("Choose a person."))
+    report = build_report(person, start, end, night_only)
+    response = HttpResponse(
+        report_workbook(report),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{report_filename(report)}"'
+    return response
 
 
 @login_required
@@ -1282,70 +1362,6 @@ def shifts_calc_length(request):
 
 
 @login_required
-@require_GET
-def shifts_calc_hours(request):
-    if not is_shift_manager(request.user):
-        return _forbid()
-    department = _selected_department(request)
-    view, start, dates = _rota_dates(request)
-    bundle = _rota_bundle(department, dates)
-    range_start = aware_on(dates[0], time(0, 0))
-    range_end = aware_on(dates[-1] + timedelta(days=1), time(0, 0))
-    totals = {}
-    for row in bundle["assignments"]:
-        day_m, night_m = clipped_day_night_minutes(row, range_start, range_end)
-        bucket = totals.setdefault(row.user_id, {"user": row.user, "day": 0, "night": 0})
-        bucket["day"] += day_m
-        bucket["night"] += night_m
-    people = []
-    for bucket in totals.values():
-        if bucket["day"] == 0 and bucket["night"] == 0:
-            continue
-        people.append({
-            "name": display_name(bucket["user"]),
-            "day": _format_minutes(bucket["day"]),
-            "night": _format_minutes(bucket["night"]),
-            "total": _format_minutes(bucket["day"] + bucket["night"]),
-        })
-    return render(request, "shifts/calc_hours.html", {
-        "people": people,
-        "department": department,
-        "view": view,
-        "start": start,
-    })
-
-
-@login_required
-@require_GET
-def shifts_calc_coverage(request):
-    if not is_shift_manager(request.user):
-        return _forbid()
-    department = _selected_department(request)
-    view, start, dates = _rota_dates(request)
-    bundle = _rota_bundle(department, dates)
-    intervals = [effective_interval(row) for row in bundle["assignments"]]
-    rows = []
-    for hour in range(24):
-        cells = []
-        for day in dates:
-            bucket_start = aware_on(day, time(hour, 0))
-            bucket_end = bucket_start + timedelta(hours=1)
-            count = 0
-            for start_dt, end_dt in intervals:
-                if start_dt < bucket_end and bucket_start < end_dt:
-                    count += 1
-            cells.append({"day": day, "hour": hour, "count": count})
-        rows.append({"hour": hour, "label": format_clock(time(hour, 0)), "cells": cells})
-    return render(request, "shifts/calc_coverage.html", {
-        "rows": rows,
-        "dates": dates,
-        "department": department,
-        "view": view,
-        "start": start,
-    })
-
-
-@login_required
 @require_http_methods(["GET", "POST"])
 def shifts_mine_hours(request, pk):
     assignment = get_object_or_404(
@@ -1356,7 +1372,7 @@ def shifts_mine_hours(request, pk):
         return _forbid()
     if not assignment.shift_type.is_night:
         return _forbid()
-    if request.user.user_type != "support" and not is_shift_manager(request.user):
+    if not has_own_shifts(request.user):
         return _forbid()
     today = timezone.localdate()
     if assignment.date < today - timedelta(days=WORKER_HOURS_LOOKBACK_DAYS):

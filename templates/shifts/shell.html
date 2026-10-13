@@ -1,6 +1,6 @@
 {% extends base_template|default:"base.html" %}
 {% load i18n static %}
-{% block extra_head %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=13">{% endblock %}
+{% block extra_head %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=17">{% endblock %}
 {% block content %}
 <script>
 (function () {
@@ -10,7 +10,7 @@
 })();
 </script>
 <div id="shifts-shell-pane" class="shifts-page" data-etag="{{ shell_etag|default:'' }}">
-  <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=13">
+  <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=17">
   {% with active_tab=active_tab|default:request.resolver_match.url_name %}
   <nav class="settings-tabs" role="tablist">
     {% if is_manager %}
@@ -55,7 +55,7 @@
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "Available now" %}</a>
     {% endif %}
-    {% if user.user_type == "support" or is_manager %}
+    {% if has_own_shifts %}
     <a class="settings-tab{% if active_tab == 'shifts_mine' %} active{% endif %}" role="tab" tabindex="0"
        {% if active_tab == 'shifts_mine' %}aria-current="page"{% endif %}
        aria-selected="{% if active_tab == 'shifts_mine' %}true{% else %}false{% endif %}"
@@ -66,6 +66,8 @@
        hx-push-url="true"
        hx-sync="#shell-content:replace"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); window.htmx.trigger(this, 'click');}">{% trans "My shifts" %}</a>
+    {% endif %}
+    {% if user.user_type == "support" or is_manager %}
     <a class="settings-tab{% if active_tab == 'shifts_team' %} active{% endif %}" role="tab" tabindex="0"
        {% if active_tab == 'shifts_team' %}aria-current="page"{% endif %}
        aria-selected="{% if active_tab == 'shifts_team' %}true{% else %}false{% endif %}"

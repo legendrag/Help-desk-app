@@ -609,9 +609,10 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   gap: 1.75rem;
 }
 
+/* Calculator: work hours across the top, night rotation and the shift calculator under it. */
 @media (min-width: 1100px) {
   #shifts-shell-pane .shifts-tools {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   }
 }
 
@@ -916,10 +917,6 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 }
 
 
-#shifts-shell-pane .shifts-gap {
-  background: color-mix(in srgb, var(--danger) 25%, transparent);
-}
-
 #shifts-shell-pane .shifts-archived {
   opacity: 0.6;
 }
@@ -938,14 +935,192 @@ input[type="color"].shifts-color {
   cursor: pointer;
 }
 
-#shifts-shell-pane .shifts-coverage {
-  overflow-x: auto;
+/* ── Calculator: work hours report ──────────────────────────────────── */
+
+/* Cards keep their own height instead of stretching to the tallest one in the row. */
+#shifts-shell-pane .shifts-tools {
+  align-items: start;
 }
 
-#shifts-shell-pane .shifts-coverage td {
-  min-inline-size: 1.6rem;
-  text-align: center;
+#shifts-shell-pane .shifts-tool-wide {
+  grid-column: 1 / -1;
+}
+
+#shifts-shell-pane .shifts-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-tool-head h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+#shifts-shell-pane .shifts-tool-head p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+#shifts-shell-pane .shifts-calc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--text-main);
+}
+
+/* Fields line up in an even grid that folds to one column on narrow screens. */
+#shifts-shell-pane .shifts-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.9rem 1rem;
+  /* Top-aligned so every label sits on one line, whatever the control's height. */
+  align-items: start;
+}
+
+#shifts-shell-pane .shifts-fields--five {
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+#shifts-shell-pane .shifts-fields--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#shifts-shell-pane .shifts-fields .form-group {
+  margin: 0;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-fields select,
+#shifts-shell-pane .shifts-fields input[type="date"],
+#shifts-shell-pane .shifts-fields input[type="time"] {
+  inline-size: 100%;
+}
+
+/* The rotation options are swapped by department; their fields join the same grid. */
+#shifts-shell-pane .shifts-fields-contents {
+  display: contents;
+}
+
+#shifts-shell-pane .shifts-fields .shifts-people {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0 1rem;
+}
+
+#shifts-shell-pane .shifts-calc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-length-result {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 6%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-length-result p {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-length-total {
+  margin-block-end: 0.25rem !important;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+#shifts-shell-pane .shifts-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#shifts-shell-pane .shifts-report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-report-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+#shifts-shell-pane .shifts-report-heading p,
+#shifts-shell-pane .shifts-report-title {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-report-title {
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#shifts-shell-pane .shifts-report-table td,
+#shifts-shell-pane .shifts-report-hours {
+  font-variant-numeric: tabular-nums;
+}
+
+#shifts-shell-pane .shifts-report-hours {
+  font-weight: 700;
+}
+
+#shifts-shell-pane .shifts-report-table .badge {
+  padding: 0.2rem 0.65rem;
   font-size: 0.75rem;
+}
+
+/* Absent and upcoming shifts are listed but not counted. */
+#shifts-shell-pane .shifts-report-uncounted .shifts-report-hours {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-decoration: line-through;
+}
+
+#shifts-shell-pane .shifts-report-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-report-totals > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 6%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-report-totals dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+#shifts-shell-pane .shifts-report-totals dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (hover: none) and (pointer: coarse) {

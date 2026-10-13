@@ -2021,8 +2021,8 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'id="custom-transfer-modal"')
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "toggleTicketDetails")
-        self.assertContains(response, "js/chat.js?v=15")
-        self.assertEqual(response.content.decode().count("js/chat.js?v=15"), 1)
+        self.assertContains(response, "js/chat.js?v=16")
+        self.assertEqual(response.content.decode().count("js/chat.js?v=16"), 1)
         cache_control = response["Cache-Control"]
         self.assertIn("no-store", cache_control)
         self.assertIn("private", cache_control)
@@ -2120,7 +2120,7 @@ class SidebarMenuShellTests(TestCase):
         self.assertNotIn("hx-get", dashboard)
         self.assertNotIn("data-shell-nav", dashboard)
         self.assertIn('data-nav-key="dashboard"', dashboard)
-        self.assertEqual(html.count("js/chat.js?v=15"), 1)
+        self.assertEqual(html.count("js/chat.js?v=16"), 1)
 
     def test_settings_htmx_is_pane_only_and_still_private(self):
         full = self.client.get(reverse("settings"))
@@ -2367,3 +2367,79 @@ def _opening_tag(html, href):
     open_at = nav.rfind("<a", 0, start)
     close_at = nav.find(">", start)
     return nav[open_at:close_at + 1]
+
+
+class TicketAttachmentMediaTests(TestCase):
+    """Chat attachments must be served with DEBUG=0 (installer default), scoped to the ticket."""
+
+    def setUp(self):
+        import tempfile
+
+        self._media = tempfile.TemporaryDirectory()
+        self._override = override_settings(MEDIA_ROOT=self._media.name)
+        self._override.enable()
+
+        self.branch = Branch.objects.create(code="MED", name="Media Branch")
+        self.other_branch = Branch.objects.create(code="OTH", name="Other Branch")
+        self.department = Department.objects.create(name="Media Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Media Cat", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.user = User.objects.create_user(
+            username="media_branch", password="password123",
+            user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+        self.outsider = User.objects.create_user(
+            username="media_outsider", password="password123",
+            user_type=User.UserType.BRANCH, branch=self.other_branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-MED-1", title="Media", description="desc",
+            branch=self.branch, department=self.department, category=self.category,
+            created_by=self.user, client_name="Client", client_phone="123",
+        )
+        self.msg = TicketMessage.objects.create(
+            ticket=self.ticket, sender=self.user, message="",
+            attachment=SimpleUploadedFile("shot.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"),
+        )
+
+    def tearDown(self):
+        self._override.disable()
+        self._media.cleanup()
+
+    def test_attachment_served_without_debug(self):
+        self.assertFalse(settings.DEBUG)
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.get(self.msg.attachment.url)
+        self.assertEqual(response.status_code, 200)
+        response.close()
+
+    def test_attachment_hidden_from_other_branch(self):
+        self.client.login(username="media_outsider", password="password123")
+        self.assertEqual(self.client.get(self.msg.attachment.url).status_code, 404)
+
+    def test_attachment_requires_login(self):
+        response = self.client.get(self.msg.attachment.url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_htmx_post_rejected_attachment_returns_400_with_reason(self):
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}),
+            {"message": "hi", "attachment": SimpleUploadedFile("anim.gif", b"GIF89a", content_type="image/gif")},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response["Content-Type"].startswith("text/plain"))
+        self.assertIn(".gif", response.content.decode())
+        self.assertFalse(TicketMessage.objects.filter(ticket=self.ticket, message="hi").exists())
+
+    def test_htmx_post_attachment_only_returns_204(self):
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}),
+            {"message": "", "attachment": SimpleUploadedFile("doc.pdf", b"%PDF-1.4", content_type="application/pdf")},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertTrue(TicketMessage.objects.filter(ticket=self.ticket, attachment__endswith=".pdf").exists())

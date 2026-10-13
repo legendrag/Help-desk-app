@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from core.models import Department, Role
 from shifts.models import ShiftAssignment, ShiftType
+from shifts.services import effective_interval
 
 User = get_user_model()
 
@@ -740,55 +741,6 @@ class CalculatorTests(TestCase):
         response = self.client.get(reverse("shifts_calc_length"), {"start": "09:00", "end": "12:30"})
         self.assertContains(response, "3 hours 30 minutes")
         self.assertContains(response, "0 hours 0 minutes after midnight")
-
-    def test_coverage_counts_overnight_until_but_not_including_06(self):
-        department = make_department("Heat")
-        manager = make_user("heat-lead", "support", department, make_role("Heat lead", can_manage_shifts=True))
-        agent = make_user("heat-agent", "support", department)
-        night = make_shift_type(department, name="Heat night")
-        make_assignment(agent, night, date(2026, 10, 5))  # Monday 22:00–06:00
-        self.client.force_login(manager)
-        response = self.client.get(reverse("shifts_calc_coverage"), {
-            "department": department.pk,
-            "view": "week",
-            "start": "2026-10-03",
-        })
-        self.assertContains(response, 'id="cov-2026-10-06-5">1')
-        self.assertContains(response, 'id="cov-2026-10-06-6" class="shifts-gap">0')
-
-    def test_same_evening_covers_18_through_22(self):
-        department = make_department("Heat eve")
-        manager = make_user("heat-lead-2", "support", department, make_role("Heat lead 2", can_manage_shifts=True))
-        agent = make_user("heat-eve", "support", department)
-        night = make_shift_type(department, name="Heat eve")
-        make_assignment(agent, night, date(2026, 10, 6), time(18, 0), time(23, 0))
-        self.client.force_login(manager)
-        response = self.client.get(reverse("shifts_calc_coverage"), {
-            "department": department.pk,
-            "view": "week",
-            "start": "2026-10-03",
-        })
-        self.assertContains(response, 'id="cov-2026-10-06-18">1')
-        self.assertContains(response, 'id="cov-2026-10-06-22">1')
-        self.assertContains(response, 'id="cov-2026-10-06-23" class="shifts-gap">0')
-
-    def test_check_in_does_not_change_hours_or_coverage(self):
-        department = make_department("Same hours")
-        manager = make_user("same-lead", "support", department, make_role("Same lead", can_manage_shifts=True))
-        agent = make_user("same-agent", "support", department)
-        day = make_shift_type(department, name="Same day", start=time(9, 0), end=time(17, 0))
-        row = make_assignment(agent, day, date(2026, 10, 5))
-        self.client.force_login(manager)
-        params = {"department": department.pk, "view": "week", "start": "2026-10-03"}
-        before_hours = self.client.get(reverse("shifts_calc_hours"), params).content
-        before_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
-        row.checked_in_at = aware(2026, 10, 5, 9, 0)
-        row.save()
-        after_hours = self.client.get(reverse("shifts_calc_hours"), params).content
-        after_coverage = self.client.get(reverse("shifts_calc_coverage"), params).content
-        self.assertEqual(before_hours, after_hours)
-        self.assertEqual(before_coverage, after_coverage)
-
 
 class WorkerHoursTests(TestCase):
     def setUp(self):
@@ -1605,9 +1557,9 @@ class PermissionMatrixTests(TestCase):
             reverse("shifts_type_add"),
             reverse("shifts_type_edit", args=[self.night.pk]),
             reverse("shifts_calculator"),
-            reverse("shifts_calc_hours"),
             reverse("shifts_calc_length"),
-            reverse("shifts_calc_coverage"),
+            reverse("shifts_calc_work"),
+            reverse("shifts_calc_work_export"),
             reverse("shifts_available"),
             reverse("shifts_available_board"),
             reverse("shifts_mine"),
@@ -1632,7 +1584,7 @@ class PermissionMatrixTests(TestCase):
     def test_branch_support_and_manager_statuses(self):
         manager_gets = [
             "shifts_rota", "shifts_rota_grid", "shifts_types", "shifts_type_add",
-            "shifts_calculator", "shifts_calc_hours", "shifts_calc_length", "shifts_calc_coverage",
+            "shifts_calculator", "shifts_calc_length", "shifts_calc_work",
         ]
         shared_gets = ["shifts_available", "shifts_available_board"]
         support_gets = ["shifts_mine", "shifts_team"]
@@ -1674,8 +1626,11 @@ class PermissionMatrixTests(TestCase):
         for user in (self.manager, self.superuser):
             self.client.force_login(user)
             self.assertEqual(self.client.get(reverse("shifts_home")).status_code, 302)
-            for name in manager_gets + shared_gets + support_gets:
+            for name in manager_gets + shared_gets + ["shifts_team"]:
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200, f"{user.username} {name}")
+            # Superusers are not rostered: My shifts sends them to the rota.
+            expected_mine = 302 if user.is_superuser else 200
+            self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, expected_mine, user.username)
             self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 200)
             self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}, HTTP_HX_REQUEST="true").status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
@@ -1872,8 +1827,8 @@ class ReviewFixTests(TestCase):
             (reverse("shifts_rota"), {"department": "abc"}),
             (reverse("shifts_team"), {"start": "bad"}),
             (reverse("shifts_rota_grid"), {"start": "nope"}),
-            (reverse("shifts_calc_hours"), {"start": "x"}),
-            (reverse("shifts_calc_coverage"), {"start": "x"}),
+            (reverse("shifts_calc_work"), {"person": "x", "start": "x", "end": "y"}),
+            (reverse("shifts_calc_work"), {"person": self.agent.pk, "start": "2026-02-30"}),
             (cell, {**base}),
             (cell, {**base, "date": "garbage"}),
             (cell, {**base, "date": "2026-06-02", "assignment": "zz"}),
@@ -1978,14 +1933,6 @@ class ReviewFixTests(TestCase):
             response.content.decode(),
             r'class="settings-tab active"[^>]*\n\s*aria-current="page"[^>]*\n[^\n]*\n\s*href="/shifts/types/"',
         )
-
-    def test_coverage_rows_use_12_hour_labels(self):
-        response = self.client.get(reverse("shifts_calc_coverage"), {
-            "department": self.department.pk, "start": "2026-06-06",
-        })
-        self.assertContains(response, "1:00 PM")
-        self.assertNotContains(response, ">13<")
-
 
 class MyShiftsLayoutTests(TestCase):
     def setUp(self):
@@ -2312,3 +2259,203 @@ class PhoneCardLabelTests(TestCase):
         page = self.client.get(reverse("shifts_types"), {"department": department.pk})
         for label in ("Name", "Times", "Night", "Colour", "Actions"):
             self.assertContains(page, f'data-label="{label}"')
+
+
+class WorkHoursReportTests(TestCase):
+    """The Calculator's work hours card and its Excel export."""
+
+    def setUp(self):
+        self.department = make_department("Report")
+        self.manager = make_user(
+            "report-lead", "support", self.department, make_role("Report lead", can_manage_shifts=True),
+        )
+        self.agent = make_user(
+            "report-agent", "support", self.department, make_role("Report agent", can_check_in=True),
+            first_name="Omar", last_name="Elrefaey",
+        )
+        self.evening = make_shift_type(self.department, name="Evening", start=time(18, 0), end=time(23, 0))
+        self.long_day = make_shift_type(self.department, name="Long day", start=time(12, 0), end=time(0, 0))
+        self.client.force_login(self.manager)
+
+    def _check_in(self, row):
+        _start, end = effective_interval(row)
+        row.checked_in_at = end - timedelta(hours=1)
+        row.checked_out_at = None
+        row.save()
+
+    def _september(self):
+        """Ten shifts like the paper statement: eight evenings and two 12-hour Fridays."""
+        rows = []
+        for day in (2, 7, 10, 13, 16, 19, 22, 29):
+            rows.append(make_assignment(self.agent, self.evening, date(2026, 9, day)))
+        for day in (4, 25):
+            rows.append(make_assignment(self.agent, self.long_day, date(2026, 9, day)))
+        for row in rows:
+            self._check_in(row)
+        return rows
+
+    def _get(self, **params):
+        query = {"person": self.agent.pk, "start": "2026-09-01", "end": "2026-09-30", "shifts": "all", **params}
+        with _both_clocks(aware(2026, 10, 5, 12, 0), date(2026, 10, 5)):
+            return self.client.get(reverse("shifts_calc_work"), query)
+
+    def test_statement_matches_the_paper_version(self):
+        self._september()
+        response = self._get()
+        report = response.context["report"]
+        self.assertEqual(len(report.rows), 10)
+        self.assertEqual(report.days_present, 10)
+        self.assertEqual(report.total_hours, 64)
+        self.assertEqual([row.number for row in report.rows], list(range(1, 11)))
+        self.assertEqual(report.rows[1].day, date(2026, 9, 4))
+        self.assertEqual(report.rows[1].hours, 12)
+        self.assertEqual((report.rows[1].starts, report.rows[1].ends), ("12:00 PM", "12:00 AM"))
+        self.assertContains(response, "Omar Elrefaey")
+        self.assertContains(response, "04/09/2026")
+        self.assertContains(response, '<span class="badge badge-open">Present</span>', count=10)
+        self.assertContains(response, reverse("shifts_calc_work_export"))
+
+    def test_status_and_totals(self):
+        present, absent, upcoming = (
+            make_assignment(self.agent, self.evening, date(2026, 10, day)) for day in (1, 2, 6)
+        )
+        self._check_in(present)
+        cleared = make_assignment(self.agent, self.evening, date(2026, 10, 3))
+        cleared.checked_out_at = aware(2026, 10, 3, 18, 30)  # a manager cleared it early
+        cleared.save()
+        report = self._get(start="2026-10-01", end="2026-10-31").context["report"]
+        self.assertEqual(
+            [row.status for row in report.rows], ["present", "absent", "absent", "upcoming"],
+        )
+        self.assertEqual((report.days_present, report.total_hours), (1, 5))
+
+    def test_people_who_do_not_check_in_show_scheduled_and_count(self):
+        plain = make_user("report-plain", "support", self.department)
+        make_assignment(plain, self.evening, date(2026, 10, 1))
+        report = self._get(person=plain.pk, start="2026-10-01", end="2026-10-31").context["report"]
+        self.assertEqual([row.status for row in report.rows], ["scheduled"])
+        self.assertEqual((report.days_present, report.total_hours), (1, 5))
+
+    def test_night_only_filter(self):
+        self._september()
+        report = self._get(shifts="night").context["report"]
+        # Evening (6-11 PM) is all night; Long day (noon-midnight) is half, so not a night shift.
+        self.assertEqual(len(report.rows), 8)
+        self.assertEqual(report.total_hours, 40)
+        self.assertIn("night shifts", report.title)
+
+    def test_report_is_read_only(self):
+        row = make_assignment(self.agent, self.evening, date(2026, 10, 1))
+        row.checked_in_at = aware(2026, 10, 1, 18, 5)
+        row.save()
+        self._get(start="2026-10-01", end="2026-10-31")
+        row.refresh_from_db()
+        self.assertIsNotNone(row.checked_in_at)
+
+    def test_missing_person_and_empty_period(self):
+        self.assertContains(self._get(person=""), "Choose a person.")
+        self.assertContains(self._get(), "No shifts in this period.")
+
+    def test_excel_export(self):
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        self._september()
+        with _both_clocks(aware(2026, 10, 5, 12, 0), date(2026, 10, 5)):
+            response = self.client.get(reverse("shifts_calc_work_export"), {
+                "person": self.agent.pk, "start": "2026-09-01", "end": "2026-09-30", "shifts": "all",
+            })
+        self.assertEqual(
+            response["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn('filename="work-hours_report-agent_2026-09-01_2026-09-30.xlsx"', response["Content-Disposition"])
+        sheet = load_workbook(BytesIO(response.content)).active
+        self.assertEqual(sheet["A1"].value, "Name: Omar Elrefaey")
+        self.assertEqual(
+            [cell.value for cell in sheet[5]],
+            ["No.", "Day", "Date", "Status", "From", "To", "Work hours"],
+        )
+        self.assertEqual(sheet["A7"].value, 2)
+        self.assertEqual(sheet["B7"].value, "Friday")
+        self.assertEqual(sheet["C7"].value.date(), date(2026, 9, 4))
+        self.assertEqual((sheet["E7"].value, sheet["F7"].value, sheet["G7"].value), ("12:00 PM", "12:00 AM", 12))
+        self.assertEqual(sheet["D7"].value, "Present")
+        self.assertEqual((sheet["F17"].value, sheet["G17"].value), (10, "Days present"))
+        self.assertEqual((sheet["F18"].value, sheet["G18"].value), (64, "Work hours"))
+        self.assertFalse(sheet.sheet_view.rightToLeft)
+
+    def test_arabic_export_is_right_to_left(self):
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        self._september()
+        self.client.cookies["django_language"] = "ar"
+        with _both_clocks(aware(2026, 10, 5, 12, 0), date(2026, 10, 5)):
+            response = self.client.get(reverse("shifts_calc_work_export"), {
+                "person": self.agent.pk, "start": "2026-09-01", "end": "2026-09-30",
+            })
+        sheet = load_workbook(BytesIO(response.content)).active
+        self.assertTrue(sheet.sheet_view.rightToLeft)
+        self.assertEqual(sheet["D6"].value, "حاضر")
+        self.assertEqual(sheet["G17"].value, "عدد أيام الحضور")
+        self.assertEqual(sheet["B5"].value, "اليوم")
+
+    def test_support_users_cannot_open_the_report(self):
+        self.client.force_login(self.agent)
+        self.assertEqual(self.client.get(reverse("shifts_calc_work"), {"person": self.agent.pk}).status_code, 403)
+        self.assertEqual(
+            self.client.get(reverse("shifts_calc_work_export"), {"person": self.agent.pk}).status_code, 403,
+        )
+
+    def test_calculator_shows_three_cards(self):
+        response = self.client.get(reverse("shifts_calculator"))
+        self.assertContains(response, 'id="shifts-length"')
+        self.assertContains(response, 'id="shifts-rotation"')
+        self.assertContains(response, 'id="shifts-work-hours"')
+        self.assertNotContains(response, 'id="shifts-hours"')
+        self.assertNotContains(response, 'id="shifts-coverage"')
+        self.assertContains(response, "Omar Elrefaey")
+
+    def test_department_picker_reloads_only_its_people(self):
+        other = make_department("Report other")
+        stranger = make_user("report-stranger", "support", other, first_name="Sara", last_name="Ali")
+        page = self.client.get(reverse("shifts_calculator"))
+        self.assertContains(page, "hx-trigger=\"change[target.name!=='department']\"")
+        self.assertContains(page, "Omar Elrefaey")
+        self.assertNotContains(page, "Sara Ali")
+        swapped = self.client.get(reverse("shifts_calculator"), {"part": "work_people", "department": other.pk})
+        self.assertContains(swapped, 'id="work-person-field"')
+        self.assertContains(swapped, f'<option value="{stranger.pk}">Sara Ali</option>')
+        self.assertNotContains(swapped, "Omar Elrefaey")
+        self.assertContains(swapped, 'id="shifts-work-result" hx-swap-oob="innerHTML"')
+        empty = make_department("Report empty")
+        nobody = self.client.get(reverse("shifts_calculator"), {"part": "work_people", "department": empty.pk})
+        self.assertContains(nobody, "No support staff in this department")
+        self.assertContains(nobody, "disabled")
+
+
+class MyShiftsTabTests(TestCase):
+    """My shifts is for people who can be rostered, not for superusers like admin."""
+
+    def setUp(self):
+        self.department = make_department("Tab")
+        self.lead = make_user(
+            "tab-lead", "support", self.department, make_role("Tab lead", can_manage_shifts=True),
+        )
+        self.admin = make_user("tab-admin", "support", superuser=True)
+
+    def test_admin_has_no_my_shifts_tab(self):
+        self.client.force_login(self.admin)
+        rota = self.client.get(reverse("shifts_rota"))
+        self.assertNotContains(rota, f'href="{reverse("shifts_mine")}"')
+        self.assertContains(rota, f'href="{reverse("shifts_team")}"')
+        self.assertRedirects(self.client.get(reverse("shifts_mine")), reverse("shifts_rota"))
+        self.assertEqual(self.client.get(reverse("shifts_check_in_panels")).status_code, 403)
+
+    def test_team_lead_keeps_my_shifts(self):
+        self.client.force_login(self.lead)
+        rota = self.client.get(reverse("shifts_rota"))
+        self.assertContains(rota, f'href="{reverse("shifts_mine")}"')
+        self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200)

@@ -924,6 +924,13 @@
   color: #f87171;
   background: rgba(248, 113, 113, 0.1);
 }
+[data-theme="dark"] .file-preview-bar.has-error {
+  background: rgba(248, 113, 113, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.4);
+}
+[data-theme="dark"] .file-preview-error {
+  color: #f87171;
+}
 
 /* Drop zone */
 [data-theme="dark"] .drop-zone-overlay {

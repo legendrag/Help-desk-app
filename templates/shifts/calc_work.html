@@ -1,0 +1,69 @@
+{% load i18n %}
+{% if error %}
+<p class="notice notice-error">{{ error }}</p>
+{% else %}
+<div class="shifts-report">
+  <div class="shifts-report-head">
+    <div class="shifts-report-heading">
+      <p class="shifts-report-name">{% trans "Name" %}: <strong>{{ report.name }}</strong></p>
+      <h3 class="shifts-report-title">{{ report.title }}</h3>
+      <p class="shifts-muted">{% blocktrans trimmed with start=report.start|date:"d/m/Y" end=report.end|date:"d/m/Y" %}From {{ start }} to {{ end }}{% endblocktrans %}</p>
+    </div>
+    {% if report.rows %}
+    <a class="btn secondary shifts-export" href="{{ export_url }}" download data-no-loading>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      {% trans "Export to Excel" %}
+    </a>
+    {% endif %}
+  </div>
+
+  {% if report.rows %}
+  <div class="table-wrap">
+    <table class="shifts-list shifts-report-table">
+      <thead>
+        <tr>
+          <th scope="col">{% trans "No." %}</th>
+          <th scope="col">{% trans "Day" context "weekday column" %}</th>
+          <th scope="col">{% trans "Date" %}</th>
+          <th scope="col">{% trans "Status" %}</th>
+          <th scope="col">{% trans "From" %}</th>
+          <th scope="col">{% trans "To" %}</th>
+          <th scope="col">{% trans "Work hours" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.rows %}
+        <tr{% if not row.counted %} class="shifts-report-uncounted"{% endif %}>
+          <td data-label="{% trans "No." %}"><strong>{{ row.number }}</strong></td>
+          <td data-label="{% trans "Day" context "weekday column" %}">{{ row.weekday }}</td>
+          <td data-label="{% trans "Date" %}"><bdi>{{ row.day|date:"d/m/Y" }}</bdi></td>
+          <td data-label="{% trans "Status" %}">
+            {% if row.status == "present" %}<span class="badge badge-open">{{ row.status_text }}</span>
+            {% elif row.status == "absent" %}<span class="badge badge-expired">{{ row.status_text }}</span>
+            {% elif row.status == "upcoming" %}<span class="badge badge-in_progress">{{ row.status_text }}</span>
+            {% else %}<span class="badge badge-closed">{{ row.status_text }}</span>{% endif %}
+          </td>
+          <td data-label="{% trans "From" %}"><bdi>{{ row.starts }}</bdi></td>
+          <td data-label="{% trans "To" %}"><bdi>{{ row.ends }}</bdi></td>
+          <td data-label="{% trans "Work hours" %}" class="shifts-report-hours">{{ row.hours }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <dl class="shifts-report-totals">
+    <div>
+      <dt>{% trans "Days present" %}</dt>
+      <dd>{{ report.days_present }}</dd>
+    </div>
+    <div>
+      <dt>{% trans "Work hours" %}</dt>
+      <dd>{{ report.total_hours }}</dd>
+    </div>
+  </dl>
+  <p class="help-text">{% trans "Totals count shifts marked Present, and Scheduled shifts for people whose role does not use check-in." %}</p>
+  {% else %}
+  <p class="empty-state">{% trans "No shifts in this period." %}</p>
+  {% endif %}
+</div>
+{% endif %}

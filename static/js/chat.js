@@ -392,7 +392,7 @@ function initChat(ticketId) {
         // Match by sender + similar text (the server message should match what we sent).
         const isMe = String(payload.sender) === window.userId;
         if (isMe) {
-            const matchedKey = _findMatchingPendingMessage(payload.message);
+            const matchedKey = _findMatchingPendingMessage(payload.message, !!payload.attachment_url);
             if (matchedKey) {
                 const pending = pendingMessages[matchedKey];
                 if (pending.timeoutId) clearTimeout(pending.timeoutId);
@@ -484,8 +484,8 @@ function initChat(ticketId) {
                             </div>
                             ` : `
                             <div style="margin-top: 0.5rem;">
-                                <a href="${escapeHtml(payload.attachment_url)}" target="_blank" download style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
-                                    📎 ${escapeHtml(payload.attachment_name || (window.I18N && window.I18N.viewAttachment) || 'View Attachment')}
+                                <a href="${escapeHtml(payload.attachment_url)}" target="_blank" download class="attachment-link" style="color: ${isMe ? '#fff' : 'var(--primary)'}; font-size: 0.8rem; text-decoration: underline;">
+                                    <svg class="attachment-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg><span>${escapeHtml(payload.attachment_name || (window.I18N && window.I18N.viewAttachment) || 'View Attachment')}</span>
                                 </a>
                             </div>
                             `
@@ -555,11 +555,14 @@ function initChat(ticketId) {
  * Find a pending message whose text matches the incoming confirmed message.
  * Uses normalized comparison (trim + collapse whitespace).
  */
-function _findMatchingPendingMessage(confirmedText) {
+function _findMatchingPendingMessage(confirmedText, hasFile) {
     const normalize = (s) => (s || '').trim().replace(/\s+/g, ' ');
     const target = normalize(confirmedText);
     for (const key of Object.keys(pendingMessages)) {
-        if (normalize(pendingMessages[key].messageText) === target) {
+        const pending = pendingMessages[key];
+        // Failed bubbles keep their entry for Retry; they are not awaiting confirmation.
+        if (pending.failed) continue;
+        if (normalize(pending.messageText) === target && !!pending.hasFile === !!hasFile) {
             return key;
         }
     }
@@ -571,7 +574,7 @@ function _findMatchingPendingMessage(confirmedText) {
  * Called immediately when the user clicks Send, before the HTTP request completes.
  * Returns the pendingKey for tracking.
  */
-function appendOptimisticMessage(messageText, replyData) {
+function appendOptimisticMessage(messageText, replyData, fileName) {
     let chatBox = document.getElementById('chat-box');
 
     // Fallback: create chat-box if missing (should already exist in the template)
@@ -626,6 +629,7 @@ function appendOptimisticMessage(messageText, replyData) {
                 <div>
                     ${replyHtml}
                     <div class="chat-bubble-text">${escapeHtml(messageText)}</div>
+                    ${fileName ? `<div class="chat-pending-attachment"><svg class="attachment-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg><span>${escapeHtml(fileName)}</span></div>` : ''}
                 </div>
             </div>
             <div class="chat-actions-outside">
@@ -646,6 +650,7 @@ function appendOptimisticMessage(messageText, replyData) {
     pendingMessages[pendingKey] = {
         element: article,
         messageText: messageText,
+        hasFile: !!fileName,
         timeoutId: timeoutId,
     };
 
@@ -686,11 +691,14 @@ function _promotePendingToSent(pendingKey) {
  * Mark a pending message as failed with a retry button.
  * Called when the HTMX POST returns an error.
  */
-function markPendingAsFailed(pendingKey, retryFn) {
+function markPendingAsFailed(pendingKey, retryFn, reason) {
     const pending = pendingMessages[pendingKey];
     if (!pending || !pending.element) return;
 
     if (pending.timeoutId) clearTimeout(pending.timeoutId);
+    pending.failed = true;
+    const failedLabel = (window.I18N && window.I18N.failedToSend) || 'Failed to send';
+    const retryLabel = (window.I18N && window.I18N.retry) || 'Retry';
 
     pending.element.classList.remove('pending');
     pending.element.classList.add('send-failed');
@@ -699,8 +707,8 @@ function markPendingAsFailed(pendingKey, retryFn) {
     if (statusEl) {
         statusEl.className = 'message-status-indicator status-failed';
         statusEl.innerHTML = `
-            <span>Failed to send</span>
-            <button type="button" class="retry-btn" aria-label="Retry sending">Retry</button>
+            <span>${escapeHtml(reason ? failedLabel + ': ' + reason : failedLabel)}</span>
+            <button type="button" class="retry-btn" aria-label="${escapeHtml(retryLabel)}">${escapeHtml(retryLabel)}</button>
         `;
         const retryBtn = statusEl.querySelector('.retry-btn');
         if (retryBtn && retryFn) {
@@ -729,11 +737,27 @@ function initChatFormInterception() {
     if (!chatForm || chatForm.dataset.chatBound === '1') return;
     chatForm.dataset.chatBound = '1';
 
-    // Before the HTMX request fires, render the optimistic message
+    // Before the HTMX request fires, render the optimistic message.
+    // htmx has already captured the form values (including the File) at this point,
+    // so clearing the form below does not affect what gets uploaded.
     chatForm.addEventListener('htmx:beforeRequest', function(evt) {
         const textarea = chatForm.querySelector('textarea[name="message"]');
+        const fileInput = document.getElementById('file-upload');
         const messageText = textarea ? textarea.value.trim() : '';
-        if (!messageText) return; // Don't optimistically render empty messages
+        const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+        if (!messageText && !file) {
+            evt.preventDefault(); // Nothing to send
+            return;
+        }
+
+        // Reject files the server would refuse, before uploading them
+        const fileError = file ? validateChatFile(file) : '';
+        if (fileError) {
+            evt.preventDefault();
+            showFilePreviewError(fileError);
+            return;
+        }
 
         // Capture reply data if present
         const replyIdInput = document.getElementById('reply-to-id');
@@ -741,23 +765,25 @@ function initChatFormInterception() {
         const replyTextEl = document.getElementById('reply-to-text');
         const replyId = replyIdInput ? replyIdInput.value : '';
         const replyData = replyId ? {
+            id: replyId,
             sender: replySenderEl ? replySenderEl.textContent : '',
             text: replyTextEl ? replyTextEl.textContent : '',
         } : null;
 
-        const pendingKey = appendOptimisticMessage(messageText, replyData);
+        const pendingKey = appendOptimisticMessage(messageText, replyData, file ? file.name : '');
 
         // Map this request to its specific optimistic message
         evt.detail.requestConfig.chatCtx = {
             pendingKey: pendingKey,
             failedText: messageText,
-            failedReply: replyData
+            failedReply: replyData,
+            failedFile: file
         };
 
         // Clear the form immediately so they can type the next message
         chatForm.reset();
         if (typeof window.clearReply === 'function') window.clearReply();
-        if (typeof window.clearFilePreview === 'function') window.clearFilePreview();
+        clearFilePreview();
 
         // Show loading state on send button
         const sendBtn = chatForm.querySelector('.chat-send-btn');
@@ -770,38 +796,38 @@ function initChatFormInterception() {
         if (sendBtn) sendBtn.classList.remove('sending');
 
         const ctx = evt.detail.requestConfig ? evt.detail.requestConfig.chatCtx : null;
-        if (!ctx) return;
+        if (!ctx || evt.detail.successful || !ctx.pendingKey) return;
 
-        if (!evt.detail.successful) {
-            // POST failed — mark this specific optimistic message as failed
-            if (ctx.pendingKey) {
-                markPendingAsFailed(ctx.pendingKey, function retryFn() {
-                    // Re-populate the form and re-submit
-                    const textarea = chatForm.querySelector('textarea[name="message"]');
-                    if (textarea) textarea.value = ctx.failedText;
+        // POST failed — mark this specific optimistic message as failed, with the server's reason
+        const xhr = evt.detail.xhr;
+        const isTextError = xhr && xhr.status === 400 &&
+            (xhr.getResponseHeader('Content-Type') || '').indexOf('text/plain') === 0;
+        const reason = isTextError ? (xhr.responseText || '').trim().slice(0, 300) : '';
 
-                    // Restore reply context if it existed
-                    if (ctx.failedReply) {
-                        const replyIdInput = document.getElementById('reply-to-id');
-                        const preview = document.getElementById('reply-preview');
-                        const senderEl = document.getElementById('reply-to-sender');
-                        const textEl = document.getElementById('reply-to-text');
-                        
-                        // Fake a reply structure if needed, or rely on existing global functions
-                        if (preview) preview.style.display = 'flex';
-                        if (senderEl) senderEl.textContent = ctx.failedReply.sender;
-                        if (textEl) textEl.textContent = ctx.failedReply.text;
-                    }
+        markPendingAsFailed(ctx.pendingKey, function retryFn() {
+            // Re-populate the form (text, reply, file) and re-submit
+            const textarea = chatForm.querySelector('textarea[name="message"]');
+            if (textarea) textarea.value = ctx.failedText;
 
-                    // Re-submit the form
-                    if (typeof chatForm.requestSubmit === 'function') {
-                        chatForm.requestSubmit();
-                    } else {
-                        chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                    }
-                });
+            if (ctx.failedReply) {
+                const replyIdInput = document.getElementById('reply-to-id');
+                const preview = document.getElementById('reply-preview');
+                const senderEl = document.getElementById('reply-to-sender');
+                const textEl = document.getElementById('reply-to-text');
+                if (replyIdInput) replyIdInput.value = ctx.failedReply.id;
+                if (preview) preview.style.display = 'flex';
+                if (senderEl) senderEl.textContent = ctx.failedReply.sender;
+                if (textEl) textEl.textContent = ctx.failedReply.text;
             }
-        }
+
+            if (ctx.failedFile) setFileOnInput(ctx.failedFile);
+
+            if (typeof chatForm.requestSubmit === 'function') {
+                chatForm.requestSubmit();
+            } else {
+                chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        }, reason);
     });
 }
 
@@ -839,6 +865,56 @@ function formatFileSize(bytes) {
     return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
+/**
+ * Mirror the server's attachment rules (input accept list + MAX_ATTACHMENT_SIZE)
+ * so drag/drop and paste, which bypass the file picker's filter, fail early and visibly.
+ * Returns an error message, or '' when the file is acceptable.
+ */
+function validateChatFile(file) {
+    const input = document.getElementById('file-upload');
+    if (!input || !file) return '';
+    const i18n = window.I18N || {};
+
+    const accept = (input.getAttribute('accept') || '')
+        .split(',').map(function(ext) { return ext.trim().toLowerCase(); }).filter(Boolean);
+    const dot = file.name.lastIndexOf('.');
+    const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
+    if (accept.length && accept.indexOf(ext) === -1) {
+        return (i18n.fileTypeNotAllowed || 'File type not allowed. Allowed: {types}')
+            .replace('{types}', accept.join(', '));
+    }
+
+    const maxBytes = parseInt(input.dataset.maxBytes || '0', 10);
+    if (maxBytes > 0 && file.size > maxBytes) {
+        return (i18n.fileTooLarge || 'File is too large. Maximum is {size}.')
+            .replace('{size}', formatFileSize(maxBytes));
+    }
+    return '';
+}
+
+function showFilePreviewError(message) {
+    const bar = document.getElementById('file-preview-bar');
+    const info = bar ? bar.querySelector('.file-preview-info') : null;
+    if (!bar || !info) return;
+
+    let errorEl = document.getElementById('file-preview-error');
+    if (!message) {
+        bar.classList.remove('has-error');
+        if (errorEl) errorEl.remove();
+        return;
+    }
+    if (!errorEl) {
+        errorEl = document.createElement('span');
+        errorEl.id = 'file-preview-error';
+        errorEl.className = 'file-preview-error';
+        errorEl.setAttribute('role', 'alert');
+        info.appendChild(errorEl);
+    }
+    errorEl.textContent = message;
+    bar.classList.add('has-error');
+    bar.style.display = 'flex';
+}
+
 function showFilePreview(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
@@ -851,11 +927,13 @@ function showFilePreview(input) {
     nameEl.textContent = file.name;
     sizeEl.textContent = '(' + formatFileSize(file.size) + ')';
     bar.style.display = 'flex';
+    showFilePreviewError(validateChatFile(file));
 }
 
 function clearFilePreview() {
     const bar = document.getElementById('file-preview-bar');
     const input = document.getElementById('file-upload');
+    showFilePreviewError('');
     if (bar) bar.style.display = 'none';
     if (input) input.value = '';
 }

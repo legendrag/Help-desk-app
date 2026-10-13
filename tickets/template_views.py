@@ -1358,8 +1358,9 @@ def post_message(request, ticket_id):
         attachment = request.FILES.get("attachment")
         reply_to_id = request.POST.get("reply_to")
 
+        errors = []
         if not message_text and not attachment:
-            django_messages.error(request, _("Message or attachment is required."))
+            errors.append(_("Message or attachment is required."))
         else:
             try:
                 reply_to = None
@@ -1374,15 +1375,18 @@ def post_message(request, ticket_id):
                 )
 
             except ValidationError as e:
-                for message in e.messages:
-                    django_messages.error(request, message)
+                errors.extend(e.messages)
             except Exception as e:
-                django_messages.error(request, _("Failed to send message: {}").format(str(e)))
+                errors.append(_("Failed to send message: {}").format(str(e)))
 
-        # For HTMX requests, return 204 to avoid full page reload
+        # HTMX: 204 on success; 400 with the reason so chat.js can mark the message failed.
         if request.headers.get('HX-Request'):
             from django.http import HttpResponse
+            if errors:
+                return HttpResponse(" ".join(str(e) for e in errors), status=400, content_type="text/plain; charset=utf-8")
             return HttpResponse(status=204)
+        for error in errors:
+            django_messages.error(request, error)
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 

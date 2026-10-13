@@ -10,7 +10,9 @@
     </p>
   </div>
   <div class="shifts-header-actions">
-    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %} →</a>
+    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %}
+      <svg class="btn-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
   </div>
 </header>
 
@@ -69,7 +71,9 @@
 <div class="panel">
   <div class="empty-state">
     <p>{% trans "You have no upcoming shifts." %}</p>
-    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %} →</a>
+    <a class="btn secondary" href="{% if is_manager %}{% url 'shifts_rota' %}{% else %}{% url 'shifts_team' %}{% endif %}">{% trans "Team rota" %}
+      <svg class="btn-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
   </div>
 </div>
 {% endif %}
