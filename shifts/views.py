@@ -123,7 +123,7 @@ def _rota_bundle(department, dates):
     visible = [row for row in assignments if first <= row.date <= last]
     now = timezone.now()
     for row in assignments:
-        settle_check_in(row, now)
+        settle_check_in(row, now, save=False)
     for row in visible:
         row.set_by_worker = overrides_set_by_worker(row)
         row.check_marker = check_in_marker(row, now)
@@ -274,7 +274,7 @@ def shifts_mine(request):
     may_check_in = can_check_in(request.user)
     rows = list(all_recent.values())
     for row in rows:
-        settle_check_in(row, now)
+        settle_check_in(row, now, save=False)
         _decorate_mine(row, now, today, may_check_in)
     rows.sort(key=lambda row: (row.starts_at, row.pk))
 
@@ -379,7 +379,7 @@ def _check_ins_partial(request):
         ).select_related("shift_type", "user")
     )
     for r in rows:
-        settle_check_in(r, now)
+        settle_check_in(r, now, save=False)
     check_ins = _open_check_ins(request.user, now)
     refresh_in = next_check_in_change(rows, now) if can_check_in(request.user) else None
     banner_end = None
@@ -406,7 +406,7 @@ def _available_board(request):
         .select_related("user", "shift_type", "shift_type__department")
     )
     for row in rows:
-        settle_check_in(row, now)
+        settle_check_in(row, now, save=False)
     checked = [row.checked_in_at for row in rows if row.checked_in_at]
     on_shift = []
     for row in rows:
@@ -680,7 +680,7 @@ def shifts_cell(request):
     existing = _cell_existing(user, on, request)
     now = timezone.now()
     if existing:
-        settle_check_in(existing, now)
+        settle_check_in(existing, now, save=request.method == "POST")
     if request.method == "GET":
         if not request.headers.get("HX-Request"):
             # The dialog only works inside the rota; a direct visit goes to that week.
@@ -1506,7 +1506,7 @@ def _can_restore_check_in(assignment, now) -> bool:
 def _check_in_context(assignment, now, user):
     if assignment is None:
         return None
-    settle_check_in(assignment, now)
+    settle_check_in(assignment, now, save=False)
     if assignment.checked_in_at:
         return {"assignment": assignment, "state": "checked", "hint": ""}
     if not can_check_in(user):
@@ -1546,12 +1546,18 @@ def _open_check_ins(user, now):
     for row in rows:
         _start_dt, end_dt = effective_interval(row)
         if now >= end_dt:
-            settle_check_in(row, now)
             continue
         context = _check_in_context(row, now, user)
         if context and context["state"] in ("open", "checked", "spent"):
             panels.append(context)
     return panels
+
+
+def _persist_ended_check_ins(user, now):
+    """Write the auto check-out for this user's check-ins whose shift has ended."""
+    rows = ShiftAssignment.objects.filter(user=user, checked_in_at__isnull=False).select_related("shift_type")
+    for row in rows:
+        settle_check_in(row, now)
 
 
 @login_required
@@ -1565,6 +1571,9 @@ def shifts_check_in(request, pk):
         return _forbid()
     if request.user.user_type != "support":
         return _forbid()
+    # Page loads settle ended check-ins in memory only; this POST persists them.
+    _persist_ended_check_ins(request.user, timezone.now())
+    assignment.refresh_from_db(fields=["checked_in_at", "checked_out_at", "updated_at"])
     today = timezone.localdate()
     if assignment.date not in (today - timedelta(days=1), today, today + timedelta(days=1)):
         return _forbid()

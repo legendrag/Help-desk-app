@@ -88,10 +88,8 @@ def mysql_connect_host(raw_host, platform_name=None):
 
     On Windows, ``localhost`` resolves to ``::1`` before ``127.0.0.1``. The
     installer MySQL listens on IPv4, so that first attempt can sit for
-    ``connect_timeout`` (5s) on every new connection. Daphne closes the
-    request thread when the response finishes, so ``CONN_MAX_AGE`` does not
-    carry the connection to the next pane. Linux ``localhost`` is a unix
-    socket and must stay as written.
+    ``connect_timeout`` (5s) on every new connection. Linux ``localhost`` is
+    a unix socket and must stay as written.
     """
     host = (raw_host or "").strip() or "localhost"
     name = os.name if platform_name is None else platform_name
@@ -111,7 +109,11 @@ if _db_engine == "mysql":
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": mysql_connect_host(os.getenv("DB_HOST", "localhost")),
             "PORT": os.getenv("DB_PORT", "3306"),
-            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 600)),
+            # Under Daphne each request's sync code runs on a pooled executor thread
+            # (up to ASGI_THREADS). Connections are per thread, so a non-zero max age
+            # leaves one idle connection parked on every thread and exhausts MySQL's
+            # max_connections under load. Django recommends 0 for ASGI.
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 0)),
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
                 "charset": "utf8mb4",
@@ -304,6 +306,9 @@ WEBPUSH_SETTINGS = {
 TICKET_UNPICKED_SYSTEM_MESSAGE = os.getenv("TICKET_UNPICKED_SYSTEM_MESSAGE", "Someone will help you soon.")
 
 if 'test' in sys.argv:
+    # Run email/push jobs in the calling thread; see notifications/email_queue.py.
+    EMAIL_QUEUE_SYNC = True
+
     class DisableMigrations:
         def __contains__(self, item):
             return True

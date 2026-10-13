@@ -1140,9 +1140,10 @@ class AutoCheckOutTests(TestCase):
             board = self.client.get(reverse("shifts_available"))
         self.assertNotContains(mine, "Checked in at")
         self.assertNotContains(board, "Nada Farid")
+        # Viewing settles the check-in in memory only; page loads never write.
         self.row.refresh_from_db()
-        self.assertIsNone(self.row.checked_in_at)
-        self.assertEqual(self.row.checked_out_at, end)
+        self.assertEqual(self.row.checked_in_at, checked_in)
+        self.assertIsNone(self.row.checked_out_at)
 
     @override_settings(TIME_ZONE="Africa/Cairo")
     def test_override_end_is_the_auto_check_out_time(self):
@@ -1162,8 +1163,8 @@ class AutoCheckOutTests(TestCase):
             mine = self.client.get(reverse("shifts_mine"))
         self.assertNotContains(mine, "Checked in at")
         self.row.refresh_from_db()
-        self.assertIsNone(self.row.checked_in_at)
-        self.assertEqual(self.row.checked_out_at, ended)
+        self.assertIsNotNone(self.row.checked_in_at)
+        self.assertIsNone(self.row.checked_out_at)
 
     @override_settings(TIME_ZONE="Africa/Cairo")
     def test_agent_cannot_check_in_again_after_auto_or_manager_clear(self):
@@ -1281,6 +1282,27 @@ class AutoCheckOutTests(TestCase):
         night.refresh_from_db()
         self.assertIsNone(night.checked_in_at)
         self.assertEqual(night.checked_out_at, timezone.make_aware(datetime(2026, 6, 2, 6, 0)))
+
+
+    @override_settings(TIME_ZONE="Africa/Cairo")
+    def test_viewing_pages_after_shift_end_does_not_write(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self._stamp_checked_in(timezone.make_aware(datetime(2026, 6, 2, 9, 5)))
+        after = timezone.make_aware(datetime(2026, 6, 2, 18, 0))
+        with _both_clocks(after, self.today), CaptureQueriesContext(connection) as queries:
+            mine = self.client.get(reverse("shifts_mine"))
+            panels = self.client.get(reverse("shifts_check_in_panels"), HTTP_HX_REQUEST="true")
+            team = self.client.get(reverse("shifts_team"))
+        self.assertEqual([mine.status_code, panels.status_code, team.status_code], [200, 200, 200])
+        self.assertNotContains(mine, "Checked in at")
+        self.assertNotContains(team, "Checked in at")
+        writes = [
+            q["sql"] for q in queries.captured_queries
+            if q["sql"].lstrip().upper().startswith("UPDATE") and "shifts_shiftassignment" in q["sql"]
+        ]
+        self.assertEqual(writes, [])
 
 
 class CheckInPermissionTests(TestCase):

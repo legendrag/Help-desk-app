@@ -497,13 +497,17 @@ class SecurityXSSAndUploadTests(TestCase):
             b"\x00\x00\x00\x00IEND\xaeB`\x82"
         )
         good = SimpleUploadedFile("ok.png", png, content_type="image/png")
-        msg = TicketMessage.objects.create(
-            ticket=self.ticket,
-            sender=self.user,
-            message="with image",
-            attachment=good,
-        )
-        self.assertTrue(msg.attachment.name.endswith(".png"))
+        import tempfile
+
+        # Keep test uploads out of the real media/ tree.
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            msg = TicketMessage.objects.create(
+                ticket=self.ticket,
+                sender=self.user,
+                message="with image",
+                attachment=good,
+            )
+            self.assertTrue(msg.attachment.name.endswith(".png"))
 
 
 class SecurityTenancyTests(TestCase):
