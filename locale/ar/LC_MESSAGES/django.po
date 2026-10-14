@@ -2739,6 +2739,10 @@ msgstr "تجاهل"
 msgid "Allow notifications"
 msgstr "السماح بالإشعارات"
 
+#: templates/base.html
+msgid "Click Allow in the pop-up from your browser."
+msgstr "اضغط على \"السماح\" في النافذة التي يعرضها المتصفح."
+
 #: templates/base.html:106 templates/base.html:639
 msgid "Click the icon next to the address bar and turn Notifications on."
 msgstr "انقر على الأيقونة بجانب شريط العنوان وشغّل الإشعارات."

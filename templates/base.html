@@ -149,7 +149,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.26" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.27" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -621,6 +621,9 @@
                     </svg>
                 </div>
                 <h2 id="push-allow-title" class="push-allow-title">{% trans "Allow notifications" %}</h2>
+                <p class="push-allow-body" data-push-guide="prompt" hidden>
+                    {% trans "Click Allow in the pop-up from your browser." %}
+                </p>
                 <p class="push-allow-body" data-push-guide="site-settings" hidden>
                     <span class="push-allow-site-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"

@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -2349,6 +2350,24 @@ class WorkHoursReportTests(TestCase):
         )
         self.assertEqual((report.days_present, report.total_hours), (1, 5))
         self.assertEqual([row.hours for row in report.rows], [5, 0, 0, 5])
+
+    def test_present_shift_starts_when_the_agent_checked_in(self):
+        row = make_assignment(self.agent, self.evening, date(2026, 10, 1))
+        self.client.force_login(self.agent)
+        with _both_clocks(aware(2026, 10, 1, 18, 30), date(2026, 10, 1)):
+            self.client.post(reverse("shifts_check_in", args=[row.pk]))
+        self.client.force_login(self.manager)
+        from shifts.services import settle_check_in
+
+        row.refresh_from_db()
+        settle_check_in(row, aware(2026, 10, 2, 0, 0))
+        row.refresh_from_db()
+        # The shift has ended and the check-in is cleared, but the press time stays.
+        self.assertIsNone(row.checked_in_at)
+        self.assertEqual(row.arrived_at, aware(2026, 10, 1, 18, 30))
+        report = self._get(start="2026-10-01", end="2026-10-31").context["report"]
+        self.assertEqual((report.rows[0].starts, report.rows[0].ends), ("6:30 PM", "11:00 PM"))
+        self.assertEqual((report.rows[0].hours, report.total_hours), (Decimal("4.5"), Decimal("4.5")))
 
     def test_people_who_do_not_check_in_show_scheduled_and_count(self):
         plain = make_user("report-plain", "support", self.department)

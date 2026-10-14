@@ -723,7 +723,8 @@ def shifts_cell(request):
         if existing and _can_restore_check_in(existing, now):
             existing.checked_in_at = now
             existing.checked_out_at = None
-            existing.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
+            existing.arrived_at = existing.arrived_at or now
+            existing.save(update_fields=["checked_in_at", "checked_out_at", "arrived_at", "updated_at"])
         response = _grid_response(request, department, retarget=True)
         response["HX-Trigger"] = "closeModal"
         return response
@@ -805,6 +806,7 @@ def shifts_cell(request):
     if type_changed:
         row.checked_in_at = None
         row.checked_out_at = None
+        row.arrived_at = None
     row.save()
     response = _grid_response(request, department, retarget=True)
     response["HX-Trigger"] = "closeModal"
@@ -1633,7 +1635,8 @@ def shifts_check_in(request, pk):
         })
     assignment.checked_in_at = now
     assignment.checked_out_at = None
-    assignment.save(update_fields=["checked_in_at", "checked_out_at", "updated_at"])
+    assignment.arrived_at = assignment.arrived_at or now
+    assignment.save(update_fields=["checked_in_at", "checked_out_at", "arrived_at", "updated_at"])
     if request.headers.get("HX-Request"):
         # Swap the whole list so every panel and the "on shift until" line agree.
         response = _check_ins_partial(request)

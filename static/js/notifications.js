@@ -540,15 +540,22 @@ function requestNotificationPermission() {
     });
 }
 
-async function requestPushPermissionFromUi() {
+// Asks with the browser's own Allow / Block pop-up. Call it straight from a
+// click or key press: browsers ignore the request outside a user gesture.
+// With showGuide the in-app guide follows the answer (Turn on); without it
+// (first interaction, bell) only the browser pop-up is ever shown.
+async function requestPushPermissionFromUi(showGuide = false) {
     if (!window.Notification) return;
     try {
         const perm = await requestNotificationPermission();
         syncPushOffUi();
         if (perm === "granted") {
+            if (showGuide) closePushAllowModal();
             initWebPush();
-        } else if (perm === "denied") {
+        } else if (perm === "denied" && showGuide) {
             openPushAllowModal(pushGuideMode() || "site-settings");
+        } else if (showGuide) {
+            closePushAllowModal();
         }
         return perm;
     } catch (err) {
@@ -665,11 +672,15 @@ function isPushAllowModalOpen() {
 async function handleTurnOnNotifications() {
     const mode = pushGuideMode();
     if (mode) {
+        // Blocked or not installed: the browser will not pop up, so only the guide can help.
         openPushAllowModal(mode);
         return;
     }
     if (!window.Notification) return;
-    await requestPushPermissionFromUi();
+    // Show the guide and the browser pop-up together. requestPermission runs
+    // before the first await, so it still counts as part of this click.
+    openPushAllowModal("prompt");
+    await requestPushPermissionFromUi(true);
 }
 
 function initPushOffBanner() {
@@ -735,13 +746,24 @@ function bindFirstInteractionPushPrompt() {
     if (!window.userIsAuthenticated) return;
     if (!isPushSupported() || Notification.permission !== "default") return;
 
-    const requestOnInteraction = () => {
+    // click and keydown count as user gestures everywhere; a touch pointerdown
+    // does not, and browsers turn that request down without the pop-up.
+    const requestOnInteraction = (event) => {
+        if (event.type === "keydown" && ["Escape", "Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+            return;
+        }
+        // The bell and the Turn on buttons ask for themselves.
+        if (event.target.closest && event.target.closest("#notification-btn, #push-off-turn-on, #notification-push-enable")) {
+            return;
+        }
         document.removeEventListener("click", requestOnInteraction, true);
-        document.removeEventListener("pointerdown", requestOnInteraction, true);
-        requestPushPermissionFromUi();
+        document.removeEventListener("keydown", requestOnInteraction, true);
+        if (Notification.permission === "default") {
+            requestPushPermissionFromUi();
+        }
     };
     document.addEventListener("click", requestOnInteraction, true);
-    document.addEventListener("pointerdown", requestOnInteraction, true);
+    document.addEventListener("keydown", requestOnInteraction, true);
 }
 
 // ── Init UI ──

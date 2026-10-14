@@ -96,6 +96,9 @@ class ShiftAssignment(TimeStampedModel):
     times_set_at = models.DateTimeField(_("Times set at"), null=True, blank=True)
     checked_in_at = models.DateTimeField(_("Checked in at"), null=True, blank=True)
     checked_out_at = models.DateTimeField(_("Checked out at"), null=True, blank=True)
+    # When the agent pressed check in. Unlike checked_in_at it survives the
+    # shift ending, so the work hours report can start the shift from it.
+    arrived_at = models.DateTimeField(_("Arrived at"), null=True, blank=True)
 
     class Meta:
         ordering = ["date", "user_id"]

@@ -136,13 +136,23 @@ def build_report(person, start, end, night_only=False, now=None):
         settle_check_in(assignment, now, save=False)
         start_t, end_t = effective_times(assignment)
         status = _status(assignment, now, uses_check_in)
-        # Nobody worked an absent shift, so it is worth no hours.
-        hours = Decimal(0) if status == ABSENT else _hours(clock_length(start_t, end_t)[0])
+        starts = format_clock(start_t)
+        if status == ABSENT:
+            # Nobody worked an absent shift, so it is worth no hours.
+            hours = Decimal(0)
+        elif status == PRESENT and assignment.arrived_at:
+            # Present shifts run from the moment the agent pressed check in.
+            _start_dt, end_dt = effective_interval(assignment)
+            starts = format_clock(assignment.arrived_at)
+            minutes = int((end_dt - assignment.arrived_at).total_seconds() // 60)
+            hours = _hours(max(minutes, 0))
+        else:
+            hours = _hours(clock_length(start_t, end_t)[0])
         report.rows.append(ReportRow(
             number=number,
             day=assignment.date,
             weekday=date_format(assignment.date, "l"),
-            starts=format_clock(start_t),
+            starts=starts,
             ends=format_clock(end_t),
             hours=hours,
             status=status,
