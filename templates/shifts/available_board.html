@@ -8,7 +8,7 @@
      data-day-start="{{ timeline.day_start|date:'U' }}"
      data-day-end="{{ timeline.day_end|date:'U' }}"
      data-time-zone="{{ timeline.time_zone }}"
-     style="--tl-now: {{ timeline.now|unlocalize }}%"
+     style="--tl-now: {{ timeline.now|unlocalize }}%; --tl-step: {{ timeline.step|unlocalize }}%"{% if not timeline.now_inside %} data-now-outside{% endif %}
      data-total="{% blocktrans count counter=on_shift_total %}{{ counter }} person on shift{% plural %}{{ counter }} people on shift{% endblocktrans %}"
      aria-live="polite">
   <div class="panel shifts-tl">
@@ -22,7 +22,7 @@
       </div>
       <div class="shifts-tl-track" aria-hidden="true">
         {% for tick in timeline.ticks %}
-        <span class="shifts-tl-tick{% if not tick.major %} shifts-tl-tick--minor{% endif %}{% if tick.edge %} shifts-tl-tick--edge{% endif %}" style="inset-inline-start: {{ tick.left|unlocalize }}%"><span class="shifts-tl-tick-full">{{ tick.label }}</span><span class="shifts-tl-tick-short">{{ tick.short }}</span></span>
+        <span class="shifts-tl-tick{% if not tick.major %} shifts-tl-tick--minor{% endif %}{% if tick.edge %} shifts-tl-tick--edge{% endif %}{% if tick.last %} shifts-tl-tick--last{% endif %}" style="inset-inline-start: {{ tick.left|unlocalize }}%"><span class="shifts-tl-tick-full">{{ tick.label }}</span><span class="shifts-tl-tick-short">{{ tick.short }}</span></span>
         {% endfor %}
         <span class="shifts-tl-now-label">{{ timeline.now_label }}</span>
       </div>

@@ -752,9 +752,9 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 #shifts-shell-pane .shifts-tl-track {
   position: relative;
   min-block-size: 3rem;
-  /* A faint line every three hours. */
+  /* A faint line every three hours; --tl-step comes from the view. */
   background-image: linear-gradient(to right, var(--tl-line) 1px, transparent 1px);
-  background-size: 12.5% 100%;
+  background-size: var(--tl-step, 12.5%) 100%;
 }
 
 /* The part of the day already gone, then the red now line. */
@@ -816,6 +816,12 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   font-size: 0.68rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* 6 to 9 AM sits outside the window: no line until the day starts. */
+#shifts-available-now[data-now-outside] .shifts-tl-track::after,
+#shifts-available-now[data-now-outside] .shifts-tl-now-label {
+  display: none;
 }
 
 [dir="rtl"] #shifts-shell-pane .shifts-tl-now-label {
@@ -1487,6 +1493,8 @@ input[type="color"].shifts-color {
 
   #shifts-shell-pane .shifts-tl-tick--minor,
   #shifts-shell-pane .shifts-tl-tick--edge,
+  /* No room for a label at the far end. */
+  #shifts-shell-pane .shifts-tl-tick--last,
   #shifts-shell-pane .shifts-tl-tick-full {
     display: none;
   }

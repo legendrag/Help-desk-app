@@ -1439,7 +1439,8 @@ class AvailableNowTests(TestCase):
         self.assertEqual(self._states(shown, "now-agent"), ["on"])
         self.assertContains(shown, "1 person on shift")
         self.assertNotContains(shown, "Now night")
-        self.assertEqual(self._states(self._board(aware(2026, 6, 2, 6, 0)), "now-agent"), ["done"])
+        # At 6 AM the night is over and the board moves on to the day ahead.
+        self.assertNotContains(self._board(aware(2026, 6, 2, 6, 0)), "now-agent")
 
     def test_day_shift_needs_check_in_and_etag_changes(self):
         department = make_department("Now day")
@@ -1475,23 +1476,46 @@ class AvailableNowTests(TestCase):
         self.assertNotEqual(started["ETag"], during["ETag"])
         self.assertEqual(self._states(self._board(aware(2026, 6, 2, 17, 0)), "early-agent"), ["done"])
 
-    def test_bars_sit_on_the_day_and_overnight_shifts_are_clipped(self):
+    def test_window_runs_from_9_am_to_6_am_and_clips_at_the_edges(self):
         department = make_department("Bars")
-        agent = make_user("bar-agent", "support", department)
+        night_agent = make_user("bar-night", "support", department)
+        early_agent = make_user("bar-early", "support", department)
+        late_agent = make_user("bar-late", "support", department)
         night = make_shift_type(department, name="Bar night")  # 10 PM to 6 AM
-        make_assignment(agent, night, date(2026, 6, 1))
-        make_assignment(agent, night, date(2026, 6, 2))
-        self.client.force_login(agent)
+        early = make_shift_type(department, name="Bar early", start=time(6, 0), end=time(14, 0))
+        late = make_shift_type(department, name="Bar late", start=time(23, 0), end=time(8, 0))
+        make_assignment(night_agent, night, date(2026, 6, 1))  # ends 6 AM, before the window
+        make_assignment(night_agent, night, date(2026, 6, 2))
+        make_assignment(early_agent, early, date(2026, 6, 2))
+        make_assignment(late_agent, late, date(2026, 6, 2))
+        self.client.force_login(night_agent)
         self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "ar"
         content = self._board(aware(2026, 6, 2, 12, 0), HTTP_ACCEPT_LANGUAGE="ar").content.decode()
-        # Positions stay plain numbers in Arabic ("25.0", not a localized "25٫0").
+        # Positions stay plain numbers in Arabic ("23.81", not a localized "23٫81").
         self.assertIn("مكتملة", content)  # rendered in Arabic
-        # Last night ends at 6 AM (25%); tonight starts at 10 PM and runs off the end.
-        self.assertIn("inset-inline-start: 0.0%; inline-size: 25.0%;", content)
-        self.assertIn("inset-inline-start: 91.667%; inline-size: 8.333%;", content)
-        self.assertIn("shifts-tl-bar--from-yesterday", content)
-        self.assertIn("shifts-tl-bar--to-tomorrow", content)
-        self.assertIn("--tl-now: 50.0%", content)  # now line at noon
+        # 21 hours, 9 AM to 6 AM: 6 AM-2 PM is cut at 9 AM (5 h shown); 10 PM-6 AM
+        # fills the end; 11 PM-8 AM runs past 6 AM.
+        self.assertIn("inset-inline-start: 0.0%; inline-size: 23.81%;", content)
+        self.assertIn("inset-inline-start: 61.905%; inline-size: 38.095%;", content)
+        self.assertIn("inset-inline-start: 66.667%; inline-size: 33.333%;", content)
+        self.assertEqual(content.count("shifts-tl-bar--from-yesterday"), 1)
+        self.assertEqual(content.count("shifts-tl-bar--to-tomorrow"), 1)
+        self.assertEqual(self._states(self._board(aware(2026, 6, 2, 12, 0)), "bar-night"), ["later"])
+        self.assertIn("--tl-now: 14.286%", content)  # noon is 3 of 21 hours in
+        self.assertIn("--tl-step: 14.2857%", content)
+        self.assertIn('style="inset-inline-start: 0.0%"><span class="shifts-tl-tick-full">9:00', content)
+        self.assertNotIn("data-now-outside", content)
+
+    def test_six_to_nine_am_shows_the_day_about_to_start(self):
+        department = make_department("Gap")
+        agent = make_user("gap-agent", "support", department)
+        day = make_shift_type(department, name="Gap day", start=time(9, 0), end=time(17, 0))
+        make_assignment(agent, day, date(2026, 6, 2))
+        self.client.force_login(agent)
+        response = self._board(aware(2026, 6, 2, 7, 30))
+        self.assertEqual(self._states(response, "gap-agent"), ["later"])
+        self.assertContains(response, "data-now-outside")
+        self.assertContains(response, "--tl-now: 0.0%")
 
     def test_empty_department_and_no_type_name_for_branch(self):
         empty = make_department("Empty desk")

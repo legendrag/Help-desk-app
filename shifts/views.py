@@ -431,7 +431,41 @@ TIMELINE_STATES = {
     COMPLETED: "done",
     MISSED: "missed",
 }
-TIMELINE_TICK_HOURS = range(0, 24, 3)
+# The help desk day: 9 AM to 6 AM next morning. Nobody works 6 to 9 AM,
+# so the timeline leaves that stretch out.
+TIMELINE_START = time(9, 0)
+TIMELINE_END = time(6, 0)
+TIMELINE_TICK_STEP_HOURS = 3
+
+
+def _timeline_window(now):
+    """The 9 AM to 6 AM window holding ``now``; from 6 to 9 AM, the one about to start."""
+    local = timezone.localtime(now)
+    day = local.date()
+    if local.time() < TIMELINE_END:
+        day -= timedelta(days=1)
+    # Not aware_on(): a DST jump must not make the board fail to load.
+    start = timezone.make_aware(datetime.combine(day, TIMELINE_START))
+    end = timezone.make_aware(datetime.combine(day + timedelta(days=1), TIMELINE_END))
+    return day, start, end
+
+
+def _timeline_ticks(day_start, day_length):
+    """Hour labels every three hours from 9 AM; the closing 6 AM edge gets none."""
+    ticks = []
+    steps = int(day_length // (TIMELINE_TICK_STEP_HOURS * 3600))
+    for index in range(steps):
+        moment = timezone.localtime(day_start + timedelta(hours=index * TIMELINE_TICK_STEP_HOURS))
+        clock = moment.time().replace(second=0, microsecond=0)
+        ticks.append({
+            "label": format_clock(clock),
+            "short": time_format(clock, "g A"),
+            "left": _timeline_percent(moment, day_start, day_length),
+            "major": index % 2 == 0,  # every six hours, for phones
+            "edge": index == 0,
+            "last": index == steps - 1,
+        })
+    return ticks
 
 
 def _timeline_percent(moment, day_start, day_length):
@@ -442,17 +476,14 @@ def _timeline_percent(moment, day_start, day_length):
 def _available_board(request):
     """Today's shifts, one row per person, grouped by department.
 
-    The day runs from local midnight to midnight. Last night's shifts still
-    running and tonight's shifts that end tomorrow are clipped at the edges.
+    The day runs from 9 AM to 6 AM next morning (see _timeline_window).
+    Shifts that start before 9 AM or run past 6 AM are clipped at the edges.
     """
     now = timezone.now()
-    today = timezone.localdate()
-    # Not aware_on(): Egypt's DST starts at midnight, so 00:00 can be missing.
-    day_start = timezone.make_aware(datetime.combine(today, time.min))
-    day_end = timezone.make_aware(datetime.combine(today + timedelta(days=1), time.min))
+    today, day_start, day_end = _timeline_window(now)
     day_length = (day_end - day_start).total_seconds()
     rows = list(
-        ShiftAssignment.objects.filter(date__in=[today - timedelta(days=1), today])
+        ShiftAssignment.objects.filter(date__in=[today - timedelta(days=1), today, today + timedelta(days=1)])
         .select_related("user", "user__role", "shift_type", "shift_type__department")
     )
     uses_check_in = {}
@@ -513,18 +544,12 @@ def _available_board(request):
         "day_start": day_start,
         "day_end": day_end,
         "now": _timeline_percent(now, day_start, day_length),
+        "now_inside": day_start <= now < day_end,
         "now_label": format_clock(now),
         "time_zone": timezone.get_current_timezone_name(),
-        "ticks": [
-            {
-                "label": format_clock(time(hour, 0)),
-                "short": time_format(time(hour, 0), "g A"),
-                "left": round(hour / 24 * 100, 3),
-                "major": hour % 6 == 0,
-                "edge": hour == 0,
-            }
-            for hour in TIMELINE_TICK_HOURS
-        ],
+        "ticks": _timeline_ticks(day_start, day_length),
+        # Grid lines, one per tick step, as a share of the window.
+        "step": round(TIMELINE_TICK_STEP_HOURS * 3600 / day_length * 100, 4),
     }
     return cards, timeline, etag_digest(parts)
 

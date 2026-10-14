@@ -113,8 +113,11 @@
     var start = Number(board.getAttribute("data-day-start")) * 1000;
     var end = Number(board.getAttribute("data-day-end")) * 1000;
     if (!start || !end || end <= start) return;
-    var percent = Math.min(Math.max((Date.now() - start) / (end - start), 0), 1) * 100;
+    var nowMs = Date.now();
+    var percent = Math.min(Math.max((nowMs - start) / (end - start), 0), 1) * 100;
     board.style.setProperty("--tl-now", percent.toFixed(3) + "%");
+    // 6 to 9 AM: the board shows the day about to start, with no line yet.
+    board.toggleAttribute("data-now-outside", nowMs < start || nowMs >= end);
     var label = board.querySelector(".shifts-tl-now-label");
     if (!label || !window.Intl) return;
     try {
