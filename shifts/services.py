@@ -210,20 +210,46 @@ def settle_check_in(assignment, now, save=True) -> bool:
     return True
 
 
-def check_in_marker(assignment, now) -> str:
-    today = timezone.localdate()
-    if assignment.date > today:
-        return ""
-    if assignment.checked_in_at and assignment.date <= today:
-        return "checked"
-    if assignment.checked_out_at:
-        return ""
-    if assignment.date < today:
-        return "missed"
-    start_dt, _end = effective_interval(assignment)
-    if now >= start_dt:
-        return "not"
-    return ""
+# Where a shift stands. The rota, My shifts and the work-hours report all read
+# this, so one shift never shows two different outcomes on two pages.
+UPCOMING = "upcoming"
+CHECKED_IN = "checked_in"
+ON_SHIFT = "on_shift"              # running, for someone who does not check in
+NOT_CHECKED_IN = "not_checked_in"  # running, check-in user, not checked in
+COMPLETED = "completed"
+MISSED = "missed"
+
+
+def shift_outcome(assignment, now, uses_check_in) -> str:
+    """One status per shift. Call after ``settle_check_in`` (``save=False`` is fine).
+
+    An ended shift is Completed when the person was present (auto check-out
+    stamps the shift end; a manager clearing the check-in stamps an earlier
+    time and does not count), or when they are not on check-in at all.
+    """
+    start_dt, end_dt = effective_interval(assignment)
+    if now >= end_dt:
+        present = bool(assignment.checked_in_at) or bool(
+            assignment.checked_out_at and assignment.checked_out_at >= end_dt
+        )
+        if present or not uses_check_in:
+            return COMPLETED
+        return MISSED
+    if assignment.checked_in_at:
+        return CHECKED_IN
+    if now < start_dt:
+        return UPCOMING
+    return NOT_CHECKED_IN if uses_check_in else ON_SHIFT
+
+
+def check_in_marker(assignment, now, uses_check_in) -> str:
+    """Rota cell status: '', 'checked', 'not', 'completed' or 'missed'."""
+    return {
+        CHECKED_IN: "checked",
+        NOT_CHECKED_IN: "not",
+        COMPLETED: "completed",
+        MISSED: "missed",
+    }.get(shift_outcome(assignment, now, uses_check_in), "")
 
 
 def check_in_opens_at(assignment) -> datetime:

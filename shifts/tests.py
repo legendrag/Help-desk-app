@@ -2481,3 +2481,154 @@ class MyShiftsTabTests(TestCase):
         rota = self.client.get(reverse("shifts_rota"))
         self.assertContains(rota, f'href="{reverse("shifts_mine")}"')
         self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200)
+
+
+@override_settings(TIME_ZONE="Africa/Cairo")
+class ShiftStatusConsistencyTests(TestCase):
+    """Every ended shift shows one status, the same on the rota, My shifts and the report."""
+
+    def setUp(self):
+        self.department = make_department("Status")
+        role = make_role("Status agent", can_check_in=True)
+        self.present = make_user("status-present", "support", self.department, role)
+        self.absent = make_user("status-absent", "support", self.department, role)
+        self.no_check_in = make_user("status-plain", "support", self.department, make_role("Plain"))
+        self.day = make_shift_type(self.department, name="Status day", start=time(9, 0), end=time(17, 0))
+        self.night = make_shift_type(self.department, name="Status night")
+        self.today = date(2026, 6, 2)
+        self.present_row = make_assignment(self.present, self.day, self.today)
+        self.present_row.checked_in_at = aware(2026, 6, 2, 9, 5)
+        self.present_row.save(update_fields=["checked_in_at"])
+        self.absent_row = make_assignment(self.absent, self.day, self.today)
+        self.plain_row = make_assignment(self.no_check_in, self.day, self.today)
+
+    def _bundle(self, now, dates):
+        from shifts.views import _rota_bundle
+
+        with _both_clocks(now, self.today):
+            return _rota_bundle(self.department, dates)
+
+    def _markers(self, now):
+        dates = [self.today - timedelta(days=1), self.today]
+        bundle = self._bundle(now, dates)
+        return {row.pk: row.check_marker for row in bundle["assignments"] if row.date in dates}
+
+    def _mine_status(self, user, row, now):
+        from shifts.access import can_check_in
+        from shifts.services import settle_check_in
+        from shifts.views import _decorate_mine
+
+        row = ShiftAssignment.objects.select_related("shift_type", "times_set_by").get(pk=row.pk)
+        settle_check_in(row, now, save=False)
+        return _decorate_mine(row, now, self.today, can_check_in(user)).status
+
+    def _report_status(self, user, now):
+        from shifts.reports import build_report
+
+        with _both_clocks(now, self.today):
+            report = build_report(user, self.today, self.today, now=now)
+        return report.rows[0].status
+
+    def test_ended_shifts_agree_across_pages(self):
+        after = aware(2026, 6, 2, 18, 0)
+        markers = self._markers(after)
+        self.assertEqual(markers[self.present_row.pk], "completed")
+        self.assertEqual(markers[self.absent_row.pk], "missed")
+        self.assertEqual(markers[self.plain_row.pk], "completed")
+
+        self.assertEqual(self._mine_status(self.present, self.present_row, after), "completed")
+        self.assertEqual(self._mine_status(self.absent, self.absent_row, after), "missed")
+        self.assertEqual(self._mine_status(self.no_check_in, self.plain_row, after), "completed")
+
+        self.assertEqual(self._report_status(self.present, after), "present")
+        self.assertEqual(self._report_status(self.absent, after), "absent")
+        self.assertEqual(self._report_status(self.no_check_in, after), "scheduled")
+
+    def test_rota_labels_every_ended_shift(self):
+        manager = make_user(
+            "status-lead", "support", self.department, make_role("Status lead", can_manage_shifts=True),
+        )
+        self.client.force_login(manager)
+        with _both_clocks(aware(2026, 6, 2, 18, 0), self.today):
+            rota = self.client.get(reverse("shifts_rota"), {
+                "department": self.department.pk, "view": "week", "start": "2026-05-30",
+            })
+        content = rota.content.decode()
+        self.assertEqual(content.count('shifts-st shifts-st--muted">Completed<'), 2)
+        self.assertEqual(content.count('shifts-st shifts-st--miss">Missed<'), 1)
+
+    def test_running_night_from_yesterday_is_not_missed(self):
+        night = make_assignment(self.absent, self.night, self.today - timedelta(days=1))
+        self.assertEqual(self._markers(aware(2026, 6, 2, 3, 0))[night.pk], "not")
+        self.assertEqual(self._markers(aware(2026, 6, 2, 7, 0))[night.pk], "missed")
+
+    def test_rota_etag_changes_when_a_shift_ends(self):
+        from shifts.views import _rota_etag
+
+        during = self._bundle(aware(2026, 6, 2, 16, 0), [self.today])
+        after = self._bundle(aware(2026, 6, 2, 18, 0), [self.today])
+        self.assertNotEqual(
+            _rota_etag(self.department, "week", self.today, during["assignments"]),
+            _rota_etag(self.department, "week", self.today, after["assignments"]),
+        )
+
+
+@override_settings(TIME_ZONE="Africa/Cairo")
+class SuperuserCheckInTests(TestCase):
+    def test_superuser_with_a_shift_row_cannot_check_in(self):
+        from shifts.access import can_check_in
+
+        department = make_department("Admin desk")
+        admin = make_user(
+            "rota-admin", "support", department, make_role("Admin role", can_check_in=True), superuser=True,
+        )
+        day = make_shift_type(department, name="Admin day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(admin, day, date(2026, 6, 2))  # as if inserted directly
+        self.assertFalse(can_check_in(admin))
+        self.client.force_login(admin)
+        with _both_clocks(aware(2026, 6, 2, 10, 0), date(2026, 6, 2)):
+            posted = self.client.post(reverse("shifts_check_in", args=[row.pk]))
+            rota = self.client.get(reverse("shifts_rota"), {"department": department.pk})
+        self.assertEqual(posted.status_code, 403)
+        row.refresh_from_db()
+        self.assertIsNone(row.checked_in_at)
+        self.assertNotContains(rota, f'id="shifts-check-in-{row.pk}"')
+
+
+@override_settings(TIME_ZONE="Africa/Cairo")
+class StaleMyShiftsPageTests(TestCase):
+    """A My shifts tab left open across logout/login reloads instead of 403-ing."""
+
+    def setUp(self):
+        department = make_department("Stale")
+        role = make_role("Stale agent", can_check_in=True)
+        self.first = make_user("stale-first", "support", department, role)
+        self.second = make_user("stale-second", "support", department, role)
+        day = make_shift_type(department, name="Stale day", start=time(9, 0), end=time(17, 0))
+        self.row = make_assignment(self.first, day, date(2026, 6, 2))
+        self.client.force_login(self.second)
+
+    def test_row_refresh_for_previous_user_reloads_page(self):
+        url = reverse("shifts_mine_row", args=[self.row.pk])
+        with _both_clocks(aware(2026, 6, 2, 10, 0), date(2026, 6, 2)):
+            background = self.client.get(url, HTTP_HX_REQUEST="true")
+            direct = self.client.get(url)
+        self.assertEqual(background.status_code, 204)
+        self.assertEqual(background["HX-Refresh"], "true")
+        self.assertEqual(direct.status_code, 403)
+
+    def test_panel_poll_for_previous_user_reloads_page(self):
+        url = reverse("shifts_check_in_panels")
+        with _both_clocks(aware(2026, 6, 2, 10, 0), date(2026, 6, 2)):
+            stale = self.client.get(url, {"u": self.first.pk}, HTTP_HX_REQUEST="true")
+            current = self.client.get(url, {"u": self.second.pk}, HTTP_HX_REQUEST="true")
+        self.assertEqual(stale.status_code, 204)
+        self.assertEqual(stale["HX-Refresh"], "true")
+        self.assertEqual(current.status_code, 200)
+        self.assertFalse(current.has_header("HX-Refresh"))
+
+    def test_mine_page_polls_with_its_user(self):
+        self.client.force_login(self.first)
+        with _both_clocks(aware(2026, 6, 2, 8, 45), date(2026, 6, 2)):
+            page = self.client.get(reverse("shifts_mine"))
+        self.assertContains(page, f'?u={self.first.pk}"')

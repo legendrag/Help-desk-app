@@ -21,6 +21,11 @@ from shifts.forms import ShiftTypeForm
 from shifts.models import DepartmentShiftSettings, ShiftAssignment, ShiftType
 from shifts.reports import build_report, report_filename, report_workbook
 from shifts.services import (
+    CHECKED_IN,
+    COMPLETED,
+    MISSED,
+    NOT_CHECKED_IN,
+    ON_SHIFT,
     REPEAT_WEEKS_MAX,
     WORKER_HOURS_LOOKBACK_DAYS,
     WORKER_HOURS_MAX_MINUTES,
@@ -43,6 +48,7 @@ from shifts.services import (
     overrides_set_by_worker,
     plan_copy,
     saturday_of,
+    shift_outcome,
     suggest_nights,
     week_dates,
 )
@@ -52,6 +58,21 @@ User = get_user_model()
 
 def _forbid():
     return HttpResponseForbidden(_("You cannot open this page."))
+
+
+def _stale_page():
+    """The open page was rendered for someone else (logout, then login as another
+    user in another tab). Reload it as the current user instead of 403-ing
+    every background refresh."""
+    response = HttpResponse(status=204)
+    response["HX-Refresh"] = "true"
+    return response
+
+
+def _rendered_for_other_user(request):
+    """Background refreshes carry ``u``, the user the page was rendered for."""
+    rendered_for = request.GET.get("u")
+    return bool(rendered_for) and rendered_for != str(request.user.pk)
 
 
 def _shell(request, template, context):
@@ -114,6 +135,7 @@ def _rota_bundle(department, dates):
             date__lte=last,
         ).select_related(
             "user",
+            "user__role",
             "shift_type",
             "shift_type__department",
             "times_set_by",
@@ -126,7 +148,7 @@ def _rota_bundle(department, dates):
         settle_check_in(row, now, save=False)
     for row in visible:
         row.set_by_worker = overrides_set_by_worker(row)
-        row.check_marker = check_in_marker(row, now)
+        row.check_marker = check_in_marker(row, now, can_check_in(row.user))
     assigned_ids = {row.user_id for row in visible}
     active = User.objects.filter(
         department=department,
@@ -167,6 +189,9 @@ def _rota_etag(department, view, start, assignments):
         len(assignments),
         max_assignment.isoformat() if max_assignment else "",
         max_type.isoformat() if max_type else "",
+        # Page loads settle check-ins in memory only, so a shift ending changes
+        # its status without touching updated_at.
+        tuple(sorted((row.pk, getattr(row, "check_marker", "")) for row in assignments)),
     ])
 
 
@@ -321,17 +346,15 @@ def _length_text(minutes):
 
 def _mine_status(row, now, may_check_in):
     """One word for where this shift stands, as the worker sees it."""
-    if row.checked_in_at:
+    outcome = shift_outcome(row, now, may_check_in)
+    if outcome in (CHECKED_IN, ON_SHIFT):
         return "on_shift"
-    if row.checked_out_at:
-        return "completed"
-    if now >= row.ends_at:
-        return "missed" if may_check_in else "completed"
-    if may_check_in and now >= check_in_opens_at(row):
+    if outcome in (COMPLETED, MISSED):
+        return outcome
+    # Not checked in yet: check-in is open unless a manager cleared it.
+    if may_check_in and not row.checked_out_at and now >= check_in_opens_at(row):
         return "open"
-    if now >= row.starts_at:
-        return "on_shift"
-    return "upcoming"
+    return "not_checked_in" if outcome == NOT_CHECKED_IN else "upcoming"
 
 
 def _decorate_mine(row, now, today, may_check_in):
@@ -364,6 +387,8 @@ def _decorate_mine(row, now, today, may_check_in):
 @login_required
 @require_GET
 def shifts_check_in_panels(request):
+    if _rendered_for_other_user(request):
+        return _stale_page()
     if not has_own_shifts(request.user):
         return _forbid()
     return _check_ins_partial(request)
@@ -1460,7 +1485,8 @@ def shifts_mine_row(request, pk):
         pk=pk,
     )
     if assignment.user_id != request.user.id:
-        return _forbid()
+        # A row only refreshes in the background, from a page left open.
+        return _stale_page() if request.headers.get("HX-Request") else _forbid()
     now = timezone.now()
     settle_check_in(assignment, now, save=False)
     _decorate_mine(assignment, now, timezone.localdate(), can_check_in(request.user))
@@ -1532,7 +1558,7 @@ def _check_in_sig(check_ins):
 
 
 def _open_check_ins(user, now):
-    if getattr(user, "user_type", None) != "support":
+    if not has_own_shifts(user):
         return []
     today = timezone.localdate()
     rows = list(

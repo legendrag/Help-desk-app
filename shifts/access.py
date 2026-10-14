@@ -8,10 +8,12 @@ def is_shift_manager(user) -> bool:
 
 
 def can_check_in(user) -> bool:
-    """Day-shift check-in. Managers do not inherit this from can_manage_shifts."""
-    if not getattr(user, "is_authenticated", False):
-        return False
-    if getattr(user, "user_type", "") != "support":
+    """Day-shift check-in. Managers do not inherit this from can_manage_shifts.
+
+    Only rostered people check in (see ``has_own_shifts``): a superuser never
+    does, even with a shift row added for them directly in the database.
+    """
+    if not has_own_shifts(user):
         return False
     role = getattr(user, "role", None)
     return bool(role and role.can_check_in)

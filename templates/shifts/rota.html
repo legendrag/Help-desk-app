@@ -6,7 +6,7 @@
   <p class="shifts-range"><bdi>{{ dates.0|shifts_day }}</bdi> – <bdi>{{ dates|last|shifts_day_year }}</bdi></p>
 </header>
 {% if check_ins or refresh_in %}
-<div id="shifts-check-in" class="shifts-checkin-list" data-sig="{{ check_in_sig }}"{% if not check_ins %} hidden{% endif %}{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document, shiftsChanged from:body" hx-swap="outerHTML"{% endif %}>
+<div id="shifts-check-in" class="shifts-checkin-list" data-sig="{{ check_in_sig }}"{% if not check_ins %} hidden{% endif %}{% if refresh_in %} hx-get="{% url 'shifts_check_in_panels' %}?u={{ request.user.pk }}" hx-trigger="load delay:{{ refresh_in }}s, every 60s [!document.hidden], visibilitychange[!document.hidden] from:document, shiftsChanged from:body" hx-swap="outerHTML"{% endif %}>
   {% for check_in in check_ins %}
   {% include "shifts/check_in_panel.html" with assignment=check_in.assignment state=check_in.state hint=check_in.hint %}
   {% endfor %}

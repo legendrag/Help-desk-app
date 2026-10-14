@@ -12,7 +12,16 @@ from django.utils.translation import get_language, gettext as _, pgettext
 from shifts.access import can_check_in, display_name
 from shifts.clock import format_clock
 from shifts.models import ShiftAssignment
-from shifts.services import clock_length, effective_interval, effective_times, settle_check_in
+from shifts.services import (
+    CHECKED_IN,
+    COMPLETED,
+    MISSED,
+    clock_length,
+    effective_interval,
+    effective_times,
+    settle_check_in,
+    shift_outcome,
+)
 
 REPORT_MAX_DAYS = 366
 
@@ -87,16 +96,19 @@ def _hours(minutes):
 
 
 def _status(assignment, now, uses_check_in):
-    start_dt, end_dt = effective_interval(assignment)
-    if assignment.checked_in_at:
+    # Same outcome the rota and My shifts show (shifts.services.shift_outcome).
+    outcome = shift_outcome(assignment, now, uses_check_in)
+    if outcome == CHECKED_IN:
         return PRESENT
-    # Auto check-out stamps the shift's end. A manager clearing a check-in stamps
-    # the time they cleared it, which is earlier, and does not count as present.
-    if assignment.checked_out_at and assignment.checked_out_at >= end_dt:
-        return PRESENT
-    if now < end_dt:
-        return UPCOMING
-    return ABSENT if uses_check_in else SCHEDULED
+    if outcome == COMPLETED:
+        _start_dt, end_dt = effective_interval(assignment)
+        attended = bool(assignment.checked_in_at) or bool(
+            assignment.checked_out_at and assignment.checked_out_at >= end_dt
+        )
+        return PRESENT if attended else SCHEDULED
+    if outcome == MISSED:
+        return ABSENT
+    return UPCOMING
 
 
 def clamp_range(start, end):

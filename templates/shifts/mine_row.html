@@ -26,6 +26,7 @@
       {% elif assignment.status == "open" %}<span class="badge badge-waiting_for_branch">{% trans "Check-in open" %}</span>
       {% elif assignment.status == "completed" %}<span class="badge badge-closed">{% trans "Completed" %}</span>
       {% elif assignment.status == "missed" %}<span class="badge badge-expired">{% trans "Missed" %}</span>
+      {% elif assignment.status == "not_checked_in" %}<span class="badge badge-waiting_for_branch">{% trans "Not checked in" %}</span>
       {% else %}<span class="badge badge-in_progress">{% trans "Upcoming" %}</span>{% endif %}
       {% if assignment.checked_in_at %}<span class="shifts-sub">{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</span>{% endif %}
     </div>
