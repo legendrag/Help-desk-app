@@ -2348,6 +2348,7 @@ class WorkHoursReportTests(TestCase):
             [row.status for row in report.rows], ["present", "absent", "absent", "upcoming"],
         )
         self.assertEqual((report.days_present, report.total_hours), (1, 5))
+        self.assertEqual([row.hours for row in report.rows], [5, 0, 0, 5])
 
     def test_people_who_do_not_check_in_show_scheduled_and_count(self):
         plain = make_user("report-plain", "support", self.department)
@@ -2402,7 +2403,7 @@ class WorkHoursReportTests(TestCase):
         self.assertEqual((sheet["E7"].value, sheet["F7"].value, sheet["G7"].value), ("12:00 PM", "12:00 AM", 12))
         self.assertEqual(sheet["D7"].value, "Present")
         self.assertEqual((sheet["F17"].value, sheet["G17"].value), (10, "Days present"))
-        self.assertEqual((sheet["F18"].value, sheet["G18"].value), (64, "Work hours"))
+        self.assertEqual((sheet["F18"].value, sheet["G18"].value), (64, "Sum of work hours"))
         self.assertFalse(sheet.sheet_view.rightToLeft)
 
     def test_arabic_export_is_right_to_left(self):

@@ -135,14 +135,17 @@ def build_report(person, start, end, night_only=False, now=None):
         # A report is a read: settle an ended check-in in memory only.
         settle_check_in(assignment, now, save=False)
         start_t, end_t = effective_times(assignment)
+        status = _status(assignment, now, uses_check_in)
+        # Nobody worked an absent shift, so it is worth no hours.
+        hours = Decimal(0) if status == ABSENT else _hours(clock_length(start_t, end_t)[0])
         report.rows.append(ReportRow(
             number=number,
             day=assignment.date,
             weekday=date_format(assignment.date, "l"),
             starts=format_clock(start_t),
             ends=format_clock(end_t),
-            hours=_hours(clock_length(start_t, end_t)[0]),
-            status=_status(assignment, now, uses_check_in),
+            hours=hours,
+            status=status,
         ))
     return report
 
@@ -221,7 +224,7 @@ def report_workbook(report):
     totals_row = row_index + 2
     for offset, (label, value) in enumerate((
         (_("Days present"), report.days_present),
-        (_("Work hours"), float(report.total_hours)),
+        (_("Sum of work hours"), float(report.total_hours)),
     )):
         value_cell = sheet.cell(row=totals_row + offset, column=columns - 1, value=value)
         label_cell = sheet.cell(row=totals_row + offset, column=columns, value=label)

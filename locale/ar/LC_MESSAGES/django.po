@@ -3475,6 +3475,10 @@ msgstr "بيان بعدد ساعات العمل"
 msgid "Work hours"
 msgstr "ساعات العمل"
 
+#: shifts/reports.py templates/shifts/calc_work.html
+msgid "Sum of work hours"
+msgstr "مجموع ساعات العمل"
+
 #: shifts/reports.py:181 templates/shifts/calc_work.html:10
 #, python-format
 msgid "From %(start)s to %(end)s"
