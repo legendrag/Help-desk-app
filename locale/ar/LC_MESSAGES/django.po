@@ -3594,6 +3594,37 @@ msgstr ""
 msgid "How long a shift runs, and how much of it falls after midnight."
 msgstr "مدة المناوبة، وكم منها بعد منتصف الليل."
 
+#: templates/shifts/available.html
+msgid "Search people or departments"
+msgstr "ابحث عن شخص أو قسم"
+
+#: templates/shifts/available_board.html
+#, python-format
+msgid "%(counter)s person on shift"
+msgid_plural "%(counter)s people on shift"
+msgstr[0] "لا أحد في مناوبة"
+msgstr[1] "شخص واحد في مناوبة"
+msgstr[2] "شخصان في مناوبة"
+msgstr[3] "%(counter)s أشخاص في مناوبة"
+msgstr[4] "%(counter)s شخصًا في مناوبة"
+msgstr[5] "%(counter)s شخص في مناوبة"
+
+#: templates/shifts/available_board.html
+msgid "No one matches your search."
+msgstr "لا أحد يطابق بحثك."
+
+#: templates/shifts/available_board.html
+msgid "Nobody is scheduled today."
+msgstr "لا أحد مجدول اليوم."
+
+#: templates/shifts/available_board.html
+msgid "Nobody scheduled today:"
+msgstr "لا أحد مجدول اليوم:"
+
+#: templates/shifts/available_board.html
+msgid "Legend"
+msgstr "دليل الألوان"
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

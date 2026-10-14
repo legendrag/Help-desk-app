@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
@@ -835,8 +836,7 @@ class WorkerHoursTests(TestCase):
         self.assertContains(mine, '<bdi dir="auto">9:05 ص</bdi>')
         self.assertContains(mine, "تم تسجيل الحضور في")
         self.assertNotContains(mine, 'dir="ltr">9:05')
-        self.assertContains(board, '<bdi dir="auto">5:00 م</bdi>')
-        self.assertContains(board, "حتى")
+        self.assertContains(board, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
         self.assertNotContains(board, 'dir="ltr">5:00 م')
 
     def test_owner_can_set_same_evening_hours(self):
@@ -1140,7 +1140,10 @@ class AutoCheckOutTests(TestCase):
             mine = self.client.get(reverse("shifts_mine"))
             board = self.client.get(reverse("shifts_available"))
         self.assertNotContains(mine, "Checked in at")
-        self.assertNotContains(board, "Nada Farid")
+        # The ended shift stays on today's timeline as finished, not on shift.
+        self.assertContains(board, "0 people on shift")
+        self.assertContains(board, "shifts-tl-bar--done")
+        self.assertNotContains(board, "shifts-tl-bar--on ")
         # Viewing settles the check-in in memory only; page loads never write.
         self.row.refresh_from_db()
         self.assertEqual(self.row.checked_in_at, checked_in)
@@ -1408,81 +1411,87 @@ class TeamRotaTests(TestCase):
 
 
 class AvailableNowTests(TestCase):
+    """Available now draws today's shifts as a timeline, one bar per shift."""
+
+    def _states(self, response, name):
+        """Bar states on the row for ``name``: on, late, later, done or missed."""
+        import re
+
+        content = response.content.decode()
+        row = re.search(r'data-filter-item="%s">([\s\S]*?)</div>\s*</div>' % re.escape(name), content)
+        self.assertIsNotNone(row, f"no timeline row for {name}")
+        return re.findall(r"shifts-tl-bar--(on|late|later|done|missed)\b", row.group(1))
+
+    def _board(self, moment, **headers):
+        with patch("django.utils.timezone.now", return_value=moment),              patch("django.utils.timezone.localdate", return_value=timezone.localtime(moment).date()):
+            return self.client.get(reverse("shifts_available_board"), **headers)
+
     def test_night_shift_needs_check_in_until_end(self):
         department = make_department("Now")
-        agent = make_user("now-agent", "support", department)
+        agent = make_user("now-agent", "support", department, make_role("Now agent", can_check_in=True))
         night = make_shift_type(department, name="Now night")
         row = make_assignment(agent, night, date(2026, 6, 1))
         self.client.force_login(make_user("now-branch", "branch"))
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            hidden = self.client.get(reverse("shifts_available_board"))
-        self.assertNotContains(hidden, "now-agent")
+        self.assertEqual(self._states(self._board(aware(2026, 6, 2, 5, 0)), "now-agent"), ["late"])
         row.checked_in_at = aware(2026, 6, 1, 22, 10)
         row.save(update_fields=["checked_in_at"])
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            shown = self.client.get(reverse("shifts_available_board"))
-        self.assertContains(shown, "now-agent")
+        shown = self._board(aware(2026, 6, 2, 5, 0))
+        self.assertEqual(self._states(shown, "now-agent"), ["on"])
+        self.assertContains(shown, "1 person on shift")
         self.assertNotContains(shown, "Now night")
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 6, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            ended = self.client.get(reverse("shifts_available_board"))
-        self.assertNotContains(ended, "now-agent")
+        self.assertEqual(self._states(self._board(aware(2026, 6, 2, 6, 0)), "now-agent"), ["done"])
 
     def test_day_shift_needs_check_in_and_etag_changes(self):
         department = make_department("Now day")
-        agent = make_user("day-agent", "support", department)
+        agent = make_user("day-agent", "support", department, make_role("Day agent", can_check_in=True))
         day = make_shift_type(department, name="Now day", start=time(9, 0), end=time(17, 0))
         row = make_assignment(agent, day, date(2026, 6, 2))
         self.client.force_login(agent)
         noon = aware(2026, 6, 2, 12, 0)
-        with patch("django.utils.timezone.now", return_value=noon), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            before = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
-        self.assertNotContains(before, "day-agent")
-        etag_before = before["ETag"]
+        before = self._board(noon, HTTP_HX_REQUEST="true")
+        self.assertEqual(self._states(before, "day-agent"), ["late"])
+        self.assertContains(before, "0 people on shift")
         row.checked_in_at = noon
         row.save()
-        with patch("django.utils.timezone.now", return_value=noon), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            after = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
-        self.assertContains(after, "day-agent")
-        self.assertNotEqual(after["ETag"], etag_before)
-        with patch("django.utils.timezone.now", return_value=noon), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            cached = self.client.get(
-                reverse("shifts_available_board"),
-                HTTP_HX_REQUEST="true",
-                HTTP_IF_NONE_MATCH=after["ETag"],
-            )
+        after = self._board(noon, HTTP_HX_REQUEST="true")
+        self.assertEqual(self._states(after, "day-agent"), ["on"])
+        self.assertNotEqual(after["ETag"], before["ETag"])
+        cached = self._board(noon, HTTP_HX_REQUEST="true", HTTP_IF_NONE_MATCH=after["ETag"])
         self.assertEqual(cached.status_code, 304)
 
-    def test_early_check_in_stays_hidden_until_start_and_changes_etag(self):
+    def test_early_check_in_stays_upcoming_until_start(self):
         department = make_department("Early")
-        agent = make_user("early-agent", "support", department)
+        agent = make_user("early-agent", "support", department, make_role("Early agent", can_check_in=True))
         day = make_shift_type(department, name="Early day", start=time(9, 0), end=time(17, 0))
         row = make_assignment(agent, day, date(2026, 6, 2))
         self.client.force_login(agent)
-        early = aware(2026, 6, 2, 8, 40)
-        with patch("django.utils.timezone.now", return_value=early), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            before = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
-        row.checked_in_at = early
+        row.checked_in_at = aware(2026, 6, 2, 8, 40)
         row.save()
-        with patch("django.utils.timezone.now", return_value=early), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            during = self.client.get(reverse("shifts_available_board"), HTTP_HX_REQUEST="true")
-        self.assertNotContains(during, "early-agent")
-        self.assertNotEqual(during["ETag"], before["ETag"])
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 9, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            started = self.client.get(reverse("shifts_available_board"))
-        self.assertContains(started, "early-agent")
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 17, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            ended = self.client.get(reverse("shifts_available_board"))
-        self.assertNotContains(ended, "early-agent")
+        during = self._board(aware(2026, 6, 2, 8, 40), HTTP_HX_REQUEST="true")
+        self.assertEqual(self._states(during, "early-agent"), ["later"])
+        self.assertContains(during, "0 people on shift")
+        started = self._board(aware(2026, 6, 2, 9, 0), HTTP_HX_REQUEST="true")
+        self.assertEqual(self._states(started, "early-agent"), ["on"])
+        self.assertNotEqual(started["ETag"], during["ETag"])
+        self.assertEqual(self._states(self._board(aware(2026, 6, 2, 17, 0)), "early-agent"), ["done"])
+
+    def test_bars_sit_on_the_day_and_overnight_shifts_are_clipped(self):
+        department = make_department("Bars")
+        agent = make_user("bar-agent", "support", department)
+        night = make_shift_type(department, name="Bar night")  # 10 PM to 6 AM
+        make_assignment(agent, night, date(2026, 6, 1))
+        make_assignment(agent, night, date(2026, 6, 2))
+        self.client.force_login(agent)
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "ar"
+        content = self._board(aware(2026, 6, 2, 12, 0), HTTP_ACCEPT_LANGUAGE="ar").content.decode()
+        # Positions stay plain numbers in Arabic ("25.0", not a localized "25٫0").
+        self.assertIn("مكتملة", content)  # rendered in Arabic
+        # Last night ends at 6 AM (25%); tonight starts at 10 PM and runs off the end.
+        self.assertIn("inset-inline-start: 0.0%; inline-size: 25.0%;", content)
+        self.assertIn("inset-inline-start: 91.667%; inline-size: 8.333%;", content)
+        self.assertIn("shifts-tl-bar--from-yesterday", content)
+        self.assertIn("shifts-tl-bar--to-tomorrow", content)
+        self.assertIn("--tl-now: 50.0%", content)  # now line at noon
 
     def test_empty_department_and_no_type_name_for_branch(self):
         empty = make_department("Empty desk")
@@ -1493,13 +1502,20 @@ class AvailableNowTests(TestCase):
         row.checked_in_at = aware(2026, 6, 1, 22, 10)
         row.save(update_fields=["checked_in_at"])
         self.client.force_login(make_user("board-branch", "branch"))
-        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
-             patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)):
-            response = self.client.get(reverse("shifts_available_board"))
-        self.assertContains(response, "Nobody on shift now")
-        self.assertContains(response, "staffed-agent")
+        response = self._board(aware(2026, 6, 2, 5, 0))
+        self.assertContains(response, "Nobody scheduled today:")
+        self.assertEqual(self._states(response, "staffed-agent"), ["on"])
         self.assertNotContains(response, "Secret type")
+        self.assertNotContains(response, "--shift-colour")
         self.assertContains(response, "6:00 AM")
+        self.assertContains(response, "1 person on shift")
+        # Support staff see the shift type; staffed departments come before empty ones.
+        self.client.force_login(make_user("board-support", "support", empty))
+        support_view = self._board(aware(2026, 6, 2, 5, 0))
+        self.assertContains(support_view, "Secret type")
+        self.assertNotEqual(support_view["ETag"], response["ETag"])
+        content = support_view.content.decode()
+        self.assertLess(content.index("Staffed"), content.index("Empty desk"))
 
     def test_history_restore_is_not_304(self):
         department = make_department("Hist")

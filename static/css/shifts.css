@@ -682,6 +682,311 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   color: var(--text-muted);
 }
 
+/* Available now: search box from the tickets page, cards like My shifts. */
+
+#shifts-shell-pane .shifts-avail-search {
+  flex: 0 1 20rem;
+}
+
+#shifts-shell-pane .shifts-avail-search input.search-input {
+  padding: 0.65rem 1rem 0.65rem 2.6rem;
+}
+
+#shifts-shell-pane .shifts-avail-nomatch {
+  text-align: center;
+}
+
+/* Today timeline: a name column, then the day from midnight to midnight.
+   Borrows the rota grid's look: heavy header rule, name column divider,
+   tinted group rows and the primary-tinted hover. --tl-now is set on the
+   board and moved by shifts.js. */
+
+#shifts-shell-pane .shifts-tl {
+  --tl-who: 13rem;
+  --tl-line: color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0;
+  overflow: hidden;
+}
+
+#shifts-shell-pane .shifts-tl-row {
+  display: grid;
+  grid-template-columns: var(--tl-who) minmax(0, 1fr);
+  transition: background-color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-tl-person + .shifts-tl-person {
+  border-block-start: 1px solid var(--tl-line);
+}
+
+#shifts-shell-pane .shifts-tl-person:hover {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-who {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  min-inline-size: 0;
+  padding: 0.55rem 1rem;
+  border-inline-end: 2px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-who .shifts-person-name {
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-tl-who .shifts-sub {
+  margin: 0;
+}
+
+/* People whose shifts are all behind them fade back. */
+#shifts-shell-pane .shifts-tl-person--done .shifts-person-name,
+#shifts-shell-pane .shifts-tl-person--missed .shifts-person-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+#shifts-shell-pane .shifts-tl-track {
+  position: relative;
+  min-block-size: 3rem;
+  /* A faint line every three hours. */
+  background-image: linear-gradient(to right, var(--tl-line) 1px, transparent 1px);
+  background-size: 12.5% 100%;
+}
+
+/* The part of the day already gone, then the red now line. */
+#shifts-shell-pane .shifts-tl-track::before,
+#shifts-shell-pane .shifts-tl-track::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  pointer-events: none;
+}
+
+#shifts-shell-pane .shifts-tl-track::before {
+  inset-inline-start: 0;
+  inline-size: var(--tl-now, 0%);
+  background: color-mix(in srgb, var(--text-muted) 6%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-track::after {
+  inset-inline-start: var(--tl-now, 0%);
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--danger);
+  z-index: 2;
+}
+
+#shifts-shell-pane .shifts-tl-axis {
+  background: var(--panel-bg);
+  border-block-end: 2px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-axis .shifts-tl-track {
+  min-block-size: 3rem;
+}
+
+#shifts-shell-pane .shifts-tl-tick {
+  position: absolute;
+  inset-block-end: 0.45rem;
+  padding-inline-start: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-tl-tick-short {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-tl-now-label {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-start: var(--tl-now, 0%);
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[dir="rtl"] #shifts-shell-pane .shifts-tl-now-label {
+  transform: translateX(50%);
+}
+
+/* The label sits on the line, so the tick under it steps aside. */
+#shifts-shell-pane .shifts-tl-axis .shifts-tl-track::after {
+  inset-block-start: 1.2rem;
+}
+
+#shifts-shell-pane .shifts-tl-dept-row {
+  background: var(--bg);
+  border-block-start: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-dept:first-of-type .shifts-tl-dept-row {
+  border-block-start: 0;
+}
+
+#shifts-shell-pane .shifts-tl-row[hidden] {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-tl-corner,
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 0.5rem;
+}
+
+#shifts-shell-pane .shifts-tl-corner h2,
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who h2 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-track {
+  min-block-size: 2.1rem;
+}
+
+#shifts-shell-pane .shifts-tl-corner .pill,
+#shifts-shell-pane .shifts-tl-dept .pill {
+  background: color-mix(in srgb, var(--success) 16%, var(--panel-bg));
+  color: color-mix(in srgb, var(--success) 70%, var(--text-main));
+  min-width: 0;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  font-size: 0.72rem;
+}
+
+#shifts-shell-pane .shifts-tl-bar,
+#shifts-shell-pane .shifts-tl-key {
+  --tl-colour: var(--shift-colour, var(--primary));
+  border-radius: 7px;
+}
+
+#shifts-shell-pane .shifts-tl-bar {
+  position: absolute;
+  inset-block-start: 50%;
+  block-size: 1.65rem;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.55rem;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-tl-bar:hover {
+  transform: translateY(-50%) scaleY(1.08);
+  z-index: 3;
+}
+
+#shifts-shell-pane .shifts-tl-bar--on {
+  background: var(--tl-colour);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tl-colour) 35%, transparent),
+              0 4px 10px -4px color-mix(in srgb, var(--tl-colour) 55%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--late {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tl-colour) 35%, var(--panel-bg)) 0 5px,
+    var(--panel-bg) 5px 10px
+  );
+  box-shadow: inset 0 0 0 1.5px var(--tl-colour);
+}
+
+#shifts-shell-pane .shifts-tl-bar--later {
+  background: color-mix(in srgb, var(--tl-colour) 14%, var(--panel-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tl-colour) 55%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--done,
+#shifts-shell-pane .shifts-tl-bar--missed {
+  background: color-mix(in srgb, var(--text-muted) 20%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-tl-bar--missed {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger) 14%, var(--panel-bg)) 0 5px,
+    color-mix(in srgb, var(--text-muted) 12%, var(--panel-bg)) 5px 10px
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 50%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--from-yesterday {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+#shifts-shell-pane .shifts-tl-bar--to-tomorrow {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+#shifts-shell-pane .shifts-tl-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+#shifts-shell-pane .shifts-tl-none,
+#shifts-shell-pane .shifts-tl .shifts-avail-nomatch {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+#shifts-shell-pane .shifts-tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+#shifts-shell-pane .shifts-tl-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#shifts-shell-pane .shifts-tl-key {
+  display: inline-block;
+  inline-size: 1.5rem;
+  block-size: 0.8rem;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+#shifts-shell-pane .shifts-tl-unscheduled {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+}
+
 #shifts-shell-pane .shifts-swatch {
   display: inline-block;
   inline-size: 1.25rem;
@@ -720,16 +1025,19 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
 
 /* ── My shifts ─────────────────────────────────────────────────────────── */
 
-#shifts-shell-pane .shifts-mine-section .panel-header {
+#shifts-shell-pane .shifts-mine-section .panel-header,
+#shifts-shell-pane .shifts-card .panel-header {
   margin-bottom: 0.75rem;
 }
 
-#shifts-shell-pane .shifts-mine-section .panel-header h2 {
+#shifts-shell-pane .shifts-mine-section .panel-header h2,
+#shifts-shell-pane .shifts-card .panel-header h2 {
   margin: 0;
   font-size: 1.05rem;
 }
 
-#shifts-shell-pane .shifts-mine-section .pill {
+#shifts-shell-pane .shifts-mine-section .pill,
+#shifts-shell-pane .shifts-card .pill {
   background: color-mix(in srgb, var(--text-muted) 16%, var(--panel-bg));
   color: var(--text-muted);
   min-width: 0;
@@ -1151,7 +1459,46 @@ input[type="color"].shifts-color {
   }
 
   #shifts-shell-pane .shifts-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #shifts-shell-pane .shifts-avail-search {
+    flex-basis: 100%;
+  }
+
+  #shifts-shell-pane .shifts-tl {
+    --tl-who: 8.75rem;
+  }
+
+  #shifts-shell-pane .shifts-tl-who {
+    padding-inline: 0.6rem;
+  }
+
+  #shifts-shell-pane .shifts-tl-who .shifts-person-name {
+    font-size: 0.88rem !important;
+    overflow-wrap: normal;
+  }
+
+  #shifts-shell-pane .shifts-tl-who .shifts-sub,
+  #shifts-shell-pane .shifts-tl-who .shifts-sub bdi {
+    font-size: 0.72rem !important;
+    white-space: normal;
+  }
+
+  #shifts-shell-pane .shifts-tl-tick--minor,
+  #shifts-shell-pane .shifts-tl-tick--edge,
+  #shifts-shell-pane .shifts-tl-tick-full {
+    display: none;
+  }
+
+  #shifts-shell-pane .shifts-tl-tick-short {
+    display: inline;
+  }
+
+  /* modern.css sets every h2 to 1.5rem !important on phones. */
+  #shifts-shell-pane .shifts-tl-corner h2,
+  #shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who h2 {
+    font-size: 0.75rem !important;
   }
 }
 

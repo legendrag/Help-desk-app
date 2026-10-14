@@ -1,4 +1,4 @@
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -10,6 +10,7 @@ from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateformat import time_format
 from django.utils.translation import get_language, gettext as _
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
@@ -422,71 +423,145 @@ def _check_ins_partial(request):
 
 
 
+# Bar states on the Available now timeline, from shifts.services.shift_outcome.
+TIMELINE_STATES = {
+    CHECKED_IN: "on",
+    ON_SHIFT: "on",
+    NOT_CHECKED_IN: "late",
+    COMPLETED: "done",
+    MISSED: "missed",
+}
+TIMELINE_TICK_HOURS = range(0, 24, 3)
+
+
+def _timeline_percent(moment, day_start, day_length):
+    offset = (moment - day_start).total_seconds() / day_length
+    return round(min(max(offset, 0.0), 1.0) * 100, 3)
+
+
 def _available_board(request):
+    """Today's shifts, one row per person, grouped by department.
+
+    The day runs from local midnight to midnight. Last night's shifts still
+    running and tonight's shifts that end tomorrow are clipped at the edges.
+    """
     now = timezone.now()
     today = timezone.localdate()
-    yesterday = today - timedelta(days=1)
+    # Not aware_on(): Egypt's DST starts at midnight, so 00:00 can be missing.
+    day_start = timezone.make_aware(datetime.combine(today, time.min))
+    day_end = timezone.make_aware(datetime.combine(today + timedelta(days=1), time.min))
+    day_length = (day_end - day_start).total_seconds()
     rows = list(
-        ShiftAssignment.objects.filter(date__in=[yesterday, today])
-        .select_related("user", "shift_type", "shift_type__department")
+        ShiftAssignment.objects.filter(date__in=[today - timedelta(days=1), today])
+        .select_related("user", "user__role", "shift_type", "shift_type__department")
     )
+    uses_check_in = {}
+    people = {}
     for row in rows:
         settle_check_in(row, now, save=False)
-    checked = [row.checked_in_at for row in rows if row.checked_in_at]
-    on_shift = []
-    for row in rows:
         start_dt, end_dt = effective_interval(row)
-        if not (start_dt <= now < end_dt):
+        if end_dt <= day_start or start_dt >= day_end:
             continue
-        if row.checked_in_at:
-            on_shift.append((row, end_dt))
-    parts = [
-        get_language(),
-        max(checked).isoformat() if checked else "",
-        len(checked),
-    ]
+        if row.user_id not in uses_check_in:
+            uses_check_in[row.user_id] = can_check_in(row.user)
+        # An early check-in is not on shift yet; it starts at the shift start.
+        outcome = shift_outcome(row, now, uses_check_in[row.user_id])
+        state = "later" if now < start_dt else TIMELINE_STATES.get(outcome, "later")
+        left = _timeline_percent(start_dt, day_start, day_length)
+        key = (row.shift_type.department_id, row.user_id)
+        person = people.setdefault(key, {"name": display_name(row.user), "bars": []})
+        person["bars"].append({
+            "shift_type": row.shift_type,
+            "start": start_dt,
+            "end": end_dt,
+            "state": state,
+            "left": left,
+            "width": max(round(_timeline_percent(end_dt, day_start, day_length) - left, 3), 0.5),
+            "clipped_start": start_dt < day_start,
+            "clipped_end": end_dt > day_end,
+        })
+    order = {"on": 0, "late": 1, "later": 2, "done": 3, "missed": 3}
     by_department = {}
-    for row, end_dt in on_shift:
-        by_department.setdefault(row.shift_type.department_id, []).append((row, end_dt))
-    for department_id in sorted(by_department):
-        tuples = []
-        for row, end_dt in by_department[department_id]:
-            start_dt, real_end = effective_interval(row)
-            tuples.append((
-                row.user_id,
-                start_dt.isoformat(),
-                real_end.isoformat(),
-                row.times_set_at.isoformat() if row.times_set_at else "",
-                row.checked_in_at.isoformat() if row.checked_in_at else "",
-                row.checked_out_at.isoformat() if row.checked_out_at else "",
-            ))
-        parts.append((department_id, tuple(sorted(tuples))))
-    etag = etag_digest(parts)
+    for (department_id, _user_id), person in people.items():
+        person["bars"].sort(key=lambda bar: bar["start"])
+        person["on"] = any(bar["state"] == "on" for bar in person["bars"])
+        first = min(person["bars"], key=lambda bar: (order[bar["state"]], bar["start"]))
+        person["rank"] = (order[first["state"]], first["start"], person["name"].casefold())
+        person["status"] = first["state"]
+        by_department.setdefault(department_id, []).append(person)
     cards = []
     for department in Department.objects.order_by("name"):
-        people = []
-        for row, end_dt in sorted(by_department.get(department.pk, []), key=lambda item: item[0].user_id):
-            people.append({"name": display_name(row.user), "end": end_dt})
-        cards.append({"department": department, "people": people})
-    return cards, etag
+        members = sorted(by_department.get(department.pk, []), key=lambda person: person["rank"])
+        cards.append({
+            "department": department,
+            "people": members,
+            "on_count": sum(1 for person in members if person["on"]),
+        })
+    # Departments with someone on now first, then any scheduled today, then the rest.
+    cards.sort(key=lambda card: (not card["on_count"], not card["people"]))
+    show_types = _shows_shift_types(request.user)
+    parts = [get_language(), show_types, today.isoformat()]
+    for card in cards:
+        for person in card["people"]:
+            for bar in person["bars"]:
+                parts.append((
+                    card["department"].pk, person["name"], bar["state"],
+                    bar["start"].isoformat(), bar["end"].isoformat(),
+                    bar["shift_type"].name, bar["shift_type"].colour,
+                ))
+    timeline = {
+        "day_start": day_start,
+        "day_end": day_end,
+        "now": _timeline_percent(now, day_start, day_length),
+        "now_label": format_clock(now),
+        "time_zone": timezone.get_current_timezone_name(),
+        "ticks": [
+            {
+                "label": format_clock(time(hour, 0)),
+                "short": time_format(time(hour, 0), "g A"),
+                "left": round(hour / 24 * 100, 3),
+                "major": hour % 6 == 0,
+                "edge": hour == 0,
+            }
+            for hour in TIMELINE_TICK_HOURS
+        ],
+    }
+    return cards, timeline, etag_digest(parts)
 
 
 @login_required
 @require_GET
 def shifts_available(request):
-    cards, etag = _available_board(request)
-    return _shell(request, "shifts/available.html", {"cards": cards, "board_etag": etag})
+    cards, timeline, etag = _available_board(request)
+    return _shell(request, "shifts/available.html", _available_context(request, cards, timeline, etag))
 
 
 @login_required
 @require_GET
 def shifts_available_board(request):
-    cards, etag = _available_board(request)
+    cards, timeline, etag = _available_board(request)
     if htmx_revalidation_match(request, etag):
         request.ticket_list_304_defer_session_save = True
         return htmx_not_modified(etag)
-    response = render(request, "shifts/available_board.html", {"cards": cards, "board_etag": etag})
+    response = render(request, "shifts/available_board.html", _available_context(request, cards, timeline, etag))
     return apply_read_etag(response, etag, request)
+
+
+def _shows_shift_types(user) -> bool:
+    """Branch staff see who is on, never which shift type they are on."""
+    return getattr(user, "user_type", "") != User.UserType.BRANCH
+
+
+def _available_context(request, cards, timeline, etag):
+    return {
+        "cards": cards,
+        "timeline": timeline,
+        "board_etag": etag,
+        "show_shift_type": _shows_shift_types(request.user),
+        "on_shift_total": sum(card["on_count"] for card in cards),
+        "anyone_scheduled": any(card["people"] for card in cards),
+        "unscheduled": [card["department"] for card in cards if not card["people"]],
+    }
 
 
 def _department_or_404(raw):
