@@ -491,7 +491,9 @@ function updatePushPermissionPrompt() {
         return;
     }
 
-    if (!window.Notification) {
+    // Old Mac Safari has Notification but no PushManager: asking would get a
+    // yes that can never deliver a push, so stay quiet.
+    if (!isPushSupported()) {
         prompt.hidden = true;
         prompt.classList.remove("is-visible");
         return;
@@ -590,13 +592,23 @@ function isIosDevice() {
 }
 
 function iosVersion() {
-    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/);
+    // iPad "Request Desktop Website" sends a Mac user agent without "OS x_y",
+    // but Safari's own Version/x.y there still matches the iPadOS version.
+    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/)
+        || navigator.userAgent.match(/Version\/(\d+)\.(\d+)/);
     if (!match) return null;
     return { major: Number(match[1]), minor: Number(match[2]) };
 }
 
+function isInAppBrowser() {
+    // Browsers inside other apps (Instagram, Facebook, TikTok...) have no
+    // Add to Home Screen, so the install guide cannot help there.
+    return /FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|musical_ly|BytedanceWebview|LinkedInApp|GSA\//.test(navigator.userAgent);
+}
+
 function isIosWebPushCapableOs() {
     // Home Screen web push exists only on iOS/iPadOS 16.4+.
+    if (isInAppBrowser()) return false;
     const version = iosVersion();
     if (!version) {
         // iPad "Request Desktop Website" hides the iOS version. Do not
@@ -676,7 +688,7 @@ async function handleTurnOnNotifications() {
         openPushAllowModal(mode);
         return;
     }
-    if (!window.Notification) return;
+    if (!isPushSupported()) return;
     // Show the guide and the browser pop-up together. requestPermission runs
     // before the first await, so it still counts as part of this click.
     openPushAllowModal("prompt");
