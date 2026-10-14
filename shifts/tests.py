@@ -1650,9 +1650,7 @@ class PermissionMatrixTests(TestCase):
             self.assertEqual(self.client.get(reverse("shifts_home")).status_code, 302)
             for name in manager_gets + shared_gets + ["shifts_team"]:
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200, f"{user.username} {name}")
-            # Superusers are not rostered: My shifts sends them to the rota.
-            expected_mine = 302 if user.is_superuser else 200
-            self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, expected_mine, user.username)
+            self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200, user.username)
             self.assertEqual(self.client.get(reverse("shifts_type_edit", args=[self.night.pk])).status_code, 200)
             self.assertEqual(self.client.get(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-06", "department": self.department.pk}, HTTP_HX_REQUEST="true").status_code, 200)
             self.assertEqual(self.client.post(reverse("shifts_cell"), {"user": self.support.pk, "date": "2026-10-07", "department": self.department.pk, "shift_type": self.night.pk}).status_code, 200)
@@ -2459,7 +2457,7 @@ class WorkHoursReportTests(TestCase):
 
 
 class MyShiftsTabTests(TestCase):
-    """My shifts is for people who can be rostered, not for superusers like admin."""
+    """My shifts is for every support-type account, superusers included."""
 
     def setUp(self):
         self.department = make_department("Tab")
@@ -2467,13 +2465,20 @@ class MyShiftsTabTests(TestCase):
             "tab-lead", "support", self.department, make_role("Tab lead", can_manage_shifts=True),
         )
         self.admin = make_user("tab-admin", "support", superuser=True)
+        self.branch_admin = make_user("tab-branch-admin", "branch", superuser=True)
 
-    def test_admin_has_no_my_shifts_tab(self):
+    def test_support_superuser_has_my_shifts_tab(self):
         self.client.force_login(self.admin)
         rota = self.client.get(reverse("shifts_rota"))
-        self.assertNotContains(rota, f'href="{reverse("shifts_mine")}"')
+        self.assertContains(rota, f'href="{reverse("shifts_mine")}"')
         self.assertContains(rota, f'href="{reverse("shifts_team")}"')
-        self.assertRedirects(self.client.get(reverse("shifts_mine")), reverse("shifts_rota"))
+        self.assertEqual(self.client.get(reverse("shifts_mine")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("shifts_check_in_panels")).status_code, 200)
+
+    def test_branch_superuser_has_no_my_shifts_tab(self):
+        self.client.force_login(self.branch_admin)
+        rota = self.client.get(reverse("shifts_rota"))
+        self.assertNotContains(rota, f'href="{reverse("shifts_mine")}"')
         self.assertEqual(self.client.get(reverse("shifts_check_in_panels")).status_code, 403)
 
     def test_team_lead_keeps_my_shifts(self):
@@ -2575,24 +2580,26 @@ class ShiftStatusConsistencyTests(TestCase):
 
 @override_settings(TIME_ZONE="Africa/Cairo")
 class SuperuserCheckInTests(TestCase):
-    def test_superuser_with_a_shift_row_cannot_check_in(self):
+    def test_support_superuser_with_a_shift_can_check_in(self):
         from shifts.access import can_check_in
 
         department = make_department("Admin desk")
-        admin = make_user(
-            "rota-admin", "support", department, make_role("Admin role", can_check_in=True), superuser=True,
-        )
+        # No role flag needed: a superuser has every permission.
+        admin = make_user("rota-admin", "support", department, make_role("Admin role"), superuser=True)
         day = make_shift_type(department, name="Admin day", start=time(9, 0), end=time(17, 0))
-        row = make_assignment(admin, day, date(2026, 6, 2))  # as if inserted directly
-        self.assertFalse(can_check_in(admin))
+        row = make_assignment(admin, day, date(2026, 6, 2))
+        self.assertTrue(can_check_in(admin))
         self.client.force_login(admin)
         with _both_clocks(aware(2026, 6, 2, 10, 0), date(2026, 6, 2)):
             posted = self.client.post(reverse("shifts_check_in", args=[row.pk]))
-            rota = self.client.get(reverse("shifts_rota"), {"department": department.pk})
-        self.assertEqual(posted.status_code, 403)
+        self.assertEqual(posted.status_code, 200)
         row.refresh_from_db()
-        self.assertIsNone(row.checked_in_at)
-        self.assertNotContains(rota, f'id="shifts-check-in-{row.pk}"')
+        self.assertIsNotNone(row.checked_in_at)
+
+    def test_branch_superuser_cannot_check_in(self):
+        from shifts.access import can_check_in
+
+        self.assertFalse(can_check_in(make_user("branch-root", "branch", superuser=True)))
 
 
 @override_settings(TIME_ZONE="Africa/Cairo")

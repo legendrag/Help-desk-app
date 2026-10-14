@@ -10,11 +10,13 @@ def is_shift_manager(user) -> bool:
 def can_check_in(user) -> bool:
     """Day-shift check-in. Managers do not inherit this from can_manage_shifts.
 
-    Only rostered people check in (see ``has_own_shifts``): a superuser never
-    does, even with a shift row added for them directly in the database.
+    Only rostered people check in (see ``has_own_shifts``). A support-type
+    superuser checks in like any agent, without needing the role flag.
     """
     if not has_own_shifts(user):
         return False
+    if user.is_superuser:
+        return True
     role = getattr(user, "role", None)
     return bool(role and role.can_check_in)
 
@@ -22,12 +24,9 @@ def can_check_in(user) -> bool:
 def has_own_shifts(user) -> bool:
     """Whether the user can be put on the rota, and so has a My shifts page.
 
-    Superusers run the system and are not rostered, even though the seeded
-    admin is a support-type account.
+    Every support-type account is rostered, superusers included.
     """
     if not getattr(user, "is_authenticated", False):
-        return False
-    if user.is_superuser:
         return False
     return getattr(user, "user_type", "") == "support"
 
