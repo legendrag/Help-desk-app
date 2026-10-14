@@ -167,6 +167,7 @@ class EmailSetting(TimeStampedModel):
     notify_ticket_status = models.BooleanField(default=True, verbose_name=_("Status changes"))
     notify_ticket_update = models.BooleanField(default=True, verbose_name=_("Ticket updates"))
     notify_announcement = models.BooleanField(default=True, verbose_name=_("Announcements"))
+    notify_shift_reminder = models.BooleanField(default=True, verbose_name=_("Shift reminders"))
 
     class Meta:
         ordering = ["-updated_at"]
@@ -204,6 +205,7 @@ class EmailTemplate(TimeStampedModel):
         TRANSFER_ACCEPTED = "transfer_accepted", _("Transfer accepted")
         TRANSFER_DENIED = "transfer_denied", _("Transfer declined")
         ANNOUNCEMENT = "announcement", _("Announcement")
+        SHIFT_REMINDER = "shift_reminder", _("Shift reminder")
 
     event_type = models.CharField(
         max_length=40,

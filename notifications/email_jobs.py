@@ -11,6 +11,7 @@ from notifications.email_service import is_email_event_enabled, send_with_retrie
 from notifications.email_templates import (
     announcement_merge_context,
     resolve_template,
+    shift_merge_context,
     ticket_merge_context,
 )
 from notifications.utils import get_branch_users, get_department_users
@@ -281,4 +282,31 @@ def send_announcement_email(announcement_id: int, actor_id: int | None = None) -
         context,
         cta_url=context.get("announcement_url") or "",
         footer_note="You’re receiving this because announcement email notifications are enabled.",
+    )
+
+
+def send_shift_reminder_email(assignment_id: int) -> bool:
+    """Remind one agent by email that their shift starts soon (check-in is open)."""
+    from shifts.models import ShiftAssignment
+
+    if not is_email_event_enabled("notify_shift_reminder"):
+        return False
+    assignment = (
+        ShiftAssignment.objects.select_related("user", "shift_type", "shift_type__department")
+        .filter(id=assignment_id)
+        .first()
+    )
+    if not assignment:
+        logger.warning("send_shift_reminder_email: shift %s not found", assignment_id)
+        return False
+    email = (assignment.user.email or "").strip()
+    if not email:
+        return False
+    context = shift_merge_context(assignment)
+    return _send_template(
+        "shift_reminder",
+        [email],
+        context,
+        cta_url=context["check_in_url"],
+        footer_note="You’re receiving this because shift reminder emails are enabled.",
     )

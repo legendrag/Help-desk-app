@@ -3625,6 +3625,114 @@ msgstr "لا أحد مجدول اليوم:"
 msgid "Legend"
 msgstr "دليل الألوان"
 
+#: core/models.py
+msgid "Shift reminders"
+msgstr "تذكيرات المناوبات"
+
+#: core/models.py notifications/email_templates.py
+msgid "Shift reminder"
+msgstr "تذكير بالمناوبة"
+
+#: shifts/models.py
+msgid "Reminded for"
+msgstr "تم التذكير لموعد"
+
+#: notifications/services.py
+#, python-format
+msgid "Your shift starts at %(time)s"
+msgstr "تبدأ مناوبتك الساعة %(time)s"
+
+#: notifications/services.py
+#, python-format
+msgid "%(shift)s · %(department)s. You can check in now."
+msgstr "%(shift)s · %(department)s. يمكنك تسجيل الحضور الآن."
+
+#: notifications/services.py
+#, python-format
+msgid "%(shift)s · %(department)s. Have a good shift."
+msgstr "%(shift)s · %(department)s. مناوبة موفقة."
+
+#: templates/tickets/detail_pane.html
+msgid "Who's available"
+msgstr "المتاحون"
+
+#: templates/tickets/detail_pane.html
+msgid "Loading…"
+msgstr "جارٍ التحميل…"
+
+#: templates/shifts/available_popup.html
+#, python-format
+msgid "People on shift in <strong>%(department)s</strong> right now."
+msgstr "الموجودون في المناوبة الآن في قسم <strong>%(department)s</strong>."
+
+#: templates/shifts/available_popup.html
+msgid "Later today"
+msgstr "لاحقًا اليوم"
+
+#: templates/shifts/available_popup.html
+msgid "from"
+msgstr "من"
+
+#: templates/tickets/detail_pane.html
+#, python-format
+msgid "On shift until %(time)s"
+msgstr "في المناوبة حتى %(time)s"
+
+#: core/management_views.py
+msgid "other records in the app"
+msgstr "سجلات أخرى في النظام"
+
+#: templates/core/management/delete_confirm_partial.html
+#, python-format
+msgid "This %(object)s can't be deleted yet."
+msgstr "لا يمكن حذف %(object)s بعد."
+
+#: templates/core/management/delete_confirm_partial.html
+#, python-format
+msgid "It is still used by %(uses)s. Move or reassign them first."
+msgstr "ما زال مستخدمًا في %(uses)s. انقلها أو أعد تعيينها أولًا."
+
+#: templates/core/management/delete_confirm.html
+msgid "Back"
+msgstr "رجوع"
+
+#: core/forms.py
+msgid "Leave blank to keep the current password"
+msgstr "اتركه فارغًا للإبقاء على كلمة المرور الحالية"
+
+#: core/management_views.py
+#, python-format
+msgid "%(count)d ticket"
+msgid_plural "%(count)d tickets"
+msgstr[0] "لا تذاكر"
+msgstr[1] "تذكرة واحدة"
+msgstr[2] "تذكرتين"
+msgstr[3] "%(count)d تذاكر"
+msgstr[4] "%(count)d تذكرة"
+msgstr[5] "%(count)d تذكرة"
+
+#: core/management_views.py
+#, python-format
+msgid "%(count)d user"
+msgid_plural "%(count)d users"
+msgstr[0] "لا مستخدمين"
+msgstr[1] "مستخدم واحد"
+msgstr[2] "مستخدمَين"
+msgstr[3] "%(count)d مستخدمين"
+msgstr[4] "%(count)d مستخدمًا"
+msgstr[5] "%(count)d مستخدم"
+
+#: core/management_views.py
+#, python-format
+msgid "%(count)d shift type"
+msgid_plural "%(count)d shift types"
+msgstr[0] "لا أنواع مناوبات"
+msgstr[1] "نوع مناوبة واحد"
+msgstr[2] "نوعَي مناوبة"
+msgstr[3] "%(count)d أنواع مناوبات"
+msgstr[4] "%(count)d نوع مناوبة"
+msgstr[5] "%(count)d نوع مناوبة"
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

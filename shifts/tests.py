@@ -1482,20 +1482,20 @@ class AvailableNowTests(TestCase):
         early_agent = make_user("bar-early", "support", department)
         late_agent = make_user("bar-late", "support", department)
         night = make_shift_type(department, name="Bar night")  # 10 PM to 6 AM
-        early = make_shift_type(department, name="Bar early", start=time(6, 0), end=time(14, 0))
+        long_night = make_shift_type(department, name="Bar long", start=time(22, 0), end=time(10, 0))
         late = make_shift_type(department, name="Bar late", start=time(23, 0), end=time(8, 0))
         make_assignment(night_agent, night, date(2026, 6, 1))  # ends 6 AM, before the window
         make_assignment(night_agent, night, date(2026, 6, 2))
-        make_assignment(early_agent, early, date(2026, 6, 2))
+        make_assignment(early_agent, long_night, date(2026, 6, 1))  # runs into the window
         make_assignment(late_agent, late, date(2026, 6, 2))
         self.client.force_login(night_agent)
         self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "ar"
         content = self._board(aware(2026, 6, 2, 12, 0), HTTP_ACCEPT_LANGUAGE="ar").content.decode()
-        # Positions stay plain numbers in Arabic ("23.81", not a localized "23٫81").
+        # Positions stay plain numbers in Arabic ("4.762", not a localized "4٫762").
         self.assertIn("مكتملة", content)  # rendered in Arabic
-        # 21 hours, 9 AM to 6 AM: 6 AM-2 PM is cut at 9 AM (5 h shown); 10 PM-6 AM
-        # fills the end; 11 PM-8 AM runs past 6 AM.
-        self.assertIn("inset-inline-start: 0.0%; inline-size: 23.81%;", content)
+        # 21 hours, 9 AM to 6 AM: last night's 10 PM-10 AM is cut at 9 AM (1 h
+        # shown); 10 PM-6 AM fills the end; 11 PM-8 AM runs past 6 AM.
+        self.assertIn("inset-inline-start: 0.0%; inline-size: 4.762%;", content)
         self.assertIn("inset-inline-start: 61.905%; inline-size: 38.095%;", content)
         self.assertIn("inset-inline-start: 66.667%; inline-size: 33.333%;", content)
         self.assertEqual(content.count("shifts-tl-bar--from-yesterday"), 1)
@@ -1505,6 +1505,19 @@ class AvailableNowTests(TestCase):
         self.assertIn("--tl-step: 14.2857%", content)
         self.assertIn('style="inset-inline-start: 0.0%"><span class="shifts-tl-tick-full">9:00', content)
         self.assertNotIn("data-now-outside", content)
+
+    def test_a_shift_before_9_am_moves_the_start_earlier(self):
+        department = make_department("Early bird")
+        agent = make_user("bird-agent", "support", department)
+        early = make_shift_type(department, name="Bird early", start=time(8, 0), end=time(16, 0))
+        make_assignment(agent, early, date(2026, 6, 2))
+        self.client.force_login(agent)
+        content = self._board(aware(2026, 6, 2, 12, 0)).content.decode()
+        # 8 AM to 6 AM is 22 hours; the 8 AM shift is drawn whole, not cut at 9.
+        self.assertIn("inset-inline-start: 0.0%; inline-size: 36.364%;", content)
+        self.assertNotIn("shifts-tl-bar--from-yesterday", content)
+        self.assertIn('style="inset-inline-start: 0.0%"><span class="shifts-tl-tick-full">8:00', content)
+        self.assertIn("--tl-now: 18.182%", content)  # noon is 4 of 22 hours in
 
     def test_six_to_nine_am_shows_the_day_about_to_start(self):
         department = make_department("Gap")
@@ -2409,6 +2422,26 @@ class WorkHoursReportTests(TestCase):
         self.assertEqual((report.rows[0].starts, report.rows[0].ends), ("6:30 PM", "11:00 PM"))
         self.assertEqual((report.rows[0].hours, report.total_hours), (Decimal("4.5"), Decimal("4.5")))
 
+    def test_early_check_in_counts_from_the_shift_start(self):
+        day = make_shift_type(self.department, name="Report day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(self.agent, day, date(2026, 10, 1))
+        row.arrived_at = aware(2026, 10, 1, 8, 40)
+        row.checked_out_at = aware(2026, 10, 1, 17, 0)
+        row.save()
+        report = self._get(start="2026-10-01", end="2026-10-31").context["report"]
+        self.assertEqual(report.rows[0].starts, "8:40 AM")  # the press time still shows
+        self.assertEqual((report.rows[0].hours, report.total_hours), (8, 8))
+
+    def test_running_shift_counts_only_up_to_now(self):
+        row = make_assignment(self.agent, self.evening, date(2026, 10, 1))
+        row.checked_in_at = row.arrived_at = aware(2026, 10, 1, 18, 0)
+        row.save()
+        query = {"person": self.agent.pk, "start": "2026-10-01", "end": "2026-10-31", "shifts": "all"}
+        with _both_clocks(aware(2026, 10, 1, 19, 30), date(2026, 10, 1)):
+            report = self.client.get(reverse("shifts_calc_work"), query).context["report"]
+        self.assertEqual(report.rows[0].status, "present")
+        self.assertEqual((report.rows[0].hours, report.total_hours), (Decimal("1.5"), Decimal("1.5")))
+
     def test_people_who_do_not_check_in_show_scheduled_and_count(self):
         plain = make_user("report-plain", "support", self.department)
         make_assignment(plain, self.evening, date(2026, 10, 1))
@@ -2699,3 +2732,208 @@ class StaleMyShiftsPageTests(TestCase):
         with _both_clocks(aware(2026, 6, 2, 8, 45), date(2026, 6, 2)):
             page = self.client.get(reverse("shifts_mine"))
         self.assertContains(page, f'?u={self.first.pk}"')
+
+
+@patch("notifications.email_jobs.send_with_retries", return_value=True)
+class ShiftReminderTests(TestCase):
+    """Agents are reminded once, when check-in opens 30 minutes before the shift."""
+
+    def setUp(self):
+        from core.models import EmailSetting
+
+        self.department = make_department("Remind")
+        self.role = make_role("Remind agent", can_check_in=True)
+        self.agent = make_user("remind-agent", "support", self.department, self.role)
+        self.day = make_shift_type(self.department, name="Remind day", start=time(9, 0), end=time(17, 0))
+        self.row = make_assignment(self.agent, self.day, date(2026, 6, 2))
+        self.email = EmailSetting.objects.create(
+            smtp_host="smtp.test.local", smtp_port=587, smtp_email="noreply@test.local",
+            smtp_password="secret", encryption="tls", from_name="Test", from_email="noreply@test.local",
+            is_active=True, notify_shift_reminder=True,
+        )
+
+    def _send(self, hh, mm=0):
+        from shifts.reminders import send_due_reminders
+
+        return send_due_reminders(aware(2026, 6, 2, hh, mm))
+
+    def _reminders(self, user=None):
+        from notifications.models import InAppNotification
+
+        return InAppNotification.objects.filter(recipient=user or self.agent, notification_type="shift")
+
+    def test_sent_once_when_check_in_opens(self, send_mail):
+        self.assertEqual(self._send(8, 20), 0)
+        self.assertFalse(self._reminders().exists())
+        self.assertEqual(self._send(8, 30), 1)
+        note = self._reminders().get()
+        self.assertEqual(note.title, "Your shift starts at 9:00 AM")
+        self.assertEqual(note.message, "Remind day · Remind. You can check in now.")
+        self.assertIn("9:00 ص", note.title_ar)
+        self.assertEqual(note.link, "/shifts/mine/#shifts-check-in")
+        send_mail.assert_called_once()
+        subject, _body, recipients = send_mail.call_args.args[:3]
+        self.assertEqual(recipients, ["remind-agent@example.com"])
+        self.assertIn("Your shift starts at 9:00 AM", subject)
+        self.assertIn("/shifts/mine/", send_mail.call_args.kwargs["html_body"])
+        self.row.refresh_from_db()
+        self.assertEqual(self.row.reminded_for, aware(2026, 6, 2, 9, 0))
+        # Later ticks inside the window do not repeat it.
+        self.assertEqual(self._send(8, 45), 0)
+        self.assertEqual(self._reminders().count(), 1)
+
+    def test_moved_start_is_reminded_again(self, send_mail):
+        self._send(8, 30)
+        self.row.start_time_override = time(10, 0)
+        self.row.end_time_override = time(17, 0)
+        self.row.save()
+        self.assertEqual(self._send(9, 15), 0)
+        self.assertEqual(self._send(9, 30), 1)
+        self.assertEqual(self._reminders().count(), 2)
+
+    def test_skipped_when_checked_in_started_inactive_or_branch(self, send_mail):
+        self.row.checked_in_at = aware(2026, 6, 2, 8, 31)
+        self.row.save()
+        self.assertEqual(self._send(8, 40), 0)
+        self.row.checked_in_at = None
+        self.row.save()
+        self.assertEqual(self._send(9, 0), 0)  # the shift has started: too late to remind
+        branch = make_user("remind-branch", "branch", self.department)
+        make_assignment(branch, self.day, date(2026, 6, 3))
+        gone = make_user("remind-gone", "support", self.department, self.role)
+        gone.status = User.Status.INACTIVE
+        gone.save()
+        make_assignment(gone, self.day, date(2026, 6, 3))
+        from shifts.reminders import send_due_reminders
+
+        self.assertEqual(send_due_reminders(aware(2026, 6, 3, 8, 40)), 0)
+        send_mail.assert_not_called()
+
+    def test_email_checkbox_off_keeps_the_bell_only(self, send_mail):
+        from notifications.email_service import clear_email_setting_cache
+
+        self.email.notify_shift_reminder = False
+        self.email.save()
+        clear_email_setting_cache()
+        self.assertEqual(self._send(8, 30), 1)
+        self.assertTrue(self._reminders().exists())
+        send_mail.assert_not_called()
+
+    def test_agents_without_check_in_get_a_plain_reminder(self, send_mail):
+        plain = make_user("remind-plain", "support", self.department, make_role("Remind plain"))
+        make_assignment(plain, self.day, date(2026, 6, 2))
+        self._send(8, 30)
+        self.assertEqual(self._reminders(plain).get().message, "Remind day · Remind. Have a good shift.")
+
+    def test_management_command_sends_the_same(self, send_mail):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 8, 35)):
+            call_command("send_shift_reminders", stdout=out)
+        self.assertIn("Sent 1 shift reminder(s).", out.getvalue())
+        self.assertEqual(self._reminders().count(), 1)
+
+
+    def test_email_settings_form_saves_the_shift_reminder_checkbox(self, send_mail):
+        from core.forms import EmailSettingForm
+
+        data = {
+            "smtp_host": "smtp.test.local", "smtp_port": 587, "smtp_email": "noreply@test.local",
+            "smtp_password": "secret", "encryption": "tls", "from_name": "Test",
+            "from_email": "noreply@test.local", "is_active": "on",
+        }
+        form = EmailSettingForm(data, instance=self.email)
+        self.assertIn("notify_shift_reminder", form.fields)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(form.save().notify_shift_reminder)  # unticked
+        form = EmailSettingForm({**data, "notify_shift_reminder": "on"}, instance=self.email)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.save().notify_shift_reminder)
+
+
+class WhoAvailableTests(TestCase):
+    """The ticket chat's "Who's available" popup and the on-shift marks in Transfer."""
+
+    def setUp(self):
+        from core.models import Branch, Category
+        from tickets.models import Ticket
+
+        self.department = make_department("Help desk")
+        other = make_department("Elsewhere")
+        role = make_role("Avail agent", can_check_in=True)
+        self.assignee = make_user("avail-owner", "support", self.department, role)
+        self.on_agent = make_user("avail-on", "support", self.department, role, first_name="Mona", last_name="Adel")
+        self.late_agent = make_user("avail-late", "support", self.department, role)
+        self.evening_agent = make_user("avail-evening", "support", self.department, role)
+        self.other_agent = make_user("avail-other", "support", other, role)
+        day = make_shift_type(self.department, name="Avail day", start=time(9, 0), end=time(17, 0))
+        evening = make_shift_type(self.department, name="Avail evening", start=time(18, 0), end=time(23, 0))
+        other_day = make_shift_type(other, name="Other day", start=time(9, 0), end=time(17, 0))
+        today = date(2026, 6, 2)
+        for agent, shift_type, checked in (
+            (self.on_agent, day, True),
+            (self.late_agent, day, False),
+            (self.evening_agent, evening, False),
+            (self.other_agent, other_day, True),
+        ):
+            row = make_assignment(agent, shift_type, today)
+            if checked:
+                row.checked_in_at = aware(2026, 6, 2, 8, 55)
+                row.save()
+        branch = Branch.objects.create(code="AV", name="Avail branch")
+        category = Category.objects.create(department=self.department, name="Avail category")
+        self.branch_user = make_user("avail-branch", "branch")
+        self.branch_user.branch = branch
+        self.branch_user.save()
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-AV1", title="Printer", description="Offline", branch=branch,
+            department=self.department, category=category, created_by=self.branch_user,
+            assigned_to=self.assignee, client_name="Desk", client_phone="123",
+        )
+
+    def _popup(self, viewer):
+        self.client.force_login(viewer)
+        url = reverse("shifts_available_department", args=[self.department.pk])
+        with _both_clocks(aware(2026, 6, 2, 12, 0), date(2026, 6, 2)):
+            return self.client.get(url, {"ticket": self.ticket.pk})
+
+    def test_assignee_sees_who_is_on_and_can_transfer(self):
+        popup = self._popup(self.assignee)
+        content = popup.content.decode()
+        self.assertContains(popup, "Mona Adel")
+        self.assertContains(popup, "Avail day")
+        self.assertContains(popup, "5:00 PM")
+        self.assertContains(popup, f'data-who-transfer="{self.on_agent.pk}"')
+        # Not checked in yet is not available; the evening shift is later today.
+        self.assertLess(content.index("Later today"), content.index("avail-evening"))
+        self.assertNotIn(f'data-who-transfer="{self.late_agent.pk}"', content)
+        self.assertNotContains(popup, "avail-late")
+        self.assertNotContains(popup, "avail-other")
+
+    def test_branch_viewer_sees_names_without_shift_types_or_transfer(self):
+        popup = self._popup(self.branch_user)
+        self.assertContains(popup, "Mona Adel")
+        self.assertNotContains(popup, "Avail day")
+        self.assertNotContains(popup, "data-who-transfer")
+
+    def test_other_agents_and_pending_transfers_get_no_transfer_button(self):
+        self.assertNotContains(self._popup(self.late_agent), "data-who-transfer")
+        self.ticket.pending_transfer_to = self.late_agent
+        self.ticket.save()
+        self.assertNotContains(self._popup(self.assignee), "data-who-transfer")
+
+    def test_chat_has_the_button_and_transfer_lists_on_shift_first(self):
+        admin = make_user("avail-admin", "support", self.department, superuser=True)
+        self.client.force_login(admin)
+        with _both_clocks(aware(2026, 6, 2, 12, 0), date(2026, 6, 2)):
+            page = self.client.get(reverse("ticket_detail", args=[self.ticket.pk]))
+        content = page.content.decode()
+        self.assertIn(reverse("shifts_available_department", args=[self.department.pk]), content)
+        self.assertIn('id="who-available-modal"', content)
+        options = content[content.index('id="new_assignee"'):]
+        self.assertIn("avail-on (Help desk) — On shift until 5:00 PM", options)
+        self.assertLess(options.index("avail-on"), options.index("avail-late"))
+

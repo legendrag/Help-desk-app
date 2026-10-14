@@ -2447,3 +2447,104 @@ class TicketAttachmentMediaTests(TestCase):
         )
         self.assertEqual(response.status_code, 204)
         self.assertTrue(TicketMessage.objects.filter(ticket=self.ticket, attachment__endswith=".pdf").exists())
+
+
+class SettingsAndFilterRobustnessTests(TestCase):
+    """Deleting records still in use, junk filter values and the SMTP password."""
+
+    def setUp(self):
+        from django.urls import reverse
+
+        self.reverse = reverse
+        self.admin = User.objects.create_user(
+            username="robust_admin", email="robust@test.com", password="testpassword123",
+            user_type=User.UserType.SUPPORT, is_superuser=True,
+        )
+        self.branch = Branch.objects.create(code="RB", name="Robust Branch")
+        self.department = Department.objects.create(name="Robust Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Robust Cat", default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.branch_user = User.objects.create_user(
+            username="robust_branch", email="rb@test.com", password="testpassword123",
+            user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-RB1", title="Robust", description="Robust", branch=self.branch,
+            department=self.department, category=self.category, created_by=self.branch_user,
+            client_name="Client", client_phone="123",
+        )
+        self.client.force_login(self.admin)
+
+    def _delete(self, name, obj):
+        return self.client.post(self.reverse(name, args=[obj.pk]), HTTP_HX_REQUEST="true")
+
+    def test_records_in_use_are_not_deleted_and_say_why(self):
+        for name, obj, model in (
+            ("department_delete", self.department, Department),
+            ("branch_delete", self.branch, Branch),
+            ("category_delete", self.category, Category),
+        ):
+            response = self._delete(name, obj)
+            self.assertEqual(response.status_code, 200, name)
+            self.assertContains(response, "1 ticket")
+            self.assertContains(response, "be deleted yet")
+            self.assertTrue(model.objects.filter(pk=obj.pk).exists(), name)
+
+    def test_role_in_use_keeps_its_users(self):
+        role = Role.objects.create(name="Robust role")
+        self.branch_user.role = role
+        self.branch_user.save()
+        response = self._delete("role_delete", role)
+        self.assertContains(response, "1 user")
+        self.assertTrue(Role.objects.filter(pk=role.pk).exists())
+        self.branch_user.refresh_from_db()
+        self.assertEqual(self.branch_user.role, role)
+        # The confirm dialog already warns before anyone presses delete.
+        confirm = self.client.get(self.reverse("role_delete", args=[role.pk]), HTTP_HX_REQUEST="true")
+        self.assertContains(confirm, "be deleted yet")
+        self.assertNotContains(confirm, "Yes, Delete")
+
+    def test_unused_records_still_delete(self):
+        role = Role.objects.create(name="Spare role")
+        response = self._delete("role_delete", role)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Role.objects.filter(pk=role.pk).exists())
+
+    def test_user_with_tickets_is_not_deleted(self):
+        response = self._delete("user_delete", self.branch_user)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(User.objects.filter(pk=self.branch_user.pk).exists())
+
+    def test_junk_filter_values_are_ignored(self):
+        for query in (
+            {"branch": "abc"}, {"assignment": "mine"}, {"assignment": "-1"},
+        ):
+            response = self.client.get(self.reverse("tickets_list"), query)
+            self.assertEqual(response.status_code, 200, query)
+            self.assertContains(response, "TK-RB1")
+        for query in ({"department": "x"}, {"branch": "1e3"}, {"assigned_to": "me"}):
+            self.assertEqual(self.client.get(self.reverse("dashboard"), query).status_code, 200, query)
+        options = self.client.get(self.reverse("ticket_category_options"), {"department": "abc"})
+        self.assertEqual(options.status_code, 200)
+
+    def test_smtp_password_is_never_in_the_page_and_blank_keeps_it(self):
+        from core.models import EmailSetting
+
+        setting = EmailSetting.objects.create(
+            smtp_host="smtp.test.local", smtp_port=587, smtp_email="noreply@test.local",
+            smtp_password="s3cret-pass", encryption="tls", from_name="Test",
+            from_email="noreply@test.local", is_active=False,
+        )
+        url = self.reverse("email_setting_update", args=[setting.pk])
+        page = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "s3cret-pass")
+        self.client.post(url, {
+            "smtp_host": "smtp.changed.local", "smtp_port": 587, "smtp_email": "noreply@test.local",
+            "smtp_password": "", "encryption": "tls", "from_name": "Test",
+            "from_email": "noreply@test.local",
+        }, HTTP_HX_REQUEST="true")
+        setting.refresh_from_db()
+        self.assertEqual(setting.smtp_host, "smtp.changed.local")
+        self.assertEqual(setting.smtp_password, "s3cret-pass")

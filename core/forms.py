@@ -176,6 +176,16 @@ class EmailSettingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        if self.instance.pk and self.instance.smtp_password:
+            # Editing: the box starts empty, and empty keeps the saved password.
+            self.fields['smtp_password'].required = False
+            self.fields['smtp_password'].widget.attrs['placeholder'] = _('Leave blank to keep the current password')
+
+    def clean_smtp_password(self):
+        password = self.cleaned_data.get('smtp_password')
+        if not password and self.instance.pk:
+            return self.instance.smtp_password
+        return password
 
     def clean(self):
         cleaned = super().clean()
@@ -195,12 +205,14 @@ class EmailSettingForm(forms.ModelForm):
             'encryption', 'from_name', 'from_email', 'is_active',
             'notify_new_ticket', 'notify_ticket_picked', 'notify_ticket_message',
             'notify_ticket_status', 'notify_ticket_update', 'notify_announcement',
+            'notify_shift_reminder',
         ]
         widgets = {
             'smtp_host': forms.TextInput(attrs={'placeholder': _('e.g., smtp.gmail.com')}),
             'smtp_port': forms.NumberInput(attrs={'placeholder': _('e.g., 587')}),
             'smtp_email': forms.EmailInput(attrs={'placeholder': _('sender@example.com')}),
-            'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
+            # Never echo the saved password into the page source.
+            'smtp_password': forms.PasswordInput(render_value=False, attrs={'placeholder': '••••••••'}),
             'from_name': forms.TextInput(attrs={'placeholder': _('e.g., MlamehTicket Support')}),
             'from_email': forms.EmailInput(attrs={'placeholder': _('noreply@example.com')}),
         }

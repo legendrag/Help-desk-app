@@ -140,11 +140,17 @@ def build_report(person, start, end, night_only=False, now=None):
         if status == ABSENT:
             # Nobody worked an absent shift, so it is worth no hours.
             hours = Decimal(0)
-        elif status == PRESENT and assignment.arrived_at:
-            # Present shifts run from the moment the agent pressed check in.
-            _start_dt, end_dt = effective_interval(assignment)
-            starts = format_clock(assignment.arrived_at)
-            minutes = int((end_dt - assignment.arrived_at).total_seconds() // 60)
+        elif status == PRESENT:
+            # "From" shows when the agent pressed check in, but time is only
+            # counted inside the shift: an early check-in starts at the shift
+            # start, and a shift still running counts up to now, not its end.
+            start_dt, end_dt = effective_interval(assignment)
+            counted_from = start_dt
+            if assignment.arrived_at:
+                starts = format_clock(assignment.arrived_at)
+                counted_from = max(assignment.arrived_at, start_dt)
+            counted_to = min(end_dt, now)
+            minutes = int((counted_to - counted_from).total_seconds() // 60)
             hours = _hours(max(minutes, 0))
         else:
             hours = _hours(clock_length(start_t, end_t)[0])

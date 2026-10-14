@@ -7,7 +7,9 @@ from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_noop
+from django.db import transaction
+from django.db.models import ProtectedError, RestrictedError
+from django.utils.translation import gettext as _, gettext_noop, ngettext
 
 from notifications.email_content import brand_asset_urls, render_notification_email
 from notifications.email_service import send_with_retries
@@ -202,32 +204,69 @@ class BaseDeleteView(LoginRequiredMixin):
     template_name = "core/management/delete_confirm.html"
     partial_template_name = "core/management/delete_confirm_partial.html"
     success_url = reverse_lazy('settings')
+    # Things that stop a delete: (related name, singular, plural). Users are
+    # listed even where the key is SET_NULL, so nobody silently loses a role,
+    # branch or department.
+    blocking_relations = ()
+
+    def in_use(self, obj):
+        """Plain-language list of what still uses ``obj``; empty when it is free."""
+        parts = []
+        for related_name, singular, plural in self.blocking_relations:
+            count = getattr(obj, related_name).count()
+            if count:
+                parts.append(ngettext(singular, plural, count) % {"count": count})
+        return parts
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return self.render_to_response(self.get_context_data(in_use=self.in_use(self.object)))
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if self.request.headers.get('HX-Request'):
-            from django.http import HttpResponse
-            resp = HttpResponse(status=204)
-            resp['HX-Trigger'] = 'closeModal,refreshSettings'
-            return resp
-        return response
+        self.object = self.get_object()
+        in_use = self.in_use(self.object)
+        if not in_use:
+            try:
+                with transaction.atomic():
+                    response = super().post(request, *args, **kwargs)
+            except (ProtectedError, RestrictedError):
+                in_use = [_("other records in the app")]
+            else:
+                if self.request.headers.get('HX-Request'):
+                    resp = HttpResponse(status=204)
+                    resp['HX-Trigger'] = 'closeModal,refreshSettings'
+                    return resp
+                return response
+        return self.render_to_response(self.get_context_data(in_use=in_use))
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
             return [self.partial_template_name]
         return [self.template_name]
 
+_TICKETS = ("tickets", gettext_noop("%(count)d ticket"), gettext_noop("%(count)d tickets"))
+_USERS = ("users", gettext_noop("%(count)d user"), gettext_noop("%(count)d users"))
+
+
 class BranchDeleteView(BranchPermissionMixin, BaseDeleteView, DeleteView):
     model = Branch
+    blocking_relations = (_TICKETS, _USERS)
 
 class DepartmentDeleteView(DepartmentPermissionMixin, BaseDeleteView, DeleteView):
     model = Department
+    blocking_relations = (
+        _TICKETS,
+        _USERS,
+        ("shift_types", gettext_noop("%(count)d shift type"), gettext_noop("%(count)d shift types")),
+    )
 
 class CategoryDeleteView(CategoryPermissionMixin, BaseDeleteView, DeleteView):
     model = Category
+    blocking_relations = (_TICKETS,)
 
 class RoleDeleteView(RolePermissionMixin, BaseDeleteView, DeleteView):
     model = Role
+    blocking_relations = (_USERS,)
 
     def get_queryset(self):
         return super().get_queryset().exclude(name__iexact="admin")

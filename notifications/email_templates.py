@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from django.utils import timezone
 from django.utils.html import escape
 from django.utils.translation import gettext_lazy as _
 
@@ -119,6 +120,16 @@ MERGE_FIELDS = {
         ("posted_by", "Posted by"),
         ("announcement_url", "URL"),
     ],
+    "shift_reminder": [
+        ("brand_name", "Brand"),
+        ("agent_name", "Agent"),
+        ("shift_name", "Shift"),
+        ("department", "Department"),
+        ("shift_date", "Date"),
+        ("start_time", "Starts"),
+        ("end_time", "Ends"),
+        ("check_in_url", "Check-in URL"),
+    ],
 }
 
 DEFAULT_TEMPLATES = {
@@ -203,6 +214,16 @@ DEFAULT_TEMPLATES = {
         ),
         "cta_label": "View announcements",
     },
+    "shift_reminder": {
+        "subject": "[{{ brand_name }}] Your shift starts at {{ start_time }}",
+        "body": (
+            "Hi {{ agent_name }},\n\n"
+            "Your {{ shift_name }} shift in {{ department }} starts at {{ start_time }} "
+            "on {{ shift_date }} and runs until {{ end_time }}.\n\n"
+            "Check-in is open now."
+        ),
+        "cta_label": "Check in",
+    },
 }
 
 EVENT_META = [
@@ -217,6 +238,7 @@ EVENT_META = [
         ("transfer_accepted", _("Transfer accepted")),
         ("transfer_denied", _("Transfer declined")),
         ("announcement", _("Announcement")),
+        ("shift_reminder", _("Shift reminder")),
     ]
 ]
 
@@ -310,6 +332,25 @@ def announcement_merge_context(announcement) -> dict:
     }
 
 
+def shift_merge_context(assignment) -> dict:
+    from shifts.access import display_name as shift_person
+    from shifts.clock import format_clock
+    from shifts.services import effective_interval
+
+    start_dt, end_dt = effective_interval(assignment)
+    return {
+        "brand_name": BRAND_NAME,
+        "agent_name": shift_person(assignment.user),
+        "shift_name": assignment.shift_type.name,
+        "department": assignment.shift_type.department.name,
+        # Same "Jul 14, 2026" shape format_datetime uses for other emails.
+        "shift_date": timezone.localtime(start_dt).strftime("%b %d, %Y"),
+        "start_time": format_clock(start_dt),
+        "end_time": format_clock(end_dt),
+        "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
+    }
+
+
 def body_to_html(body: str) -> str:
     """Escape plain body text and preserve line breaks for the email shell."""
     return escape(body or "").replace("\n", "<br>\n")
@@ -345,6 +386,17 @@ def sample_context_for_event(event_type: str) -> dict:
             "posted_by": "Admin User",
             "announcement_url": absolute_url("/tickets/") or "/tickets/",
         }
+    if event_type == "shift_reminder":
+        return {
+            "brand_name": BRAND_NAME,
+            "agent_name": "Sam Agent",
+            "shift_name": "Morning",
+            "department": "IT Support",
+            "shift_date": "Jul 14, 2026",
+            "start_time": "9:00 AM",
+            "end_time": "5:00 PM",
+            "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
+        }
     if event_type == "ticket_status":
         ticketish["status"] = "In Progress"
     if event_type == "ticket_picked":
@@ -372,4 +424,6 @@ def render_subject_body(
 def cta_url_for_event(event_type: str, context: dict) -> str:
     if event_type == "announcement":
         return context.get("announcement_url") or ""
+    if event_type == "shift_reminder":
+        return context.get("check_in_url") or ""
     return context.get("ticket_url") or ""

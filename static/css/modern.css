@@ -2145,6 +2145,85 @@ td.mgmt-empty-cell {
   overflow: visible !important;
 }
 
+/* -- Detail Page: Who's available popup (built like the Transfer modal) -- */
+.modal-who-available {
+  overflow: hidden !important;
+}
+.modal-who-available .modal-description-text-transfer {
+  margin-bottom: 1rem;
+}
+.who-available-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.who-available-person {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+}
+.who-available-person + .who-available-person {
+  border-top: 1px solid var(--border);
+}
+.who-available-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--success);
+}
+.who-available-person--later .who-available-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--text-muted);
+}
+.who-available-who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.who-available-name {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+.who-available-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.who-available-chip {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.who-available-chip.shifts-chip--on-light {
+  color: #0f172a;
+}
+.who-available-chip.shifts-chip--on-dark {
+  color: #f8fafc;
+}
+.who-available-heading {
+  margin: 1.25rem 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.who-available-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 /* -- Session Warning Modal -- */
 .session-warning-overlay {
   display: none;

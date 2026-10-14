@@ -99,6 +99,9 @@ class ShiftAssignment(TimeStampedModel):
     # When the agent pressed check in. Unlike checked_in_at it survives the
     # shift ending, so the work hours report can start the shift from it.
     arrived_at = models.DateTimeField(_("Arrived at"), null=True, blank=True)
+    # The start time the shift reminder went out for. A moved start no longer
+    # matches, so the agent is reminded again (shifts.reminders).
+    reminded_for = models.DateTimeField(_("Reminded for"), null=True, blank=True)
 
     class Meta:
         ordering = ["date", "user_id"]

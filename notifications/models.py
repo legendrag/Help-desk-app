@@ -11,6 +11,7 @@ class InAppNotification(models.Model):
         MESSAGE = "message", "Message"
         TRANSFER = "transfer", "Transfer"
         ANNOUNCEMENT = "announcement", "Announcement"
+        SHIFT = "shift", "Shift"
         GENERAL = "general", "General"
 
     recipient = models.ForeignKey(

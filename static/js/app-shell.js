@@ -509,7 +509,7 @@ document.addEventListener('keydown', (e) => {
         }
 
         // Handle custom modals from detail.html
-        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'lightbox-modal'];
+        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'who-available-modal', 'lightbox-modal'];
         customModals.forEach(id => {
             const el = document.getElementById(id);
             if (el && el.style.display !== 'none' && el.style.display !== '') {
@@ -1262,4 +1262,19 @@ document.body.addEventListener('htmx:beforeSwap', function (evt) {
     if (target && target.isConnected) return;
     var body = document.getElementById('tickets-tbody');
     if (body) evt.detail.target = body;
+});
+
+// Ticket chat "Who's available": Transfer on a person opens the Transfer
+// Ticket form with that agent already chosen.
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-who-transfer]');
+    if (!btn) return;
+    const popup = document.getElementById('who-available-modal');
+    const transfer = document.getElementById('custom-transfer-modal');
+    const select = document.getElementById('new_assignee');
+    if (!transfer || !select) return;
+    if (popup) popup.style.display = 'none';
+    select.value = btn.getAttribute('data-who-transfer');
+    transfer.style.display = 'flex';
+    select.focus();
 });

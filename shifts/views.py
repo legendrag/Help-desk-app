@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, time, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -18,6 +18,7 @@ from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htm
 from core.models import Department
 from shifts.clock import format_clock
 from shifts.access import can_check_in, display_name, has_own_shifts, home_target, is_shift_manager
+from shifts.availability import timeline_rows, timeline_window
 from shifts.forms import ShiftTypeForm
 from shifts.models import DepartmentShiftSettings, ShiftAssignment, ShiftType
 from shifts.reports import build_report, report_filename, report_workbook
@@ -423,35 +424,11 @@ def _check_ins_partial(request):
 
 
 
-# Bar states on the Available now timeline, from shifts.services.shift_outcome.
-TIMELINE_STATES = {
-    CHECKED_IN: "on",
-    ON_SHIFT: "on",
-    NOT_CHECKED_IN: "late",
-    COMPLETED: "done",
-    MISSED: "missed",
-}
-# The help desk day: 9 AM to 6 AM next morning. Nobody works 6 to 9 AM,
-# so the timeline leaves that stretch out.
-TIMELINE_START = time(9, 0)
-TIMELINE_END = time(6, 0)
 TIMELINE_TICK_STEP_HOURS = 3
 
 
-def _timeline_window(now):
-    """The 9 AM to 6 AM window holding ``now``; from 6 to 9 AM, the one about to start."""
-    local = timezone.localtime(now)
-    day = local.date()
-    if local.time() < TIMELINE_END:
-        day -= timedelta(days=1)
-    # Not aware_on(): a DST jump must not make the board fail to load.
-    start = timezone.make_aware(datetime.combine(day, TIMELINE_START))
-    end = timezone.make_aware(datetime.combine(day + timedelta(days=1), TIMELINE_END))
-    return day, start, end
-
-
 def _timeline_ticks(day_start, day_length):
-    """Hour labels every three hours from 9 AM; the closing 6 AM edge gets none."""
+    """Hour labels every three hours from the window start; the closing 6 AM edge gets none."""
     ticks = []
     steps = int(day_length // (TIMELINE_TICK_STEP_HOURS * 3600))
     for index in range(steps):
@@ -476,28 +453,15 @@ def _timeline_percent(moment, day_start, day_length):
 def _available_board(request):
     """Today's shifts, one row per person, grouped by department.
 
-    The day runs from 9 AM to 6 AM next morning (see _timeline_window).
-    Shifts that start before 9 AM or run past 6 AM are clipped at the edges.
+    The day runs from 9 AM (earlier when a shift starts between 6 and 9) to
+    6 AM next morning (see timeline_window). Shifts running past either edge
+    are clipped there.
     """
     now = timezone.now()
-    today, day_start, day_end = _timeline_window(now)
+    today, day_start, day_end = timeline_window(now)
     day_length = (day_end - day_start).total_seconds()
-    rows = list(
-        ShiftAssignment.objects.filter(date__in=[today - timedelta(days=1), today, today + timedelta(days=1)])
-        .select_related("user", "user__role", "shift_type", "shift_type__department")
-    )
-    uses_check_in = {}
     people = {}
-    for row in rows:
-        settle_check_in(row, now, save=False)
-        start_dt, end_dt = effective_interval(row)
-        if end_dt <= day_start or start_dt >= day_end:
-            continue
-        if row.user_id not in uses_check_in:
-            uses_check_in[row.user_id] = can_check_in(row.user)
-        # An early check-in is not on shift yet; it starts at the shift start.
-        outcome = shift_outcome(row, now, uses_check_in[row.user_id])
-        state = "later" if now < start_dt else TIMELINE_STATES.get(outcome, "later")
+    for row, start_dt, end_dt, state in timeline_rows(now, today, day_start, day_end):
         left = _timeline_percent(start_dt, day_start, day_length)
         key = (row.shift_type.department_id, row.user_id)
         person = people.setdefault(key, {"name": display_name(row.user), "bars": []})
@@ -570,6 +534,59 @@ def shifts_available_board(request):
         return htmx_not_modified(etag)
     response = render(request, "shifts/available_board.html", _available_context(request, cards, timeline, etag))
     return apply_read_etag(response, etag, request)
+
+
+@login_required
+@require_GET
+def shifts_available_department(request, pk):
+    """Who's available, for the ticket chat popup: one department, now and later today.
+
+    With ``?ticket=<id>`` the viewer gets a Transfer button per person when
+    they may transfer that ticket (same rule as the chat's Transfer action).
+    """
+    from tickets.models import Ticket
+
+    department = get_object_or_404(Department, pk=pk)
+    now = timezone.now()
+    day, window_start, window_end = timeline_window(now)
+    on_now = {}
+    later = {}
+    for row, start_dt, end_dt, state in timeline_rows(now, day, window_start, window_end, department.pk):
+        if row.user.status != User.Status.ACTIVE:
+            continue
+        if state == "on":
+            current = on_now.get(row.user_id)
+            if current is None or end_dt > current["end"]:
+                on_now[row.user_id] = {"user": row.user, "shift_type": row.shift_type, "end": end_dt}
+        elif state == "later" and row.user_id not in on_now:
+            current = later.get(row.user_id)
+            if current is None or start_dt < current["start"]:
+                later[row.user_id] = {"user": row.user, "shift_type": row.shift_type, "start": start_dt}
+    for user_id in on_now:
+        later.pop(user_id, None)
+    for person in list(on_now.values()) + list(later.values()):
+        person["name"] = display_name(person["user"])
+    ticket = None
+    ticket_pk = _parse_pk(request.GET.get("ticket"))
+    if ticket_pk is not None:
+        ticket = Ticket.objects.filter(pk=ticket_pk).only(
+            "id", "assigned_to_id", "pending_transfer_to_id", "department_id",
+        ).first()
+    viewer = request.user
+    can_transfer = bool(
+        ticket
+        and ticket.department_id == department.pk
+        and not ticket.pending_transfer_to_id
+        and (viewer.is_superuser or ticket.assigned_to_id == viewer.pk)
+    )
+    for person in on_now.values():
+        person["can_transfer"] = can_transfer and person["user"].pk != ticket.assigned_to_id
+    return render(request, "shifts/available_popup.html", {
+        "department": department,
+        "on_now": sorted(on_now.values(), key=lambda person: person["name"].casefold()),
+        "later": sorted(later.values(), key=lambda person: (person["start"], person["name"].casefold())),
+        "show_shift_type": _shows_shift_types(viewer),
+    })
 
 
 def _shows_shift_types(user) -> bool:

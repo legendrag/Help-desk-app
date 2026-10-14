@@ -19,6 +19,7 @@ except ImportError:
 from .email_jobs import (
     send_announcement_email,
     send_new_ticket_email,
+    send_shift_reminder_email,
     send_ticket_picked_email,
     send_ticket_update_email,
     send_transfer_event_email,
@@ -579,3 +580,46 @@ def notify_announcement_created(announcement, actor=None):
         announcement.id,
         actor.id if actor else None,
     )
+
+
+SHIFT_REMINDER_LINK = "/shifts/mine/#shifts-check-in"
+
+
+def notify_shift_reminder(assignment):
+    """Tell an agent their shift starts soon: bell, web push, then email.
+
+    Copy is built in each language so the start time reads "9:00 AM" in
+    English and "9:00 ص" in Arabic.
+    """
+    from django.utils import translation
+    from django.utils.translation import gettext
+
+    from shifts.access import can_check_in
+    from shifts.clock import format_clock
+    from shifts.services import effective_interval
+
+    start_dt, _end_dt = effective_interval(assignment)
+    title_msgid = gettext_noop("Your shift starts at %(time)s")
+    if can_check_in(assignment.user):
+        message_msgid = gettext_noop("%(shift)s · %(department)s. You can check in now.")
+    else:
+        message_msgid = gettext_noop("%(shift)s · %(department)s. Have a good shift.")
+    copy = {}
+    for language in ("en", "ar"):
+        with translation.override(language):
+            params = {
+                "time": format_clock(start_dt),
+                "shift": assignment.shift_type.name,
+                "department": assignment.shift_type.department.name,
+            }
+            copy[language] = (gettext(title_msgid) % params, gettext(message_msgid) % params)
+    _notify_users(
+        [assignment.user],
+        copy["en"][0],
+        copy["en"][1],
+        SHIFT_REMINDER_LINK,
+        notification_type=InAppNotification.NotificationType.SHIFT,
+        title_ar=copy["ar"][0],
+        message_ar=copy["ar"][1],
+    )
+    _enqueue(send_shift_reminder_email, assignment.pk)

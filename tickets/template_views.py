@@ -47,6 +47,31 @@ def _kb_articles_prefetch(user):
     )
 
 
+def _filter_id(value):
+    """A filter's id as an int, or None for "all", blanks and junk like "abc"."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _apply_id_filters(queryset, filters):
+    """Department, branch and assignee filters; bad values are ignored, not 500s."""
+    department = _filter_id(filters.get("department"))
+    if department is not None:
+        queryset = queryset.filter(department_id=department)
+    branch = _filter_id(filters.get("branch"))
+    if branch is not None:
+        queryset = queryset.filter(branch_id=branch)
+    assigned_to = filters.get("assigned_to")
+    if assigned_to == "unassigned":
+        queryset = queryset.filter(assigned_to__isnull=True)
+    elif _filter_id(assigned_to) is not None:
+        queryset = queryset.filter(assigned_to_id=_filter_id(assigned_to))
+    return queryset
+
+
 def _default_month_range():
     """Return (start_date, end_date) for the current local calendar month."""
     today = tz.localdate()
@@ -321,15 +346,7 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         if end_dt:
             filtered_queryset = filtered_queryset.filter(created_at__lt=end_dt)
 
-        if filters["department"] and filters["department"] != "all":
-            filtered_queryset = filtered_queryset.filter(department_id=filters["department"])
-        if filters["branch"] and filters["branch"] != "all":
-            filtered_queryset = filtered_queryset.filter(branch_id=filters["branch"])
-        if filters["assigned_to"] and filters["assigned_to"] != "all":
-            if filters["assigned_to"] == "unassigned":
-                filtered_queryset = filtered_queryset.filter(assigned_to__isnull=True)
-            else:
-                filtered_queryset = filtered_queryset.filter(assigned_to_id=filters["assigned_to"])
+        filtered_queryset = _apply_id_filters(filtered_queryset, filters)
 
         status_counts = {
             item["status"]: item["count"]
@@ -616,15 +633,7 @@ class ExportDashboardExcelView(DashboardView):
             qs = qs.filter(created_at__gte=start_dt)
         if end_dt:
             qs = qs.filter(created_at__lt=end_dt)
-        if filters["department"] and filters["department"] != "all":
-            qs = qs.filter(department_id=filters["department"])
-        if filters["branch"] and filters["branch"] != "all":
-            qs = qs.filter(branch_id=filters["branch"])
-        if filters["assigned_to"] and filters["assigned_to"] != "all":
-            if filters["assigned_to"] == "unassigned":
-                qs = qs.filter(assigned_to__isnull=True)
-            else:
-                qs = qs.filter(assigned_to_id=filters["assigned_to"])
+        qs = _apply_id_filters(qs, filters)
 
         context = self.get_context_data(object_list=self.object_list)
         
@@ -964,8 +973,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         return queryset.none()
 
     def _apply_list_filters(self, queryset):
-        branch_filter = self.request.GET.get("branch")
-        if branch_filter and branch_filter != "all":
+        branch_filter = _filter_id(self.request.GET.get("branch"))
+        if branch_filter is not None:
             queryset = queryset.filter(branch_id=branch_filter)
 
         status_filter = self.request.GET.get("status")
@@ -973,11 +982,10 @@ class TicketListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(status=status_filter)
 
         assignment_filter = self.request.GET.get("assignment")
-        if assignment_filter and assignment_filter != "all":
-            if assignment_filter == "unassigned":
-                queryset = queryset.filter(assigned_to__isnull=True)
-            else:
-                queryset = queryset.filter(assigned_to_id=assignment_filter)
+        if assignment_filter == "unassigned":
+            queryset = queryset.filter(assigned_to__isnull=True)
+        elif _filter_id(assignment_filter) is not None:
+            queryset = queryset.filter(assigned_to_id=_filter_id(assignment_filter))
 
         # Apply search last so relevance ordering wins over default created_at order.
         search_query = self.request.GET.get("q", "").strip()
@@ -1218,6 +1226,15 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             "id", "username", "department", "department__name"
         )
 
+        # Agents on shift right now come first, marked with when they finish.
+        from shifts.availability import on_shift_now
+
+        on_shift = on_shift_now(ticket.department_id) if ticket.department_id else {}
+        supporters = list(supporters)
+        for supporter in supporters:
+            supporter.on_shift_until = on_shift.get(supporter.id)
+        supporters.sort(key=lambda supporter: supporter.on_shift_until is None)
+
         context['supporters'] = supporters
 
         return context
@@ -1331,8 +1348,8 @@ def ticket_category_options(request):
             if not (user.role and (user.role.can_create_ticket or user.role.can_update_ticket)):
                 raise PermissionDenied(_("You do not have permission to access categories."))
 
-    department_id = request.GET.get("department")
-    if department_id:
+    department_id = _filter_id(request.GET.get("department"))
+    if department_id is not None:
         categories = Category.objects.filter(department_id=department_id).order_by("name")
     else:
         categories = Category.objects.none()

@@ -1,6 +1,7 @@
 {% load static %}
 {% load i18n %}
 {% load ticket_extras %}
+{% load shifts_extras %}
 {% get_current_language as LANGUAGE_CODE %}
 <script>
 document.body.classList.remove("kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page");
@@ -38,6 +39,22 @@ if (window.updateActiveNav) window.updateActiveNav();
             </div>
 
             <div class="chat-header-details">
+                {% if ticket.department_id %}
+                <button type="button" class="btn secondary btn--sm" data-no-progress
+                    hx-get="{% url 'shifts_available_department' ticket.department_id %}?ticket={{ ticket.id }}"
+                    hx-target="#who-available-body" hx-swap="innerHTML"
+                    onclick="document.getElementById('who-available-modal').style.display='flex'"
+                    aria-label="{% trans "Who's available" %}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="chat-header-btn-label">{% trans "Who's available" %}</span>
+                </button>
+                {% endif %}
                 <button type="button" class="btn secondary btn--sm" onclick="toggleTicketDetails()"
                     aria-label="{% trans 'View Details' %}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -826,7 +843,7 @@ if (window.updateActiveNav) window.updateActiveNav();
                     <select name="new_assignee" id="new_assignee" class="form-control" required>
                         <option value="">{% trans "-- Select Agent --" %}</option>
                         {% for supporter in supporters %}
-                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }})
+                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }}){% if supporter.on_shift_until %} — {% blocktrans trimmed with time=supporter.on_shift_until|shifts_clock_text %}On shift until {{ time }}{% endblocktrans %}{% endif %}
                         </option>
                         {% endfor %}
                     </select>
@@ -840,6 +857,32 @@ if (window.updateActiveNav) window.updateActiveNav();
         </form>
     </div>
 </div>
+
+{% if ticket.department_id %}
+<div id="who-available-modal" class="modal-overlay modal-overlay-hidden"
+    onclick="if(event.target == this) this.style.display='none'">
+    <div class="modal-content modal-transfer-ticket modal-who-available">
+        <div class="modal-header">
+            <h2 class="modal-title-text">{% trans "Who's available" %}</h2>
+            <button type="button" class="modal-close"
+                onclick="document.getElementById('who-available-modal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" id="who-available-body">
+            <p class="modal-description-text-transfer">{% trans "Loading…" %}</p>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn secondary"
+                onclick="document.getElementById('who-available-modal').style.display='none'">{% trans "Close" %}</button>
+        </div>
+    </div>
+</div>
+{% endif %}
 </div>
 
 <script>
