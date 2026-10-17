@@ -291,3 +291,47 @@ class SettingsListsLoggedOutTests(TestCase):
             response = self.client.get(reverse(name))
             self.assertEqual(response.status_code, 302, name)
             self.assertIn(reverse("login"), response["Location"], name)
+
+
+class RoleEscalationTests(TestCase):
+    """A role editor can only hand out permissions their own role already has."""
+
+    def setUp(self):
+        from core.forms import RoleForm
+
+        self.role = Role.objects.create(
+            name="Role editor", can_access_settings=True, can_update_role=True, can_create_role=True,
+        )
+        self.editor = User.objects.create_user(
+            username="role-editor", password="password123", user_type=User.UserType.SUPPORT, role=self.role,
+        )
+        self.client.force_login(self.editor)
+        # Every field the form posts, as the settings page sends it.
+        self.data = {name: "on" for name in RoleForm.base_fields if name.startswith("can_")}
+
+    def _post(self, role, **overrides):
+        data = {**self.data, "name": role.name, **overrides}
+        return self.client.post(reverse("role_update", args=[role.pk]), data, HTTP_HX_REQUEST="true")
+
+    def test_cannot_give_own_role_everything(self):
+        response = self._post(self.role)
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.role.refresh_from_db()
+        self.assertFalse(self.role.can_delete_role)
+        self.assertFalse(self.role.can_manage_shifts)
+
+    def test_can_pass_on_what_they_hold_and_keep_existing_flags(self):
+        other = Role.objects.create(name="Other role", can_manage_shifts=True)
+        data = {"name": other.name, "can_access_settings": "on", "can_manage_shifts": "on"}
+        response = self.client.post(reverse("role_update", args=[other.pk]), data, HTTP_HX_REQUEST="true")
+        self.assertNotContains(response, "You can only give permissions", status_code=response.status_code)
+        other.refresh_from_db()
+        self.assertTrue(other.can_access_settings)  # the editor has it
+        self.assertTrue(other.can_manage_shifts)  # already on, so it may stay
+
+    def test_cannot_create_a_stronger_role(self):
+        response = self.client.post(
+            reverse("role_create"), {"name": "Sneaky", "can_delete_user": "on"}, HTTP_HX_REQUEST="true",
+        )
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.assertFalse(Role.objects.filter(name="Sneaky").exists())

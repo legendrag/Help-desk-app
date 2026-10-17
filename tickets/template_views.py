@@ -7,6 +7,7 @@ import os
 from django.utils import timezone as tz
 from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_str
+from django.utils.html import escapejs, format_html
 from django.utils.translation import gettext as _
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
@@ -19,6 +20,7 @@ from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q,
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
 from .access import (
+    user_can_merge,
     user_can_pick_ticket,
     user_can_reopen_ticket,
     user_can_send_message,
@@ -1223,6 +1225,10 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             can_chat = (ticket.assigned_to_id == user.id)
         context['can_chat'] = can_chat
         context['can_update_status'] = user_can_update_status(user, ticket)
+        context['can_accept'] = user_can_pick_ticket(user, ticket)
+        context['can_transfer'] = (
+            (user.is_superuser or ticket.assigned_to_id == user.id) and not ticket.pending_transfer_to_id
+        )
 
         supporters = User.objects.filter(
             status=User.Status.ACTIVE
@@ -1378,7 +1384,7 @@ def post_message(request, ticket_id):
             raise PermissionDenied(_("You do not have permission to send messages."))
 
     if request.method == "POST":
-        message_text = request.POST.get("message")
+        message_text = (request.POST.get("message") or "").strip()  # same as the chat socket
         attachment = request.FILES.get("attachment")
         reply_to_id = request.POST.get("reply_to")
 
@@ -1863,28 +1869,35 @@ def ticket_search_options(request):
 
     options = ['<div id="search-results-container" class="merge-search-results">']
     for t in tickets:
-        status_label = t.get_status_display()
-        priority_label = t.get_priority_display().upper()
-        options.append(
-            f'<div class="merge-search-item" '
-            f'hx-get="/tickets/merge-preview/{t.id}/" '
-            f'hx-target="#selected-ticket-preview" '
-            f'hx-swap="innerHTML" '
-            f'onclick="selectTicketForMerge(\'{t.ticket_number}\')">'
-            f'  <div class="merge-item-header">'
-            f'    <span class="merge-item-number">{t.ticket_number}</span>'
-            f'    <div class="merge-item-badges">'
-            f'      <span class="badge badge-{t.status}">{status_label}</span>'
-            f'      <span class="priority-badge priority-{t.priority}">{priority_label}</span>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="merge-item-title">{t.title}</div>'
-            f'  <div class="merge-item-meta">'
-            f'    <span>Dept: {t.department.name}</span> | '
-            f'    <span>By: {t.created_by.username}</span>'
-            f'  </div>'
-            f'</div>'
-        )
+        # format_html escapes every value: titles are typed by branch users.
+        options.append(format_html(
+            '<div class="merge-search-item" '
+            'hx-get="{}" '
+            'hx-target="#selected-ticket-preview" '
+            'hx-swap="innerHTML" '
+            'onclick="selectTicketForMerge(\'{}\')">'
+            '  <div class="merge-item-header">'
+            '    <span class="merge-item-number">{}</span>'
+            '    <div class="merge-item-badges">'
+            '      <span class="badge badge-{}">{}</span>'
+            '      <span class="priority-badge priority-{}">{}</span>'
+            '    </div>'
+            '  </div>'
+            '  <div class="merge-item-title">{}</div>'
+            '  <div class="merge-item-meta">'
+            '    <span>Dept: {}</span> | '
+            '    <span>By: {}</span>'
+            '  </div>'
+            '</div>',
+            f"/tickets/merge-preview/{t.id}/",
+            escapejs(t.ticket_number),
+            t.ticket_number,
+            t.status, t.get_status_display(),
+            t.priority, t.get_priority_display().upper(),
+            t.title,
+            t.department.name,
+            t.created_by.username,
+        ))
     options.append('</div>')
         
     return HttpResponse("\n".join(options))
@@ -1908,20 +1921,20 @@ def ticket_merge_preview(request, ticket_id):
 
 @login_required
 def merge_ticket(request, ticket_id):
-    if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
+    primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not user_can_update_status(request.user, primary_ticket):
         raise PermissionDenied(_("You do not have permission to merge tickets."))
 
-    primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
-
     if request.method == "POST":
-        target_ticket_number = request.POST.get("target_ticket_number")
+        target_ticket_number = (request.POST.get("target_ticket_number") or "").strip()
         if not target_ticket_number:
             django_messages.error(request, _("Target ticket number is required."))
             return redirect("ticket_detail", ticket_id=ticket_id)
 
-        try:
-            secondary_ticket = Ticket.objects.get(ticket_number=target_ticket_number)
-        except Ticket.DoesNotExist:
+        secondary_ticket = Ticket.objects.filter(ticket_number=target_ticket_number).first()
+        # A ticket the user may not touch reads as "not found", so numbers
+        # from other departments can't be probed.
+        if secondary_ticket is None or not user_can_merge(request.user, primary_ticket, secondary_ticket):
             django_messages.error(request, _("Ticket {} not found.").format(target_ticket_number))
             return redirect("ticket_detail", ticket_id=ticket_id)
 

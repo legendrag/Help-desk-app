@@ -2206,3 +2206,7 @@
   color: #e2e8f0;
 }
 
+
+[data-theme="dark"] .flash-toast {
+  background: #1e293b;
+}

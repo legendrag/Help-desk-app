@@ -91,9 +91,34 @@ class CategoryForm(forms.ModelForm):
         return name.strip()
 
 class RoleForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.editor = editor
         _style_fields(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        # Nobody but a superuser can hand out a permission they don't hold,
+        # on another role or their own. Flags a role already has can stay.
+        editor = self.editor
+        if editor is None or editor.is_superuser:
+            return cleaned
+        held = editor.role
+        refused = []
+        for name, field in self.fields.items():
+            if not name.startswith("can_") or not cleaned.get(name):
+                continue
+            already_on = bool(self.instance.pk and getattr(self.instance, name))
+            if not already_on and not (held and getattr(held, name, False)):
+                refused.append(str(field.label))
+                cleaned[name] = False
+        if refused:
+            # The checkboxes have no error slot, so say it once at the top.
+            raise forms.ValidationError(
+                _("You can only give permissions that your own role has: %(names)s."),
+                params={"names": ", ".join(refused)},
+            )
+        return cleaned
 
     class Meta:
 

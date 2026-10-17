@@ -3803,6 +3803,11 @@ msgstr[3] "%(count)d أيام"
 msgstr[4] "%(count)d يومًا"
 msgstr[5] "%(count)d يوم"
 
+#: core/forms.py
+#, python-format
+msgid "You can only give permissions that your own role has: %(names)s."
+msgstr "يمكنك منح الصلاحيات الموجودة في دورك فقط: %(names)s."
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

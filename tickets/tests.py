@@ -681,7 +681,7 @@ class TicketRoleFlagTests(TestCase):
         self.assertNotContains(page, 'id="action-bar-form"')
         self.assertNotContains(page, 'data-action="closed"')
         self.assertNotContains(page, 'data-action="merge"')
-        self.assertContains(page, 'id="action-bar-execute"\n                                data-action="transfer"')
+        self.assertContains(page, 'data-action="transfer" data-confirm="transfer" onclick="executeActionBar()"')
 
     def test_assignee_with_update_status_can_change_it(self):
         self.agent_role.can_update_status = True
@@ -714,6 +714,82 @@ class TicketRoleFlagTests(TestCase):
             self.assertEqual(human_duration(2 * 3600), "ساعتان")
             self.assertEqual(human_duration(5 * 3600), "5 ساعات")
             self.assertEqual(human_duration(None), "غير متاح")
+
+    def _other_department_ticket(self):
+        other = Department.objects.create(name="Flag Other")
+        owner = User.objects.create_user(
+            username="flag_other", password="password123", user_type=User.UserType.SUPPORT, department=other,
+        )
+        return Ticket.objects.create(
+            ticket_number="TK-FLG2", title="Other", description="Other", branch=self.branch,
+            department=other, category=Category.objects.create(department=other, name="Other Cat"),
+            created_by=self.branch_user, assigned_to=owner, client_name="C", client_phone="1",
+        )
+
+    def test_merge_needs_the_status_rule_and_a_ticket_in_reach(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        outside = self._other_department_ticket()
+        self.client.force_login(self.agent)
+        merge = lambda primary, number: self.client.post(  # noqa: E731
+            reverse("merge_ticket", kwargs={"ticket_id": primary.id}), {"target_ticket_number": number},
+        )
+        # A ticket from another department is "not found" and stays as it is.
+        merge(self.ticket, outside.ticket_number)
+        outside.refresh_from_db()
+        self.assertIsNone(outside.merged_into_id)
+        # Merging into a ticket the user doesn't hold is refused outright.
+        self.assertEqual(merge(outside, self.ticket.ticket_number).status_code, 403)
+        # Without the flag, not even their own ticket.
+        self.agent_role.can_update_status = False
+        self.agent_role.save()
+        self.assertEqual(merge(self.ticket, "TK-ANY").status_code, 403)
+
+    def test_merge_search_escapes_titles(self):
+        self.ticket.title = '<img src=x onerror="alert(1)">'
+        self.ticket.save()
+        self.client.force_login(self.agent)
+        response = self.client.get(reverse("ticket_search_options"), {"q": "TK-FLG1"})
+        self.assertNotContains(response, "<img src=x")
+        self.assertContains(response, "&lt;img src=x")
+
+    def test_action_bar_shows_without_send_message(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.can_send_message = False
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'id="chat-message-form"')
+        self.assertContains(page, "You do not have permission to send messages.")
+        self.assertContains(page, 'data-action="closed"')
+        # Both flags off: Transfer alone.
+        self.agent_role.can_update_status = False
+        self.agent_role.save()
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'data-action="closed"')
+        self.assertContains(page, 'data-action="transfer"')
+
+    def test_status_messages_show_on_the_next_page(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        self.client.post(
+            reverse("merge_ticket", kwargs={"ticket_id": self.ticket.id}), {"target_ticket_number": " "},
+        )
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, "Target ticket number is required.")
+        self.assertContains(page, 'class="flash-toasts"')
+        # Shown once, not saved up for another page.
+        self.assertNotContains(self.client.get(reverse("tickets_list")), "Target ticket number is required.")
+
+    def test_whitespace_message_is_refused(self):
+        self.client.force_login(self.agent)
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}), {"message": "   \n "},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(TicketMessage.objects.filter(ticket=self.ticket, sender=self.agent).exists())
 
 
 class TicketNumberCopyButtonTests(TestCase):

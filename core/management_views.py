@@ -168,14 +168,23 @@ class CategoryUpdateView(CategoryPermissionMixin, LoginRequiredMixin, BaseManage
     partial_template_name = "core/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class RoleCreateView(RolePermissionMixin, LoginRequiredMixin, BaseManagementView, CreateView):
+class RoleEditorMixin:
+    """RoleForm checks new permissions against the editor's own role."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["editor"] = self.request.user
+        return kwargs
+
+
+class RoleCreateView(RolePermissionMixin, LoginRequiredMixin, RoleEditorMixin, BaseManagementView, CreateView):
     model = Role
     form_class = RoleForm
     template_name = "core/management/form.html"
     partial_template_name = "core/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class RoleUpdateView(RolePermissionMixin, LoginRequiredMixin, BaseManagementView, UpdateView):
+class RoleUpdateView(RolePermissionMixin, LoginRequiredMixin, RoleEditorMixin, BaseManagementView, UpdateView):
     model = Role
     form_class = RoleForm
     template_name = "core/management/form.html"

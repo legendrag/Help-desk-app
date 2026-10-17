@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from accounts.models import User
@@ -118,4 +119,10 @@ def run_seed(
     success("")
     success("System seed completed successfully.")
     success(f"Demo users password: {password}")
-    success("Accounts: admin / admin  |  lead1, agent1-3, branch_* , kb_editor1")
+    admin = getattr(settings, "DEFAULT_SUPERADMIN_USERNAME", "admin")
+    # Same password seed_roles sets. A real one from settings is never printed.
+    if getattr(settings, "DEFAULT_SUPERADMIN_PASSWORD", ""):
+        success(f"Admin: {admin} (password from DEFAULT_SUPERADMIN_PASSWORD)")
+    else:
+        success(f"Admin: {admin} / demo-admin-change-me")
+    success("Demo accounts: lead1, agent1-3, branch_* , kb_editor1")

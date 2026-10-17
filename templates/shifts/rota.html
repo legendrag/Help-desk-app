@@ -14,9 +14,6 @@
 {% endif %}
 {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
 {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
-{% for message in messages %}
-<p class="notice{% if 'error' in message.tags %} notice-error{% endif %}">{{ message }}</p>
-{% endfor %}
 <form method="get" class="shifts-toolbar panel" action="{% url 'shifts_rota' %}">
   <div class="form-group">
     <label for="rota-department">{% trans "Department" %}</label>
