@@ -7,9 +7,23 @@
 <div class="content-container">
     <div class="panel" style="max-width: 480px; margin: 2rem auto; text-align: center; padding: 2rem;">
         <h2 style="color: var(--danger); margin-bottom: 1rem;">{% trans "Confirm Deletion" %}</h2>
+        {% if in_use %}
         <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">
-            {% blocktrans trimmed with object=object|lower %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}
+            {% blocktrans trimmed with object=object %}This {{ object }} can't be deleted yet.{% endblocktrans %}
         </p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            {% blocktrans trimmed with uses=in_use|join:", " %}It is still used by {{ uses }}. Move or reassign them first.{% endblocktrans %}
+        </p>
+        <a href="{% url 'settings' %}" class="btn secondary">{% trans "Back" %}</a>
+        {% else %}
+        <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">
+            {% blocktrans trimmed with object=object %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}
+        </p>
+        {% if also_deletes %}
+        <p style="color: var(--danger); font-size: 0.9rem; margin-bottom: 0.5rem;">
+            {% blocktrans trimmed with items=also_deletes|join:", " %}Deleting it also deletes {{ items }}.{% endblocktrans %}
+        </p>
+        {% endif %}
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
             {% trans "This action cannot be undone." %}
         </p>
@@ -18,6 +32,7 @@
             <button type="submit" style="flex: 1; background: var(--danger); border-color: var(--danger);">{% trans "Yes, Delete" %}</button>
             <a href="{% url 'settings' %}" class="btn secondary" style="flex: 1; text-align: center;">{% trans "Cancel" %}</a>
         </form>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -10,7 +10,7 @@ from django.urls import reverse
 from accounts.models import User
 from config.settings import mysql_connect_host
 from core.management_views import CategoryListView
-from core.models import Category, Department
+from core.models import Category, Department, Role
 from core.version import get_app_version
 from tickets.models import Ticket
 
@@ -104,7 +104,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=8", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=14", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=23", self.base_html)
@@ -201,7 +201,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=8", html)
+        self.assertIn("js/app-shell.js?v=14", html)
         self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
@@ -269,3 +269,69 @@ class SeedDemoDataTests(TestCase):
         
         branches = set(Ticket.objects.values_list("branch__code", flat=True))
         self.assertGreater(len(branches), 1)
+
+
+class ManageShiftsFlagTests(TestCase):
+    def test_admin_role_name_forces_the_flag(self):
+        role = Role(name=" Admin ", can_manage_shifts=False)
+        role.save()
+        role.refresh_from_db()
+        self.assertTrue(role.can_manage_shifts)
+        self.assertTrue(role.can_check_in)
+
+    def test_other_role_keeps_false(self):
+        role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
+        self.assertFalse(role.can_manage_shifts)
+        self.assertFalse(role.can_check_in)
+
+
+class SettingsListsLoggedOutTests(TestCase):
+    def test_settings_lists_send_anonymous_users_to_login(self):
+        for name in ("department_list", "role_list", "branch_list", "category_list"):
+            response = self.client.get(reverse(name))
+            self.assertEqual(response.status_code, 302, name)
+            self.assertIn(reverse("login"), response["Location"], name)
+
+
+class RoleEscalationTests(TestCase):
+    """A role editor can only hand out permissions their own role already has."""
+
+    def setUp(self):
+        from core.forms import RoleForm
+
+        self.role = Role.objects.create(
+            name="Role editor", can_access_settings=True, can_update_role=True, can_create_role=True,
+        )
+        self.editor = User.objects.create_user(
+            username="role-editor", password="password123", user_type=User.UserType.SUPPORT, role=self.role,
+        )
+        self.client.force_login(self.editor)
+        # Every field the form posts, as the settings page sends it.
+        self.data = {name: "on" for name in RoleForm.base_fields if name.startswith("can_")}
+
+    def _post(self, role, **overrides):
+        data = {**self.data, "name": role.name, **overrides}
+        return self.client.post(reverse("role_update", args=[role.pk]), data, HTTP_HX_REQUEST="true")
+
+    def test_cannot_give_own_role_everything(self):
+        response = self._post(self.role)
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.role.refresh_from_db()
+        self.assertFalse(self.role.can_delete_role)
+        self.assertFalse(self.role.can_manage_shifts)
+
+    def test_can_pass_on_what_they_hold_and_keep_existing_flags(self):
+        other = Role.objects.create(name="Other role", can_manage_shifts=True)
+        data = {"name": other.name, "can_access_settings": "on", "can_manage_shifts": "on"}
+        response = self.client.post(reverse("role_update", args=[other.pk]), data, HTTP_HX_REQUEST="true")
+        self.assertNotContains(response, "You can only give permissions", status_code=response.status_code)
+        other.refresh_from_db()
+        self.assertTrue(other.can_access_settings)  # the editor has it
+        self.assertTrue(other.can_manage_shifts)  # already on, so it may stay
+
+    def test_cannot_create_a_stronger_role(self):
+        response = self.client.post(
+            reverse("role_create"), {"name": "Sneaky", "can_delete_user": "on"}, HTTP_HX_REQUEST="true",
+        )
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.assertFalse(Role.objects.filter(name="Sneaky").exists())

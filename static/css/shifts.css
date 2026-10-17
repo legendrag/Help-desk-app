@@ -1,0 +1,1655 @@
+.shifts-ltr {
+  unicode-bidi: isolate;
+  direction: ltr;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+#shifts-shell-pane bdi[dir="auto"] {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+#shifts-shell-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+#shifts-shell-pane .shifts-header h1,
+#shifts-shell-pane .shifts-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+#shifts-shell-pane .shifts-range {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-toolbar,
+#shifts-shell-pane .shifts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-actions form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#shifts-shell-pane .shifts-actions input[type="number"] {
+  inline-size: 5rem;
+  flex: 0 0 auto;
+}
+
+#shifts-shell-pane .shifts-toolbar .form-group,
+#shifts-shell-pane .shifts-form .form-group {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-toolbar .form-group,
+#shifts-shell-pane .shifts-tools .shifts-form .form-group {
+  flex: 0 1 14rem;
+  inline-size: 14rem;
+  max-inline-size: 100%;
+}
+
+#shifts-shell-pane .shifts-grid-wrap {
+  overflow-x: auto;
+  max-block-size: calc(100dvh - 12rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.05);
+  background: var(--panel-bg);
+}
+
+#shifts-shell-pane .shifts-grid {
+  --person-col: 11rem;
+  --day-col: 9.75rem;
+  display: table;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  inline-size: max(100%, calc(var(--person-col) + 7 * var(--day-col)));
+  width: max(100%, calc(var(--person-col) + 7 * var(--day-col)));
+  min-inline-size: 100%;
+  background: var(--panel-bg);
+}
+
+#shifts-shell-pane .shifts-grid--month {
+  --day-col: 4.75rem;
+  inline-size: max(100%, calc(var(--person-col) + 31 * var(--day-col)));
+  width: max(100%, calc(var(--person-col) + 31 * var(--day-col)));
+}
+
+#shifts-shell-pane .shifts-grid thead {
+  display: table-header-group;
+  position: static;
+  inline-size: auto;
+  width: auto;
+  block-size: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+}
+
+#shifts-shell-pane .shifts-grid tbody {
+  display: table-row-group;
+  inline-size: auto;
+  width: auto;
+}
+
+#shifts-shell-pane .shifts-grid tr {
+  display: table-row;
+  inline-size: auto;
+  width: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#shifts-shell-pane table {
+  background: var(--panel-bg);
+  color: var(--text-main);
+}
+
+#shifts-shell-pane th,
+#shifts-shell-pane td {
+  background: var(--panel-bg);
+  color: var(--text-main);
+  text-align: start;
+}
+
+#shifts-shell-pane tr:hover td,
+#shifts-shell-pane tr:hover th {
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-grid th,
+#shifts-shell-pane .shifts-grid td {
+  display: table-cell;
+  inline-size: auto;
+  width: auto;
+  padding: 0.4rem;
+  vertical-align: top;
+  border-block-end: 1px solid var(--border);
+  border-inline-end: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background-color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-grid th:last-child,
+#shifts-shell-pane .shifts-grid td:last-child {
+  border-inline-end: none;
+}
+
+#shifts-shell-pane .shifts-grid td::before {
+  content: none;
+}
+
+#shifts-shell-pane .shifts-grid thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--panel-bg);
+  text-align: center;
+  white-space: nowrap;
+  padding: 0.55rem 0.4rem;
+  border-block-end: 2px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+#shifts-shell-pane .shifts-th-weekday {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+#shifts-shell-pane .shifts-th-daynum {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+#shifts-shell-pane .shifts-day--today {
+  background: color-mix(in srgb, var(--primary) 5%, var(--panel-bg));
+}
+
+#shifts-shell-pane thead th.shifts-day--today {
+  background: color-mix(in srgb, var(--primary) 12%, var(--panel-bg));
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+#shifts-shell-pane thead th.shifts-day--today .shifts-th-daynum {
+  color: var(--primary);
+}
+
+#shifts-shell-pane .shifts-day--weekend {
+  background: color-mix(in srgb, var(--text-muted) 4%, var(--panel-bg));
+}
+
+#shifts-shell-pane thead th.shifts-day--weekend {
+  background: color-mix(in srgb, var(--text-muted) 8%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-grid .shifts-person {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 3;
+  background: var(--bg);
+  text-align: start;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-main);
+  inline-size: var(--person-col);
+  width: var(--person-col);
+  min-inline-size: var(--person-col);
+  max-inline-size: var(--person-col);
+  border-inline-end: 2px solid var(--border);
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
+html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
+  box-shadow: -2px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
+#shifts-shell-pane .shifts-grid thead .shifts-person {
+  z-index: 4;
+  text-align: start;
+  background-color: var(--bg);
+  vertical-align: middle;
+}
+
+#shifts-shell-pane tr:hover .shifts-person {
+  background-color: color-mix(in srgb, var(--primary) 8%, var(--bg));
+}
+
+#shifts-shell-pane tbody tr:nth-child(even) td:not(.shifts-day--today):not(.shifts-day--weekend) {
+  background-color: color-mix(in srgb, var(--text-muted) 2%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-inline-size: 0;
+  min-block-size: 5.6rem;
+  position: relative;
+}
+
+#shifts-shell-pane .shifts-checkin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-toolbar > form {
+  display: contents;
+}
+
+#shifts-shell-pane .shifts-cell,
+#shifts-shell-pane .shifts-cell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  text-align: start;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-cell-btn {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+/* Quiet list: each shift is an entry with a coloured edge and no box.
+   Two shifts on one day are simply two entries. */
+#shifts-shell-pane .shifts-cell--filled {
+  flex: 0 0 auto;
+  gap: 0.1rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.6rem;
+  border: 0;
+  border-inline-start: 3px solid var(--shift-colour, var(--primary));
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+/* With no box, the hover tint is what tells a manager the entry opens. */
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:hover {
+  background: color-mix(in srgb, var(--shift-colour, var(--primary)) 12%, transparent);
+  border-inline-start-color: var(--shift-colour, var(--primary));
+  box-shadow: none;
+  transform: none;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--filled:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+#shifts-shell-pane .shifts-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-cell-name-text {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Night marker: a drawn crescent (the "☾" text glyph sat crooked and changed with the font).
+   It is a mask, so it takes the colour of whatever it sits in. */
+#shifts-shell-pane .shifts-moon,
+#shifts-shell-pane .shifts-chip--night::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  inline-size: 0.85em;
+  block-size: 0.85em;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z'/%3E%3C/svg%3E") center / contain no-repeat;
+  vertical-align: -0.1em;
+}
+
+/* In a rota entry, lift dark shift colours toward the text colour so the moon stays visible. */
+#shifts-shell-pane .shifts-cell-name .shifts-moon {
+  color: color-mix(in srgb, var(--shift-colour, var(--primary)) 55%, var(--text-main));
+  inline-size: 0.8rem;
+  block-size: 0.8rem;
+}
+
+#shifts-shell-pane .shifts-type-badge .shifts-moon {
+  margin-inline-end: 0.3em;
+}
+
+#shifts-shell-pane .shifts-cell--filled .shifts-times {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+/* Status is spelled out as a coloured word, so nothing needs learning. */
+#shifts-shell-pane .shifts-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.05rem 0.5rem;
+  max-inline-size: 100%;
+}
+
+#shifts-shell-pane .shifts-st {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+#shifts-shell-pane .shifts-st--miss {
+  color: color-mix(in srgb, var(--danger) 80%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--not {
+  color: color-mix(in srgb, var(--warning) 70%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--in {
+  color: color-mix(in srgb, var(--success) 75%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--info {
+  color: color-mix(in srgb, var(--primary) 80%, var(--text-main));
+}
+
+#shifts-shell-pane .shifts-st--muted {
+  color: var(--text-muted);
+}
+
+/* The add button sits under the entries and shows on hover. */
+#shifts-shell-pane .shifts-cell-stack:not([data-count="0"]) > .shifts-cell--empty {
+  margin-block-start: auto;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--empty {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  min-block-size: 1.4rem;
+  block-size: 1.4rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-cell.shifts-cell--empty {
+  color: var(--text-muted);
+  min-block-size: 5.6rem;
+  block-size: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed transparent;
+}
+
+#shifts-shell-pane .shifts-cell-stack[data-count="0"] .shifts-cell-btn.shifts-cell--empty {
+  opacity: 1;
+  min-block-size: 5.6rem;
+  block-size: 100%;
+}
+
+#shifts-shell-pane .shifts-cell-stack[data-count="0"] .shifts-cell-btn.shifts-cell--empty:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+#shifts-shell-pane td:hover .shifts-cell-btn.shifts-cell--empty,
+#shifts-shell-pane td:focus-within .shifts-cell-btn.shifts-cell--empty {
+  opacity: 1;
+}
+
+#shifts-shell-pane .shifts-cell-btn.shifts-cell--empty:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel-bg));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+#shifts-shell-pane .shifts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-inline-size: 100%;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-chip--night::before {
+  margin-inline-end: 0.3em;
+}
+
+
+#shifts-shell-pane .settings-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+}
+
+#shifts-shell-pane .settings-tab {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  text-decoration: none;
+  border-block-end: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+  box-shadow: none;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#shifts-shell-pane .settings-tab:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--primary) 12%, var(--panel-bg));
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+#shifts-shell-pane .settings-tab.active,
+#shifts-shell-pane .settings-tab[aria-current="page"] {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+#shifts-shell-pane .shifts-segment {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel-bg);
+}
+
+#shifts-shell-pane .shifts-segment a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 0.9rem;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-segment a.is-active {
+  background: var(--primary);
+  color: #fff;
+}
+
+#shifts-shell-pane .shifts-weeks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-weeks input {
+  inline-size: 4.5rem;
+}
+
+/* Core empty cell styles defined above */
+
+#shifts-shell-pane .shifts-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  color: var(--text-main);
+}
+
+#shifts-shell-pane .shifts-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-block-size: 44px;
+}
+
+#shifts-shell-pane .shifts-check input {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  min-block-size: 1.15rem;
+  min-inline-size: 1.15rem;
+  padding: 0;
+  accent-color: var(--primary);
+  background: var(--panel-bg);
+}
+
+#shifts-shell-pane .shifts-list .shifts-type-badge {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+  background: color-mix(in srgb, var(--primary) 16%, var(--panel-bg));
+  color: var(--text-main);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+#shifts-shell-pane .shifts-muted {
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-tools {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.75rem;
+}
+
+/* Calculator: work hours across the top, night rotation and the shift calculator under it. */
+@media (min-width: 1100px) {
+  #shifts-shell-pane .shifts-tools {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+
+#shifts-shell-pane .shifts-chip--on-light {
+  color: #0f172a;
+}
+
+#shifts-shell-pane .shifts-chip--on-dark {
+  color: #f8fafc;
+}
+
+#shifts-shell-pane .shifts-times {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-cell .badge,
+#shifts-shell-pane .shifts-cell-btn .badge,
+#shifts-shell-pane .shifts-list .badge {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#shifts-shell-pane .shifts-checked-at {
+  display: inline-block;
+  max-inline-size: 100%;
+  white-space: normal;
+  text-align: start;
+  line-height: 1.35;
+}
+
+#shifts-shell-pane .shifts-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+#shifts-shell-pane .shifts-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+#shifts-shell-pane .shifts-person-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-until {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Available now: search box from the tickets page, cards like My shifts. */
+
+#shifts-shell-pane .shifts-avail-search {
+  flex: 0 1 20rem;
+}
+
+#shifts-shell-pane .shifts-avail-search input.search-input {
+  padding: 0.65rem 1rem 0.65rem 2.6rem;
+}
+
+#shifts-shell-pane .shifts-avail-nomatch {
+  text-align: center;
+}
+
+/* Today timeline: a name column, then the day from midnight to midnight.
+   Borrows the rota grid's look: heavy header rule, name column divider,
+   tinted group rows and the primary-tinted hover. --tl-now is set on the
+   board and moved by shifts.js. */
+
+#shifts-shell-pane .shifts-tl {
+  --tl-who: 13rem;
+  --tl-line: color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0;
+  overflow: hidden;
+}
+
+#shifts-shell-pane .shifts-tl-row {
+  display: grid;
+  grid-template-columns: var(--tl-who) minmax(0, 1fr);
+  transition: background-color 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-tl-person + .shifts-tl-person {
+  border-block-start: 1px solid var(--tl-line);
+}
+
+#shifts-shell-pane .shifts-tl-person:hover {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-who {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  min-inline-size: 0;
+  padding: 0.55rem 1rem;
+  border-inline-end: 2px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-who .shifts-person-name {
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-tl-who .shifts-sub {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-tl-who .shifts-phone {
+  margin-inline-start: -0.1rem;
+}
+
+/* Contact us: shift managers' numbers under the Available board. */
+#shifts-shell-pane .shifts-contact {
+  margin-block-start: 1rem;
+}
+
+#shifts-shell-pane .shifts-contact > .shifts-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+}
+
+#shifts-shell-pane .shifts-contact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#shifts-shell-pane .shifts-contact-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  min-inline-size: 0;
+  padding-block: 0.35rem;
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-contact-person .shifts-person-name {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+/* People whose shifts are all behind them fade back. */
+#shifts-shell-pane .shifts-tl-person--done .shifts-person-name,
+#shifts-shell-pane .shifts-tl-person--missed .shifts-person-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+#shifts-shell-pane .shifts-tl-track {
+  position: relative;
+  min-block-size: 3rem;
+  /* A faint line every three hours; --tl-step comes from the view. */
+  background-image: linear-gradient(to right, var(--tl-line) 1px, transparent 1px);
+  background-size: var(--tl-step, 12.5%) 100%;
+}
+
+/* The part of the day already gone, then the red now line. */
+#shifts-shell-pane .shifts-tl-track::before,
+#shifts-shell-pane .shifts-tl-track::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  pointer-events: none;
+}
+
+#shifts-shell-pane .shifts-tl-track::before {
+  inset-inline-start: 0;
+  inline-size: var(--tl-now, 0%);
+  background: color-mix(in srgb, var(--text-muted) 6%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-track::after {
+  inset-inline-start: var(--tl-now, 0%);
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--danger);
+  z-index: 2;
+}
+
+#shifts-shell-pane .shifts-tl-axis {
+  background: var(--panel-bg);
+  border-block-end: 2px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-axis .shifts-tl-track {
+  min-block-size: 3rem;
+}
+
+#shifts-shell-pane .shifts-tl-tick {
+  position: absolute;
+  inset-block-end: 0.45rem;
+  padding-inline-start: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-tl-tick-short {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-tl-now-label {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-start: var(--tl-now, 0%);
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 6 to 9 AM sits outside the window: no line until the day starts. */
+#shifts-available-now[data-now-outside] .shifts-tl-track::after,
+#shifts-available-now[data-now-outside] .shifts-tl-now-label {
+  display: none;
+}
+
+[dir="rtl"] #shifts-shell-pane .shifts-tl-now-label {
+  transform: translateX(50%);
+}
+
+/* The label sits on the line, so the tick under it steps aside. */
+#shifts-shell-pane .shifts-tl-axis .shifts-tl-track::after {
+  inset-block-start: 1.2rem;
+}
+
+#shifts-shell-pane .shifts-tl-dept-row {
+  background: var(--bg);
+  border-block-start: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-tl-dept:first-of-type .shifts-tl-dept-row {
+  border-block-start: 0;
+}
+
+#shifts-shell-pane .shifts-tl-row[hidden] {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-tl-corner,
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 0.5rem;
+}
+
+#shifts-shell-pane .shifts-tl-corner h2,
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who h2 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+#shifts-shell-pane .shifts-tl-dept-row .shifts-tl-track {
+  min-block-size: 2.1rem;
+}
+
+#shifts-shell-pane .shifts-tl-corner .pill,
+#shifts-shell-pane .shifts-tl-dept .pill {
+  background: color-mix(in srgb, var(--success) 16%, var(--panel-bg));
+  color: color-mix(in srgb, var(--success) 70%, var(--text-main));
+  min-width: 0;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  font-size: 0.72rem;
+}
+
+#shifts-shell-pane .shifts-tl-bar,
+#shifts-shell-pane .shifts-tl-key {
+  --tl-colour: var(--shift-colour, var(--primary));
+  border-radius: 7px;
+}
+
+#shifts-shell-pane .shifts-tl-bar {
+  position: absolute;
+  inset-block-start: 50%;
+  block-size: 1.65rem;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.55rem;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-tl-bar:hover {
+  transform: translateY(-50%) scaleY(1.08);
+  z-index: 3;
+}
+
+#shifts-shell-pane .shifts-tl-bar--on {
+  background: var(--tl-colour);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tl-colour) 35%, transparent),
+              0 4px 10px -4px color-mix(in srgb, var(--tl-colour) 55%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--late {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tl-colour) 35%, var(--panel-bg)) 0 5px,
+    var(--panel-bg) 5px 10px
+  );
+  box-shadow: inset 0 0 0 1.5px var(--tl-colour);
+}
+
+#shifts-shell-pane .shifts-tl-bar--later {
+  background: color-mix(in srgb, var(--tl-colour) 14%, var(--panel-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tl-colour) 55%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--done,
+#shifts-shell-pane .shifts-tl-bar--missed {
+  background: color-mix(in srgb, var(--text-muted) 20%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-tl-bar--missed {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger) 14%, var(--panel-bg)) 0 5px,
+    color-mix(in srgb, var(--text-muted) 12%, var(--panel-bg)) 5px 10px
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 50%, transparent);
+}
+
+#shifts-shell-pane .shifts-tl-bar--from-yesterday {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+#shifts-shell-pane .shifts-tl-bar--to-tomorrow {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+#shifts-shell-pane .shifts-tl-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+#shifts-shell-pane .shifts-tl-none,
+#shifts-shell-pane .shifts-tl .shifts-avail-nomatch {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+#shifts-shell-pane .shifts-tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+#shifts-shell-pane .shifts-tl-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#shifts-shell-pane .shifts-tl-key {
+  display: inline-block;
+  inline-size: 1.5rem;
+  block-size: 0.8rem;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+#shifts-shell-pane .shifts-tl-unscheduled {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+}
+
+#shifts-shell-pane .shifts-swatch {
+  display: inline-block;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+#shifts-shell-pane .shifts-checkin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+#shifts-shell-pane .shifts-checkin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-checkin-shift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-checkin .shifts-sub {
+  margin: 0;
+}
+
+/* ── My shifts ─────────────────────────────────────────────────────────── */
+
+#shifts-shell-pane .shifts-mine-section .panel-header,
+#shifts-shell-pane .shifts-card .panel-header {
+  margin-bottom: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .panel-header h2,
+#shifts-shell-pane .shifts-card .panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .pill,
+#shifts-shell-pane .shifts-card .pill {
+  background: color-mix(in srgb, var(--text-muted) 16%, var(--panel-bg));
+  color: var(--text-muted);
+  min-width: 0;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+}
+
+#shifts-shell-pane .shifts-sub {
+  display: block;
+  margin-block-start: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+#shifts-shell-pane .shifts-mine-table .shifts-date-text {
+  font-weight: 600;
+}
+
+#shifts-shell-pane .shifts-day-pill {
+  background: color-mix(in srgb, var(--text-muted) 16%, var(--panel-bg));
+  color: var(--text-muted);
+  min-width: 0;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  margin-inline-start: 0.4rem;
+  padding-inline: 0.55rem;
+}
+
+#shifts-shell-pane .shifts-mine-section .shifts-day-pill--today {
+  background: color-mix(in srgb, var(--primary) 14%, var(--panel-bg));
+  color: var(--primary);
+}
+
+/* Table cells are centred app-wide; keep the stacked bits centred with them. */
+#shifts-shell-pane .shifts-mine-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+#shifts-shell-pane .shifts-row-actions {
+  white-space: nowrap;
+}
+
+#shifts-shell-pane .shifts-mine-table .badge {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+#shifts-shell-pane .shifts-recent > summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+}
+
+#shifts-shell-pane .shifts-recent > summary::-webkit-details-marker {
+  display: none;
+}
+
+#shifts-shell-pane .shifts-recent > summary::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+#shifts-shell-pane .shifts-recent[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-recent[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+[dir="rtl"] #shifts-shell-pane .shifts-recent:not([open]) > summary::before {
+  transform: scaleX(-1);
+}
+
+#shifts-shell-pane .shifts-recent-hint {
+  flex: 1 1 100%;
+  font-size: 0.8rem;
+}
+
+/* A dialog form opened as its own page. */
+#shifts-shell-pane .shifts-page-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-inline-size: 48rem;
+}
+
+#shifts-shell-pane .shifts-page-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .empty-state .btn {
+  margin-block-start: 0.75rem;
+}
+
+/* Phones: the app stacks every table into cards (modern.css, 768px).
+   Each cell holds one block so its label and value sit side by side. */
+@media (max-width: 768px) {
+  #shifts-shell-pane .shifts-mine-table .shifts-mine-cell {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    text-align: start;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-mine-times {
+    justify-content: flex-start;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-row-actions:empty {
+    display: none !important;
+  }
+
+  #shifts-shell-pane .shifts-mine-table .shifts-row-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Shift types cards: a dot, not a bar; Edit and Archive side by side. */
+  #shifts-shell-pane .shifts-list .shifts-swatch {
+    flex: 0 0 auto;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  /* The buttons name themselves; the label column would squeeze them. */
+  #shifts-shell-pane .shifts-list td.shifts-actions::before {
+    display: none !important;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions .btn {
+    white-space: nowrap;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions > .btn,
+  #shifts-shell-pane .shifts-list td.shifts-actions > form {
+    flex: 1 1 0;
+    margin: 0;
+  }
+
+  #shifts-shell-pane .shifts-list td.shifts-actions > form .btn {
+    inline-size: 100%;
+  }
+}
+
+#shifts-shell-pane .shifts-checkin .btn,
+#shifts-shell-pane .shifts-form .btn,
+#shifts-shell-pane .shifts-actions .btn,
+#shifts-shell-pane .shifts-toolbar .btn {
+  min-block-size: 44px;
+}
+
+#shifts-shell-pane .shifts-list td,
+#shifts-shell-pane .shifts-list th {
+  vertical-align: middle;
+}
+
+#shifts-shell-pane .shifts-list th {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+#shifts-shell-pane .shifts-list .shifts-date {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  min-width: 7.5rem;
+}
+
+#shifts-shell-pane .shifts-form > #shifts-rotation-options {
+  flex: 1 0 100%;
+}
+
+
+#shifts-shell-pane .shifts-archived {
+  opacity: 0.6;
+}
+
+.shifts-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  color: var(--text-main);
+}
+
+input[type="color"].shifts-color {
+  padding: 0.3rem;
+  block-size: 44px;
+  cursor: pointer;
+}
+
+/* ── Calculator: work hours report ──────────────────────────────────── */
+
+/* Cards keep their own height instead of stretching to the tallest one in the row. */
+#shifts-shell-pane .shifts-tools {
+  align-items: start;
+}
+
+#shifts-shell-pane .shifts-tool-wide {
+  grid-column: 1 / -1;
+}
+
+#shifts-shell-pane .shifts-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-tool-head h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+#shifts-shell-pane .shifts-tool-head p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+#shifts-shell-pane .shifts-calc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--text-main);
+}
+
+/* Fields line up in an even grid that folds to one column on narrow screens. */
+#shifts-shell-pane .shifts-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.9rem 1rem;
+  /* Top-aligned so every label sits on one line, whatever the control's height. */
+  align-items: start;
+}
+
+#shifts-shell-pane .shifts-fields--five {
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+#shifts-shell-pane .shifts-fields--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#shifts-shell-pane .shifts-fields .form-group {
+  margin: 0;
+  min-inline-size: 0;
+}
+
+#shifts-shell-pane .shifts-fields select,
+#shifts-shell-pane .shifts-fields input[type="date"],
+#shifts-shell-pane .shifts-fields input[type="time"] {
+  inline-size: 100%;
+}
+
+/* The rotation options are swapped by department; their fields join the same grid. */
+#shifts-shell-pane .shifts-fields-contents {
+  display: contents;
+}
+
+#shifts-shell-pane .shifts-fields .shifts-people {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0 1rem;
+}
+
+#shifts-shell-pane .shifts-calc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+#shifts-shell-pane .shifts-length-result {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 6%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-length-result p {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-length-total {
+  margin-block-end: 0.25rem !important;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+#shifts-shell-pane .shifts-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#shifts-shell-pane .shifts-report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-report-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+#shifts-shell-pane .shifts-report-heading p,
+#shifts-shell-pane .shifts-report-title {
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-report-title {
+  font-size: 1.05rem;
+}
+
+#shifts-shell-pane .shifts-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#shifts-shell-pane .shifts-report-table td,
+#shifts-shell-pane .shifts-report-hours {
+  font-variant-numeric: tabular-nums;
+}
+
+#shifts-shell-pane .shifts-report-hours {
+  font-weight: 700;
+}
+
+#shifts-shell-pane .shifts-report-table .badge {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+/* Absent and upcoming shifts are listed but not counted. */
+#shifts-shell-pane .shifts-report-uncounted .shifts-report-hours {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-decoration: line-through;
+}
+
+#shifts-shell-pane .shifts-report-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+#shifts-shell-pane .shifts-report-totals > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 6%, var(--panel-bg));
+}
+
+#shifts-shell-pane .shifts-report-totals dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+#shifts-shell-pane .shifts-report-totals dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  #shifts-shell-pane .btn,
+  #shifts-shell-pane .shifts-cell-btn,
+  .shifts-form .btn {
+    min-block-size: 44px;
+  }
+
+  #shifts-shell-pane .btn:hover,
+  #shifts-shell-pane .shifts-cell-btn:hover,
+  .shifts-form .btn:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  #shifts-shell-pane .shifts-toolbar,
+  #shifts-shell-pane .shifts-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #shifts-shell-pane .shifts-toolbar .form-group,
+  #shifts-shell-pane .shifts-tools .shifts-form .form-group {
+    flex: 1 1 auto;
+    inline-size: 100%;
+  }
+
+  #shifts-shell-pane .shifts-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #shifts-shell-pane .shifts-avail-search {
+    flex-basis: 100%;
+  }
+
+  #shifts-shell-pane .shifts-tl {
+    --tl-who: 8.75rem;
+  }
+
+  #shifts-shell-pane .shifts-tl-who {
+    padding-inline: 0.6rem;
+  }
+
+  #shifts-shell-pane .shifts-tl-who .shifts-person-name {
+    font-size: 0.88rem !important;
+    overflow-wrap: normal;
+  }
+
+  #shifts-shell-pane .shifts-tl-who .shifts-sub,
+  #shifts-shell-pane .shifts-tl-who .shifts-sub bdi {
+    font-size: 0.72rem !important;
+    white-space: normal;
+  }
+
+  #shifts-shell-pane .shifts-tl-tick--minor,
+  #shifts-shell-pane .shifts-tl-tick--edge,
+  /* No room for a label at the far end. */
+  #shifts-shell-pane .shifts-tl-tick--last,
+  #shifts-shell-pane .shifts-tl-tick-full {
+    display: none;
+  }
+
+  #shifts-shell-pane .shifts-tl-tick-short {
+    display: inline;
+  }
+
+  /* modern.css sets every h2 to 1.5rem !important on phones. */
+  #shifts-shell-pane .shifts-tl-corner h2,
+  #shifts-shell-pane .shifts-tl-dept-row .shifts-tl-who h2 {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ==========================================================================
+   MONTH VIEW COMPACT STYLING: names only, one line each, full name in the tooltip.
+   ========================================================================== */
+
+#shifts-shell-pane .shifts-grid--month .shifts-times,
+#shifts-shell-pane .shifts-grid--month .shifts-status {
+  display: none !important;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-stack {
+  min-block-size: 3.6rem;
+  gap: 0.2rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell--filled {
+  padding: 0.15rem 0.2rem 0.15rem 0.35rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-name {
+  gap: 0.15rem;
+  font-size: 0.68rem;
+}
+
+#shifts-shell-pane .shifts-grid--month .shifts-cell-name .shifts-moon {
+  inline-size: 0.68rem;
+  block-size: 0.68rem;
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERRIDES (Preserves table integrity below 900px)
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  #shifts-shell-pane .shifts-grid-wrap {
+    overflow-x: auto !important;
+    max-block-size: calc(100dvh - 10rem);
+  }
+
+  #shifts-shell-pane .shifts-grid {
+    display: table !important;
+    inline-size: max(100%, calc(8.5rem + 7 * 8.5rem)) !important;
+    width: max(100%, calc(8.5rem + 7 * 8.5rem)) !important;
+    background: var(--panel-bg) !important;
+  }
+
+  #shifts-shell-pane .shifts-grid--month {
+    inline-size: max(100%, calc(8.5rem + 31 * 4.25rem)) !important;
+    width: max(100%, calc(8.5rem + 31 * 4.25rem)) !important;
+  }
+
+  #shifts-shell-pane .shifts-grid thead {
+    display: table-header-group !important;
+    position: static !important;
+    inline-size: auto !important;
+    width: auto !important;
+    block-size: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+  }
+
+  #shifts-shell-pane .shifts-grid tbody {
+    display: table-row-group !important;
+  }
+
+  #shifts-shell-pane .shifts-grid tr {
+    display: table-row !important;
+    inline-size: auto !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  #shifts-shell-pane .shifts-grid th,
+  #shifts-shell-pane .shifts-grid td {
+    display: table-cell !important;
+    inline-size: auto !important;
+    width: auto !important;
+    text-align: start !important;
+    vertical-align: top !important;
+  }
+
+  #shifts-shell-pane .shifts-grid td::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  #shifts-shell-pane .shifts-grid .shifts-person {
+    inline-size: 8.5rem !important;
+    width: 8.5rem !important;
+    min-inline-size: 8.5rem !important;
+    background-color: var(--bg) !important;
+  }
+
+  /* Override modern.css global button 48px height for shift cards */
+  #shifts-shell-pane .shifts-grid button.shifts-cell-btn {
+    min-height: unset !important;
+  }
+}

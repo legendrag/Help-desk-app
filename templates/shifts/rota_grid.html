@@ -1,0 +1,60 @@
+{% load i18n shifts_extras %}
+<div id="shifts-rota-grid" class="panel"{% if grid_oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <div class="table-wrap shifts-grid-wrap">
+    <table class="shifts-grid{% if dates|length > 7 %} shifts-grid--month{% endif %}">
+      <thead>
+        <tr>
+          <th class="shifts-person">{% trans "Person" %}</th>
+          {% for day in dates %}
+          <th class="{% if day == today %}shifts-day--today{% endif %}{% if day|date:'w' == '5' or day|date:'w' == '6' %} shifts-day--weekend{% endif %}">
+            <span class="shifts-th-weekday">{{ day|shifts_weekday }}</span>
+            <span class="shifts-th-daynum">{{ day|date:"j" }}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+        <tr>
+          <th class="shifts-person">{{ person.shift_label }}</th>
+          {% for item in person.cells %}
+          {% with day=item.0 cells=item.1 %}
+          <td class="{% if day == today %}shifts-day--today{% endif %}{% if day|date:'w' == '5' or day|date:'w' == '6' %} shifts-day--weekend{% endif %}">
+            <div class="shifts-cell-stack" data-count="{{ cells|length }}">
+              {% for cell in cells %}
+                {% if readonly %}
+                <span class="shifts-cell shifts-cell--filled{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
+                      style="--shift-colour: {{ cell.shift_type.colour }};"
+                      title="{{ cell.shift_type.name }} · {{ cell.start_time_override|default:cell.shift_type.start_time|shifts_clock_text }}–{{ cell.end_time_override|default:cell.shift_type.end_time|shifts_clock_text }}">
+                  {% include "shifts/cell_bits.html" %}
+                </span>
+                {% else %}
+                <button type="button" class="shifts-cell-btn shifts-cell--filled{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
+                        style="--shift-colour: {{ cell.shift_type.colour }};"
+                        title="{{ cell.shift_type.name }} · {{ cell.start_time_override|default:cell.shift_type.start_time|shifts_clock_text }}–{{ cell.end_time_override|default:cell.shift_type.end_time|shifts_clock_text }}"
+                        hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}&assignment={{ cell.pk }}"
+                        hx-target="#modal-content"
+                        onclick="openModal()">
+                  {% include "shifts/cell_bits.html" %}
+                </button>
+                {% endif %}
+              {% endfor %}
+              {% if not readonly %}
+              <button type="button" class="shifts-cell-btn shifts-cell--empty"
+                      hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
+                      hx-target="#modal-content"
+                      onclick="openModal()"
+                      aria-label="{% trans "Add shift" %}"><span aria-hidden="true">+</span></button>
+              {% elif not cells %}
+              <span class="shifts-cell shifts-cell--empty" role="img" aria-label="{% trans "Empty" %}"><span aria-hidden="true">–</span></span>
+              {% endif %}
+            </div>
+          </td>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

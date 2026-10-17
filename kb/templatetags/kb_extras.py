@@ -5,6 +5,7 @@ import re
 from django import template
 from django.utils.html import escape, strip_tags
 from django.utils.safestring import mark_safe
+from django.utils.translation import ngettext
 
 register = template.Library()
 
@@ -21,10 +22,8 @@ def read_time(content):
     cleaned = html.unescape(str(content or "")).replace('\xa0', ' ')
     text = strip_tags(cleaned)
     words = len(text.split())
-    if not words:
-        return "1 min read"
-    minutes = max(1, math.ceil(words / 200))
-    return f"{minutes} min read"
+    minutes = 1 if not words else max(1, math.ceil(words / 200))
+    return ngettext("%(count)s min read", "%(count)s min read", minutes) % {"count": minutes}
 
 
 @register.filter

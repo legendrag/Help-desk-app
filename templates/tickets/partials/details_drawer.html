@@ -90,12 +90,19 @@
             <label class="merged-tickets-label">{% trans "Merged Tickets" %}</label>
             <div class="merged-tickets-sidebar-list">
                 {% for st in ticket.merged_tickets.all %}
+                {% if user.user_type == 'branch' and not user.is_superuser %}
+                {# Branch users see which tickets were merged in, without opening them. #}
+                <div class="merged-sidebar-item merged-sidebar-item--static">
+                    <span>#{{ st.ticket_number }}</span>
+                </div>
+                {% else %}
                 <a href="{% url 'ticket_detail' st.id %}" class="merged-sidebar-item">
                     <span>#{{ st.ticket_number }}</span>
                     <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </a>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
@@ -123,14 +130,14 @@
 
     {% if not user.user_type == 'branch' %}
     <section class="offcanvas-section">
-        <h4 class="sidebar-panel-header">Performance</h4>
+        <h4 class="sidebar-panel-header">{% trans "Performance" %}</h4>
         <div class="meta-grid meta-grid-two-col">
             <div class="meta-item">
-                <label>Response Time</label>
+                <label>{% trans "Response Time" %}</label>
                 <span>{{ response_time|human_duration }}</span>
             </div>
             <div class="meta-item">
-                <label>Resolution Time</label>
+                <label>{% trans "Resolution Time" %}</label>
                 <span>{{ resolution_time|human_duration }}</span>
             </div>
         </div>
@@ -138,7 +145,7 @@
     {% endif %}
 
     <section class="offcanvas-section">
-        <h4 class="sidebar-panel-header">Timeline</h4>
+        <h4 class="sidebar-panel-header">{% trans "Timeline" %}</h4>
         <div class="timeline-list timeline-list-scrollable">
             {% for item in ticket.status_history.all %}
             <div class="timeline-item">
@@ -153,11 +160,11 @@
                         {% endif %}
                         <span class="timeline-time timeline-time-text">{{ item.created_at|date:"Y-m-d H:i" }}</span>
                     </div>
-                    <p class="timeline-by-text">By {{ item.changed_by.username }} {% if item.detail %}<span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
+                    <p class="timeline-by-text">{% blocktrans trimmed with name=item.changed_by.username %}By {{ name }}{% endblocktrans %}{% if item.detail %} <span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
                 </div>
             </div>
             {% empty %}
-            <div class="timeline-empty">No updates.</div>
+            <div class="timeline-empty">{% trans "No updates." %}</div>
             {% endfor %}
         </div>
     </section>
@@ -175,59 +182,6 @@
                 overlay.classList.toggle('open');
             }
         }
-    }
-
-    if (typeof copyTicketNumber !== 'function') {
-        window.copyTicketNumber = function(btn) {
-            if (!btn) return;
-            const text = btn.getAttribute('data-copy-text') || '';
-            if (!text) return;
-            const copyLabel = btn.getAttribute('data-copy-label') || '';
-            const copiedLabel = btn.getAttribute('data-copied-label') || '';
-            const statusEl = btn.parentElement
-                ? btn.parentElement.querySelector('.ticket-copy-status')
-                : null;
-
-            function markCopied() {
-                btn.classList.add('copied');
-                if (copiedLabel) {
-                    btn.setAttribute('aria-label', copiedLabel);
-                    btn.setAttribute('title', copiedLabel);
-                }
-                if (statusEl) statusEl.textContent = copiedLabel;
-                clearTimeout(btn._copyResetTimer);
-                btn._copyResetTimer = setTimeout(function() {
-                    btn.classList.remove('copied');
-                    if (copyLabel) {
-                        btn.setAttribute('aria-label', copyLabel);
-                        btn.setAttribute('title', copyLabel);
-                    }
-                    if (statusEl) statusEl.textContent = '';
-                }, 1600);
-            }
-
-            function fallbackCopy() {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.setAttribute('readonly', '');
-                ta.style.position = 'fixed';
-                ta.style.top = '-9999px';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    markCopied();
-                } catch (e) {}
-                document.body.removeChild(ta);
-            }
-
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
-            } else {
-                fallbackCopy();
-            }
-        };
     }
 
     {% if auto_open %}

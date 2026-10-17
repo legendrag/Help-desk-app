@@ -81,7 +81,7 @@
                         <polyline points="23 4 23 10 17 10"></polyline>
                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                     </svg>
-                    Clear Filters
+                    {% trans "Clear Filters" %}
                 </a>
             </form>
 
@@ -109,7 +109,7 @@
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        New Article
+                        {% trans "New Article" %}
                     </a>
                     {% endif %}
                 </div>
@@ -282,7 +282,7 @@
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        New Article
+                        {% trans "New Article" %}
                     </a>
                     {% if can_access_settings %}
                     <a href="{% url 'settings' %}" class="btn secondary kb-team-action-btn">
@@ -290,7 +290,7 @@
                             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                         </svg>
-                        Manage categories
+                        {% trans "Manage categories" %}
                     </a>
                     {% endif %}
                     {% endif %}
@@ -305,7 +305,7 @@
                             <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
                             <line x1="8" y1="12" x2="16" y2="12"></line>
                         </svg>
-                        Create ticket
+                        {% trans "Create ticket" %}
                     </button>
                     {% endif %}
                 </div>

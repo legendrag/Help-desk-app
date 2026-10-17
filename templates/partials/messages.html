@@ -1,0 +1,15 @@
+{% load i18n %}
+{# Django messages ("Status updated", "Ticket not found"…) on whatever page comes next. #}
+{% if messages %}
+<ul class="flash-toasts" role="status" aria-live="polite">
+  {% for message in messages %}
+  <li class="flash-toast{% if message.level >= 40 %} flash-toast--sticky{% endif %}">
+    <p class="notice{% if message.tags %} notice-{{ message.tags }}{% endif %}">
+      <span>{{ message }}</span>
+      <button type="button" class="flash-toast-close" onclick="this.closest('.flash-toast').remove()"
+              aria-label="{% trans 'Close' %}">&times;</button>
+    </p>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

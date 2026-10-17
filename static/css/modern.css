@@ -1033,6 +1033,37 @@ td.empty-state {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.08);
 }
+.file-preview-bar.has-error {
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.35);
+}
+.file-preview-error {
+  color: #ef4444;
+  font-weight: 500;
+}
+.chat-pending-attachment {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.85;
+  overflow-wrap: anywhere;
+}
+.attachment-link,
+.chat-pending-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+a.attachment-link {
+  text-decoration: none !important;
+}
+a.attachment-link span {
+  text-decoration: underline;
+  min-width: 0;
+}
+.attachment-icon {
+  flex-shrink: 0;
+}
 
 @keyframes typing-fade-in {
   from { opacity: 0; transform: translateY(4px); }
@@ -1447,6 +1478,15 @@ select.form-control[aria-invalid="true"],
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
+/* Branch users: listed, not a link. */
+.merged-sidebar-item--static,
+.merged-sidebar-item--static:hover {
+  cursor: default;
+  border-color: rgba(226,232,240,0.8);
+  background: #f8fafc;
+  box-shadow: none;
+}
+
 .merged-sidebar-item span {
   font-size: 0.85rem;
   font-weight: 600;
@@ -1466,6 +1506,20 @@ select.form-control[aria-invalid="true"],
   white-space: pre-wrap;
   word-break: normal;
   overflow-wrap: break-word;
+}
+/* Each line of chat takes its direction from its own first letter, so
+   "Hello?" keeps its "?" at the end on the Arabic page and Arabic text
+   reads right to left on the English one. */
+.chat-bubble-text,
+.reply-quote-text,
+.reply-preview-text,
+.chat-system-message-content span {
+  unicode-bidi: plaintext;
+}
+.chat-bubble-text,
+.reply-quote-text,
+.reply-preview-text {
+  text-align: start;
 }
 .chat-bubble-attachment-wrap {
   margin-top: 0.5rem;
@@ -2112,6 +2166,109 @@ td.mgmt-empty-cell {
 .modal-transfer-ticket {
   max-width: 480px;
   overflow: visible !important;
+}
+
+/* -- Detail Page: Who's available popup (built like the Transfer modal) -- */
+.modal-who-available {
+  overflow: hidden !important;
+}
+.modal-who-available .modal-description-text-transfer {
+  margin-bottom: 1rem;
+}
+.who-available-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.who-available-person {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+}
+.who-available-person + .who-available-person {
+  border-top: 1px solid var(--border);
+}
+.who-available-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--success);
+}
+.who-available-person--later .who-available-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--text-muted);
+}
+.who-available-who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.who-available-name {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+/* Phone numbers on Shifts → Available and in the Who's available popup. */
+.shifts-phone {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.shifts-phone-link {
+  color: inherit;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
+.shifts-phone-link:hover,
+.shifts-phone-link:focus-visible {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.shifts-phone .ticket-copy-number-btn {
+  width: 24px;
+  height: 24px;
+}
+.shifts-phone .ticket-copy-number-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.who-available-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.who-available-chip {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.who-available-chip.shifts-chip--on-light {
+  color: #0f172a;
+}
+.who-available-chip.shifts-chip--on-dark {
+  color: #f8fafc;
+}
+.who-available-heading {
+  margin: 1.25rem 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.who-available-empty {
+  margin: 0;
+  color: var(--text-muted);
 }
 
 /* -- Session Warning Modal -- */
@@ -5739,7 +5896,7 @@ select.kb-sort-select.no-tomselect:focus {
     padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
     border-radius: 0;
-    background: var(--panel-bg, #fff);
+    background: #fff;
     box-shadow: 0 -6px 20px -14px rgba(15, 23, 42, 0.35);
     display: flex;
     flex-direction: column;
@@ -6050,7 +6207,7 @@ select.kb-sort-select.no-tomselect:focus {
   padding: 0.4rem 0.45rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--panel-bg, #fff);
+  background: #fff;
   color: var(--text-main);
   font: inherit;
   font-size: 0.85rem;
@@ -6250,7 +6407,7 @@ body.kb-preview-open {
     margin: 0;
     padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
-    background: var(--panel-bg, #fff);
+    background: #fff;
     box-shadow: 0 -6px 20px -14px rgba(15, 23, 42, 0.35);
     display: grid;
     grid-template-columns: 1.25fr 1fr;
@@ -7265,5 +7422,64 @@ html:active-view-transition {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+}
+
+/* Flash messages (templates/partials/messages.html): float over the page so
+   full-height screens like the ticket chat keep their layout. Confirmations
+   fade after a few seconds; errors stay until closed. */
+.flash-toasts {
+  position: fixed;
+  inset-block-start: 1rem;
+  inset-inline: 0;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0 16px;
+  list-style: none;
+  pointer-events: none;
+}
+.flash-toast {
+  width: min(100%, 480px);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  animation: flash-toast-out 0.3s ease 6s forwards;
+}
+.flash-toast--sticky {
+  animation: none;
+}
+.flash-toast .notice {
+  justify-content: space-between;
+  margin: 0;
+}
+.flash-toast-close {
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.flash-toast-close:hover,
+.flash-toast-close:focus-visible {
+  opacity: 1;
+}
+@keyframes flash-toast-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-toast {
+    animation-duration: 0s;
   }
 }

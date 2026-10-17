@@ -1,0 +1,59 @@
+{% load i18n %}
+<div id="shifts-rotation">
+  {% if error %}<p class="notice notice-error">{{ error }}</p>{% endif %}
+  {% if pick_types %}
+  <form method="post" action="{% url 'shifts_auto_fill' %}"
+        hx-post="{% url 'shifts_auto_fill' %}"
+        hx-target="#shifts-auto-fill-result"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    <input type="hidden" name="department" value="{{ department.pk }}">
+    <input type="hidden" name="view" value="{{ request.POST.view }}">
+    <input type="hidden" name="start" value="{{ request.POST.start }}">
+    <input type="hidden" name="action" value="preview">
+    <label for="pick-type">{% trans "Shift type" %}</label>
+    <select id="pick-type" name="shift_type">
+      {% for row in pick_types %}
+      <option value="{{ row.pk }}">{{ row.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn primary" type="submit">{% trans "Preview" %}</button>
+  </form>
+  {% endif %}
+  <table>
+    {% for row in proposals %}
+    <tr>
+      {% if row.gap %}
+      <td>{% trans "Nobody available on this date" %} <bdi class="shifts-ltr" dir="ltr">{{ row.date|date:"Y-m-d" }}</bdi></td>
+      {% else %}
+      <td><bdi class="shifts-ltr" dir="ltr">{{ row.date|date:"Y-m-d" }}</bdi></td>
+      <td>{{ row.name|default:row.user_id }}</td>
+      {% if row.reason %}<td>{{ row.reason }}</td>{% endif %}
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  <ul>
+    {% for skip in skips %}
+    <li>{% if skip.name %}{{ skip.name }} {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ skip.date|date:"Y-m-d" }}</bdi> {{ skip.skip }}</li>
+    {% endfor %}
+  </ul>
+  {% if can_apply %}
+  <form method="post" action="{% url 'shifts_auto_fill' %}"
+        hx-post="{% url 'shifts_auto_fill' %}"
+        hx-target="#shifts-auto-fill-result"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    <input type="hidden" name="department" value="{{ department.pk }}">
+    <input type="hidden" name="view" value="{{ request.POST.view }}">
+    <input type="hidden" name="start" value="{{ request.POST.start }}">
+    <input type="hidden" name="shift_type" value="{{ shift_type.pk }}">
+    <input type="hidden" name="action" value="apply">
+    <button class="btn primary" type="submit">{% trans "Apply" %}</button>
+  </form>
+  {% endif %}
+</div>

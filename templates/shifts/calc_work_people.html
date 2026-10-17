@@ -1,0 +1,20 @@
+{% load i18n %}
+<div class="form-group" id="work-person-field">
+  <label for="work-person">{% trans "Person" %}</label>
+  <select id="work-person" name="person"{% if not work_people %} disabled{% endif %}>
+    {% if work_people %}
+    <option value="">{% trans "Choose a person" %}</option>
+    {% for person in work_people %}
+    <option value="{{ person.pk }}">{{ person.shift_label }}{% if person.status != "active" %} ({% trans "Inactive" %}){% endif %}</option>
+    {% endfor %}
+    {% else %}
+    <option value="">{% trans "No support staff in this department" %}</option>
+    {% endif %}
+  </select>
+</div>
+{% if reset_result %}
+{# A new department means a new person: clear the old report. #}
+<div id="shifts-work-result" hx-swap-oob="innerHTML">
+  <p class="shifts-muted">{% trans "Choose a person to see their shifts and hours for the period." %}</p>
+</div>
+{% endif %}

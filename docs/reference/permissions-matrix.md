@@ -136,6 +136,13 @@ Ticket categories under a department (not Knowledge Base categories).
 |---|---|---|
 | Manage System Maintenance | `can_manage_maintenance` | Use the Settings Hub Maintenance tab (ticket/message export, media zip download, and related cleanup tools). |
 
+## Shifts
+
+| UI label | Field name | What it unlocks |
+|---|---|---|
+| Manage Shifts | `can_manage_shifts` | Manage shift types, edit the rota, copy and repeat weeks, auto-fill nights, and use the calculator. Superusers can do this without the flag. Clear and restore a day-shift check-in from the rota cell. |
+| Check in to shifts | `can_check_in` | See and use Check in on your own day shift. Default off, same as Manage Shifts. Existing support users' roles and the seeded Support Agent and Team Lead roles are turned on so people who check in today keep that ability. Admin-named roles get every flag. A manager can clear and restore check-in without this flag. |
+
 ---
 
 ## Quick checklist

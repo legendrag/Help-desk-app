@@ -83,6 +83,68 @@ class LogoutClearsWebPushTests(TestCase):
         self.assertEqual(clear_user_webpush_subscriptions(None), 0)
 
 
+class LogoutGetConfirmTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="logout_user",
+            email="logout@test.local",
+            password="str0ng-Passw0rd!",
+        )
+        self.logout_url = reverse("logout")
+        self.login_url = reverse("login")
+        self.home_url = reverse("tickets_list")
+
+    def test_anonymous_get_redirects_to_login(self):
+        response = self.client.get(self.logout_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.login_url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_authenticated_get_renders_post_form_and_stays_logged_in(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.logout_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/logout_confirm.html")
+        self.assertContains(response, f'action="{self.logout_url}"')
+        self.assertContains(response, 'method="post"')
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, f'href="{self.home_url}"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_cancel_uses_same_origin_referer(self):
+        self.client.force_login(self.user)
+        referer_path = "/kb/?q=reset"
+        response = self.client.get(
+            self.logout_url,
+            HTTP_REFERER=f"http://testserver{referer_path}",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/kb/?q=reset"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_cancel_falls_back_for_offsite_or_logout_referer(self):
+        self.client.force_login(self.user)
+        offsite = self.client.get(
+            self.logout_url,
+            HTTP_REFERER="https://evil.example/phish",
+        )
+        self.assertContains(offsite, f'href="{self.home_url}"')
+
+        loop = self.client.get(
+            self.logout_url,
+            HTTP_REFERER="http://testserver/accounts/logout/",
+        )
+        self.assertContains(loop, f'href="{self.home_url}"')
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_post_logs_out_and_redirects_to_login(self):
+        self.client.force_login(self.user)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.login_url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+
 class PasswordChangePageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -304,3 +366,31 @@ class ProductionStaticConfigTests(SimpleTestCase):
     def test_production_uses_compressed_static_storage(self):
         source = self._settings_source()
         self.assertIn("whitenoise.storage.CompressedManifestStaticFilesStorage", source)
+
+
+class LoginPageFromHtmxTests(TestCase):
+    """An HTMX request that hits the login page after the session expired."""
+
+    def test_htmx_get_redirects_the_whole_page_back_to_where_the_user_was(self):
+        response = self.client.get(
+            reverse("login") + "?next=/shifts/mine/check-in/",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_CURRENT_URL="http://testserver/shifts/mine/?tab=1",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("login") + "?next=%2Fshifts%2Fmine%2F%3Ftab%3D1")
+        self.assertEqual(response.content, b"")
+
+    def test_htmx_get_ignores_a_current_url_on_another_host(self):
+        response = self.client.get(
+            reverse("login") + "?next=/shifts/mine/",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_CURRENT_URL="https://evil.example/steal",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Redirect"], reverse("login") + "?next=/shifts/mine/")
+
+    def test_plain_get_still_renders_the_login_page(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("HX-Redirect", response.headers)

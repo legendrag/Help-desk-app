@@ -1,0 +1,7 @@
+{% load i18n %}
+{# A phone number to tap and call, with the same copy button as ticket details. #}
+<span class="ticket-copy-value-row shifts-phone">
+  <a class="shifts-phone-link" href="tel:{{ phone }}" dir="ltr">{{ phone }}</a>
+  {% trans "Copy phone number" as copy_phone_label %}
+  {% include "tickets/partials/copy_field_button.html" with copy_text=phone copy_label=copy_phone_label %}
+</span>

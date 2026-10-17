@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.http import HttpResponse
 from django.utils.translation import gettext_noop
+from core.management_views import BaseDeleteView
 from .models import User
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
@@ -74,23 +75,9 @@ class UserUpdateView(UserPermissionMixin, LoginRequiredMixin, BaseManagementView
     partial_template_name = "accounts/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class UserDeleteView(UserPermissionMixin, LoginRequiredMixin, DeleteView):
+class UserDeleteView(UserPermissionMixin, BaseDeleteView, DeleteView):
+    # BaseDeleteView turns "still has tickets or messages" into a message, not a 500.
     model = User
-    template_name = "core/management/delete_confirm.html"
-    success_url = reverse_lazy('settings')
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if self.request.headers.get('HX-Request'):
-            resp = HttpResponse(status=204)
-            resp['HX-Trigger'] = 'closeModal,refreshSettings'
-            return resp
-        return response
-
-    def get_template_names(self):
-        if self.request.headers.get('HX-Request'):
-            return ["core/management/delete_confirm_partial.html"]
-        return [self.template_name]
 
 class UserListView(UserPermissionMixin, LoginRequiredMixin, ListView):
     model = User

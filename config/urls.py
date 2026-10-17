@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.urls import include, path
 from django.views.static import serve
@@ -19,6 +20,7 @@ urlpatterns = [
     path("notifications/", include("notifications.urls")),
     path("news/", include("news.urls")),
     path("kb/", include("kb.urls")),
+    path("shifts/", include("shifts.urls")),
     path("webpush/", include("webpush.urls")),
     path("manifest.webmanifest", web_manifest, name="web_manifest"),
     path("sw.js", service_worker, name="sw.js"),
@@ -30,10 +32,21 @@ def _block_public_kb_media(request, path=""):
     raise Http404()
 
 
+@login_required
 def _protected_media(request, path):
-    """Other uploads can use Django's debug media helper. KB paths stay blocked."""
-    normalized = (path or "").lstrip("/")
-    if normalized == "kb" or normalized.startswith("kb/"):
+    """Serve ticket attachments to users who can view the ticket.
+
+    Daphne serves the app directly (no reverse proxy), so this route must exist
+    with DEBUG=0 too, otherwise every chat attachment 404s. KB paths stay blocked.
+    """
+    from tickets.access import user_can_view_ticket
+    from tickets.models import Ticket
+
+    parts = (path or "").lstrip("/").split("/")
+    if len(parts) < 3 or parts[0] != "tickets" or not parts[1].isdigit():
+        raise Http404()
+    ticket = Ticket.objects.filter(pk=int(parts[1])).first()
+    if ticket is None or not user_can_view_ticket(request.user, ticket):
         raise Http404()
     return serve(request, path, document_root=settings.MEDIA_ROOT)
 
@@ -41,9 +54,5 @@ def _protected_media(request, path):
 urlpatterns += [
     path("media/kb/<path:path>", _block_public_kb_media),
     path("media/kb", _block_public_kb_media),
+    path("media/<path:path>", _protected_media),
 ]
-
-if settings.DEBUG:
-    urlpatterns += [
-        path("media/<path:path>", _protected_media),
-    ]

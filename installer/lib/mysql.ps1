@@ -176,6 +176,7 @@ default-authentication-plugin=mysql_native_password
 log_error=$logFwd
 binlog_expire_logs_seconds=604800
 max_allowed_packet=64M
+max_connections=300
 
 [client]
 port=3306

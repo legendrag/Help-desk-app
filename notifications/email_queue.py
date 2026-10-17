@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from django.conf import settings
 from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
@@ -35,12 +36,24 @@ def ensure_worker_started() -> None:
 
 
 def enqueue_email(func: Callable[..., Any], *args, max_attempts: int = 3, retry_delay: int = 2, delay_seconds: int = 0, **kwargs) -> None:
-    ensure_worker_started()
     job = EmailJob(func=func, args=args, kwargs=kwargs, max_attempts=max_attempts, retry_delay=retry_delay)
+    if getattr(settings, "EMAIL_QUEUE_SYNC", False):
+        # Tests: a worker thread would open its own connection to the shared
+        # test database and race the test's transaction ("table is locked").
+        _run_inline(job)
+        return
+    ensure_worker_started()
     if delay_seconds > 0:
         threading.Timer(delay_seconds, _QUEUE.put, args=(job,)).start()
     else:
         _QUEUE.put(job)
+
+
+def _run_inline(job: EmailJob) -> None:
+    try:
+        job.func(*job.args, **job.kwargs)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Email job failed (inline): %s", exc)
 
 
 def _worker_loop() -> None:

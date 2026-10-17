@@ -487,6 +487,8 @@ class ArticleUpdateView(ArticleWriteMixin, LoginRequiredMixin, KBManageMixin, Up
 class ArticleDeleteView(LoginRequiredMixin, KBManageMixin, DeleteView):
     model = Article
     success_url = reverse_lazy("kb_list")
+    # The article page confirms before posting; there is no confirm page to GET.
+    http_method_names = ["post"]
 
     def get_queryset(self):
         return articles_for_user(self.request.user, include_drafts=True)

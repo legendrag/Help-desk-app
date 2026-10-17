@@ -1,0 +1,18 @@
+{% load i18n shifts_extras %}
+<span class="shifts-cell-name">
+  {% if cell.shift_type.is_night %}<span class="shifts-moon" aria-hidden="true"></span>{% endif %}
+  <span class="shifts-cell-name-text">{{ cell.shift_type.name }}</span>
+</span>
+<span class="shifts-times">{% if cell.start_time_override %}{% shifts_time_range cell.start_time_override cell.end_time_override %}{% else %}{% shifts_time_range cell.shift_type.start_time cell.shift_type.end_time %}{% endif %}</span>
+{% if cell.set_by_worker or cell.check_marker or cell.shift_type.archived or day >= today and cell.user.department_id != department.pk or day >= today and cell.user.status != "active" %}
+<span class="shifts-status">
+{% if cell.check_marker == "checked" %}<span class="shifts-st shifts-st--in shifts-checked-at" title="{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock_text %}Checked in at {{ time }}{% endblocktrans %}"><span aria-hidden="true">✓ </span>{% blocktrans trimmed with time=cell.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</span>
+{% elif cell.check_marker == "not" %}<span class="shifts-st shifts-st--not">{% trans "Not checked in" %}</span>
+{% elif cell.check_marker == "missed" %}<span class="shifts-st shifts-st--miss">{% trans "Missed" %}</span>
+{% elif cell.check_marker == "completed" %}<span class="shifts-st shifts-st--muted">{% trans "Completed" %}</span>{% endif %}
+{% if cell.set_by_worker %}<span class="shifts-st shifts-st--info">{% trans "Set by worker" %}</span>{% endif %}
+{% if cell.shift_type.archived %}<span class="shifts-st shifts-st--muted">{% trans "Archived" %}</span>{% endif %}
+{% if day >= today and cell.user.department_id != department.pk %}<span class="shifts-st shifts-st--not">{% trans "Not in this department" %}</span>
+{% elif day >= today and cell.user.status != "active" %}<span class="shifts-st shifts-st--miss">{% trans "Inactive" %}</span>{% endif %}
+</span>
+{% endif %}

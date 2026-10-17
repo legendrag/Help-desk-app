@@ -1,6 +1,6 @@
 from django.urls import path
 from django.http import JsonResponse
-from .template_views import UserLoginView, UserLogoutView, UserPasswordChangeView
+from .template_views import LogoutEntryView, UserLoginView, UserPasswordChangeView
 from .management_views import UserListView, UserCreateView, UserUpdateView, UserDeleteView
 
 
@@ -10,7 +10,7 @@ def auth_check(request):
 
 urlpatterns = [
     path("login/", UserLoginView.as_view(), name="login"),
-    path("logout/", UserLogoutView.as_view(), name="logout"),
+    path("logout/", LogoutEntryView.as_view(), name="logout"),
     path("password-change/", UserPasswordChangeView.as_view(), name="password_change"),
     
     # Management

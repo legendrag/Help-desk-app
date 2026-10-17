@@ -91,9 +91,34 @@ class CategoryForm(forms.ModelForm):
         return name.strip()
 
 class RoleForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.editor = editor
         _style_fields(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        # Nobody but a superuser can hand out a permission they don't hold,
+        # on another role or their own. Flags a role already has can stay.
+        editor = self.editor
+        if editor is None or editor.is_superuser:
+            return cleaned
+        held = editor.role
+        refused = []
+        for name, field in self.fields.items():
+            if not name.startswith("can_") or not cleaned.get(name):
+                continue
+            already_on = bool(self.instance.pk and getattr(self.instance, name))
+            if not already_on and not (held and getattr(held, name, False)):
+                refused.append(str(field.label))
+                cleaned[name] = False
+        if refused:
+            # The checkboxes have no error slot, so say it once at the top.
+            raise forms.ValidationError(
+                _("You can only give permissions that your own role has: %(names)s."),
+                params={"names": ", ".join(refused)},
+            )
+        return cleaned
 
     class Meta:
 
@@ -130,6 +155,8 @@ class RoleForm(forms.ModelForm):
             'can_access_kb': forms.CheckboxInput(),
             'can_manage_kb': forms.CheckboxInput(),
             'can_manage_maintenance': forms.CheckboxInput(),
+            'can_manage_shifts': forms.CheckboxInput(),
+            'can_check_in': forms.CheckboxInput(),
         }
         model = Role
         fields = [
@@ -160,6 +187,8 @@ class RoleForm(forms.ModelForm):
             'can_access_kb',
             'can_manage_kb',
             'can_manage_maintenance',
+            'can_manage_shifts',
+            'can_check_in',
         ]
 
     def clean_name(self):
@@ -172,6 +201,16 @@ class EmailSettingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        if self.instance.pk and self.instance.smtp_password:
+            # Editing: the box starts empty, and empty keeps the saved password.
+            self.fields['smtp_password'].required = False
+            self.fields['smtp_password'].widget.attrs['placeholder'] = _('Leave blank to keep the current password')
+
+    def clean_smtp_password(self):
+        password = self.cleaned_data.get('smtp_password')
+        if not password and self.instance.pk:
+            return self.instance.smtp_password
+        return password
 
     def clean(self):
         cleaned = super().clean()
@@ -191,12 +230,14 @@ class EmailSettingForm(forms.ModelForm):
             'encryption', 'from_name', 'from_email', 'is_active',
             'notify_new_ticket', 'notify_ticket_picked', 'notify_ticket_message',
             'notify_ticket_status', 'notify_ticket_update', 'notify_announcement',
+            'notify_shift_reminder',
         ]
         widgets = {
             'smtp_host': forms.TextInput(attrs={'placeholder': _('e.g., smtp.gmail.com')}),
             'smtp_port': forms.NumberInput(attrs={'placeholder': _('e.g., 587')}),
             'smtp_email': forms.EmailInput(attrs={'placeholder': _('sender@example.com')}),
-            'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
+            # Never echo the saved password into the page source.
+            'smtp_password': forms.PasswordInput(render_value=False, attrs={'placeholder': '••••••••'}),
             'from_name': forms.TextInput(attrs={'placeholder': _('e.g., MlamehTicket Support')}),
             'from_email': forms.EmailInput(attrs={'placeholder': _('noreply@example.com')}),
         }

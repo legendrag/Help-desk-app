@@ -283,6 +283,8 @@ function cancelDiscard() {
 
 let globalConfirmCallback = null;
 
+let defaultConfirmCancelText = null;
+
 function showConfirmModal(options) {
     const titleEl = document.getElementById('global-confirm-title');
     titleEl.textContent = options.title || 'Confirm Action';
@@ -290,6 +292,14 @@ function showConfirmModal(options) {
 
     const actionBtn = document.getElementById('global-confirm-action-btn');
     actionBtn.textContent = options.yesText || 'Yes, Delete';
+
+    const cancelBtn = document.getElementById('global-confirm-cancel-btn');
+    if (cancelBtn) {
+        if (defaultConfirmCancelText === null) {
+            defaultConfirmCancelText = cancelBtn.textContent;
+        }
+        cancelBtn.textContent = options.cancelText || defaultConfirmCancelText;
+    }
 
     if (options.isDanger === false) {
         actionBtn.className = 'btn primary discard-modal-btn';
@@ -328,6 +338,10 @@ document.body.addEventListener('htmx:confirm', function (evt) {
     if (confirmQuestion) {
         evt.preventDefault();
         const element = evt.detail.elt;
+        const host = element.closest('[hx-confirm]') || element;
+        const confirmAttr = function (name) {
+            return element.getAttribute(name) || host.getAttribute(name);
+        };
 
         // Smart defaults based on context/classes
         const isDelete = confirmQuestion.toLowerCase().includes('delete') ||
@@ -335,14 +349,15 @@ document.body.addEventListener('htmx:confirm', function (evt) {
             (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
             (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
 
-        const title = element.getAttribute('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
-        const yesText = element.getAttribute('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
+        const title = confirmAttr('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
+        const yesText = confirmAttr('data-confirm-ok') || confirmAttr('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
         const isDanger = element.getAttribute('data-confirm-type') !== 'primary' && (isDelete || element.classList.contains('danger'));
 
         showConfirmModal({
             title: title,
             message: confirmQuestion,
             yesText: yesText,
+            cancelText: confirmAttr('data-confirm-cancel'),
             isDanger: isDanger,
             onConfirm: function () {
                 evt.detail.issueRequest();
@@ -494,7 +509,7 @@ document.addEventListener('keydown', (e) => {
         }
 
         // Handle custom modals from detail.html
-        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'lightbox-modal'];
+        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'who-available-modal', 'lightbox-modal'];
         customModals.forEach(id => {
             const el = document.getElementById(id);
             if (el && el.style.display !== 'none' && el.style.display !== '') {
@@ -619,8 +634,9 @@ function initializeChoices(targetElement) {
             searchField: []
         };
 
-        // Modal/offcanvas use overflow:hidden — keep the menu outside so it isn't clipped
-        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas')) {
+        // Modal/offcanvas use overflow:hidden. Shift panels use backdrop-filter,
+        // which is its own layer, so a menu inside one card paints under the next.
+        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas, #shifts-shell-pane')) {
             options.dropdownParent = 'body';
         }
 
@@ -643,7 +659,20 @@ function initializeChoices(targetElement) {
             options.dropdownParent = 'body';
         }
 
+        const label = select.id
+            ? document.querySelector('label[for="' + CSS.escape(select.id) + '"]')
+            : null;
+
         new TomSelect(select, options);
+
+        // Tom Select opens the menu when its label is clicked. On the shifts
+        // toolbars that makes the caption above the field open the list too.
+        if (label && select.closest('#shifts-shell-pane')) {
+            label.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }, true);
+        }
     });
 }
 
@@ -727,6 +756,7 @@ function shellPageKindFromHtml(html) {
     if (html.indexOf('id="ticket-shell-pane"') !== -1) return "ticket";
     if (html.indexOf('id="tickets-live"') !== -1) return "tickets";
     if (html.indexOf('id="kb-shell-pane"') !== -1) return "kb";
+    if (html.indexOf('id="shifts-shell-pane"') !== -1) return "shifts";
     if (html.indexOf('id="settings-shell-pane"') !== -1) return "settings";
     if (html.indexOf('id="news-shell-pane"') !== -1) return "news";
     return "";
@@ -736,6 +766,7 @@ function shellPageKindFromDom() {
     if (document.getElementById("ticket-shell-pane")) return "ticket";
     if (document.getElementById("tickets-live")) return "tickets";
     if (document.getElementById("kb-shell-pane")) return "kb";
+    if (document.getElementById("shifts-shell-pane")) return "shifts";
     if (document.getElementById("settings-shell-pane")) return "settings";
     if (document.getElementById("news-shell-pane")) return "news";
     if (document.body.classList.contains("dashboard-page")) return "dashboard";
@@ -766,6 +797,7 @@ function updateActiveNav() {
     else if (path === "/tickets/settings" || path.indexOf("/tickets/settings/") === 0) key = "settings";
     else if (path === "/news" || path.indexOf("/news/") === 0) key = "news";
     else if (path === "/kb" || path.indexOf("/kb/") === 0) key = "kb";
+    else if (path === "/shifts" || path.indexOf("/shifts/") === 0) key = "shifts";
     else if (path === "/tickets" || path.indexOf("/tickets/") === 0) key = "tickets";
     document.querySelectorAll("#sidebar .sidebar-nav a[data-nav-key]").forEach(function (anchor) {
         var on = anchor.getAttribute("data-nav-key") === key;
@@ -944,7 +976,8 @@ function shellPaneEtag(kind) {
     var ids = {
         news: "news-shell-pane",
         kb: "kb-shell-pane",
-        settings: "settings-shell-pane"
+        settings: "settings-shell-pane",
+        shifts: "shifts-shell-pane"
     };
     var id = ids[kind];
     if (!id) return "";
@@ -1230,3 +1263,71 @@ document.body.addEventListener('htmx:beforeSwap', function (evt) {
     var body = document.getElementById('tickets-tbody');
     if (body) evt.detail.target = body;
 });
+
+// Ticket chat "Who's available": Transfer on a person opens the Transfer
+// Ticket form with that agent already chosen.
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-who-transfer]');
+    if (!btn) return;
+    const popup = document.getElementById('who-available-modal');
+    const transfer = document.getElementById('custom-transfer-modal');
+    const select = document.getElementById('new_assignee');
+    if (!transfer || !select) return;
+    if (popup) popup.style.display = 'none';
+    select.value = btn.getAttribute('data-who-transfer');
+    transfer.style.display = 'flex';
+    select.focus();
+});
+
+// Copy buttons (tickets/partials/copy_field_button.html): ticket details,
+// and phone numbers on Shifts → Available and the Who's available popup.
+window.copyTicketNumber = function(btn) {
+    if (!btn) return;
+    const text = btn.getAttribute('data-copy-text') || '';
+    if (!text) return;
+    const copyLabel = btn.getAttribute('data-copy-label') || '';
+    const copiedLabel = btn.getAttribute('data-copied-label') || '';
+    const statusEl = btn.parentElement
+        ? btn.parentElement.querySelector('.ticket-copy-status')
+        : null;
+
+    function markCopied() {
+        btn.classList.add('copied');
+        if (copiedLabel) {
+            btn.setAttribute('aria-label', copiedLabel);
+            btn.setAttribute('title', copiedLabel);
+        }
+        if (statusEl) statusEl.textContent = copiedLabel;
+        clearTimeout(btn._copyResetTimer);
+        btn._copyResetTimer = setTimeout(function() {
+            btn.classList.remove('copied');
+            if (copyLabel) {
+                btn.setAttribute('aria-label', copyLabel);
+                btn.setAttribute('title', copyLabel);
+            }
+            if (statusEl) statusEl.textContent = '';
+        }, 1600);
+    }
+
+    function fallbackCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            markCopied();
+        } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
+    }
+};

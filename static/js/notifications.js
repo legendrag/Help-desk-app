@@ -30,6 +30,7 @@ const NOTIF_ICONS = {
     message: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     transfer: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
     announcement: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
+    shift: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
     general: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
 };
 
@@ -491,7 +492,9 @@ function updatePushPermissionPrompt() {
         return;
     }
 
-    if (!window.Notification) {
+    // Old Mac Safari has Notification but no PushManager: asking would get a
+    // yes that can never deliver a push, so stay quiet.
+    if (!isPushSupported()) {
         prompt.hidden = true;
         prompt.classList.remove("is-visible");
         return;
@@ -540,15 +543,22 @@ function requestNotificationPermission() {
     });
 }
 
-async function requestPushPermissionFromUi() {
+// Asks with the browser's own Allow / Block pop-up. Call it straight from a
+// click or key press: browsers ignore the request outside a user gesture.
+// With showGuide the in-app guide follows the answer (Turn on); without it
+// (first interaction, bell) only the browser pop-up is ever shown.
+async function requestPushPermissionFromUi(showGuide = false) {
     if (!window.Notification) return;
     try {
         const perm = await requestNotificationPermission();
         syncPushOffUi();
         if (perm === "granted") {
+            if (showGuide) closePushAllowModal();
             initWebPush();
-        } else if (perm === "denied") {
+        } else if (perm === "denied" && showGuide) {
             openPushAllowModal(pushGuideMode() || "site-settings");
+        } else if (showGuide) {
+            closePushAllowModal();
         }
         return perm;
     } catch (err) {
@@ -583,13 +593,23 @@ function isIosDevice() {
 }
 
 function iosVersion() {
-    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/);
+    // iPad "Request Desktop Website" sends a Mac user agent without "OS x_y",
+    // but Safari's own Version/x.y there still matches the iPadOS version.
+    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/)
+        || navigator.userAgent.match(/Version\/(\d+)\.(\d+)/);
     if (!match) return null;
     return { major: Number(match[1]), minor: Number(match[2]) };
 }
 
+function isInAppBrowser() {
+    // Browsers inside other apps (Instagram, Facebook, TikTok...) have no
+    // Add to Home Screen, so the install guide cannot help there.
+    return /FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|musical_ly|BytedanceWebview|LinkedInApp|GSA\//.test(navigator.userAgent);
+}
+
 function isIosWebPushCapableOs() {
     // Home Screen web push exists only on iOS/iPadOS 16.4+.
+    if (isInAppBrowser()) return false;
     const version = iosVersion();
     if (!version) {
         // iPad "Request Desktop Website" hides the iOS version. Do not
@@ -665,11 +685,15 @@ function isPushAllowModalOpen() {
 async function handleTurnOnNotifications() {
     const mode = pushGuideMode();
     if (mode) {
+        // Blocked or not installed: the browser will not pop up, so only the guide can help.
         openPushAllowModal(mode);
         return;
     }
-    if (!window.Notification) return;
-    await requestPushPermissionFromUi();
+    if (!isPushSupported()) return;
+    // Show the guide and the browser pop-up together. requestPermission runs
+    // before the first await, so it still counts as part of this click.
+    openPushAllowModal("prompt");
+    await requestPushPermissionFromUi(true);
 }
 
 function initPushOffBanner() {
@@ -735,13 +759,24 @@ function bindFirstInteractionPushPrompt() {
     if (!window.userIsAuthenticated) return;
     if (!isPushSupported() || Notification.permission !== "default") return;
 
-    const requestOnInteraction = () => {
+    // click and keydown count as user gestures everywhere; a touch pointerdown
+    // does not, and browsers turn that request down without the pop-up.
+    const requestOnInteraction = (event) => {
+        if (event.type === "keydown" && ["Escape", "Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+            return;
+        }
+        // The bell and the Turn on buttons ask for themselves.
+        if (event.target.closest && event.target.closest("#notification-btn, #push-off-turn-on, #notification-push-enable")) {
+            return;
+        }
         document.removeEventListener("click", requestOnInteraction, true);
-        document.removeEventListener("pointerdown", requestOnInteraction, true);
-        requestPushPermissionFromUi();
+        document.removeEventListener("keydown", requestOnInteraction, true);
+        if (Notification.permission === "default") {
+            requestPushPermissionFromUi();
+        }
     };
     document.addEventListener("click", requestOnInteraction, true);
-    document.addEventListener("pointerdown", requestOnInteraction, true);
+    document.addEventListener("keydown", requestOnInteraction, true);
 }
 
 // ── Init UI ──

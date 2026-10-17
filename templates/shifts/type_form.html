@@ -1,0 +1,19 @@
+{% load i18n %}
+<div class="modal-header">
+  <h2>{% if editing %}{% trans "Edit shift type" %}{% else %}{% trans "Add shift type" %}{% endif %}</h2>
+  <button type="button" class="modal-close" onclick="closeModal()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+</div>
+<form method="post" hx-post="{{ request.path }}" hx-target="#modal-content" hx-disabled-elt="this" hx-sync="this:replace">
+  {% csrf_token %}
+  <div class="modal-body">
+    <div class="form-stack">
+      {% include "shifts/type_form_fields.html" %}
+    </div>
+  </div>
+  <div class="form-actions--end">
+    <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+    <button class="btn primary" type="submit">{% trans "Save" %}</button>
+  </div>
+</form>

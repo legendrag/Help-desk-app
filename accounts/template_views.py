@@ -1,8 +1,13 @@
+from urllib.parse import urlencode, urlsplit
+
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.http import HttpResponse
+from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
+from django.views import View
 
 # We can reuse the built-in Django LoginView
 from .forms import CustomAuthenticationForm, CustomPasswordChangeForm
@@ -26,6 +31,26 @@ class UserLoginView(LoginView):
         htmx_response = HttpResponse(status=204)
         htmx_response["HX-Redirect"] = redirect_to
         return htmx_response
+
+    def get(self, request, *args, **kwargs):
+        # An HTMX request lands here when the session expired mid-page (a poll or
+        # a click followed the login redirect). Swapping this full page into a
+        # fragment would run base.html's scripts twice, so load it as a page.
+        if request.headers.get("HX-Request") and not request.user.is_authenticated:
+            response = HttpResponse(status=204)
+            response["HX-Redirect"] = self._login_url_for_htmx(request)
+            return response
+        return super().get(request, *args, **kwargs)
+
+    @staticmethod
+    def _login_url_for_htmx(request):
+        """Login URL that returns to the page the user was on, not the fragment URL."""
+        current = urlsplit(request.headers.get("HX-Current-URL") or "")
+        if current.path and (not current.netloc or current.netloc == request.get_host()):
+            next_path = current.path + (f"?{current.query}" if current.query else "")
+            if url_has_allowed_host_and_scheme(next_path, allowed_hosts={request.get_host()}):
+                return f"{reverse('login')}?{urlencode({'next': next_path})}"
+        return request.get_full_path()
 
     def get_template_names(self):
         if self.request.headers.get("HX-Request") and self.request.method == "POST":
@@ -55,6 +80,50 @@ class UserLogoutView(LogoutView):
             except Exception:
                 pass
         return response
+
+
+def logout_cancel_url(request):
+    """Same-origin page that sent the user here, otherwise the ticket list."""
+    fallback = reverse("tickets_list")
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return fallback
+
+    parsed = urlsplit(referer)
+    path = parsed.path or ""
+    # A path of "//..." is protocol-relative and would leave this site.
+    if not path.startswith("/") or path.startswith("//") or "\\" in path:
+        return fallback
+    if path.rstrip("/") == reverse("logout").rstrip("/"):
+        return fallback
+    if parsed.query:
+        return f"{path}?{parsed.query}"
+    return path
+
+
+class LogoutEntryView(View):
+    """
+    GET never logs the user out. Authenticated visitors confirm with a POST
+    form; anonymous visitors go to login. POST stays on UserLogoutView.
+    """
+
+    http_method_names = ["get", "post", "options"]
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect("login")
+        return render(
+            request,
+            "accounts/logout_confirm.html",
+            {"cancel_url": logout_cancel_url(request)},
+        )
+
+    def post(self, request, *args, **kwargs):
+        return UserLogoutView.as_view()(request, *args, **kwargs)
 
 
 class UserPasswordChangeView(PasswordChangeView):

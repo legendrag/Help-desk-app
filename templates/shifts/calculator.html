@@ -1,0 +1,125 @@
+{% extends "shifts/shell.html" %}
+{% load i18n %}
+{% block shifts_body %}
+<header class="shifts-header">
+  <h1>{% trans "Calculator" %}</h1>
+</header>
+<div class="shifts-tools">
+
+<section id="shifts-work-hours" class="panel shifts-tool shifts-tool-wide" aria-labelledby="work-hours-title">
+  <div class="shifts-tool-head">
+    <h2 id="work-hours-title">{% trans "Work hours" %}</h2>
+    <p class="shifts-muted">{% trans "One person's shifts and hours for a period, ready to export to Excel." %}</p>
+  </div>
+  {# The department picker only reloads the people list, so it does not ask for a report. #}
+  <form class="shifts-calc-form" method="get" action="{% url 'shifts_calc_work' %}"
+        hx-get="{% url 'shifts_calc_work' %}"
+        hx-trigger="change[target.name!=='department']"
+        hx-target="#shifts-work-result"
+        hx-sync="this:replace">
+    <div class="shifts-fields shifts-fields--five">
+      <div class="form-group">
+        <label for="work-department">{% trans "Department" %}</label>
+        <select id="work-department" name="department"
+                hx-get="{% url 'shifts_calculator' %}?part=work_people"
+                hx-trigger="change"
+                hx-include="this"
+                hx-target="#work-person-field"
+                hx-swap="outerHTML">
+          {% for row in departments %}
+          <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% include "shifts/calc_work_people.html" %}
+      <div class="form-group">
+        <label for="work-start">{% trans "From" %}</label>
+        <input id="work-start" type="date" name="start" value="{{ work_start|date:'Y-m-d' }}">
+      </div>
+      <div class="form-group">
+        <label for="work-end">{% trans "To" %}</label>
+        <input id="work-end" type="date" name="end" value="{{ work_end|date:'Y-m-d' }}">
+      </div>
+      <div class="form-group">
+        <label for="work-shifts">{% trans "Shifts" %}</label>
+        <select id="work-shifts" name="shifts">
+          <option value="all">{% trans "All shifts" %}</option>
+          <option value="night">{% trans "Night shifts only" %}</option>
+        </select>
+      </div>
+    </div>
+  </form>
+  <div id="shifts-work-result">
+    <p class="shifts-muted">{% trans "Choose a person to see their shifts and hours for the period." %}</p>
+  </div>
+</section>
+
+<section id="shifts-rotation" class="panel shifts-tool" aria-labelledby="rotation-title">
+  <div class="shifts-tool-head">
+    <h2 id="rotation-title">{% trans "Night rotation" %}</h2>
+    <p class="shifts-muted">{% trans "Share night shifts fairly across the team for a date range. Preview first, then apply." %}</p>
+  </div>
+  <form class="shifts-calc-form" method="post" action="{% url 'shifts_calc_rotation' %}"
+        hx-post="{% url 'shifts_calc_rotation' %}"
+        hx-target="#shifts-rotation-result"
+        hx-disabled-elt="this"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    <div class="shifts-fields">
+      <div class="form-group">
+        <label for="rot-department">{% trans "Department" %}</label>
+        <select id="rot-department" name="department"
+                hx-get="{% url 'shifts_calculator' %}?part=rotation"
+                hx-target="#shifts-rotation-options"
+                hx-swap="innerHTML"
+                hx-trigger="change"
+                hx-include="this">
+          {% for row in departments %}
+          <option value="{{ row.pk }}"{% if department and row.pk == department.pk %} selected{% endif %}>{{ row.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="rot-start">{% trans "Start" %}</label>
+        <input id="rot-start" type="date" name="start">
+      </div>
+      <div class="form-group">
+        <label for="rot-end">{% trans "End" %}</label>
+        <input id="rot-end" type="date" name="end">
+      </div>
+      <div id="shifts-rotation-options" class="shifts-fields-contents">
+        {% include "shifts/calculator_rotation_options.html" %}
+      </div>
+    </div>
+    <div class="shifts-calc-actions">
+      <button class="btn secondary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
+      <button class="btn primary" type="submit" name="action" value="apply">{% trans "Apply" %}</button>
+    </div>
+  </form>
+  <div id="shifts-rotation-result"></div>
+</section>
+
+<section id="shifts-length" class="panel shifts-tool" aria-labelledby="length-title">
+  <div class="shifts-tool-head">
+    <h2 id="length-title">{% trans "Shift calculator" %}</h2>
+    <p class="shifts-muted">{% trans "How long a shift runs, and how much of it falls after midnight." %}</p>
+  </div>
+  <form class="shifts-calc-form" method="get" action="{% url 'shifts_calc_length' %}" hx-get="{% url 'shifts_calc_length' %}" hx-trigger="change" hx-target="#shifts-length-result">
+    <div class="shifts-fields shifts-fields--two">
+      <div class="form-group">
+        <label for="len-start">{% trans "Start" %}</label>
+        <input id="len-start" type="time" name="start">
+      </div>
+      <div class="form-group">
+        <label for="len-end">{% trans "End" %}</label>
+        <input id="len-end" type="time" name="end">
+      </div>
+    </div>
+  </form>
+  <div id="shifts-length-result">
+    <p class="shifts-muted">{% trans "Enter a start and an end time." %}</p>
+  </div>
+</section>
+
+</div>
+{% endblock %}

@@ -88,6 +88,29 @@ python manage.py cleanup_notifications --read-days 14 --all-days 60
 
 ---
 
+## send_shift_reminders
+
+Remind support agents that their shift is about to start. A reminder goes out when check-in opens (30 minutes before the start) as a bell notification, a web push and, when **Shift reminders** is ticked in the email settings, an email. Every reminder links to **My shifts**, where the agent checks in.
+
+No flags.
+
+### Behavior
+
+1. The web server already runs this check once a minute in a background thread, started by the first request.
+2. Each shift is reminded once. The start time it was reminded for is saved on the shift, so a second process or a restart never sends it twice, and moving the shift's start sends a fresh reminder.
+3. Skipped: agents already checked in, inactive users, branch users, and shifts that have already started.
+4. Mail and web push run inline here, so they finish before the command exits.
+
+Schedule it every few minutes only when the site runs more than one process or sits idle for long stretches (no requests means the thread hasn't started).
+
+### Examples
+
+```bash
+python manage.py send_shift_reminders
+```
+
+---
+
 ## cleanup_media
 
 Find files under `MEDIA_ROOT` that are not referenced by any `FileField` / `ImageField` in the database.
@@ -287,6 +310,7 @@ Remove it entirely: `docker rm -v mlameh-mysql`.
 | `backup_db` | Daily or more often via Task Scheduler / cron; see [Backup and restore](../operations/backup-restore.md) |
 | `cleanup_notifications` | Weekly; start with `--dry-run` |
 | `cleanup_media` | Occasional; always dry-run first |
+| `send_shift_reminders` | Every 5 minutes, only for multi-process or often-idle servers (the web process already sends reminders) |
 | `seed_demo_data` | Dev/demo only |
 
 Help for any command:
