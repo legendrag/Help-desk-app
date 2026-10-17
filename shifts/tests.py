@@ -2946,3 +2946,59 @@ class WhoAvailableTests(TestCase):
         self.assertIn("Mona Adel (Help desk) — On shift until 5:00 PM", options)
         self.assertLess(options.index("Mona Adel"), options.index("avail-late"))
 
+    def _available(self, viewer, name="shifts_available", **headers):
+        self.client.force_login(viewer)
+        with _both_clocks(aware(2026, 6, 2, 12, 0), date(2026, 6, 2)):
+            return self.client.get(reverse(name), **headers)
+
+    def test_board_and_popup_show_phones_with_copy_buttons(self):
+        self.on_agent.phone = "+201000000001"
+        self.on_agent.save()
+        for page in (self._available(self.branch_user), self._popup(self.branch_user)):
+            self.assertContains(page, 'href="tel:+201000000001"')
+            self.assertContains(page, 'data-copy-text="+201000000001"')
+            # Agents without a phone get no link or button.
+            self.assertContains(page, 'href="tel:', count=1)
+        # The search box matches the number too.
+        self.assertContains(self._available(self.branch_user), 'data-filter-item="mona adel +201000000001"')
+
+    def test_board_etag_follows_phone_changes(self):
+        first = self._available(self.branch_user, "shifts_available_board", HTTP_HX_REQUEST="true")
+        self.on_agent.phone = "+201000000002"
+        self.on_agent.save()
+        again = self._available(
+            self.branch_user, "shifts_available_board",
+            HTTP_HX_REQUEST="true", HTTP_IF_NONE_MATCH=first["ETag"],
+        )
+        self.assertEqual(again.status_code, 200)
+        self.assertContains(again, "+201000000002")
+
+    def test_contact_us_lists_shift_managers_with_phones(self):
+        self.assertNotContains(self._available(self.branch_user), "Contact us")
+        lead = make_user("avail-lead", "support", self.department, make_role("Avail lead", can_manage_shifts=True),
+                         first_name="Sara", last_name="Lead")
+        admin = make_user("avail-boss", "support", superuser=True)
+        gone = make_user("avail-gone", "support", self.department, lead.role)
+        gone.status = User.Status.INACTIVE
+        for person, phone in ((lead, "+201000000010"), (admin, "+201000000011"),
+                              (gone, "+201000000012"), (self.late_agent, "+201000000013")):
+            person.phone = phone
+            person.save()
+        page = self._available(self.branch_user)
+        contact = page.content.decode().split('id="shifts-contact-title"', 1)[1]
+        self.assertIn("Sara Lead", contact)
+        self.assertIn('data-copy-text="+201000000010"', contact)
+        self.assertIn('data-copy-text="+201000000011"', contact)
+        self.assertNotIn("+201000000012", contact)  # inactive
+        self.assertNotIn("+201000000013", contact)  # not a manager
+        self.assertLess(contact.index("avail-boss"), contact.index("Sara Lead"))
+
+    def test_copy_script_is_shared_by_every_page(self):
+        # The ticket drawer used to define it inline, so copy did nothing on Shifts.
+        from django.conf import settings
+
+        shell = (settings.BASE_DIR / "static/js/app-shell.js").read_text(encoding="utf-8")
+        drawer = (settings.BASE_DIR / "templates/tickets/partials/details_drawer.html").read_text(encoding="utf-8")
+        self.assertIn("window.copyTicketNumber = function", shell)
+        self.assertNotIn("window.copyTicketNumber", drawer)
+

@@ -3754,6 +3754,14 @@ msgstr "سيؤدي حذفه أيضًا إلى حذف %(items)s."
 msgid "Arrived at"
 msgstr "وقت الوصول"
 
+#: templates/shifts/available.html:26
+msgid "Contact us"
+msgstr "تواصل معنا"
+
+#: templates/shifts/available.html:28
+msgid "Shift managers can help with schedules and urgent issues."
+msgstr "يمكن لمديري المناوبات المساعدة في الجداول والأمور العاجلة."
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

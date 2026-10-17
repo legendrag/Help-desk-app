@@ -21,4 +21,20 @@
   </div>
 </header>
 {% include "shifts/available_board.html" %}
+{% if contacts %}
+<section class="panel shifts-card shifts-contact" aria-labelledby="shifts-contact-title">
+  <div class="panel-header">
+    <h2 id="shifts-contact-title">{% trans "Contact us" %}</h2>
+  </div>
+  <p class="shifts-muted">{% trans "Shift managers can help with schedules and urgent issues." %}</p>
+  <ul class="shifts-contact-list">
+    {% for person in contacts %}
+    <li class="shifts-contact-person">
+      <bdi dir="auto" class="shifts-person-name">{{ person.name }}</bdi>
+      {% include "shifts/phone.html" with phone=person.phone %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 {% endblock %}

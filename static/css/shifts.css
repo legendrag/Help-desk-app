@@ -742,6 +742,45 @@ html[dir="rtl"] #shifts-shell-pane .shifts-grid .shifts-person {
   margin: 0;
 }
 
+#shifts-shell-pane .shifts-tl-who .shifts-phone {
+  margin-inline-start: -0.1rem;
+}
+
+/* Contact us: shift managers' numbers under the Available board. */
+#shifts-shell-pane .shifts-contact {
+  margin-block-start: 1rem;
+}
+
+#shifts-shell-pane .shifts-contact > .shifts-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+}
+
+#shifts-shell-pane .shifts-contact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#shifts-shell-pane .shifts-contact-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  min-inline-size: 0;
+  padding-block: 0.35rem;
+  border-block-end: 1px solid var(--border);
+}
+
+#shifts-shell-pane .shifts-contact-person .shifts-person-name {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
 /* People whose shifts are all behind them fade back. */
 #shifts-shell-pane .shifts-tl-person--done .shifts-person-name,
 #shifts-shell-pane .shifts-tl-person--missed .shifts-person-name {

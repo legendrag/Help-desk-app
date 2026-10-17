@@ -17,7 +17,14 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.models import Department
 from shifts.clock import format_clock
-from shifts.access import can_check_in, display_name, has_own_shifts, home_target, is_shift_manager
+from shifts.access import (
+    can_check_in,
+    display_name,
+    has_own_shifts,
+    home_target,
+    is_shift_manager,
+    shift_managers,
+)
 from shifts.availability import timeline_rows, timeline_window
 from shifts.forms import ShiftTypeForm
 from shifts.models import DepartmentShiftSettings, ShiftAssignment, ShiftType
@@ -464,7 +471,11 @@ def _available_board(request):
     for row, start_dt, end_dt, state in timeline_rows(now, today, day_start, day_end):
         left = _timeline_percent(start_dt, day_start, day_length)
         key = (row.shift_type.department_id, row.user_id)
-        person = people.setdefault(key, {"name": display_name(row.user), "bars": []})
+        person = people.setdefault(key, {
+            "name": display_name(row.user),
+            "phone": (row.user.phone or "").strip(),
+            "bars": [],
+        })
         person["bars"].append({
             "shift_type": row.shift_type,
             "start": start_dt,
@@ -500,7 +511,7 @@ def _available_board(request):
         for person in card["people"]:
             for bar in person["bars"]:
                 parts.append((
-                    card["department"].pk, person["name"], bar["state"],
+                    card["department"].pk, person["name"], person["phone"], bar["state"],
                     bar["start"].isoformat(), bar["end"].isoformat(),
                     bar["shift_type"].name, bar["shift_type"].colour,
                 ))
@@ -522,7 +533,10 @@ def _available_board(request):
 @require_GET
 def shifts_available(request):
     cards, timeline, etag = _available_board(request)
-    return _shell(request, "shifts/available.html", _available_context(request, cards, timeline, etag))
+    context = _available_context(request, cards, timeline, etag)
+    # Outside the board, so the 20-second refresh never redraws it.
+    context["contacts"] = shift_managers()
+    return _shell(request, "shifts/available.html", context)
 
 
 @login_required
@@ -566,6 +580,7 @@ def shifts_available_department(request, pk):
         later.pop(user_id, None)
     for person in list(on_now.values()) + list(later.values()):
         person["name"] = display_name(person["user"])
+        person["phone"] = (person["user"].phone or "").strip()
     ticket = None
     ticket_pk = _parse_pk(request.GET.get("ticket"))
     if ticket_pk is not None:

@@ -38,9 +38,10 @@
         <div class="shifts-tl-track"></div>
       </div>
       {% for person in card.people %}
-      <div class="shifts-tl-row shifts-tl-person shifts-tl-person--{{ person.status }}" data-filter-item="{{ person.name|lower }}">
+      <div class="shifts-tl-row shifts-tl-person shifts-tl-person--{{ person.status }}" data-filter-item="{{ person.name|lower }}{% if person.phone %} {{ person.phone }}{% endif %}">
         <div class="shifts-tl-who">
           <bdi dir="auto" class="shifts-person-name">{{ person.name }}</bdi>
+          {% if person.phone %}{% include "shifts/phone.html" with phone=person.phone %}{% endif %}
           <span class="shifts-sub">{% for bar in person.bars %}{% if not forloop.first %}, {% endif %}{% shifts_time_range bar.start bar.end %}{% endfor %}</span>
         </div>
         <div class="shifts-tl-track">

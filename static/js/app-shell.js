@@ -1278,3 +1278,56 @@ document.addEventListener('click', (e) => {
     transfer.style.display = 'flex';
     select.focus();
 });
+
+// Copy buttons (tickets/partials/copy_field_button.html): ticket details,
+// and phone numbers on Shifts → Available and the Who's available popup.
+window.copyTicketNumber = function(btn) {
+    if (!btn) return;
+    const text = btn.getAttribute('data-copy-text') || '';
+    if (!text) return;
+    const copyLabel = btn.getAttribute('data-copy-label') || '';
+    const copiedLabel = btn.getAttribute('data-copied-label') || '';
+    const statusEl = btn.parentElement
+        ? btn.parentElement.querySelector('.ticket-copy-status')
+        : null;
+
+    function markCopied() {
+        btn.classList.add('copied');
+        if (copiedLabel) {
+            btn.setAttribute('aria-label', copiedLabel);
+            btn.setAttribute('title', copiedLabel);
+        }
+        if (statusEl) statusEl.textContent = copiedLabel;
+        clearTimeout(btn._copyResetTimer);
+        btn._copyResetTimer = setTimeout(function() {
+            btn.classList.remove('copied');
+            if (copyLabel) {
+                btn.setAttribute('aria-label', copyLabel);
+                btn.setAttribute('title', copyLabel);
+            }
+            if (statusEl) statusEl.textContent = '';
+        }, 1600);
+    }
+
+    function fallbackCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            markCopied();
+        } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
+    }
+};

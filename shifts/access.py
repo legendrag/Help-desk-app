@@ -44,3 +44,24 @@ def home_target(user) -> str:
 def display_name(user) -> str:
     full = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
     return full or user.username
+
+
+def shift_managers():
+    """Who "Contact us" on Available lists: active shift managers with a phone.
+
+    Same rule as ``is_shift_manager``: superusers, or a role that manages shifts.
+    """
+    from django.db.models import Q
+
+    from accounts.models import User
+
+    managers = (
+        User.objects.filter(status=User.Status.ACTIVE)
+        .filter(Q(is_superuser=True) | Q(role__can_manage_shifts=True))
+        .exclude(phone__isnull=True)
+        .exclude(phone__exact="")
+        .only("username", "first_name", "last_name", "phone")
+    )
+    people = [{"name": display_name(user), "phone": user.phone.strip()} for user in managers]
+    people = [person for person in people if person["phone"]]
+    return sorted(people, key=lambda person: person["name"].casefold())

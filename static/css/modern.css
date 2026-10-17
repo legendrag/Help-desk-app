@@ -2190,6 +2190,30 @@ td.mgmt-empty-cell {
   font-weight: 600;
   overflow-wrap: break-word;
 }
+/* Phone numbers on Shifts → Available and in the Who's available popup. */
+.shifts-phone {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.shifts-phone-link {
+  color: inherit;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
+.shifts-phone-link:hover,
+.shifts-phone-link:focus-visible {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.shifts-phone .ticket-copy-number-btn {
+  width: 24px;
+  height: 24px;
+}
+.shifts-phone .ticket-copy-number-btn svg {
+  width: 14px;
+  height: 14px;
+}
 .who-available-sub {
   display: flex;
   flex-wrap: wrap;
