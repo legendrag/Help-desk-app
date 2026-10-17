@@ -16,6 +16,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
 from core.models import Department
+from notifications.services import ShiftChange, queue_shift_changes
 from shifts.clock import format_clock
 from shifts.access import (
     can_check_in,
@@ -863,7 +864,9 @@ def shifts_cell(request):
     shift_type_id = request.POST.get("shift_type") or ""
     if not shift_type_id:
         if existing:
+            removed = ShiftChange.of("removed", existing)
             existing.delete()
+            queue_shift_changes([removed], request.user)
         response = _grid_response(request, department, retarget=True)
         response["HX-Trigger"] = "closeModal"
         return response
@@ -871,11 +874,14 @@ def shifts_cell(request):
         raise Http404(_("That shift no longer exists."))
     shift_type = get_object_or_404(ShiftType, pk=int(shift_type_id), department=department)
     if request.POST.get("reset_times") == "1" and existing:
+        before = effective_interval(existing)
         existing.start_time_override = None
         existing.end_time_override = None
         existing.times_set_by = None
         existing.times_set_at = None
         existing.save()
+        if effective_interval(existing) != before:
+            queue_shift_changes([ShiftChange.of("changed", existing)], request.user)
         response = _grid_response(request, department, retarget=True)
         response["HX-Trigger"] = "closeModal"
         return response
@@ -929,6 +935,7 @@ def shifts_cell(request):
         )
     row = existing or ShiftAssignment(user=user, date=on)
     type_changed = bool(existing and existing.shift_type_id != shift_type.pk)
+    before = effective_interval(existing) if existing else None
     row.shift_type = shift_type
     if start_t is not None and end_t is not None:
         row.start_time_override = start_t
@@ -940,6 +947,11 @@ def shifts_cell(request):
         row.checked_out_at = None
         row.arrived_at = None
     row.save()
+    # Saving the dialog unchanged tells nobody anything.
+    if existing is None:
+        queue_shift_changes([ShiftChange.of("added", row)], request.user)
+    elif type_changed or effective_interval(row) != before:
+        queue_shift_changes([ShiftChange.of("changed", row)], request.user)
     response = _grid_response(request, department, retarget=True)
     response["HX-Trigger"] = "closeModal"
     return response
@@ -968,7 +980,8 @@ def _cell_form(request, department, user, on, existing, now, *, error="", select
     })
 
 
-def _write_planned(planned):
+def _write_planned(planned, changes=None):
+    """Create the planned rows; each new one is added to ``changes`` when given."""
     created = 0
     skips = []
     for item in sorted(planned, key=lambda row: row["date"]):
@@ -993,7 +1006,7 @@ def _write_planned(planned):
             item["skip"] = "overlaps"
             skips.append(item)
             continue
-        ShiftAssignment.objects.create(
+        row = ShiftAssignment.objects.create(
             user_id=item["user_id"],
             date=item["date"],
             shift_type=shift_type,
@@ -1003,6 +1016,8 @@ def _write_planned(planned):
             times_set_at=item["times_set_at"],
             checked_in_at=None,
         )
+        if changes is not None:
+            changes.append(ShiftChange.of("added", row))
         created += 1
     return created, skips
 
@@ -1022,8 +1037,10 @@ def shifts_copy_week(request):
             date__lte=source_dates[-1],
         ).select_related("shift_type", "times_set_by", "times_set_by__role")
     )
+    changes = []
     with transaction.atomic():
-        created, skips = _write_planned(plan_copy(source_rows, timedelta(days=7), request.user))
+        created, skips = _write_planned(plan_copy(source_rows, timedelta(days=7), request.user), changes)
+        queue_shift_changes(changes, request.user)
     if created == 0 and not skips:
         notice = _("Nothing to copy.")
     else:
@@ -1058,9 +1075,10 @@ def shifts_repeat_week(request):
     )
     created = 0
     skips = []
+    changes = []  # every week together: one summary per person
     with transaction.atomic():
         for k in range(1, weeks + 1):
-            made, skipped = _write_planned(plan_copy(source_rows, timedelta(days=7 * k), request.user))
+            made, skipped = _write_planned(plan_copy(source_rows, timedelta(days=7 * k), request.user), changes)
             created += made
             skips.extend(skipped)
             source_rows = list(
@@ -1070,6 +1088,7 @@ def shifts_repeat_week(request):
                     date__lte=start + timedelta(days=6),
                 ).select_related("shift_type", "times_set_by", "times_set_by__role")
             )
+        queue_shift_changes(changes, request.user)
     notice = _("Repeated %(count)s shifts.") % {"count": created}
     return _rota_action(request, department, notice, skips=skips, refresh_grid=True)
 
@@ -1093,7 +1112,7 @@ def _people_and_existing(people):
     return by_user
 
 
-def _apply_rotation(proposals, shift_type, department):
+def _apply_rotation(proposals, shift_type, department, changes=None):
     created = 0
     skips = []
     with transaction.atomic():
@@ -1129,7 +1148,7 @@ def _apply_rotation(proposals, shift_type, department):
                 item["skip"] = overlap_message(other)
                 skips.append(item)
                 continue
-            ShiftAssignment.objects.create(
+            row = ShiftAssignment.objects.create(
                 user=user,
                 shift_type=shift_type,
                 date=item["date"],
@@ -1139,6 +1158,8 @@ def _apply_rotation(proposals, shift_type, department):
                 times_set_at=None,
                 checked_in_at=None,
             )
+            if changes is not None:
+                changes.append(ShiftChange.of("added", row))
             created += 1
     return created, skips
 
@@ -1231,11 +1252,14 @@ def shifts_calc_rotation(request):
                         "name": display_name(person),
                         "skip": "already assigned",
                     })
+        changes = []
         created, applied_skips = _apply_rotation(
             [item for item in proposals if not item.get("gap")],
             shift_type,
             department,
+            changes,
         )
+        queue_shift_changes(changes, request.user)
         skips.extend(applied_skips)
     _attach_names(proposals, people)
     _attach_names(skips, people)
@@ -1378,7 +1402,9 @@ def shifts_auto_fill(request):
             "shift_type": shift_type,
             "can_apply": True,
         })
-    created, applied = _apply_rotation(proposals, shift_type, department)
+    changes = []
+    created, applied = _apply_rotation(proposals, shift_type, department, changes)
+    queue_shift_changes(changes, request.user)
     skips = skipped + applied
     _attach_names(skips, people)
     notice = _("Filled %(count)s night shifts.") % {"count": created}

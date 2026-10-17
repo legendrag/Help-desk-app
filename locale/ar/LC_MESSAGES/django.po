@@ -3808,6 +3808,55 @@ msgstr[5] "%(count)d يوم"
 msgid "You can only give permissions that your own role has: %(names)s."
 msgstr "يمكنك منح الصلاحيات الموجودة في دورك فقط: %(names)s."
 
+#: notifications/services.py
+#, python-format
+msgid "New shift: %(date)s"
+msgstr "مناوبة جديدة: %(date)s"
+
+#: notifications/services.py
+#, python-format
+msgid "Shift changed: %(date)s"
+msgstr "تم تعديل مناوبة: %(date)s"
+
+#: notifications/services.py
+#, python-format
+msgid "Shift removed: %(date)s"
+msgstr "تم إلغاء مناوبة: %(date)s"
+
+#: notifications/services.py
+#, python-format
+msgid "%(shift)s · %(start)s – %(end)s"
+msgstr "%(shift)s · %(start)s – %(end)s"
+
+#: notifications/services.py
+#, python-format
+msgid "Now %(shift)s · %(start)s – %(end)s"
+msgstr "الآن %(shift)s · %(start)s – %(end)s"
+
+#: notifications/services.py
+#, python-format
+msgid "Added: %(dates)s."
+msgstr "أُضيفت: %(dates)s."
+
+#: notifications/services.py
+#, python-format
+msgid "Changed: %(dates)s."
+msgstr "عُدّلت: %(dates)s."
+
+#: notifications/services.py
+#, python-format
+msgid "Removed: %(dates)s."
+msgstr "أُلغيت: %(dates)s."
+
+#: notifications/services.py
+#, python-format
+msgid "+%(count)s more"
+msgstr "و%(count)s أخرى"
+
+#: notifications/services.py
+msgid "Your shifts were updated"
+msgstr "تم تحديث مناوباتك"
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

@@ -3017,3 +3017,110 @@ class WhoAvailableTests(TestCase):
         self.assertIn("window.copyTicketNumber = function", shell)
         self.assertNotIn("window.copyTicketNumber", drawer)
 
+
+
+class ShiftChangeNotificationTests(TestCase):
+    """Agents hear about added, changed and removed shifts: bell and web push, one per action."""
+
+    def setUp(self):
+        self.department = make_department("Notify")
+        self.manager = make_user(
+            "notify-lead", "support", self.department, make_role("Notify lead", can_manage_shifts=True),
+        )
+        self.agent = make_user("notify-agent", "support", self.department)
+        self.day = make_shift_type(self.department, name="Notify day", start=time(9, 0), end=time(17, 0))
+        self.late = make_shift_type(self.department, name="Notify late", start=time(13, 0), end=time(21, 0))
+        self.night = make_shift_type(self.department, name="Notify night")
+        self.client.force_login(self.manager)
+        self.now = aware(2026, 10, 4, 8, 0)
+        self.today = date(2026, 10, 4)
+
+    def _notes(self, user=None):
+        from notifications.models import InAppNotification
+
+        return InAppNotification.objects.filter(
+            recipient=user or self.agent, notification_type="shift",
+        ).order_by("pk")
+
+    def _post(self, name, data):
+        with _both_clocks(self.now, self.today), self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(reverse(name), data, HTTP_HX_REQUEST="true")
+
+    def _cell(self, user, day, shift_type=None, **extra):
+        return self._post("shifts_cell", {
+            "user": user.pk,
+            "date": day.isoformat(),
+            "department": self.department.pk,
+            "shift_type": shift_type.pk if shift_type else "",
+            **extra,
+        })
+
+    def test_added_shift_notifies_the_agent(self):
+        self._cell(self.agent, date(2026, 10, 6), self.day)
+        note = self._notes().get()
+        self.assertEqual(note.title, "New shift: Tue, Oct 6")
+        self.assertEqual(note.message, "Notify day · 9:00 AM – 5:00 PM")
+        self.assertEqual(note.link, "/shifts/mine/")
+        self.assertIn("مناوبة جديدة", note.title_ar)
+        self.assertIn("9:00 ص", note.message_ar)
+
+    def test_changed_and_removed_shifts_notify_but_unchanged_saves_do_not(self):
+        row = make_assignment(self.agent, self.day, date(2026, 10, 6))
+        edit = {"assignment": row.pk}  # the dialog names the row it edits
+        self._cell(self.agent, row.date, self.day, **edit)  # saved as it was
+        self.assertFalse(self._notes().exists())
+        self._cell(self.agent, row.date, self.late, **edit)
+        self.assertEqual(self._notes().last().title, "Shift changed: Tue, Oct 6")
+        self.assertEqual(self._notes().last().message, "Now Notify late · 1:00 PM – 9:00 PM")
+        self._cell(self.agent, row.date, self.late, start_time_override="14:00", end_time_override="22:00", **edit)
+        self.assertEqual(self._notes().last().message, "Now Notify late · 2:00 PM – 10:00 PM")
+        self._cell(self.agent, row.date, None, **edit)
+        self.assertEqual(self._notes().last().title, "Shift removed: Tue, Oct 6")
+        # Quick edits share titles and links; every one arrives.
+        self.assertEqual(self._notes().count(), 3)
+
+    def test_check_in_fixes_past_shifts_and_own_shifts_are_quiet(self):
+        today_row = make_assignment(self.agent, self.day, self.today)
+        today_row.checked_in_at = aware(2026, 10, 4, 7, 50)
+        today_row.save()
+        self._cell(self.agent, self.today, self.day, clear_check_in="1")
+        self._cell(self.agent, date(2026, 10, 1), self.day)  # already over
+        self._cell(self.manager, date(2026, 10, 6), self.day)  # the manager's own shift
+        self.assertFalse(self._notes().exists())
+        self.assertFalse(self._notes(self.manager).exists())
+
+    def test_copy_week_sends_one_summary_per_person(self):
+        for day in (date(2026, 10, 3), date(2026, 10, 4), date(2026, 10, 5)):
+            make_assignment(self.agent, self.day, day)
+        self._post("shifts_copy_week", {"department": self.department.pk, "start": "2026-10-10"})
+        note = self._notes().get()
+        self.assertEqual(note.title, "Your shifts were updated")
+        self.assertEqual(note.message, "Added: Oct 10, Oct 11, Oct 12.")
+        self.assertEqual(note.title_ar, "تم تحديث مناوباتك")
+
+    def test_long_summaries_are_cut_short(self):
+        from notifications.services import ShiftChange, notify_shift_changes
+
+        rows = [make_assignment(self.agent, self.day, date(2026, 10, 5 + n)) for n in range(7)]
+        with _both_clocks(self.now, self.today):
+            notify_shift_changes([ShiftChange.of("added", row) for row in rows], self.manager)
+        self.assertEqual(self._notes().get().message, "Added: Oct 5, Oct 6, Oct 7, Oct 8, Oct 9, +2 more.")
+
+    def test_night_rotation_apply_notifies_once(self):
+        self._post("shifts_calc_rotation", {
+            "department": self.department.pk,
+            "start": "2026-10-05",
+            "end": "2026-10-07",
+            "shift_type": self.night.pk,
+            "users": [self.agent.pk],
+            "action": "apply",
+        })
+        self.assertTrue(ShiftAssignment.objects.filter(user=self.agent, shift_type=self.night).exists())
+        note = self._notes().get()
+        self.assertTrue(note.title.startswith("New shift") or note.title == "Your shifts were updated")
+
+    def test_a_failing_notification_does_not_break_the_save(self):
+        with patch("notifications.services.notify_shift_changes", side_effect=RuntimeError("push down")):
+            response = self._cell(self.agent, date(2026, 10, 6), self.day)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(ShiftAssignment.objects.filter(user=self.agent, date=date(2026, 10, 6)).exists())

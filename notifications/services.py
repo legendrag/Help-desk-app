@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from datetime import timedelta
 
 from asgiref.sync import async_to_sync
@@ -266,6 +267,7 @@ def _notify_users(
     exclude_user=None,
     title_ar="",
     message_ar="",
+    dedupe=True,
 ):
     """Create and broadcast in-app notifications with deduplication.
 
@@ -287,7 +289,7 @@ def _notify_users(
         return
 
     skip = set()
-    if notification_type != "message":
+    if dedupe and notification_type != "message":
         skip = set(
             InAppNotification.objects.filter(
                 recipient_id__in=[user.id for user in recipients],
@@ -623,3 +625,120 @@ def notify_shift_reminder(assignment):
         message_ar=copy["ar"][1],
     )
     _enqueue(send_shift_reminder_email, assignment.pk)
+
+
+SHIFT_CHANGES_LINK = "/shifts/mine/"
+# A summary names this many dates per kind, then "+N more".
+SHIFT_CHANGE_DATES_SHOWN = 5
+
+
+@dataclass(frozen=True)
+class ShiftChange:
+    """One rota change for one person. Removals are captured before the delete."""
+
+    kind: str  # "added", "changed" or "removed"
+    user: object
+    date: object
+    shift_name: str
+    start_dt: object
+    end_dt: object
+
+    @classmethod
+    def of(cls, kind, assignment):
+        from shifts.services import effective_interval
+
+        start_dt, end_dt = effective_interval(assignment)
+        return cls(kind, assignment.user, assignment.date, assignment.shift_type.name, start_dt, end_dt)
+
+
+_SHIFT_CHANGE_TITLES = {
+    "added": gettext_noop("New shift: %(date)s"),
+    "changed": gettext_noop("Shift changed: %(date)s"),
+    "removed": gettext_noop("Shift removed: %(date)s"),
+}
+_SHIFT_CHANGE_MESSAGES = {
+    "added": gettext_noop("%(shift)s · %(start)s – %(end)s"),
+    "changed": gettext_noop("Now %(shift)s · %(start)s – %(end)s"),
+    "removed": gettext_noop("%(shift)s · %(start)s – %(end)s"),
+}
+_SHIFT_CHANGE_LISTS = {
+    "added": gettext_noop("Added: %(dates)s."),
+    "changed": gettext_noop("Changed: %(dates)s."),
+    "removed": gettext_noop("Removed: %(dates)s."),
+}
+
+
+def _shift_change_copy(changes):
+    """(title, message) for one person's changes, in the active language."""
+    from django.utils.formats import date_format
+    from django.utils.translation import gettext
+
+    from shifts.clock import format_clock
+
+    if len(changes) == 1:
+        change = changes[0]
+        title = gettext(_SHIFT_CHANGE_TITLES[change.kind]) % {"date": date_format(change.date, "D, M j")}
+        message = gettext(_SHIFT_CHANGE_MESSAGES[change.kind]) % {
+            "shift": change.shift_name,
+            "start": format_clock(change.start_dt),
+            "end": format_clock(change.end_dt),
+        }
+        return title, message
+    parts = []
+    for kind in ("added", "changed", "removed"):
+        days = sorted({change.date for change in changes if change.kind == kind})
+        if not days:
+            continue
+        shown = [date_format(day, "M j") for day in days[:SHIFT_CHANGE_DATES_SHOWN]]
+        if len(days) > SHIFT_CHANGE_DATES_SHOWN:
+            shown.append(gettext("+%(count)s more") % {"count": len(days) - SHIFT_CHANGE_DATES_SHOWN})
+        parts.append(gettext(_SHIFT_CHANGE_LISTS[kind]) % {"dates": ", ".join(shown)})
+    return gettext("Your shifts were updated"), " ".join(parts)
+
+
+def notify_shift_changes(changes, actor=None):
+    """Bell and web push when a manager adds, changes or removes someone's shifts.
+
+    One notification per person per action. Shifts that are already over,
+    and the manager's own shifts, are left out.
+    """
+    from django.utils import translation
+
+    now = timezone.now()
+    by_user = {}
+    for change in changes:
+        if change.end_dt <= now or (actor is not None and change.user.pk == actor.pk):
+            continue
+        by_user.setdefault(change.user.pk, []).append(change)
+    for person_changes in by_user.values():
+        person_changes.sort(key=lambda change: change.start_dt)
+        copy = {}
+        for language in ("en", "ar"):
+            with translation.override(language):
+                copy[language] = _shift_change_copy(person_changes)
+        _notify_users(
+            [person_changes[0].user],
+            copy["en"][0],
+            copy["en"][1],
+            SHIFT_CHANGES_LINK,
+            notification_type=InAppNotification.NotificationType.SHIFT,
+            title_ar=copy["ar"][0],
+            message_ar=copy["ar"][1],
+            # Two quick edits can share a title; both must arrive.
+            dedupe=False,
+        )
+
+
+def queue_shift_changes(changes, actor=None):
+    """Send ``notify_shift_changes`` once the rota save commits; never break the save."""
+    changes = [change for change in changes if change is not None]
+    if not changes:
+        return
+
+    def send():
+        try:
+            notify_shift_changes(changes, actor)
+        except Exception:  # noqa: BLE001 - a notification must not undo a saved rota
+            logger.exception("Shift change notification failed")
+
+    transaction.on_commit(send)
