@@ -23,6 +23,32 @@ def user_can_view_ticket(user, ticket) -> bool:
     return user_in_ticket_org(user, ticket)
 
 
+def user_can_update_status(user, ticket) -> bool:
+    """Close, wait for branch, in progress: the assignee, with "Update Ticket Status"."""
+    if user.is_superuser:
+        return True
+    if ticket.assigned_to_id != user.id:
+        return False
+    return bool(user.role_id and user.role.can_update_status)
+
+
+def user_can_send_message(user, ticket) -> bool:
+    """Same rule as the chat socket (tickets/consumers.py) and the chat box.
+
+    "Send Message" is needed by everyone but superusers; branch users write
+    on their branch's tickets, support only on tickets assigned to them.
+    """
+    if user.is_superuser:
+        return True
+    if not (user.role_id and user.role.can_send_message):
+        return False
+    if not user_in_ticket_org(user, ticket):
+        return False
+    if user.user_type == "support":
+        return ticket.assigned_to_id == user.id
+    return user.user_type == "branch"
+
+
 def user_can_pick_ticket(user, ticket) -> bool:
     if not user_in_ticket_org(user, ticket):
         return False

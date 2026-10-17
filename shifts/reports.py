@@ -16,6 +16,8 @@ from shifts.services import (
     CHECKED_IN,
     COMPLETED,
     MISSED,
+    NOT_CHECKED_IN,
+    ON_SHIFT,
     clock_length,
     effective_interval,
     effective_times,
@@ -29,9 +31,13 @@ PRESENT = "present"
 ABSENT = "absent"
 UPCOMING = "upcoming"
 SCHEDULED = "scheduled"
+# Running now. Working is for roles without check-in; Not checked in is a
+# check-in role that has not pressed it yet. Same words as My shifts.
+WORKING = "on_shift"
+NOT_IN = "not_checked_in"
 # Shifts that count toward the totals. Scheduled is a finished shift for someone
 # whose role does not use check-in, so there is nothing to check it against.
-COUNTED = (PRESENT, SCHEDULED)
+COUNTED = (PRESENT, SCHEDULED, WORKING)
 
 
 def status_label(status):
@@ -40,6 +46,8 @@ def status_label(status):
         ABSENT: _("Absent"),
         UPCOMING: _("Upcoming"),
         SCHEDULED: _("Scheduled"),
+        WORKING: _("On shift"),
+        NOT_IN: _("Not checked in"),
     }[status]
 
 
@@ -108,6 +116,10 @@ def _status(assignment, now, uses_check_in):
         return PRESENT if attended else SCHEDULED
     if outcome == MISSED:
         return ABSENT
+    if outcome == ON_SHIFT:
+        return WORKING
+    if outcome == NOT_CHECKED_IN:
+        return NOT_IN
     return UPCOMING
 
 
@@ -140,13 +152,13 @@ def build_report(person, start, end, night_only=False, now=None):
         if status == ABSENT:
             # Nobody worked an absent shift, so it is worth no hours.
             hours = Decimal(0)
-        elif status == PRESENT:
+        elif status in (PRESENT, WORKING):
             # "From" shows when the agent pressed check in, but time is only
             # counted inside the shift: an early check-in starts at the shift
             # start, and a shift still running counts up to now, not its end.
             start_dt, end_dt = effective_interval(assignment)
             counted_from = start_dt
-            if assignment.arrived_at:
+            if status == PRESENT and assignment.arrived_at:
                 starts = format_clock(assignment.arrived_at)
                 counted_from = max(assignment.arrived_at, start_dt)
             counted_to = min(end_dt, now)
@@ -190,12 +202,16 @@ def report_workbook(report):
         ABSENT: PatternFill("solid", fgColor="FFC7CE"),
         UPCOMING: PatternFill("solid", fgColor="DDEBF7"),
         SCHEDULED: PatternFill("solid", fgColor="EDEDED"),
+        WORKING: PatternFill("solid", fgColor="C6EFCE"),
+        NOT_IN: PatternFill("solid", fgColor="FFEB9C"),
     }
     status_fonts = {
         PRESENT: Font(italic=True, color="006100"),
         ABSENT: Font(italic=True, color="9C0006"),
         UPCOMING: Font(italic=True, color="1F4E78"),
         SCHEDULED: Font(italic=True, color="404040"),
+        WORKING: Font(italic=True, color="006100"),
+        NOT_IN: Font(italic=True, color="9C5700"),
     }
     columns = 7
 

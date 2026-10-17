@@ -1498,6 +1498,20 @@ select.form-control[aria-invalid="true"],
   word-break: normal;
   overflow-wrap: break-word;
 }
+/* Each line of chat takes its direction from its own first letter, so
+   "Hello?" keeps its "?" at the end on the Arabic page and Arabic text
+   reads right to left on the English one. */
+.chat-bubble-text,
+.reply-quote-text,
+.reply-preview-text,
+.chat-system-message-content span {
+  unicode-bidi: plaintext;
+}
+.chat-bubble-text,
+.reply-quote-text,
+.reply-preview-text {
+  text-align: start;
+}
 .chat-bubble-attachment-wrap {
   margin-top: 0.5rem;
 }

@@ -3762,6 +3762,47 @@ msgstr "تواصل معنا"
 msgid "Shift managers can help with schedules and urgent issues."
 msgstr "يمكن لمديري المناوبات المساعدة في الجداول والأمور العاجلة."
 
+#: tickets/template_views.py
+msgid "You do not have permission to update ticket status."
+msgstr "ليس لديك صلاحية لتحديث حالة التذكرة."
+
+#: tickets/templatetags/ticket_extras.py
+msgid "N/A"
+msgstr "غير متاح"
+
+#: tickets/templatetags/ticket_extras.py
+#, python-format
+msgid "%(count)d min"
+msgid_plural "%(count)d min"
+msgstr[0] "%(count)d دقيقة"
+msgstr[1] "دقيقة واحدة"
+msgstr[2] "دقيقتان"
+msgstr[3] "%(count)d دقائق"
+msgstr[4] "%(count)d دقيقة"
+msgstr[5] "%(count)d دقيقة"
+
+#: tickets/templatetags/ticket_extras.py
+#, python-format
+msgid "%(count)d hr"
+msgid_plural "%(count)d hrs"
+msgstr[0] "%(count)d ساعة"
+msgstr[1] "ساعة واحدة"
+msgstr[2] "ساعتان"
+msgstr[3] "%(count)d ساعات"
+msgstr[4] "%(count)d ساعة"
+msgstr[5] "%(count)d ساعة"
+
+#: tickets/templatetags/ticket_extras.py
+#, python-format
+msgid "%(count)d day"
+msgid_plural "%(count)d days"
+msgstr[0] "%(count)d يوم"
+msgstr[1] "يوم واحد"
+msgstr[2] "يومان"
+msgstr[3] "%(count)d أيام"
+msgstr[4] "%(count)d يومًا"
+msgstr[5] "%(count)d يوم"
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

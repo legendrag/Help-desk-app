@@ -643,6 +643,79 @@ class SecurityTenancyTests(TestCase):
         self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
 
 
+class TicketRoleFlagTests(TestCase):
+    """"Update Ticket Status" and "Send Message" are enforced, not just hidden."""
+
+    def setUp(self):
+        self.branch = Branch.objects.create(code="FLG", name="Flag Branch")
+        self.department = Department.objects.create(name="Flag Dept")
+        category = Category.objects.create(department=self.department, name="Flag Cat")
+        self.agent_role = Role.objects.create(name="Flag agent", can_update_status=False, can_send_message=True)
+        self.agent = User.objects.create_user(
+            username="flag_agent", password="password123", user_type=User.UserType.SUPPORT,
+            department=self.department, role=self.agent_role,
+        )
+        self.branch_role = Role.objects.create(name="Flag branch", can_send_message=False)
+        self.branch_user = User.objects.create_user(
+            username="flag_branch", password="password123", user_type=User.UserType.BRANCH,
+            branch=self.branch, role=self.branch_role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-FLG1", title="Flag", description="Flag", branch=self.branch,
+            department=self.department, category=category, created_by=self.branch_user,
+            assigned_to=self.agent, status=Ticket.Status.IN_PROGRESS,
+            client_name="Client", client_phone="123",
+        )
+
+    def _set_status(self, status):
+        return self.client.post(reverse("update_status", kwargs={"ticket_id": self.ticket.id}), {"status": status})
+
+    def test_assignee_without_update_status_cannot_change_it(self):
+        self.client.force_login(self.agent)
+        for status in (Ticket.Status.CLOSED, Ticket.Status.WAITING_FOR_BRANCH):
+            self.assertEqual(self._set_status(status).status_code, 403, status)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
+        # The page offers Transfer only: no status form, no Close or Merge.
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'id="action-bar-form"')
+        self.assertNotContains(page, 'data-action="closed"')
+        self.assertNotContains(page, 'data-action="merge"')
+        self.assertContains(page, 'id="action-bar-execute"\n                                data-action="transfer"')
+
+    def test_assignee_with_update_status_can_change_it(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        self.assertEqual(self._set_status(Ticket.Status.WAITING_FOR_BRANCH).status_code, 302)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.WAITING_FOR_BRANCH)
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, 'id="action-bar-form"')
+
+    def test_branch_user_without_send_message_cannot_post(self):
+        self.client.force_login(self.branch_user)
+        url = reverse("post_message", kwargs={"ticket_id": self.ticket.id})
+        self.assertEqual(self.client.post(url, {"message": "blocked"}).status_code, 403)
+        self.assertFalse(TicketMessage.objects.filter(message="blocked").exists())
+        self.branch_role.can_send_message = True
+        self.branch_role.save()
+        self.client.post(url, {"message": "allowed"})
+        self.assertTrue(TicketMessage.objects.filter(message="allowed").exists())
+
+    def test_durations_are_translated(self):
+        from django.utils import translation
+
+        from tickets.templatetags.ticket_extras import human_duration
+
+        self.assertEqual(human_duration(2 * 3600), "2 hrs")
+        self.assertEqual(human_duration(3600), "1 hr")
+        with translation.override("ar"):
+            self.assertEqual(human_duration(2 * 3600), "ساعتان")
+            self.assertEqual(human_duration(5 * 3600), "5 ساعات")
+            self.assertEqual(human_duration(None), "غير متاح")
+
+
 class TicketNumberCopyButtonTests(TestCase):
     def setUp(self):
         self.branch = Branch.objects.create(code="COPY", name="Copy Branch")
@@ -2392,6 +2465,7 @@ class TicketAttachmentMediaTests(TestCase):
         self.user = User.objects.create_user(
             username="media_branch", password="password123",
             user_type=User.UserType.BRANCH, branch=self.branch,
+            role=Role.objects.create(name="Media branch", can_send_message=True),
         )
         self.outsider = User.objects.create_user(
             username="media_outsider", password="password123",

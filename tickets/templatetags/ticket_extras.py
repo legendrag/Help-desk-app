@@ -1,5 +1,6 @@
 import math
 from django import template
+from django.utils.translation import gettext as _, ngettext
 
 register = template.Library()
 
@@ -7,25 +8,25 @@ register = template.Library()
 @register.filter
 def human_duration(seconds):
     if seconds is None:
-        return "N/A"
+        return _("N/A")
     try:
         seconds = float(seconds)
     except (TypeError, ValueError):
-        return "N/A"
+        return _("N/A")
 
     if seconds < 0:
         seconds = 0
 
     minutes = max(1, math.ceil(seconds / 60))
     if minutes < 60:
-        return f"{minutes} min"
+        return ngettext("%(count)d min", "%(count)d min", minutes) % {"count": minutes}
 
     hours = math.ceil(minutes / 60)
     if hours < 24:
-        return f"{hours} hrs"
+        return ngettext("%(count)d hr", "%(count)d hrs", hours) % {"count": hours}
 
     days = math.ceil(hours / 24)
-    return f"{days} days"
+    return ngettext("%(count)d day", "%(count)d days", days) % {"count": days}
 
 
 @register.filter

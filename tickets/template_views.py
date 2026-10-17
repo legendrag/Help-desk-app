@@ -18,7 +18,13 @@ from django.urls import reverse, reverse_lazy
 from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
-from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
+from .access import (
+    user_can_pick_ticket,
+    user_can_reopen_ticket,
+    user_can_send_message,
+    user_can_update_status,
+    user_can_view_ticket,
+)
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
@@ -1216,6 +1222,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         elif user.user_type == "support":
             can_chat = (ticket.assigned_to_id == user.id)
         context['can_chat'] = can_chat
+        context['can_update_status'] = user_can_update_status(user, ticket)
 
         supporters = User.objects.filter(
             status=User.Status.ACTIVE
@@ -1364,14 +1371,11 @@ def ticket_category_options(request):
 def post_message(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     
-    # Permission: Superuser, Assignee, Branch (if theirs), or has role permission.
     if not request.user.is_superuser:
-        if request.user.user_type == "branch":
-            if ticket.branch_id != request.user.branch_id:
-                raise PermissionDenied(_("You can only send messages on tickets for your branch."))
-        elif request.user.user_type == "support":
-            if ticket.assigned_to_id != request.user.id and not (request.user.role and request.user.role.can_send_message):
-                raise PermissionDenied(_("You do not have permission to send messages."))
+        if request.user.user_type == "branch" and ticket.branch_id != request.user.branch_id:
+            raise PermissionDenied(_("You can only send messages on tickets for your branch."))
+        if not user_can_send_message(request.user, ticket):
+            raise PermissionDenied(_("You do not have permission to send messages."))
 
     if request.method == "POST":
         message_text = request.POST.get("message")
@@ -1530,6 +1534,8 @@ def update_ticket_status(request, ticket_id):
         if ticket.status != Ticket.Status.CLOSED:
             if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
                 raise PermissionDenied(_("You can only update the status of tickets assigned to you."))
+            if not user_can_update_status(request.user, ticket):
+                raise PermissionDenied(_("You do not have permission to update ticket status."))
         else:
             if not user_can_reopen_ticket(request.user, ticket):
                 raise PermissionDenied(_("You do not have permission to update a closed ticket."))

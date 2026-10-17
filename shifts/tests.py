@@ -2642,6 +2642,21 @@ class ShiftStatusConsistencyTests(TestCase):
         self.assertEqual(self._report_status(self.absent, after), "absent")
         self.assertEqual(self._report_status(self.no_check_in, after), "scheduled")
 
+    def test_running_shifts_agree_across_pages(self):
+        # The report used to call these "Upcoming" while they were running.
+        noon = aware(2026, 6, 2, 12, 0)
+        self.assertEqual(self._mine_status(self.no_check_in, self.plain_row, noon), "on_shift")
+        self.assertEqual(self._report_status(self.no_check_in, noon), "on_shift")
+        self.assertEqual(self._report_status(self.present, noon), "present")
+        self.assertEqual(self._report_status(self.absent, noon), "not_checked_in")
+        from shifts.reports import build_report
+
+        with _both_clocks(noon, self.today):
+            row = build_report(self.no_check_in, self.today, self.today, now=noon).rows[0]
+        self.assertEqual(row.status_text, "On shift")
+        self.assertTrue(row.counted)
+        self.assertEqual(row.hours, 3)  # 9 AM to noon so far, like a checked-in shift
+
     def test_rota_labels_every_ended_shift(self):
         manager = make_user(
             "status-lead", "support", self.department, make_role("Status lead", can_manage_shifts=True),

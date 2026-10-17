@@ -332,10 +332,16 @@ if (window.updateActiveNav) window.updateActiveNav();
                         {% endif %}
 
                         {# ── Action + Dropdown Group ── #}
-                        {% if user.is_superuser or ticket.assigned_to == user %}
+                        {# Status items need "Update Ticket Status"; Transfer only needs the ticket. #}
+                        {% if can_update_status or ticket.assigned_to == user and not ticket.pending_transfer_to %}
                         <div class="action-bar-group">
+                            {% if can_update_status %}
                             <button type="button" class="action-bar-execute" id="action-bar-execute"
                                 data-action="closed" data-confirm="close" onclick="executeActionBar()">{% trans "Close" %}</button>
+                            {% else %}
+                            <button type="button" class="action-bar-execute" id="action-bar-execute"
+                                data-action="transfer" data-confirm="transfer" onclick="executeActionBar()">{% trans "Transfer" %}</button>
+                            {% endif %}
                             <button type="button" class="action-bar-toggle" id="action-bar-toggle"
                                 onclick="toggleActionMenu()">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -344,6 +350,7 @@ if (window.updateActiveNav) window.updateActiveNav();
                                 </svg>
                             </button>
                             <div class="action-bar-menu" id="action-bar-menu">
+                                {% if can_update_status %}
                                 <button type="button" class="action-bar-menu-item active" data-action="closed"
                                     data-label="{% trans 'Close' %}" data-confirm="close" onclick="selectAction(this)">{% trans "Close" %}</button>
                                 {% if ticket.status != 'waiting_for_branch' %}
@@ -356,9 +363,10 @@ if (window.updateActiveNav) window.updateActiveNav();
                                 {% endif %}
                                 <button type="button" class="action-bar-menu-item" data-action="merge"
                                     data-label="{% trans 'Merge' %}" data-confirm="merge" onclick="selectAction(this)">{% trans "Merge Ticket" %}</button>
+                                {% endif %}
                                 {% if user.is_superuser or ticket.assigned_to == user %}
                                 {% if not ticket.pending_transfer_to %}
-                                <button type="button" class="action-bar-menu-item" data-action="transfer"
+                                <button type="button" class="action-bar-menu-item{% if not can_update_status %} active{% endif %}" data-action="transfer"
                                     data-label="{% trans 'Transfer' %}" data-confirm="transfer" onclick="selectAction(this)">{% trans "Transfer Ticket" %}</button>
                                 {% endif %}
                                 {% endif %}
@@ -434,7 +442,7 @@ if (window.updateActiveNav) window.updateActiveNav();
             {% endif %}
             {% endif %}
 
-            {% if user.is_superuser or ticket.assigned_to == user %}
+            {% if can_update_status %}
             <form id="action-bar-form" action="{% url 'update_status' ticket.id %}" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="status" id="action-bar-status" value="closed">
@@ -699,10 +707,11 @@ if (window.updateActiveNav) window.updateActiveNav();
         const execBtn = document.getElementById('action-bar-execute');
         const form = document.getElementById('action-bar-form');
         const statusInput = document.getElementById('action-bar-status');
-        if (!execBtn || !form || !statusInput) return;
+        if (!execBtn) return;
 
+        // Without "Update Ticket Status" there is no status form, only Transfer.
         const action = execBtn.dataset.action;
-        statusInput.value = action;
+        if (statusInput) statusInput.value = action;
 
         // If close, show confirmation modal
         if (execBtn.dataset.confirm === 'close') {
@@ -721,7 +730,7 @@ if (window.updateActiveNav) window.updateActiveNav();
         }
 
         // Otherwise submit directly
-        form.submit();
+        if (form && statusInput) form.submit();
     }
 
     // Close dropdown on outside click (menu may be portaled to <body>)
