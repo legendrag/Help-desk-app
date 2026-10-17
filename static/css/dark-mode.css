@@ -2210,3 +2210,9 @@
 [data-theme="dark"] .flash-toast {
   background: #1e293b;
 }
+
+[data-theme="dark"] .merged-sidebar-item--static,
+[data-theme="dark"] .merged-sidebar-item--static:hover {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.1);
+}

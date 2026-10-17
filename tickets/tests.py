@@ -782,6 +782,26 @@ class TicketRoleFlagTests(TestCase):
         # Shown once, not saved up for another page.
         self.assertNotContains(self.client.get(reverse("tickets_list")), "Target ticket number is required.")
 
+    def test_merged_tickets_are_not_links_for_branch_users(self):
+        from tickets.services import merge_tickets
+
+        duplicate = Ticket.objects.create(
+            ticket_number="TK-FLG3", title="Dup", description="Dup", branch=self.branch,
+            department=self.department, category=self.ticket.category, created_by=self.branch_user,
+            client_name="C", client_phone="1",
+        )
+        merge_tickets(self.ticket.id, [duplicate.id], self.agent)
+        link = f'href="{reverse("ticket_detail", kwargs={"ticket_id": duplicate.id})}"'
+        detail = reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id})
+
+        self.client.force_login(self.branch_user)
+        page = self.client.get(detail)
+        self.assertContains(page, "#TK-FLG3")
+        self.assertNotContains(page, link)
+
+        self.client.force_login(self.agent)
+        self.assertContains(self.client.get(detail), link)
+
     def test_whitespace_message_is_refused(self):
         self.client.force_login(self.agent)
         response = self.client.post(

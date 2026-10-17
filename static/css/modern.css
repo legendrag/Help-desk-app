@@ -1478,6 +1478,15 @@ select.form-control[aria-invalid="true"],
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
+/* Branch users: listed, not a link. */
+.merged-sidebar-item--static,
+.merged-sidebar-item--static:hover {
+  cursor: default;
+  border-color: rgba(226,232,240,0.8);
+  background: #f8fafc;
+  box-shadow: none;
+}
+
 .merged-sidebar-item span {
   font-size: 0.85rem;
   font-weight: 600;

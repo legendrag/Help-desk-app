@@ -90,12 +90,19 @@
             <label class="merged-tickets-label">{% trans "Merged Tickets" %}</label>
             <div class="merged-tickets-sidebar-list">
                 {% for st in ticket.merged_tickets.all %}
+                {% if user.user_type == 'branch' and not user.is_superuser %}
+                {# Branch users see which tickets were merged in, without opening them. #}
+                <div class="merged-sidebar-item merged-sidebar-item--static">
+                    <span>#{{ st.ticket_number }}</span>
+                </div>
+                {% else %}
                 <a href="{% url 'ticket_detail' st.id %}" class="merged-sidebar-item">
                     <span>#{{ st.ticket_number }}</span>
                     <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </a>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
