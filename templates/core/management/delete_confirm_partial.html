@@ -11,10 +11,13 @@
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
     </div>
     {% if in_use %}
-    <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">{% blocktrans trimmed with object=object|lower %}This {{ object }} can't be deleted yet.{% endblocktrans %}</p>
+    <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">{% blocktrans trimmed with object=object %}This {{ object }} can't be deleted yet.{% endblocktrans %}</p>
     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0;">{% blocktrans trimmed with uses=in_use|join:", " %}It is still used by {{ uses }}. Move or reassign them first.{% endblocktrans %}</p>
     {% else %}
-    <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">{% blocktrans trimmed with object=object|lower %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}</p>
+    <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">{% blocktrans trimmed with object=object %}Are you sure you want to delete this {{ object }}?{% endblocktrans %}</p>
+    {% if also_deletes %}
+    <p style="color: var(--danger); font-size: 0.9rem; margin-bottom: 0.5rem;">{% blocktrans trimmed with items=also_deletes|join:", " %}Deleting it also deletes {{ items }}.{% endblocktrans %}</p>
+    {% endif %}
     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0;">{% trans "This action cannot be undone." %}</p>
     {% endif %}
 </div>

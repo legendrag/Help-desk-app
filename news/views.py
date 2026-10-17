@@ -149,6 +149,8 @@ class NewsUpdateView(LoginRequiredMixin, NewsPermissionMixin, UpdateView):
 class NewsDeleteView(LoginRequiredMixin, NewsPermissionMixin, DeleteView):
     model = Announcement
     success_url = reverse_lazy("news_list")
+    # The edit modal confirms before posting; there is no confirm page to GET.
+    http_method_names = ["post"]
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()

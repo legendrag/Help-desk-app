@@ -1223,15 +1223,18 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
             Q(is_superuser=True)
         ).exclude(id=ticket.assigned_to_id).select_related("department").only(
-            "id", "username", "department", "department__name"
+            "id", "username", "first_name", "last_name", "department", "department__name"
         )
 
         # Agents on shift right now come first, marked with when they finish.
+        from shifts.access import display_name
         from shifts.availability import on_shift_now
 
         on_shift = on_shift_now(ticket.department_id) if ticket.department_id else {}
         supporters = list(supporters)
         for supporter in supporters:
+            # Full names, as in the "Who's available" popup.
+            supporter.display_name = display_name(supporter)
             supporter.on_shift_until = on_shift.get(supporter.id)
         supporters.sort(key=lambda supporter: supporter.on_shift_until is None)
 

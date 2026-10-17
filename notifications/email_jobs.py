@@ -9,6 +9,8 @@ from news.models import Announcement
 from notifications.email_content import render_notification_email, ticket_url
 from notifications.email_service import is_email_event_enabled, send_with_retries
 from notifications.email_templates import (
+    SHIFT_CHECK_IN_NOTE,
+    SHIFT_NO_CHECK_IN_CTA,
     announcement_merge_context,
     resolve_template,
     shift_merge_context,
@@ -50,11 +52,13 @@ def _send_template(
     context: dict,
     *,
     cta_url: str = "",
+    cta_label: str = "",
     footer_note: str | None = None,
 ) -> bool:
     if not recipients:
         return False
-    subject, body, cta_label = resolve_template(event_type, context)
+    subject, body, default_cta = resolve_template(event_type, context)
+    cta_label = cta_label or default_cta
     kwargs = {
         "body": body,
         "cta_url": cta_url,
@@ -308,5 +312,6 @@ def send_shift_reminder_email(assignment_id: int) -> bool:
         [email],
         context,
         cta_url=context["check_in_url"],
+        cta_label="" if context["check_in_note"] == SHIFT_CHECK_IN_NOTE else SHIFT_NO_CHECK_IN_CTA,
         footer_note="You’re receiving this because shift reminder emails are enabled.",
     )

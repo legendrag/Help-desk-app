@@ -3733,6 +3733,27 @@ msgstr[3] "%(count)d أنواع مناوبات"
 msgstr[4] "%(count)d نوع مناوبة"
 msgstr[5] "%(count)d نوع مناوبة"
 
+#: core/management_views.py:283
+#, python-format
+msgid "%(count)d category (%(names)s)"
+msgid_plural "%(count)d categories (%(names)s)"
+msgstr[0] "لا فئات (%(names)s)"
+msgstr[1] "فئة واحدة (%(names)s)"
+msgstr[2] "فئتين (%(names)s)"
+msgstr[3] "%(count)d فئات (%(names)s)"
+msgstr[4] "%(count)d فئة (%(names)s)"
+msgstr[5] "%(count)d فئة (%(names)s)"
+
+#: templates/core/management/delete_confirm.html:24
+#: templates/core/management/delete_confirm_partial.html:20
+#, python-format
+msgid "Deleting it also deletes %(items)s."
+msgstr "سيؤدي حذفه أيضًا إلى حذف %(items)s."
+
+#: shifts/models.py:101
+msgid "Arrived at"
+msgstr "وقت الوصول"
+
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
 

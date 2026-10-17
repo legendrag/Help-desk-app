@@ -2511,6 +2511,32 @@ class SettingsAndFilterRobustnessTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Role.objects.filter(pk=role.pk).exists())
 
+    def test_department_confirm_names_the_categories_it_takes(self):
+        spare = Department.objects.create(name="IT Support")
+        for name in ("Printers", "VPN"):
+            Category.objects.create(department=spare, name=name, default_priority=Ticket.Priority.MEDIUM)
+        confirm = self.client.get(self.reverse("department_delete", args=[spare.pk]), HTTP_HX_REQUEST="true")
+        self.assertContains(confirm, "delete this IT Support?")  # the name as written, not lowercased
+        self.assertContains(confirm, "Deleting it also deletes 2 categories (Printers, VPN).")
+        self.assertContains(confirm, "Yes, Delete")
+
+    def test_kb_and_news_delete_urls_refuse_get(self):
+        # Their buttons confirm on the page and POST; a direct visit used to 500.
+        for name in ("kb_delete", "news_delete"):
+            self.assertEqual(self.client.get(self.reverse(name, args=[1])).status_code, 405, name)
+
+    def test_transfer_list_shows_full_names(self):
+        User.objects.create_user(
+            username="robust_agent", email="ra@test.com", password="testpassword123",
+            user_type=User.UserType.SUPPORT, department=self.department,
+            first_name="Rana", last_name="Adel",
+        )
+        page = self.client.get(self.reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, "Rana Adel (Robust Dept)")
+        # No department: just the name, not "robust_admin ()".
+        self.assertNotContains(page, "robust_admin ()")
+        self.assertContains(page, f'<option value="{self.admin.pk}">robust_admin\n')
+
     def test_user_with_tickets_is_not_deleted(self):
         response = self._delete("user_delete", self.branch_user)
         self.assertEqual(response.status_code, 200)

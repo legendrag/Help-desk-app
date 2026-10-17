@@ -218,9 +218,28 @@ class BaseDeleteView(LoginRequiredMixin):
                 parts.append(ngettext(singular, plural, count) % {"count": count})
         return parts
 
+    # Things deleted along with it: (related name, singular, plural). The
+    # confirm screen names them, so nothing goes without a warning.
+    cascading_relations = ()
+
+    def also_deletes(self, obj):
+        """Plain-language list of what deleting ``obj`` takes with it."""
+        parts = []
+        for related_name, singular, plural in self.cascading_relations:
+            names = [getattr(item, "name", None) or str(item) for item in getattr(obj, related_name).all()]
+            if names:
+                parts.append(ngettext(singular, plural, len(names)) % {
+                    "count": len(names),
+                    "names": ", ".join(names),
+                })
+        return parts
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        return self.render_to_response(self.get_context_data(in_use=self.in_use(self.object)))
+        return self.render_to_response(self.get_context_data(
+            in_use=self.in_use(self.object),
+            also_deletes=self.also_deletes(self.object),
+        ))
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -258,6 +277,11 @@ class DepartmentDeleteView(DepartmentPermissionMixin, BaseDeleteView, DeleteView
         _TICKETS,
         _USERS,
         ("shift_types", gettext_noop("%(count)d shift type"), gettext_noop("%(count)d shift types")),
+    )
+    # Categories with tickets are already blocked by the department's tickets.
+    cascading_relations = (
+        ("categories", gettext_noop("%(count)d category (%(names)s)"),
+         gettext_noop("%(count)d categories (%(names)s)")),
     )
 
 class CategoryDeleteView(CategoryPermissionMixin, BaseDeleteView, DeleteView):

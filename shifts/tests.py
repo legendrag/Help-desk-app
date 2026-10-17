@@ -2824,6 +2824,15 @@ class ShiftReminderTests(TestCase):
         make_assignment(plain, self.day, date(2026, 6, 2))
         self._send(8, 30)
         self.assertEqual(self._reminders(plain).get().message, "Remind day · Remind. Have a good shift.")
+        # The email follows the role too: no "check in" line or button.
+        emails = {call.args[2][0]: call for call in send_mail.call_args_list}
+        plain_text, plain_html = emails["remind-plain@example.com"].args[1], emails["remind-plain@example.com"].kwargs["html_body"]
+        self.assertIn("Have a good shift.", plain_text)
+        self.assertNotIn("Check-in is open now", plain_text)
+        self.assertIn("View my shifts", plain_html)
+        self.assertNotIn(">Check in<", plain_html)
+        self.assertIn("Check-in is open now.", emails["remind-agent@example.com"].args[1])
+        self.assertIn(">Check in<", emails["remind-agent@example.com"].kwargs["html_body"])
 
     def test_management_command_sends_the_same(self, send_mail):
         from io import StringIO
@@ -2934,6 +2943,6 @@ class WhoAvailableTests(TestCase):
         self.assertIn(reverse("shifts_available_department", args=[self.department.pk]), content)
         self.assertIn('id="who-available-modal"', content)
         options = content[content.index('id="new_assignee"'):]
-        self.assertIn("avail-on (Help desk) — On shift until 5:00 PM", options)
-        self.assertLess(options.index("avail-on"), options.index("avail-late"))
+        self.assertIn("Mona Adel (Help desk) — On shift until 5:00 PM", options)
+        self.assertLess(options.index("Mona Adel"), options.index("avail-late"))
 

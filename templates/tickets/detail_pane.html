@@ -843,7 +843,7 @@ if (window.updateActiveNav) window.updateActiveNav();
                     <select name="new_assignee" id="new_assignee" class="form-control" required>
                         <option value="">{% trans "-- Select Agent --" %}</option>
                         {% for supporter in supporters %}
-                        <option value="{{ supporter.id }}">{{ supporter.username }} ({{ supporter.department.name }}){% if supporter.on_shift_until %} — {% blocktrans trimmed with time=supporter.on_shift_until|shifts_clock_text %}On shift until {{ time }}{% endblocktrans %}{% endif %}
+                        <option value="{{ supporter.id }}">{{ supporter.display_name }}{% if supporter.department %} ({{ supporter.department.name }}){% endif %}{% if supporter.on_shift_until %} — {% blocktrans trimmed with time=supporter.on_shift_until|shifts_clock_text %}On shift until {{ time }}{% endblocktrans %}{% endif %}
                         </option>
                         {% endfor %}
                     </select>

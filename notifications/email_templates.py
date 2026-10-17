@@ -128,6 +128,7 @@ MERGE_FIELDS = {
         ("shift_date", "Date"),
         ("start_time", "Starts"),
         ("end_time", "Ends"),
+        ("check_in_note", "Check-in line"),
         ("check_in_url", "Check-in URL"),
     ],
 }
@@ -220,7 +221,7 @@ DEFAULT_TEMPLATES = {
             "Hi {{ agent_name }},\n\n"
             "Your {{ shift_name }} shift in {{ department }} starts at {{ start_time }} "
             "on {{ shift_date }} and runs until {{ end_time }}.\n\n"
-            "Check-in is open now."
+            "{{ check_in_note }}"
         ),
         "cta_label": "Check in",
     },
@@ -332,7 +333,15 @@ def announcement_merge_context(announcement) -> dict:
     }
 
 
+# Roles without check-in still get the reminder, so the line and the button
+# say what they can actually do.
+SHIFT_CHECK_IN_NOTE = "Check-in is open now."
+SHIFT_NO_CHECK_IN_NOTE = "Have a good shift."
+SHIFT_NO_CHECK_IN_CTA = "View my shifts"
+
+
 def shift_merge_context(assignment) -> dict:
+    from shifts.access import can_check_in
     from shifts.access import display_name as shift_person
     from shifts.clock import format_clock
     from shifts.services import effective_interval
@@ -347,6 +356,7 @@ def shift_merge_context(assignment) -> dict:
         "shift_date": timezone.localtime(start_dt).strftime("%b %d, %Y"),
         "start_time": format_clock(start_dt),
         "end_time": format_clock(end_dt),
+        "check_in_note": SHIFT_CHECK_IN_NOTE if can_check_in(assignment.user) else SHIFT_NO_CHECK_IN_NOTE,
         "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
     }
 
@@ -395,6 +405,7 @@ def sample_context_for_event(event_type: str) -> dict:
             "shift_date": "Jul 14, 2026",
             "start_time": "9:00 AM",
             "end_time": "5:00 PM",
+            "check_in_note": SHIFT_CHECK_IN_NOTE,
             "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
         }
     if event_type == "ticket_status":
