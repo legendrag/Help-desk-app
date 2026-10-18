@@ -2795,3 +2795,78 @@ class TimelineDetailTranslationTests(TestCase):
         with translation.override("ar"):
             self.assertNotIn("absorbed", item.display_detail)
             self.assertIn("#MAIN-1", item.display_detail)
+
+
+class SimultaneousTicketChangeTests(TestCase):
+    """Two people acting on the same ticket at the same moment: only one wins."""
+
+    def setUp(self):
+        from core.models import Role
+
+        self.branch = Branch.objects.create(code="RC-BR", name="Race Branch")
+        self.department = Department.objects.create(name="Race Dept")
+        self.category = Category.objects.create(name="Race Cat", department=self.department)
+        role = Role.objects.create(name="Race agent", can_update_status=True, can_pick_ticket=True)
+        self.creator = User.objects.create_user(
+            username="rc-creator", password="pw123456", user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+        self.agent = User.objects.create_user(
+            username="rc-agent", password="pw123456", user_type=User.UserType.SUPPORT,
+            department=self.department, role=role,
+        )
+        self.other = User.objects.create_user(
+            username="rc-other", password="pw123456", user_type=User.UserType.SUPPORT,
+            department=self.department, role=role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="RC-1", title="T", description="D", branch=self.branch, department=self.department,
+            category=self.category, created_by=self.creator, client_name="C", client_phone="0500000000",
+        )
+
+    def _as_if_loaded_before(self, change):
+        """Return the ticket as a request loaded it, then apply ``change`` in the DB (the other person)."""
+        from unittest.mock import patch
+
+        stale = Ticket.objects.get(pk=self.ticket.pk)
+        change()
+        return patch("tickets.template_views.get_object_or_404", return_value=stale)
+
+    def test_second_status_change_is_not_saved_or_notified_twice(self):
+        from unittest.mock import patch
+
+        from tickets.models import TicketStatusHistory
+
+        Ticket.objects.filter(pk=self.ticket.pk).update(assigned_to=self.agent, status=Ticket.Status.IN_PROGRESS)
+        before = TicketStatusHistory.objects.filter(ticket=self.ticket).count()
+        self.client.force_login(self.agent)
+        url = reverse("update_status", kwargs={"ticket_id": self.ticket.pk})
+        with patch("tickets.template_views.notify_ticket_update") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            with self._as_if_loaded_before(
+                lambda: Ticket.objects.filter(pk=self.ticket.pk).update(status=Ticket.Status.WAITING_FOR_BRANCH)
+            ):
+                self.client.post(url, {"status": Ticket.Status.WAITING_FOR_BRANCH})
+            notify.assert_not_called()
+        self.assertEqual(TicketStatusHistory.objects.filter(ticket=self.ticket).count(), before)
+
+        # A normal change still goes through once.
+        with patch("tickets.template_views.notify_ticket_update") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            self.client.post(url, {"status": Ticket.Status.CLOSED})
+            notify.assert_called_once()
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.CLOSED)
+
+    def test_two_agents_picking_at_once_only_one_gets_it(self):
+        from unittest.mock import patch
+
+        self.client.force_login(self.agent)
+        with patch("tickets.template_views.notify_ticket_picked") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            with self._as_if_loaded_before(
+                lambda: Ticket.objects.filter(pk=self.ticket.pk).update(assigned_to=self.other)
+            ):
+                self.client.post(reverse("pick_ticket", kwargs={"ticket_id": self.ticket.pk}))
+            notify.assert_not_called()
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.assigned_to, self.other)

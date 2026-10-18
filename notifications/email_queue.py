@@ -1,6 +1,8 @@
+import atexit
 import logging
 import queue
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -16,6 +18,14 @@ _LANE_WORKERS = {"email": 1, "push": 3}
 _QUEUES: "dict[str, queue.Queue[EmailJob]]" = {lane: queue.Queue() for lane in _LANE_WORKERS}
 _started_lanes: set[str] = set()
 _worker_lock = threading.Lock()
+
+# Delayed jobs (the 2-minute reply email, retries) wait on timers. They are
+# tracked so a shutdown can send them right away instead of dropping them.
+_pending: "dict[threading.Timer, EmailJob]" = {}
+_pending_lock = threading.Lock()
+_shutting_down = False
+# How long a stopping server keeps sending before it gives up on the rest.
+DEFAULT_SHUTDOWN_SECONDS = 30
 
 
 @dataclass
@@ -38,14 +48,59 @@ def ensure_worker_started(lane: str = "email") -> None:
                 target=_worker_loop, args=(lane,), name=f"{lane}-worker-{index}", daemon=True
             )
             worker.start()
+        if not _started_lanes:
+            atexit.register(drain_on_shutdown)
         _started_lanes.add(lane)
 
 
 def _put_later(job: "EmailJob", delay_seconds: float) -> None:
-    # Daemon timer: a pending delay must not keep the process alive on shutdown.
-    timer = threading.Timer(delay_seconds, _QUEUES[job.lane].put, args=(job,))
-    timer.daemon = True
-    timer.start()
+    with _pending_lock:
+        if _shutting_down:
+            # Waiting would outlive the process; send it now.
+            _QUEUES[job.lane].put(job)
+            return
+
+        def fire():
+            with _pending_lock:
+                if _pending.pop(timer, None) is None:
+                    return  # already handed over by drain_on_shutdown
+            _QUEUES[job.lane].put(job)
+
+        # Daemon: the timer itself must not hold the process open. Shutdown is
+        # handled by drain_on_shutdown, which has a time limit.
+        timer = threading.Timer(delay_seconds, fire)
+        timer.daemon = True
+        _pending[timer] = job
+        timer.start()
+
+
+def drain_on_shutdown(timeout: float | None = None) -> int:
+    """Send everything queued or delayed before the process exits.
+
+    Runs at interpreter exit (a normal server stop). Delayed jobs go out
+    immediately; the workers keep sending until the queues are empty or the
+    time limit passes. Returns how many jobs were left unsent.
+    """
+    global _shutting_down
+    if timeout is None:
+        timeout = getattr(settings, "EMAIL_QUEUE_SHUTDOWN_SECONDS", DEFAULT_SHUTDOWN_SECONDS)
+    with _pending_lock:
+        _shutting_down = True
+        waiting = list(_pending.items())
+        _pending.clear()
+    for timer, job in waiting:
+        timer.cancel()
+        _QUEUES[job.lane].put(job)
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline and any(q.unfinished_tasks for q in _QUEUES.values()):
+        time.sleep(0.1)
+    left = sum(q.unfinished_tasks for q in _QUEUES.values())
+    if left:
+        logger.error("Server stopping with %s email/push job(s) unsent after %ss.", left, timeout)
+    elif waiting:
+        logger.info("Sent %s delayed email/push job(s) before stopping.", len(waiting))
+    return left
 
 
 def enqueue_email(

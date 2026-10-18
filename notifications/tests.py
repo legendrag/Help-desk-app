@@ -951,3 +951,35 @@ class WebPushLanguageTests(TestCase):
                    side_effect=lambda user, title, message, link: pushed.__setitem__(user.username, title)):
             _notify_users([arabic, english], "Hello", "Body", "/x/", title_ar="مرحبا", message_ar="نص")
         self.assertEqual(pushed, {"push_ar": "مرحبا", "push_en": "Hello"})
+
+
+@override_settings(EMAIL_QUEUE_SYNC=False)
+class EmailQueueShutdownTests(TestCase):
+    """A normal server stop sends what is queued or delayed instead of dropping it."""
+
+    def tearDown(self):
+        from notifications import email_queue
+
+        email_queue._shutting_down = False
+
+    def test_queued_and_delayed_jobs_are_sent_before_exit(self):
+        import threading
+
+        from notifications import email_queue
+
+        sent = []
+        lock = threading.Lock()
+
+        def job(n):
+            with lock:
+                sent.append(n)
+
+        with patch("notifications.email_queue.close_old_connections"):
+            for n in range(10):
+                email_queue.enqueue_email(job, n)
+            # e.g. the 2-minute reply email, still waiting on its timer
+            email_queue.enqueue_email(job, "delayed", delay_seconds=120)
+            left = email_queue.drain_on_shutdown(timeout=10)
+
+        self.assertEqual(left, 0)
+        self.assertEqual(sorted(map(str, sent)), sorted([str(n) for n in range(10)] + ["delayed"]))

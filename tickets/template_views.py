@@ -16,6 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
+from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
@@ -1549,33 +1550,45 @@ def update_ticket_status(request, ticket_id):
         new_status = request.POST.get("status")
         if new_status in Ticket.Status.values:
             try:
-                if ticket.status != new_status:
-                    old_status = ticket.status
-                    if ticket.status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
-                        ticket.assigned_to = request.user
-                        
-                    ticket.status = new_status
-                    
-                    if new_status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
-                        ticket.pending_transfer_to = None
-                        ticket.pending_transfer_by = None
-                        
-                    ticket.save()
-                    
-                    if old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
-                        TicketStatusHistory.objects.create(
-                            ticket=ticket,
-                            status=new_status,
-                            event_type=TicketStatusHistory.EventType.REOPENED,
-                            changed_by=request.user,
+                old_status = ticket.status
+                claimed = False
+                if old_status != new_status:
+                    with transaction.atomic():
+                        # Claim the change: only the request that still sees the
+                        # old status wins. Two people pressing at once would
+                        # otherwise both save, log and notify.
+                        claimed = bool(
+                            Ticket.objects.filter(pk=ticket.pk, status=old_status).update(status=new_status)
                         )
-                    else:
-                        TicketStatusHistory.objects.create(
-                            ticket=ticket,
-                            status=new_status,
-                            event_type=TicketStatusHistory.EventType.STATUS_CHANGE,
-                            changed_by=request.user,
+                        if claimed:
+                            if old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
+                                ticket.assigned_to = request.user
+                            ticket.status = new_status
+                            if new_status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+                                ticket.pending_transfer_to = None
+                                ticket.pending_transfer_by = None
+                            ticket.save()
+                            reopened = old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED
+                            TicketStatusHistory.objects.create(
+                                ticket=ticket,
+                                status=new_status,
+                                event_type=(
+                                    TicketStatusHistory.EventType.REOPENED
+                                    if reopened
+                                    else TicketStatusHistory.EventType.STATUS_CHANGE
+                                ),
+                                changed_by=request.user,
+                            )
+                    if not claimed:
+                        ticket.refresh_from_db()
+                        django_messages.info(
+                            request,
+                            _("Someone else changed this ticket's status just now. It is now {}.").format(
+                                ticket.get_status_display()
+                            ),
                         )
+
+                if claimed:
                     django_messages.success(request, _("Status updated to {}.").format(ticket.get_status_display()))
                     notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
 
@@ -1585,7 +1598,7 @@ def update_ticket_status(request, ticket_id):
                         "new_status": new_status,
                         "new_status_display": ticket.get_status_display(),
                     })
-                
+
                 if request.headers.get('HX-Request'):
                     from django.http import HttpResponse
                     resp = HttpResponse(status=204)
@@ -1597,6 +1610,10 @@ def update_ticket_status(request, ticket_id):
             except Exception as e:
                 django_messages.error(request, _("Failed to update status: {}").format(str(e)))
     return redirect("ticket_detail", ticket_id=ticket_id)
+
+class _AlreadyPicked(Exception):
+    """Another agent claimed the ticket first."""
+
 
 @login_required
 def pick_ticket(request, ticket_id):
@@ -1612,14 +1629,23 @@ def pick_ticket(request, ticket_id):
             django_messages.error(request, _("Cannot pick a merged ticket."))
         else:
             try:
-                ticket.assigned_to = request.user
-                ticket.status = Ticket.Status.IN_PROGRESS
-                ticket.save()
-                TicketStatusHistory.objects.create(
-                    ticket=ticket,
-                    status=Ticket.Status.IN_PROGRESS,
-                    changed_by=request.user,
-                )
+                with transaction.atomic():
+                    # Claim it: when two agents pick at once, only one gets it.
+                    claimed = Ticket.objects.filter(pk=ticket.pk, assigned_to__isnull=True).update(
+                        assigned_to=request.user
+                    )
+                    if claimed:
+                        ticket.assigned_to = request.user
+                        ticket.status = Ticket.Status.IN_PROGRESS
+                        ticket.save()
+                        TicketStatusHistory.objects.create(
+                            ticket=ticket,
+                            status=Ticket.Status.IN_PROGRESS,
+                            changed_by=request.user,
+                        )
+                if not claimed:
+                    ticket.refresh_from_db()
+                    raise _AlreadyPicked()
                 django_messages.success(request, _("Ticket assigned to you."))
                 notify_ticket_picked(ticket, request.user)
 
@@ -1629,6 +1655,8 @@ def pick_ticket(request, ticket_id):
                 })
                 picked = True
 
+            except _AlreadyPicked:
+                django_messages.info(request, _("Someone else picked this ticket just now."))
             except ValidationError as e:
                 for message in e.messages:
                     django_messages.error(request, message)

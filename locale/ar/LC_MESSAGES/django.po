@@ -2281,7 +2281,7 @@ msgid "Send"
 msgstr "إرسال"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: templates/tickets/detail_pane.html:365 tickets/template_views.py:1384
+#: templates/tickets/detail_pane.html:365 tickets/template_views.py:1385
 msgid "You do not have permission to send messages."
 msgstr "ليس لديك صلاحية لإرسال الرسائل."
 
@@ -2348,193 +2348,193 @@ msgid "Status legend"
 msgstr "مفتاح الحالات"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:770
+#: tickets/template_views.py:771
 msgid "Ticket created successfully."
 msgstr "تم إنشاء التذكرة بنجاح."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:827 tickets/template_views.py:830
-#: tickets/template_views.py:832
+#: tickets/template_views.py:828 tickets/template_views.py:831
+#: tickets/template_views.py:833
 msgid "You do not have permission to edit this ticket."
 msgstr "ليس لديك صلاحية لتعديل هذه التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:843
+#: tickets/template_views.py:844
 msgid "Ticket updated successfully."
 msgstr "تم تحديث التذكرة بنجاح."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1365
+#: tickets/template_views.py:1366
 msgid "You do not have permission to access categories."
 msgstr "ليس لديك صلاحية للوصول إلى الفئات."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1382
+#: tickets/template_views.py:1383
 msgid "You can only send messages on tickets for your branch."
 msgstr "يمكنك إرسال الرسائل على تذاكر فرعك فقط."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1393
+#: tickets/template_views.py:1394
 msgid "Message or attachment is required."
 msgstr "الرسالة أو المرفق مطلوب."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1410
+#: tickets/template_views.py:1411
 msgid "Failed to send message: {}"
 msgstr "فشل إرسال الرسالة: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1427
+#: tickets/template_views.py:1428
 msgid "You do not have permission to delete this message."
 msgstr "ليس لديك صلاحية لحذف هذه الرسالة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1432
+#: tickets/template_views.py:1433
 msgid "Message deleted."
 msgstr "تم حذف الرسالة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1457
+#: tickets/template_views.py:1458
 msgid "You do not have permission to edit this message."
 msgstr "ليس لديك صلاحية لتعديل هذه الرسالة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1464
+#: tickets/template_views.py:1465
 msgid "Message updated."
 msgstr "تم تحديث الرسالة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1487
+#: tickets/template_views.py:1488
 msgid "Message text cannot be empty."
 msgstr "لا يمكن أن يكون نص الرسالة فارغًا."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1542
+#: tickets/template_views.py:1543
 msgid "You can only update the status of tickets assigned to you."
 msgstr "يمكنك تحديث حالة التذاكر المسندة إليك فقط."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1547
+#: tickets/template_views.py:1548
 msgid "You do not have permission to update a closed ticket."
 msgstr "ليس لديك صلاحية لتحديث تذكرة مغلقة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1579
+#: tickets/template_views.py:1592
 msgid "Status updated to {}."
 msgstr "تم تحديث الحالة إلى {}."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1598
+#: tickets/template_views.py:1611
 msgid "Failed to update status: {}"
 msgstr "فشل تحديث الحالة: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1605
+#: tickets/template_views.py:1622
 msgid "You do not have permission to pick tickets."
 msgstr "ليس لديك صلاحية لالتقاط التذاكر."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1612
+#: tickets/template_views.py:1629
 msgid "Cannot pick a merged ticket."
 msgstr "لا يمكن التقاط تذكرة مدمجة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1623
+#: tickets/template_views.py:1649
 msgid "Ticket assigned to you."
 msgstr "تم إسناد التذكرة إليك."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1636
+#: tickets/template_views.py:1664
 msgid "Failed to pick ticket: {}"
 msgstr "فشل التقاط التذكرة: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1655
+#: tickets/template_views.py:1683
 msgid "You do not have permission to transfer this ticket."
 msgstr "ليس لديك صلاحية لنقل هذه التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1667
+#: tickets/template_views.py:1695
 msgid "You can only transfer to agents in the same department or admins."
 msgstr "يمكنك النقل فقط إلى موظفي الدعم في نفس القسم أو إلى المسؤولين."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1669
+#: tickets/template_views.py:1697
 msgid "A transfer is already pending."
 msgstr "هناك عملية نقل معلقة بالفعل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1694
+#: tickets/template_views.py:1722
 msgid "Transfer request sent to {}."
 msgstr "تم إرسال طلب النقل إلى {}."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1699
+#: tickets/template_views.py:1727
 msgid "Selected user is not a valid supporter."
 msgstr "المستخدم المحدد ليس موظف دعم صالحًا."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1701
+#: tickets/template_views.py:1729
 msgid "Failed to request transfer: {}"
 msgstr "فشل طلب النقل: {}"
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1715
+#: tickets/template_views.py:1743
 msgid "You do not have permission to accept this transfer."
 msgstr "ليس لديك صلاحية لقبول هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1743
+#: tickets/template_views.py:1771
 msgid "Ticket transfer accepted."
 msgstr "تم قبول نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1761
+#: tickets/template_views.py:1789
 msgid "You do not have permission to deny this transfer."
 msgstr "ليس لديك صلاحية لرفض هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1788
+#: tickets/template_views.py:1816
 msgid "Ticket transfer denied."
 msgstr "تم رفض نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1802
+#: tickets/template_views.py:1830
 msgid "You do not have permission to cancel this transfer."
 msgstr "ليس لديك صلاحية لإلغاء هذا النقل."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1826
+#: tickets/template_views.py:1854
 msgid "Ticket transfer canceled."
 msgstr "تم إلغاء نقل التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1915 tickets/template_views.py:1917
+#: tickets/template_views.py:1943 tickets/template_views.py:1945
 msgid "You do not have permission to view this ticket."
 msgstr "ليس لديك صلاحية لعرض هذه التذكرة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1929
+#: tickets/template_views.py:1957
 msgid "You do not have permission to merge tickets."
 msgstr "ليس لديك صلاحية لدمج التذاكر."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1934
+#: tickets/template_views.py:1962
 msgid "Target ticket number is required."
 msgstr "رقم التذكرة الهدف مطلوب."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1941
+#: tickets/template_views.py:1969
 msgid "Ticket {} not found."
 msgstr "التذكرة {} غير موجودة."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1946
+#: tickets/template_views.py:1974
 msgid "Ticket {} merged into this ticket successfully."
 msgstr "تم دمج التذكرة {} في هذه التذكرة بنجاح."
 
 # NEEDS NATIVE REVIEW (machine-assisted translation)
-#: tickets/template_views.py:1967
+#: tickets/template_views.py:1995
 msgid "Failed to merge ticket: {}"
 msgstr "فشل دمج التذكرة: {}"
 
@@ -3779,7 +3779,7 @@ msgstr "تواصل معنا"
 msgid "Shift managers can help with schedules and urgent issues."
 msgstr "يمكن لمديري المناوبات المساعدة في الجداول والأمور العاجلة."
 
-#: tickets/template_views.py:1544
+#: tickets/template_views.py:1545
 msgid "You do not have permission to update ticket status."
 msgstr "ليس لديك صلاحية لتحديث حالة التذكرة."
 
@@ -3910,16 +3910,16 @@ msgstr "دُمجت فيها التذكرة %(number)s"
 msgid "set to %(priority)s"
 msgstr "عُيّنت إلى %(priority)s"
 
-#: tickets/template_views.py:1870
+#: tickets/template_views.py:1898
 msgid "No matching tickets found"
 msgstr "لا توجد تذاكر مطابقة"
 
-#: tickets/template_views.py:1901
+#: tickets/template_views.py:1929
 #, python-format
 msgid "Dept: %(name)s"
 msgstr "القسم: %(name)s"
 
-#: tickets/template_views.py:1902
+#: tickets/template_views.py:1930
 #, python-format
 msgid "By: %(name)s"
 msgstr "بواسطة: %(name)s"
@@ -3941,6 +3941,14 @@ msgstr "فاتح"
 #: accounts/models.py:71
 msgid "Dark"
 msgstr "داكن"
+
+#: tickets/template_views.py:1586
+msgid "Someone else changed this ticket's status just now. It is now {}."
+msgstr "غيّر شخص آخر حالة هذه التذكرة للتو. حالتها الآن {}."
+
+#: tickets/template_views.py:1659
+msgid "Someone else picked this ticket just now."
+msgstr "استلم شخص آخر هذه التذكرة للتو."
 
 #~ msgid "No department"
 #~ msgstr "بدون قسم"
