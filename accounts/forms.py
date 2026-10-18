@@ -71,7 +71,34 @@ class CustomAuthenticationForm(AuthenticationForm):
         return not user.is_active or not user.is_active_user
 
 
-class CustomUserCreationForm(UserCreationForm):
+class RoleLimitMixin:
+    """Only a superuser can hand out a role with permissions they don't hold."""
+
+    def __init__(self, *args, editor=None, **kwargs):
+        self.editor = editor
+        super().__init__(*args, **kwargs)
+        field = self.fields.get("role")
+        if field is not None and editor is not None and not editor.is_superuser:
+            allowed = [r.pk for r in field.queryset if not r.permissions_beyond(editor.role)]
+            if self.instance.pk and self.instance.role_id:
+                allowed.append(self.instance.role_id)
+            field.queryset = field.queryset.filter(pk__in=allowed)
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        editor = self.editor
+        if role is None or editor is None or editor.is_superuser:
+            return role
+        if self.instance.pk and self.instance.role_id == role.pk:
+            return role  # unchanged, so nothing is being handed out
+        if role.permissions_beyond(editor.role):
+            raise forms.ValidationError(
+                _("You can only assign roles that have no more permissions than your own role.")
+            )
+        return role
+
+
+class CustomUserCreationForm(RoleLimitMixin, UserCreationForm):
     status = forms.BooleanField(label=_("Is Active"), required=False, initial=True)
     field_order = (
         'username', 'email', 'first_name', 'last_name',
@@ -174,7 +201,7 @@ class CustomUserCreationForm(UserCreationForm):
         )
 
 
-class CustomUserChangeForm(UserChangeForm):
+class CustomUserChangeForm(RoleLimitMixin, UserChangeForm):
     status = forms.BooleanField(label=_("Is Active"), required=False)
     field_order = (
         'username', 'email', 'first_name', 'last_name',

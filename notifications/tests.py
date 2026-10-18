@@ -735,3 +735,219 @@ class WebPushQueuedTests(TestCase):
         self.assertEqual(len(sent), 1)
         self.assertEqual(sent[0]["user"], user)
         self.assertIn("Hello", sent[0]["payload"])
+
+
+class NotificationDeliveryFixTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="fix_user", email="fix@test.com", password="pw123456")
+
+    @patch("notifications.services._enqueue")
+    @patch("notifications.services._broadcast_notification")
+    def test_second_event_with_same_title_is_not_dropped(self, _broadcast, _enqueue):
+        from notifications.services import _notify_users
+
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Pending.", "/tickets/1/")
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Closed.", "/tickets/1/")
+        self.assertEqual(InAppNotification.objects.filter(recipient=self.user).count(), 2)
+        # The exact same event firing twice is still collapsed.
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Closed.", "/tickets/1/")
+        self.assertEqual(InAppNotification.objects.filter(recipient=self.user).count(), 2)
+
+    def test_bad_limit_does_not_500_and_is_capped(self):
+        self.client.force_login(self.user)
+        for raw in ("abc", "-1", "1e3", ""):
+            response = self.client.get(f"/notifications/api/?limit={raw}")
+            self.assertEqual(response.status_code, 200, raw)
+        InAppNotification.objects.bulk_create(
+            [InAppNotification(recipient=self.user, title=f"t{i}", message="m", link="/") for i in range(105)]
+        )
+        payload = self.client.get("/notifications/api/?limit=100000").json()
+        self.assertEqual(len(payload["notifications"]), 100)
+        self.assertTrue(payload["has_more"])
+        older = self.client.get(f"/notifications/api/?before={payload['notifications'][-1]['id']}").json()
+        self.assertEqual(len(older["notifications"]), 5)
+
+
+class EmailSendingFixTests(TestCase):
+    def setUp(self):
+        self.setting = EmailSetting.objects.create(
+            smtp_host="smtp.test.local", smtp_port=587, smtp_email="noreply@test.local",
+            smtp_password="secret", encryption="tls", from_name="Test", from_email="noreply@test.local",
+            is_active=True,
+        )
+
+    def test_each_recipient_gets_their_own_message(self):
+        from django.core import mail
+        from notifications.email_service import send_with_retries
+
+        self.assertTrue(send_with_retries("Hello", "Body", ["a@test.com", "b@test.com", "a@test.com"]))
+        self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["a@test.com", "b@test.com"])
+        self.assertTrue(all(len(m.to) == 1 for m in mail.outbox))
+
+    def test_line_break_in_subject_still_sends(self):
+        from django.core import mail
+        from notifications.email_service import send_with_retries
+
+        self.assertTrue(send_with_retries("Printer\r\ndown", "Body", ["a@test.com"]))
+        self.assertEqual(mail.outbox[0].subject, "Printer down")
+
+    def test_temporary_and_permanent_errors(self):
+        import smtplib
+        from notifications.email_service import _is_temporary
+
+        self.assertTrue(_is_temporary(smtplib.SMTPResponseException(451, b"try later")))
+        self.assertFalse(_is_temporary(smtplib.SMTPResponseException(554, b"rejected")))
+        self.assertTrue(_is_temporary(ConnectionRefusedError()))
+        self.assertTrue(_is_temporary(smtplib.SMTPServerDisconnected()))
+
+    def test_plain_text_has_no_html_entities(self):
+        text, _html = render_notification_email(body='Tom & Jerry said "hi"')
+        self.assertIn('Tom & Jerry said "hi"', text)
+        self.assertNotIn("&amp;", text)
+        self.assertNotIn("&quot;", text)
+
+    @patch("notifications.email_jobs.send_with_retries", return_value=True)
+    def test_deactivated_user_gets_no_transfer_email(self, send):
+        from notifications.email_jobs import send_transfer_event_email
+
+        branch = Branch.objects.create(code="EF-BR", name="EF Branch")
+        department = Department.objects.create(name="EF Dept")
+        actor = User.objects.create_user(username="ef_actor", email="actor@test.com", password="pw123456",
+                                         user_type=User.UserType.SUPPORT, department=department)
+        gone = User.objects.create_user(username="ef_gone", email="gone@test.com", password="pw123456",
+                                        user_type=User.UserType.SUPPORT, department=department,
+                                        status=User.Status.INACTIVE)
+        ticket = Ticket.objects.create(
+            title="T", description="D", branch=branch, department=department,
+            category=Category.objects.create(name="EF Cat", department=department),
+            created_by=actor, client_name="C", client_phone="0500000000",
+        )
+        self.assertFalse(send_transfer_event_email(ticket.id, actor.id, gone.id, "requested"))
+        send.assert_not_called()
+
+
+class WebPushFixTests(TestCase):
+    def test_endpoint_must_be_a_public_https_url(self):
+        from notifications.apps import _is_public_push_endpoint
+
+        self.assertTrue(_is_public_push_endpoint("https://fcm.googleapis.com/fcm/send/abc"))
+        for bad in (
+            "http://fcm.googleapis.com/x", "https://169.254.169.254/latest", "https://localhost/x",
+            "https://10.0.0.5/x", "https://[::1]/x", "https://printer.local/x", "not a url",
+        ):
+            self.assertFalse(_is_public_push_endpoint(bad), bad)
+
+    def _subscription(self, user):
+        from webpush.models import PushInformation, SubscriptionInfo
+
+        sub = SubscriptionInfo.objects.create(
+            browser="chrome", endpoint="https://fcm.googleapis.com/fcm/send/x", auth="a", p256dh="p",
+        )
+        PushInformation.objects.create(user=user, subscription=sub)
+        return sub
+
+    def _push_error(self, status):
+        from types import SimpleNamespace
+
+        from pywebpush import WebPushException
+
+        return WebPushException("failed", response=SimpleNamespace(status_code=status))
+
+    def test_403_keeps_subscription_but_410_removes_it(self):
+        import webpush
+        from webpush.models import SubscriptionInfo
+
+        user = User.objects.create_user(username="wp_user", password="pw123456")
+        sub = self._subscription(user)
+        with patch("notifications.apps._send_push", side_effect=self._push_error(403)):
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+        self.assertTrue(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+        with patch("notifications.apps._send_push", side_effect=self._push_error(410)):
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+        self.assertFalse(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+
+    def _save(self, extra=None):
+        import json
+
+        body = {
+            "status_type": "subscribe", "browser": "chrome",
+            "subscription": {"endpoint": "https://fcm.googleapis.com/fcm/send/shared",
+                             "keys": {"auth": "a", "p256dh": "p"}},
+            **(extra or {}),
+        }
+        return self.client.post(reverse("save_webpush_info"), json.dumps(body), content_type="application/json")
+
+    def test_subscription_moves_to_the_user_who_registered_it_last(self):
+        from webpush.models import PushInformation
+
+        for name in ("wp_first", "wp_second"):
+            self.client.force_login(User.objects.create_user(username=name, password="pw123456"))
+            self.assertEqual(self._save().status_code, 201)
+        owners = set(PushInformation.objects.values_list("user__username", flat=True))
+        self.assertEqual(owners, {"wp_second"})
+
+    def test_anonymous_group_subscription_is_refused(self):
+        from webpush.models import PushInformation
+
+        self._save({"group": "everyone"})
+        self.assertFalse(PushInformation.objects.exists())
+
+
+class HtmxMessagesMiddlewareTests(TestCase):
+    def test_messages_from_an_htmx_204_become_a_toast_trigger(self):
+        import json
+
+        from django.contrib.messages import get_messages
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        from core.middleware import HtmxMessagesMiddleware
+
+        request = RequestFactory().post("/x", HTTP_HX_REQUEST="true")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+
+        def view(req):
+            from django.contrib import messages
+
+            messages.success(req, "Ticket updated successfully.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "closeModal,refreshTickets"
+            return response
+
+        response = HtmxMessagesMiddleware(view)(request)
+        events = json.loads(response["HX-Trigger"])
+        self.assertIn("closeModal", events)
+        self.assertIn("refreshTickets", events)
+        self.assertEqual(events["flashMessages"][0]["message"], "Ticket updated successfully.")
+        # Marked as shown, so MessageMiddleware won't keep it for a later page.
+        self.assertTrue(get_messages(request).used)
+
+
+class EmailTemplateFieldValidationTests(TestCase):
+    def _form(self, body):
+        from core.forms import EmailTemplateForm
+
+        return EmailTemplateForm({"subject": "Hi {{ ticket_number }}", "body": body}, event_type="new_ticket")
+
+    def test_known_fields_are_accepted(self):
+        self.assertTrue(self._form("{{ requester }} wrote {{ description }}").is_valid())
+
+    def test_broken_and_unknown_fields_are_refused(self):
+        for body in ("Hello {{ requester", "Hello {{ requester.name }}", "Hello {{ nonsense }}"):
+            self.assertFalse(self._form(body).is_valid(), body)
+
+
+class WebPushLanguageTests(TestCase):
+    @patch("notifications.services._broadcast_notification")
+    def test_push_uses_the_recipients_language(self, _broadcast):
+        from notifications.services import _notify_users
+
+        arabic = User.objects.create_user(username="push_ar", password="pw123456", language="ar")
+        english = User.objects.create_user(username="push_en", password="pw123456", language="en")
+        pushed = {}
+        with patch("notifications.services._enqueue_web_push",
+                   side_effect=lambda user, title, message, link: pushed.__setitem__(user.username, title)):
+            _notify_users([arabic, english], "Hello", "Body", "/x/", title_ar="مرحبا", message_ar="نص")
+        self.assertEqual(pushed, {"push_ar": "مرحبا", "push_en": "Hello"})

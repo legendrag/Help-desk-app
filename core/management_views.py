@@ -539,7 +539,7 @@ class EmailTemplateTestSendView(EmailPermissionMixin, LoginRequiredMixin, View):
         if not recipient:
             return self._trigger_response(False, "Your account has no email address.")
 
-        form = EmailTemplateForm(request.POST)
+        form = EmailTemplateForm(request.POST, event_type=event_type)
         if not form.is_valid():
             errors = []
             for field_errors in form.errors.values():

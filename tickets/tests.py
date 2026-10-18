@@ -2744,3 +2744,54 @@ class SettingsAndFilterRobustnessTests(TestCase):
         setting.refresh_from_db()
         self.assertEqual(setting.smtp_host, "smtp.changed.local")
         self.assertEqual(setting.smtp_password, "s3cret-pass")
+
+
+class NewTicketAfterCommitTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="RB-BR", name="Rollback Branch")
+        self.department = Department.objects.create(name="Rollback Dept")
+        self.category = Category.objects.create(name="Rollback Cat", department=self.department)
+        self.creator = User.objects.create_user(
+            username="rb-creator", password="pw123456", user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+
+    def _create(self, number):
+        return Ticket.objects.create(
+            ticket_number=number, title="T", description="D", branch=self.branch, department=self.department,
+            category=self.category, created_by=self.creator, client_name="C", client_phone="0500000000",
+        )
+
+    def test_rolled_back_ticket_notifies_nobody(self):
+        from unittest.mock import patch
+
+        from django.db import transaction
+
+        with patch("tickets.signals.notify_new_ticket") as notify, \
+                patch("tickets.signals.broadcast_ticket_list_event") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                try:
+                    with transaction.atomic():
+                        self._create("RB-1")
+                        raise RuntimeError("roll back")
+                except RuntimeError:
+                    pass
+            notify.assert_not_called()
+            broadcast.assert_not_called()
+
+            with self.captureOnCommitCallbacks(execute=True):
+                self._create("RB-2")
+            notify.assert_called_once()
+
+
+class TimelineDetailTranslationTests(TestCase):
+    def test_merge_detail_is_translated(self):
+        from django.utils import translation
+
+        from tickets.models import TicketStatusHistory
+
+        item = TicketStatusHistory(event_type=TicketStatusHistory.EventType.MERGED, detail="absorbed #MAIN-1")
+        with translation.override("en"):
+            self.assertEqual(item.display_detail, "absorbed ⁦#MAIN-1⁩")
+        with translation.override("ar"):
+            self.assertNotIn("absorbed", item.display_detail)
+            self.assertIn("#MAIN-1", item.display_detail)

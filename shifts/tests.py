@@ -604,13 +604,13 @@ class RotationTests(TestCase):
         page = self.client.get(reverse("shifts_rota"), {"department": department.pk, "start": "2026-10-10"})
         self.assertContains(page, "Copy last week into this week?")
         self.assertContains(page, "Repeat this week forward?")
-        self.client.cookies["django_language"] = "ar"
+        self.client.post(reverse("set_language"), {"language": "ar"})
         arabic = self.client.get(reverse("shifts_rota"), {"department": department.pk, "start": "2026-10-10"})
         body = arabic.content.decode()
         self.assertEqual(body.count('data-confirm-title="تأكيد الإجراء"'), 2)
         self.assertEqual(body.count('data-confirm-ok="نعم، متابعة"'), 2)
         self.assertEqual(body.count('data-confirm-cancel="إلغاء"'), 2)
-        self.client.cookies["django_language"] = "en"
+        self.client.post(reverse("set_language"), {"language": "en"})
         response = self.client.post(reverse("shifts_copy_week"), {
             "department": department.pk,
             "start": "2026-10-10",
@@ -821,14 +821,15 @@ class WorkerHoursTests(TestCase):
             mine_en = self.client.get(reverse("shifts_mine"))
         self.assertContains(mine_en, '<bdi class="shifts-ltr" dir="ltr">9:05 AM</bdi>')
         self.assertContains(mine_en, "Checked in at")
-        self.client.cookies["django_language"] = "ar"
         self.client.force_login(manager)
+        self.client.post(reverse("set_language"), {"language": "ar"})
         with _both_clocks(noon_utc, today):
             arabic = self.client.get(reverse("shifts_rota"), params)
         self.assertContains(arabic, '<bdi dir="auto">9:00 ص</bdi> – <bdi dir="auto">5:00 م</bdi>')
         self.assertNotContains(arabic, 'dir="ltr">9:00 ص')
         self.assertNotContains(arabic, 'class="shifts-ltr" dir="ltr">9:00 ص–5:00 م')
         self.client.force_login(agent)
+        self.client.post(reverse("set_language"), {"language": "ar"})
         with _both_clocks(noon_utc, today):
             mine = self.client.get(reverse("shifts_mine"))
             board = self.client.get(reverse("shifts_available"))
@@ -1577,7 +1578,11 @@ class AvailableNowTests(TestCase):
         for index in range(6):
             person = make_user(f"board-{index}", "support", department)
             make_assignment(person, night, date(2026, 6, 1))
-        self.client.force_login(make_user("budget-branch", "branch"))
+        viewer = make_user("budget-branch", "branch")
+        # Steady state: the one-time save of a new user's language isn't counted.
+        viewer.language = "en"
+        viewer.save(update_fields=["language"])
+        self.client.force_login(viewer)
         with patch("django.utils.timezone.now", return_value=aware(2026, 6, 2, 5, 0)), \
              patch("django.utils.timezone.localdate", return_value=date(2026, 6, 2)), \
              CaptureQueriesContext(connection) as captured:
@@ -3124,3 +3129,49 @@ class ShiftChangeNotificationTests(TestCase):
             response = self._cell(self.agent, date(2026, 10, 6), self.day)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(ShiftAssignment.objects.filter(user=self.agent, date=date(2026, 10, 6)).exists())
+
+
+@patch("notifications.services._enqueue")
+@patch("notifications.services._broadcast_notification")
+class ShiftTypeTimeChangeNotifyTests(TestCase):
+    """Moving a shift type's times moves people's shifts, so they're told."""
+
+    def test_new_times_notify_upcoming_shifts_without_their_own_times(self, _broadcast, _enqueue):
+        from notifications.models import InAppNotification
+
+        department = make_department("Retime")
+        manager = make_user("retime-lead", "support", department, make_role("Retime lead", can_manage_shifts=True))
+        moved = make_user("retime-moved", "support", department)
+        own_times = make_user("retime-own", "support", department)
+        shift_type = make_shift_type(department, name="Day", start=time(10, 0), end=time(18, 0))
+        soon = timezone.localdate() + timedelta(days=3)
+        make_assignment(moved, shift_type, soon)
+        make_assignment(own_times, shift_type, soon, start=time(9, 0), end=time(17, 0))
+        make_assignment(moved, shift_type, timezone.localdate() - timedelta(days=10))  # long over
+
+        self.client.force_login(manager)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("shifts_type_edit", args=[shift_type.pk]), {
+                "department": department.pk, "name": "Day", "start_time": "12:00", "end_time": "20:00",
+                "colour": "#336699",
+            })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(InAppNotification.objects.filter(recipient=moved).count(), 1)
+        self.assertFalse(InAppNotification.objects.filter(recipient=own_times).exists())
+
+    def test_renaming_only_notifies_nobody(self, _broadcast, _enqueue):
+        from notifications.models import InAppNotification
+
+        department = make_department("Rename")
+        manager = make_user("rename-lead", "support", department, make_role("Rename lead", can_manage_shifts=True))
+        person = make_user("rename-person", "support", department)
+        shift_type = make_shift_type(department, name="Day", start=time(10, 0), end=time(18, 0))
+        make_assignment(person, shift_type, timezone.localdate() + timedelta(days=2))
+
+        self.client.force_login(manager)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("shifts_type_edit", args=[shift_type.pk]), {
+                "department": department.pk, "name": "Morning", "start_time": "10:00", "end_time": "18:00",
+                "colour": "#336699",
+            })
+        self.assertFalse(InAppNotification.objects.filter(recipient=person).exists())

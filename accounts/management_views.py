@@ -14,6 +14,17 @@ class UserPermissionMixin(UserPassesTestMixin):
             return False
         return User.objects.filter(pk=user_id, is_superuser=True).exists()
 
+    def _target_outranks_editor(self):
+        # Editing (or resetting the password of) someone with permissions the
+        # editor lacks would let the editor take over that account.
+        user_id = getattr(self, 'kwargs', {}).get('pk')
+        if not user_id:
+            return False
+        target = User.objects.select_related('role').filter(pk=user_id).first()
+        if target is None or target.role is None:
+            return False
+        return bool(target.role.permissions_beyond(self.request.user.role))
+
     def test_func(self):
         if not self.request.user.is_authenticated: return False
         role = getattr(self.request.user, 'role', None)
@@ -25,6 +36,8 @@ class UserPermissionMixin(UserPassesTestMixin):
         if self.request.user.is_superuser: return True
         # If they don't even have settings access, deny entirely
         if not (role and role.can_access_settings): return False
+        if ('delete' in self.request.path or 'edit' in self.request.path) and self._target_outranks_editor():
+            return False
         
         if self.request.method == 'GET': return True
         if 'delete' in self.request.path:
@@ -33,6 +46,15 @@ class UserPermissionMixin(UserPassesTestMixin):
             return role and role.can_update_user
         if 'add' in self.request.path: return role and role.can_create_user
         return False
+
+class UserEditorMixin:
+    """The user forms limit which roles the editor may hand out."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["editor"] = self.request.user
+        return kwargs
+
 
 class BaseManagementView:
     def form_valid(self, form):
@@ -61,14 +83,14 @@ class BaseManagementView:
         return context
 
 # User Views
-class UserCreateView(UserPermissionMixin, LoginRequiredMixin, BaseManagementView, CreateView):
+class UserCreateView(UserPermissionMixin, LoginRequiredMixin, UserEditorMixin, BaseManagementView, CreateView):
     model = User
     form_class = CustomUserCreationForm
     template_name = "accounts/management/form.html"
     partial_template_name = "accounts/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class UserUpdateView(UserPermissionMixin, LoginRequiredMixin, BaseManagementView, UpdateView):
+class UserUpdateView(UserPermissionMixin, LoginRequiredMixin, UserEditorMixin, BaseManagementView, UpdateView):
     model = User
     form_class = CustomUserChangeForm
     template_name = "accounts/management/form.html"

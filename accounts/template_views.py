@@ -68,11 +68,11 @@ class UserLogoutView(LogoutView):
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        # Belt-and-suspenders when JS unsubscribe did not run (no-JS / failed fetch).
-        # Clears every device for this account; remaining open sessions re-subscribe
-        # on their next authenticated page load via initWebPush().
+        # The logout JS unsubscribes this device and says so. Only when it did
+        # not run (no JS, failed fetch) clear every device for the account;
+        # other open sessions re-subscribe on their next page load.
         user = getattr(self, "_logout_user", None)
-        if user is not None:
+        if user is not None and request.POST.get("webpush_cleaned") != "1":
             try:
                 from notifications.webpush_cleanup import clear_user_webpush_subscriptions
 
@@ -172,3 +172,38 @@ class UserPasswordChangeView(PasswordChangeView):
         if self.request.headers.get("HX-Request"):
             return ["accounts/password_change_partial.html"]
         return [self.template_name]
+
+
+def set_language(request):
+    """Django's language switch, also saved on the account so it follows the user."""
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.views.i18n import set_language as django_set_language
+
+    response = django_set_language(request)
+    language = request.POST.get("language")
+    user = request.user
+    if (
+        request.method == "POST"
+        and user.is_authenticated
+        and language in {code for code, _name in settings.LANGUAGES}
+    ):
+        user.language = language
+        get_user_model().objects.filter(pk=user.pk).update(language=language)
+    return response
+
+
+def set_theme(request):
+    """Save the light/dark choice on the account (the page has already switched)."""
+    from django.contrib.auth import get_user_model
+    from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not request.user.is_authenticated:
+        return HttpResponse(status=401)
+    theme = request.POST.get("theme", "")
+    if theme not in request.user.Theme.values:
+        return HttpResponseBadRequest()
+    get_user_model().objects.filter(pk=request.user.pk).update(theme=theme)
+    return HttpResponse(status=204)

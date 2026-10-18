@@ -1,4 +1,4 @@
-{% load kb_extras i18n %}
+{% load kb_extras i18n i18n_extras %}
 <script>
 (function () {
     var drop = ["ticket-detail-page", "kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page"];
@@ -200,7 +200,7 @@
                                     <span class="kb-recent-item-meta">
                                         {{ article.category.name|default:_("Uncategorized") }}
                                         <span aria-hidden="true">&middot;</span>
-                                        {{ article.updated_at|date:"M j, Y" }}
+                                        {{ article.updated_at|day_month_year }}
                                     </span>
                                 </div>
                             </a>

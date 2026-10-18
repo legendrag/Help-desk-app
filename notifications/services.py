@@ -184,12 +184,12 @@ def _deliver_notification(notification):
         )
         return
     _broadcast_notification(notification)
-    _enqueue_web_push(
-        notification.recipient,
-        notification.title,
-        notification.message,
-        notification.link,
-    )
+    title, message = notification.title, notification.message
+    # Push is shown by the OS, outside the app, so pick the recipient's language here.
+    if getattr(notification.recipient, "language", "") == "ar":
+        title = notification.arabic_title() or title
+        message = notification.arabic_message() or message
+    _enqueue_web_push(notification.recipient, title, message, notification.link)
 
 
 def _notification_row(user, title, message, link, notification_type, title_ar, message_ar):
@@ -274,7 +274,10 @@ def _notify_users(
     `title`/`message` are English and required for dedupe, web push, and fallback.
     `title_ar`/`message_ar` are optional; the panel falls back to English if empty.
     """
-    dedup_window = timezone.now() - timedelta(seconds=60)
+    # Only catches the same event firing twice (double submit, duplicate
+    # signal). A wider window or a title-only match drops real events, such
+    # as a second status change or a re-requested transfer.
+    dedup_window = timezone.now() - timedelta(seconds=5)
     exclude_id = getattr(exclude_user, "id", None) if exclude_user is not None else None
     recipients = []
     seen = set()
@@ -294,6 +297,7 @@ def _notify_users(
             InAppNotification.objects.filter(
                 recipient_id__in=[user.id for user in recipients],
                 title=title,
+                message=message,
                 link=link,
                 created_at__gte=dedup_window,
             ).values_list("recipient_id", flat=True)
@@ -312,8 +316,19 @@ def _notify_users(
 
 
 def _enqueue(func, *args, **kwargs):
+    # Push runs on its own lane so it can't be held up by a slow mail server
+    # (and vice versa). Push failures are handled per subscription, so a whole
+    # job only fails before anything was sent and can safely run again.
+    is_push = webpush is not None and func is getattr(webpush, "send_user_notification", None)
     try:
-        enqueue_email(func, *args, max_attempts=1, retry_delay=2, **kwargs)
+        enqueue_email(
+            func,
+            *args,
+            max_attempts=3,
+            retry_delay=5,
+            lane="push" if is_push else "email",
+            **kwargs,
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to enqueue email job: %s", exc)
 
@@ -668,6 +683,13 @@ _SHIFT_CHANGE_LISTS = {
 }
 
 
+def _list_separator():
+    from django.utils.translation import get_language
+
+    # Arabic uses its own comma.
+    return "، " if (get_language() or "").startswith("ar") else ", "
+
+
 def _shift_change_copy(changes):
     """(title, message) for one person's changes, in the active language."""
     from django.utils.formats import date_format
@@ -692,7 +714,7 @@ def _shift_change_copy(changes):
         shown = [date_format(day, "M j") for day in days[:SHIFT_CHANGE_DATES_SHOWN]]
         if len(days) > SHIFT_CHANGE_DATES_SHOWN:
             shown.append(gettext("+%(count)s more") % {"count": len(days) - SHIFT_CHANGE_DATES_SHOWN})
-        parts.append(gettext(_SHIFT_CHANGE_LISTS[kind]) % {"dates": ", ".join(shown)})
+        parts.append(gettext(_SHIFT_CHANGE_LISTS[kind]) % {"dates": _list_separator().join(shown)})
     return gettext("Your shifts were updated"), " ".join(parts)
 
 

@@ -138,6 +138,16 @@ class Role(TimeStampedModel):
     def __str__(self) -> str:
         return self.name
 
+    def permissions_beyond(self, held):
+        """Names of the can_* flags this role has that ``held`` (a Role or None) lacks."""
+        return [
+            field.name
+            for field in self._meta.fields
+            if field.name.startswith("can_")
+            and getattr(self, field.name)
+            and not (held and getattr(held, field.name, False))
+        ]
+
     def save(self, *args, **kwargs):
         if self.name and self.name.strip().lower() == "admin":
             for field in self._meta.fields:

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -664,9 +664,22 @@ def shifts_type_edit(request, pk):
     if not is_shift_manager(request.user):
         return _forbid()
     row = get_object_or_404(ShiftType, pk=pk)
+    old_times = (row.start_time, row.end_time)
     form = ShiftTypeForm(request.POST or None, instance=row)
     if request.method == "POST" and form.is_valid():
         saved = form.save()
+        if (saved.start_time, saved.end_time) != old_times:
+            # New times move every upcoming shift of this type that has no
+            # times of its own; tell those people (past shifts are skipped).
+            moved = (
+                ShiftAssignment.objects.filter(
+                    shift_type=saved,
+                    date__gte=timezone.localdate() - timedelta(days=1),
+                )
+                .filter(Q(start_time_override__isnull=True) | Q(end_time_override__isnull=True))
+                .select_related("user", "shift_type")
+            )
+            queue_shift_changes([ShiftChange.of("changed", a) for a in moved], request.user)
         if request.headers.get("HX-Request"):
             response = _render_types(request)
             response["HX-Retarget"] = "#shell-content"

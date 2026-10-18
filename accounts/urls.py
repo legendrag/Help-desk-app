@@ -1,6 +1,6 @@
 from django.urls import path
 from django.http import JsonResponse
-from .template_views import LogoutEntryView, UserLoginView, UserPasswordChangeView
+from .template_views import LogoutEntryView, UserLoginView, UserPasswordChangeView, set_theme
 from .management_views import UserListView, UserCreateView, UserUpdateView, UserDeleteView
 
 
@@ -12,6 +12,7 @@ urlpatterns = [
     path("login/", UserLoginView.as_view(), name="login"),
     path("logout/", LogoutEntryView.as_view(), name="logout"),
     path("password-change/", UserPasswordChangeView.as_view(), name="password_change"),
+    path("preferences/theme/", set_theme, name="set_theme"),
     
     # Management
     path("users/", UserListView.as_view(), name="user_list"),

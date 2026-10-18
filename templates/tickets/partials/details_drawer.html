@@ -160,7 +160,7 @@
                         {% endif %}
                         <span class="timeline-time timeline-time-text">{{ item.created_at|date:"Y-m-d H:i" }}</span>
                     </div>
-                    <p class="timeline-by-text">{% blocktrans trimmed with name=item.changed_by.username %}By {{ name }}{% endblocktrans %}{% if item.detail %} <span class="timeline-detail-text">({{ item.detail }})</span>{% endif %}</p>
+                    <p class="timeline-by-text">{% blocktrans trimmed with name=item.changed_by.username %}By {{ name }}{% endblocktrans %}{% if item.detail %} <span class="timeline-detail-text">({{ item.display_detail }})</span>{% endif %}</p>
                 </div>
             </div>
             {% empty %}

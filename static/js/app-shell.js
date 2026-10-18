@@ -10,13 +10,33 @@ try {
 // Dark mode toggle
 function toggleDarkMode() {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var theme = isDark ? 'light' : 'dark';
     if (isDark) {
         document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
     } else {
         document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
     }
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+    saveThemeToAccount(theme);
+}
+
+// Signed in, the theme is saved on the account so it follows the user to
+// every device. Signed out (no data-user-theme), it stays in this browser.
+function saveThemeToAccount(theme) {
+    var root = document.documentElement;
+    if (!root.hasAttribute('data-user-theme')) return;
+    root.setAttribute('data-user-theme', theme);
+    var tokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+    var cookie = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    var token = tokenInput ? tokenInput.value : (cookie ? decodeURIComponent(cookie[1]) : '');
+    var body = new URLSearchParams();
+    body.set('theme', theme);
+    fetch('/accounts/preferences/theme/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': token },
+        body: body
+    }).catch(function () { /* the page already switched; it saves next time */ });
 }
 
 // Language switch: animate first, then POST with progress bar only
@@ -537,6 +557,41 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     initUserTypeToggle(document);
     initPasswordToggles(document);
+});
+
+// Django messages from an HTMX request (core.middleware.HtmxMessagesMiddleware),
+// shown with the same markup as partials/messages.html.
+document.body.addEventListener('flashMessages', function (evt) {
+    const items = Array.isArray(evt.detail && evt.detail.value) ? evt.detail.value : [];
+    if (!items.length) return;
+    let list = document.querySelector('.flash-toasts');
+    if (!list) {
+        list = document.createElement('ul');
+        list.className = 'flash-toasts';
+        list.setAttribute('role', 'status');
+        list.setAttribute('aria-live', 'polite');
+        document.body.appendChild(list);
+    }
+    const closeLabel = document.documentElement.lang === 'ar' ? 'إغلاق' : 'Close';
+    items.forEach(function (item) {
+        const li = document.createElement('li');
+        li.className = 'flash-toast' + (item.sticky ? ' flash-toast--sticky' : '');
+        const notice = document.createElement('p');
+        notice.className = 'notice' + (item.tags ? ' notice-' + item.tags.split(' ').join(' notice-') : '');
+        const text = document.createElement('span');
+        text.textContent = item.message;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'flash-toast-close';
+        close.setAttribute('aria-label', closeLabel);
+        close.innerHTML = '&times;';
+        close.addEventListener('click', function () { li.remove(); });
+        notice.appendChild(text);
+        notice.appendChild(close);
+        li.appendChild(notice);
+        list.appendChild(li);
+        if (!item.sticky) setTimeout(function () { li.remove(); }, 7000);
+    });
 });
 
 // Listen for HX-Trigger: closeModal from server

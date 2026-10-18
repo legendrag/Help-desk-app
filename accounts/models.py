@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -64,6 +65,16 @@ class User(AbstractUser):
     user_type = models.CharField(_("User Type"), max_length=20, choices=UserType.choices, default=UserType.BRANCH)
     status = models.CharField(_("Status"), max_length=20, choices=Status.choices, default=Status.ACTIVE)
     requires_password_change = models.BooleanField(_("Requires password change"), default=False)
+
+    class Theme(models.TextChoices):
+        LIGHT = "light", _("Light")
+        DARK = "dark", _("Dark")
+
+    # Personal preferences, so they follow the user to every device. Blank
+    # means "not chosen yet": the browser's cookie / OS setting is used and
+    # adopted on the first signed-in request.
+    language = models.CharField(_("Language"), max_length=8, choices=settings.LANGUAGES, blank=True, default="")
+    theme = models.CharField(_("Theme"), max_length=8, choices=Theme.choices, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

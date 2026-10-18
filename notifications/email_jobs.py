@@ -68,7 +68,7 @@ def _send_template(
     if footer_note is not None:
         kwargs["footer_note"] = footer_note
     text_body, html_body = render_notification_email(**kwargs)
-    return send_with_retries(subject, text_body, recipients, html_body=html_body)
+    return send_with_retries(subject, text_body, recipients, html_body=html_body, retry_later=True)
 
 
 def send_new_ticket_email(ticket_id: int) -> bool:
@@ -148,6 +148,7 @@ def send_ticket_update_email(
         if (
             not recipient
             or not recipient.email
+            or not recipient.is_active_user
             or recipient.is_superuser
             or (recipient.role and recipient.role.name.lower() == "admin")
         ):
@@ -227,7 +228,7 @@ def send_transfer_event_email(ticket_id: int, actor_id: int, recipient_id: int, 
     if not is_email_event_enabled("notify_ticket_update"):
         return False
 
-    if not recipient_user.email:
+    if not recipient_user.email or not recipient_user.is_active_user:
         return False
 
     event_map = {
@@ -304,7 +305,7 @@ def send_shift_reminder_email(assignment_id: int) -> bool:
         logger.warning("send_shift_reminder_email: shift %s not found", assignment_id)
         return False
     email = (assignment.user.email or "").strip()
-    if not email:
+    if not email or not assignment.user.is_active_user:
         return False
     context = shift_merge_context(assignment)
     return _send_template(

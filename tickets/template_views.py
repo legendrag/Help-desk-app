@@ -1457,8 +1457,8 @@ def edit_message(request, message_id):
         raise PermissionDenied(_("You do not have permission to edit this message."))
     ticket_id = message.ticket.id
     if request.method == "POST":
-        new_text = request.POST.get("message")
-        if new_text:
+        new_text = request.POST.get("message") or ""
+        if new_text.strip():
             message.message = new_text
             message.save()
             django_messages.success(request, _("Message updated."))
@@ -1865,7 +1865,10 @@ def ticket_search_options(request):
     )[:10]
     
     if not tickets.exists():
-        return HttpResponse('<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')
+        return HttpResponse(format_html(
+            '<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">{}</div></div>',
+            _("No matching tickets found"),
+        ))
 
     options = ['<div id="search-results-container" class="merge-search-results">']
     for t in tickets:
@@ -1885,8 +1888,8 @@ def ticket_search_options(request):
             '  </div>'
             '  <div class="merge-item-title">{}</div>'
             '  <div class="merge-item-meta">'
-            '    <span>Dept: {}</span> | '
-            '    <span>By: {}</span>'
+            '    <span>{}</span> | '
+            '    <span>{}</span>'
             '  </div>'
             '</div>',
             f"/tickets/merge-preview/{t.id}/",
@@ -1895,8 +1898,8 @@ def ticket_search_options(request):
             t.status, t.get_status_display(),
             t.priority, t.get_priority_display().upper(),
             t.title,
-            t.department.name,
-            t.created_by.username,
+            _("Dept: %(name)s") % {"name": t.department.name},
+            _("By: %(name)s") % {"name": t.created_by.username},
         ))
     options.append('</div>')
         

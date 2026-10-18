@@ -1500,6 +1500,16 @@ select.form-control[aria-invalid="true"],
   color: var(--text-main);
 }
 
+/* "#NUMBER" is left-to-right text; in Arabic pages the "#" would otherwise
+   jump to the far end of the number. */
+.merged-sidebar-item span,
+.merged-link,
+.merge-preview-num,
+.merge-item-number {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
 .merged-sidebar-item .arrow-icon {
   width: 14px;
   height: 14px;

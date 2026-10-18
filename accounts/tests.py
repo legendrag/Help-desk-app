@@ -394,3 +394,113 @@ class LoginPageFromHtmxTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("HX-Redirect", response.headers)
+
+
+class UserRoleEscalationTests(TestCase):
+    """A user editor can't hand out, or take over, a role stronger than their own."""
+
+    def setUp(self):
+        from core.models import Department, Role
+
+        self.department = Department.objects.create(name="Escalation Dept")
+        self.editor_role = Role.objects.create(
+            name="User editor", can_access_settings=True, can_update_user=True, can_create_user=True,
+        )
+        self.weak_role = Role.objects.create(name="Weak", can_access_settings=True)
+        self.admin_role = Role.objects.create(name="Admin")  # save() turns every flag on
+        self.editor = User.objects.create_user(
+            username="user-editor", password="password123", user_type=User.UserType.SUPPORT,
+            department=self.department, role=self.editor_role,
+        )
+        self.agent = User.objects.create_user(
+            username="agent2", password="password123", user_type=User.UserType.SUPPORT,
+            department=self.department, role=self.weak_role,
+        )
+        self.client.force_login(self.editor)
+
+    def _edit(self, user, role, **extra):
+        data = {
+            "username": user.username, "user_type": user.user_type, "department": self.department.pk,
+            "role": role.pk, "status": "on", **extra,
+        }
+        return self.client.post(reverse("user_update", args=[user.pk]), data, HTTP_HX_REQUEST="true")
+
+    def test_cannot_make_self_or_others_admin(self):
+        for target in (self.editor, self.agent):
+            response = self._edit(target, self.admin_role)
+            self.assertNotEqual(response.status_code, 204, target.username)
+            target.refresh_from_db()
+            self.assertNotEqual(target.role_id, self.admin_role.pk, target.username)
+
+    def test_cannot_create_an_admin(self):
+        from core.models import Role
+
+        self.client.post(reverse("user_create"), {
+            "username": "sneaky", "user_type": User.UserType.SUPPORT, "department": self.department.pk,
+            "role": Role.objects.get(name="Admin").pk, "password1": "Sup3r-Secret-99", "password2": "Sup3r-Secret-99",
+            "status": "on",
+        }, HTTP_HX_REQUEST="true")
+        self.assertFalse(User.objects.filter(username="sneaky", role=self.admin_role).exists())
+
+    def test_can_still_assign_a_weaker_role(self):
+        response = self._edit(self.agent, self.editor_role)
+        self.assertEqual(response.status_code, 204)
+        self.agent.refresh_from_db()
+        self.assertEqual(self.agent.role_id, self.editor_role.pk)
+
+    def test_cannot_edit_or_reset_password_of_a_stronger_user(self):
+        boss = User.objects.create_user(
+            username="boss", password="password123", user_type=User.UserType.SUPPORT,
+            department=self.department, role=self.admin_role,
+        )
+        response = self._edit(boss, self.admin_role, password1="Hijack-Pass-42", password2="Hijack-Pass-42")
+        self.assertEqual(response.status_code, 403)
+        boss.refresh_from_db()
+        self.assertTrue(boss.check_password("password123"))
+        self.assertEqual(self.client.get(reverse("user_update", args=[boss.pk])).status_code, 403)
+
+    def test_role_dropdown_hides_stronger_roles(self):
+        response = self.client.get(reverse("user_update", args=[self.agent.pk]), HTTP_HX_REQUEST="true")
+        choices = list(response.context["form"].fields["role"].queryset)
+        self.assertIn(self.weak_role, choices)
+        self.assertNotIn(self.admin_role, choices)
+
+
+class UserPreferenceTests(TestCase):
+    """Language and theme are saved on the account, so they follow the user."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="prefs", password="password123")
+
+    def test_first_visit_adopts_the_browser_language(self):
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "ar"
+        self.client.force_login(self.user)
+        self.client.get(reverse("password_change"))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.language, "ar")
+
+    def test_saved_language_wins_on_another_device(self):
+        self.user.language = "ar"
+        self.user.save(update_fields=["language"])
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"  # a different browser
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("password_change"))
+        self.assertEqual(response.headers.get("Content-Language"), "ar")
+        self.assertEqual(response.cookies[settings.LANGUAGE_COOKIE_NAME].value, "ar")
+
+    def test_language_switch_saves_on_the_account(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("set_language"), {"language": "ar", "next": "/"})
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.language, "ar")
+
+    def test_theme_is_saved_and_rendered(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post(reverse("set_theme"), {"theme": "dark"}).status_code, 204)
+        self.assertEqual(self.client.post(reverse("set_theme"), {"theme": "purple"}).status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.theme, "dark")
+        self.assertContains(self.client.get(reverse("password_change")), 'data-user-theme="dark"')
+
+    def test_theme_needs_a_signed_in_user(self):
+        self.assertEqual(self.client.post(reverse("set_theme"), {"theme": "dark"}).status_code, 401)

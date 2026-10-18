@@ -9,6 +9,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
 
+        session = self.scope.get("session")
+        self.session_key = getattr(session, "session_key", None)
         self.group_name = f"user_{user.id}_notifications"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -19,3 +21,9 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
     async def notification_event(self, event):
         await self.send_json(event["payload"])
+
+    async def session_ended(self, event):
+        # Sent on logout. Only the logged-out session's sockets close; the
+        # user's other devices stay connected.
+        if event.get("session_key") and event["session_key"] == self.session_key:
+            await self.close(code=4401)

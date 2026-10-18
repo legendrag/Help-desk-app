@@ -1,7 +1,7 @@
 {% load static webpush_notifications i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}"{% if user.is_authenticated %} data-user-theme="{{ user.theme }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <link rel="manifest" href="{% url 'web_manifest' %}">
@@ -20,7 +20,12 @@
 
     // FOUC prevention: apply saved theme and language dir before first paint
     (function () {
-        var theme = localStorage.getItem('theme');
+        // Signed in, the account's theme wins and is kept for the login page.
+        var theme = document.documentElement.getAttribute('data-user-theme');
+        try {
+            if (theme) localStorage.setItem('theme', theme);
+            else theme = localStorage.getItem('theme');
+        } catch (e) {}
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -44,7 +49,7 @@
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.95">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.01">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.02">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.55">
     <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=25">
     {% if LANGUAGE_CODE == 'ar' %}
@@ -150,7 +155,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.29" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.30" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -834,7 +839,7 @@
     <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
     {% endif %}
     {% block extra_js %}{% endblock extra_js %}
-    <script src="{% static 'js/app-shell.js' %}?v=14" defer></script>
+    <script src="{% static 'js/app-shell.js' %}?v=15" defer></script>
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>

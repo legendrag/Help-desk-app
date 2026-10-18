@@ -244,8 +244,9 @@ class EmailSettingForm(forms.ModelForm):
 
 
 class EmailTemplateForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, event_type=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.event_type = event_type or getattr(self.instance, "event_type", None) or None
         _style_fields(self)
         self.fields["subject"].widget.attrs.update(
             {"placeholder": _("[{{ brand_name }}] New ticket #{{ ticket_number }}")}
@@ -263,7 +264,26 @@ class EmailTemplateForm(forms.ModelForm):
             raise forms.ValidationError(
                 _("%(label)s contains unsupported template tags.") % {"label": label}
             )
+        self._check_fields(value, label)
         return value
+
+    def _check_fields(self, value: str, label: str) -> None:
+        """Broken or unknown {{ fields }} would otherwise be emailed as literal text."""
+        from notifications.email_templates import TOKEN_RE, merge_fields_for_event
+
+        if "{{" in TOKEN_RE.sub("", value) or "}}" in TOKEN_RE.sub("", value):
+            raise forms.ValidationError(
+                _("%(label)s has a broken field. Fields look like {{ ticket_number }}.") % {"label": label}
+            )
+        if not self.event_type:
+            return
+        allowed = {name for name, _label in merge_fields_for_event(self.event_type)}
+        unknown = sorted({name for name in TOKEN_RE.findall(value) if name not in allowed})
+        if unknown:
+            raise forms.ValidationError(
+                _("%(label)s uses fields this email doesn't have: %(names)s.")
+                % {"label": label, "names": ", ".join(unknown)}
+            )
 
     def clean_subject(self):
         subject = self._reject_tags(self.cleaned_data.get("subject"), _("Subject"))

@@ -8,11 +8,13 @@ from django.views.static import serve
 from django.shortcuts import redirect
 from django.views.generic.base import RedirectView
 
+from accounts.template_views import set_language
 from core.pwa_views import service_worker, web_manifest
 
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico', permanent=True)),
-    path("i18n/", include("django.conf.urls.i18n")),
+    # Same URL and name as django.conf.urls.i18n, but also saves the choice on the account.
+    path("i18n/setlang/", set_language, name="set_language"),
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
     path("core/", include("core.urls")),

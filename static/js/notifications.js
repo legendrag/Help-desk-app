@@ -419,6 +419,8 @@ function refreshTimestamps() {
 }
 
 // ── WebSocket Connection ──
+var notificationsSocketConnectedBefore = false;
+
 function initNotifications() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
@@ -426,6 +428,11 @@ function initNotifications() {
 
     socket.onopen = function() {
         console.log("[Notifications WS] Connected");
+        // Anything sent while we were disconnected never reached this page.
+        if (notificationsSocketConnectedBefore) {
+            fetchNotifications();
+        }
+        notificationsSocketConnectedBefore = true;
     };
 
 
@@ -1042,11 +1049,12 @@ async function syncSubscription(subscription, saveUrl) {
 /**
  * Remove this browser's push subscription from the server and PushManager.
  * Runs before logout so the OS stops showing toasts for this device.
- * LogoutView also clears all server-side push rows for the account as a fallback.
+ * If this fails, LogoutView clears all server-side push rows for the account instead.
  */
 async function unsubscribeWebPush() {
+    // Resolves true once this browser has no push subscription left.
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        return;
+        return true;
     }
 
     const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
@@ -1055,12 +1063,12 @@ async function unsubscribeWebPush() {
     try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg || !reg.pushManager) {
-            return;
+            return true;
         }
 
         const subscription = await reg.pushManager.getSubscription();
         if (!subscription) {
-            return;
+            return true;
         }
 
         if (saveUrl) {
@@ -1069,8 +1077,10 @@ async function unsubscribeWebPush() {
 
         await subscription.unsubscribe();
         console.log("[WebPush] Unsubscribed (session ending).");
+        return true;
     } catch (err) {
         console.warn("[WebPush] Unsubscribe on logout failed:", err);
+        return false;
     }
 }
 
@@ -1109,10 +1119,20 @@ function bindWebPushLogoutCleanup() {
             event.preventDefault();
             event.stopImmediatePropagation();
 
+            let cleaned = false;
             try {
-                await unsubscribeWebPush();
+                cleaned = await unsubscribeWebPush();
             } catch (e) {
                 /* still log out even if push cleanup fails */
+            }
+            if (cleaned) {
+                // This device is done; the server then leaves the account's
+                // other devices subscribed.
+                const flag = document.createElement("input");
+                flag.type = "hidden";
+                flag.name = "webpush_cleaned";
+                flag.value = "1";
+                form.appendChild(flag);
             }
 
             form.dataset.webpushUnsubscribed = "1";
