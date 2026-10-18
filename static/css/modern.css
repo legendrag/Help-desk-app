@@ -1223,6 +1223,13 @@ select.form-control[aria-invalid="true"],
   padding: 0.4rem;
 }
 
+/* Inside the merge modal the body/form clip overflow, so an absolute dropdown
+   gets cut off behind the footer. Render in-flow so the modal grows instead. */
+.modal-merge-ticket .merge-search-results {
+  position: static;
+  max-height: 240px;
+}
+
 .merge-search-empty {
   padding: 1rem;
   text-align: center;
