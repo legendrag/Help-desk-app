@@ -54,3 +54,38 @@ class InAppNotification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.recipient.username}: {self.title}"
+
+
+class EmailOutbox(models.Model):
+    """A queued email job, saved so a crash or forced restart can't lose it.
+
+    ``func`` is the dotted path of a module-level job (e.g.
+    ``notifications.email_jobs.send_new_ticket_email``) and ``args``/``kwargs``
+    are its JSON arguments (ids and strings). Sent rows are deleted; rows that
+    failed every attempt stay as ``failed`` for an admin to look at.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        FAILED = "failed", "Failed"
+
+    func = models.CharField(max_length=200)
+    args = models.JSONField(default=list, blank=True)
+    kwargs = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=3)
+    retry_delay = models.PositiveIntegerField(default=5, help_text="Seconds; multiplied by the attempt number.")
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    last_error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "next_attempt_at"])]
+        verbose_name = "Queued email"
+        verbose_name_plural = "Queued emails"
+
+    def __str__(self):
+        return f"{self.func} ({self.status}, attempt {self.attempts}/{self.max_attempts})"

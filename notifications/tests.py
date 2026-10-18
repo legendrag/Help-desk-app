@@ -834,6 +834,7 @@ class WebPushFixTests(TestCase):
         for bad in (
             "http://fcm.googleapis.com/x", "https://169.254.169.254/latest", "https://localhost/x",
             "https://10.0.0.5/x", "https://[::1]/x", "https://printer.local/x", "not a url",
+            "https://169.254.169.254.nip.io/x", "https://evil-fcm.googleapis.com.attacker.io/x",
         ):
             self.assertFalse(_is_public_push_endpoint(bad), bad)
 
@@ -859,12 +860,19 @@ class WebPushFixTests(TestCase):
 
         user = User.objects.create_user(username="wp_user", password="pw123456")
         sub = self._subscription(user)
-        with patch("notifications.apps._send_push", side_effect=self._push_error(403)):
+        with patch("notifications.apps._send_push", side_effect=self._push_error(403)) as send:
             webpush.send_user_notification(user=user, payload="{}", ttl=0)
+            # A failing device is skipped for a while instead of being tried on every push.
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+            self.assertEqual(send.call_count, 1)
         self.assertTrue(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+        from notifications.apps import _clear_push_failures
+
+        _clear_push_failures(sub)
         with patch("notifications.apps._send_push", side_effect=self._push_error(410)):
             webpush.send_user_notification(user=user, payload="{}", ttl=0)
         self.assertFalse(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+        _clear_push_failures(sub)  # don't leave backoff state for a later test reusing the id
 
     def _save(self, extra=None):
         import json
@@ -961,6 +969,7 @@ class EmailQueueShutdownTests(TestCase):
         from notifications import email_queue
 
         email_queue._shutting_down = False
+        email_queue._outbox_stop.clear()
 
     def test_queued_and_delayed_jobs_are_sent_before_exit(self):
         import threading
@@ -983,3 +992,106 @@ class EmailQueueShutdownTests(TestCase):
 
         self.assertEqual(left, 0)
         self.assertEqual(sorted(map(str, sent)), sorted([str(n) for n in range(10)] + ["delayed"]))
+
+
+_OUTBOX_CALLS = []
+
+
+def outbox_test_job(n, fail=False):
+    """Module-level, so the outbox can store it by dotted path."""
+    if fail:
+        raise RuntimeError("smtp down")
+    _OUTBOX_CALLS.append(n)
+
+
+@override_settings(EMAIL_QUEUE_SYNC=False)
+class EmailOutboxTests(TestCase):
+    """Email jobs are saved before sending, so a crash or forced kill can't lose them."""
+
+    def setUp(self):
+        from notifications import email_queue
+
+        _OUTBOX_CALLS.clear()
+        email_queue._outbox_stop.clear()
+        patcher = patch("notifications.email_queue.ensure_outbox_worker")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _enqueue(self, *args, **kwargs):
+        from notifications.email_queue import enqueue_email
+
+        enqueue_email(outbox_test_job, *args, **kwargs)
+
+    def test_job_is_saved_then_sent_and_removed(self):
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue(7)
+        row = EmailOutbox.objects.get()
+        self.assertEqual(row.func, "notifications.tests.outbox_test_job")
+        self.assertEqual(row.args, [7])
+        self.assertEqual(_OUTBOX_CALLS, [])  # nothing sent yet: a crash now loses nothing
+
+        # e.g. after a restart, the worker finds it in the table
+        self.assertEqual(run_due_outbox_jobs(), 1)
+        self.assertEqual(_OUTBOX_CALLS, [7])
+        self.assertFalse(EmailOutbox.objects.exists())
+
+    def test_delayed_job_waits_until_due(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue("reply", delay_seconds=120)
+        self.assertEqual(run_due_outbox_jobs(), 0)
+        EmailOutbox.objects.update(next_attempt_at=timezone.now() - timedelta(seconds=1))
+        run_due_outbox_jobs()
+        self.assertEqual(_OUTBOX_CALLS, ["reply"])
+
+    def test_failing_job_retries_then_stays_as_failed(self):
+        from django.utils import timezone
+
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue(1, fail=True, max_attempts=2, retry_delay=0)
+        run_due_outbox_jobs()
+        row = EmailOutbox.objects.get()
+        self.assertEqual((row.status, row.attempts), (EmailOutbox.Status.PENDING, 1))
+        EmailOutbox.objects.update(next_attempt_at=timezone.now())
+        run_due_outbox_jobs()
+        row.refresh_from_db()
+        self.assertEqual((row.status, row.attempts), (EmailOutbox.Status.FAILED, 2))
+        self.assertIn("smtp down", row.last_error)
+
+    def test_row_left_mid_send_by_a_dead_process_is_sent_again(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications.email_queue import OUTBOX_STUCK_SECONDS, run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        EmailOutbox.objects.create(
+            func="notifications.tests.outbox_test_job", args=[3], status=EmailOutbox.Status.SENDING,
+            updated_at=timezone.now() - timedelta(seconds=OUTBOX_STUCK_SECONDS + 1),
+        )
+        run_due_outbox_jobs()
+        self.assertEqual(_OUTBOX_CALLS, [3])
+
+    def test_job_that_cannot_be_saved_falls_back_to_memory(self):
+        from notifications.models import EmailOutbox
+
+        def nested_job():
+            pass
+
+        with patch("notifications.email_queue.ensure_worker_started"), \
+                patch("notifications.email_queue._QUEUES") as queues:
+            from notifications.email_queue import enqueue_email
+
+            enqueue_email(nested_job)
+            queues.__getitem__.return_value.put.assert_called_once()
+        self.assertFalse(EmailOutbox.objects.exists())

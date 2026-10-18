@@ -45,11 +45,27 @@ function saveThemeToAccount(theme) {
     var btn = document.getElementById('lang-toggle-btn');
     if (!form || !btn) return;
 
+    // Restored from the back/forward cache: the switch may still be mid-flip
+    // from the click that left this page. Put it back to the page's language.
+    window.addEventListener('pageshow', function (evt) {
+        if (!evt.persisted) return;
+        btn.dataset.animating = '';
+        var isAr = document.documentElement.lang === 'ar';
+        btn.classList.toggle('is-ar', isAr);
+        btn.setAttribute('aria-checked', isAr ? 'true' : 'false');
+    });
+
     btn.addEventListener('click', function () {
         if (btn.dataset.animating === '1') return;
         btn.dataset.animating = '1';
 
-        var toAr = !btn.classList.contains('is-ar');
+        // Decide from the page as it is now, not from when the sidebar was
+        // rendered: shell navigation swaps the content but not the sidebar.
+        var toAr = document.documentElement.lang !== 'ar';
+        var languageInput = form.querySelector('input[name="language"]');
+        if (languageInput) languageInput.value = toAr ? 'ar' : 'en';
+        var nextInput = form.querySelector('input[name="next"]');
+        if (nextInput) nextInput.value = window.location.pathname + window.location.search;
         // Force a paint so the class change always transitions
         void btn.offsetWidth;
         btn.classList.toggle('is-ar', toAr);
@@ -380,7 +396,9 @@ document.body.addEventListener('htmx:confirm', function (evt) {
             cancelText: confirmAttr('data-confirm-cancel'),
             isDanger: isDanger,
             onConfirm: function () {
-                evt.detail.issueRequest();
+                // true = already confirmed; without it htmx 1.9 also shows the
+                // browser's native confirm(), so every hx-confirm asked twice.
+                evt.detail.issueRequest(true);
             }
         });
     }
@@ -564,9 +582,12 @@ document.addEventListener('DOMContentLoaded', () => {
 document.body.addEventListener('flashMessages', function (evt) {
     const items = Array.isArray(evt.detail && evt.detail.value) ? evt.detail.value : [];
     if (!items.length) return;
-    let list = document.querySelector('.flash-toasts');
+    // Its own list on <body>, outside #shell-content, so htmx history
+    // snapshots never capture (and later replay) these toasts.
+    let list = document.getElementById('flash-toasts-live');
     if (!list) {
         list = document.createElement('ul');
+        list.id = 'flash-toasts-live';
         list.className = 'flash-toasts';
         list.setAttribute('role', 'status');
         list.setAttribute('aria-live', 'polite');
@@ -591,6 +612,37 @@ document.body.addEventListener('flashMessages', function (evt) {
         li.appendChild(notice);
         list.appendChild(li);
         if (!item.sticky) setTimeout(function () { li.remove(); }, 7000);
+    });
+});
+
+// A faded toast is only hidden by CSS, so take it out of the page. Otherwise
+// htmx saves it in the history snapshot and Back replays every old toast.
+document.addEventListener('animationend', function (evt) {
+    if (evt.animationName === 'flash-toast-out' && evt.target.classList.contains('flash-toast')) {
+        evt.target.remove();
+    }
+});
+document.body.addEventListener('htmx:beforeHistorySave', function () {
+    document.querySelectorAll('#shell-content .flash-toasts').forEach(function (list) { list.remove(); });
+});
+
+// A new ticket search cancels a list poll still in flight; that poll would
+// otherwise land after the search and put back the unfiltered list.
+document.body.addEventListener('htmx:beforeRequest', function (evt) {
+    if (!evt.target.matches || !evt.target.matches('form.tickets-filters')) return;
+    const live = document.getElementById('tickets-live');
+    if (live && window.htmx) window.htmx.trigger(live, 'htmx:abort');
+});
+
+// A server-side field error ("This field is required") goes away once that
+// field is edited, instead of staying until the next submit.
+['input', 'change'].forEach(function (type) {
+    document.addEventListener(type, function (evt) {
+        const field = evt.target;
+        if (!field || !field.closest || !evt.isTrusted) return;
+        const group = field.closest('.form-group, .kb-form-field');
+        const error = group && group.querySelector('.field-error');
+        if (error) error.remove();
     });
 });
 
@@ -688,6 +740,11 @@ function initializeChoices(targetElement) {
             sortField: null,
             searchField: []
         };
+        // Tom Select hides value="" options. Selects whose empty option is a
+        // real choice (e.g. "Remove this shift") opt back in.
+        if (select.hasAttribute('data-allow-empty')) {
+            options.allowEmptyOption = true;
+        }
 
         // Modal/offcanvas use overflow:hidden. Shift panels use backdrop-filter,
         // which is its own layer, so a menu inside one card paints under the next.

@@ -4,9 +4,10 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Max, Q
-from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -67,7 +68,9 @@ User = get_user_model()
 
 
 def _forbid():
-    return HttpResponseForbidden(_("You cannot open this page."))
+    # Raised rather than returned so Django renders templates/403.html (a styled
+    # page) instead of a bare line of text. Callers keep `return _forbid()`.
+    raise PermissionDenied(_("You cannot open this page."))
 
 
 def _stale_page():
@@ -644,7 +647,12 @@ def _selected_department(request):
 def shifts_type_add(request):
     if not is_shift_manager(request.user):
         return _forbid()
-    form = ShiftTypeForm(request.POST or None)
+    # The Add button passes the department being viewed; start the form on it.
+    initial = {}
+    department_pk = _parse_pk(request.GET.get("department"))
+    if department_pk and Department.objects.filter(pk=department_pk).exists():
+        initial["department"] = department_pk
+    form = ShiftTypeForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         saved = form.save()
         if request.headers.get("HX-Request"):
@@ -979,6 +987,7 @@ def _cell_form(request, department, user, on, existing, now, *, error="", select
         start_value = existing.start_time_override.strftime("%H:%M") if existing and existing.start_time_override else ""
     if end_value is None:
         end_value = existing.end_time_override.strftime("%H:%M") if existing and existing.end_time_override else ""
+    rota_start = _parse_day(request.POST.get("start") or request.GET.get("start"))
     return render(request, "shifts/cell_form.html", {
         "department": department,
         "person": user,
@@ -990,6 +999,8 @@ def _cell_form(request, department, user, on, existing, now, *, error="", select
         "selected_type": selected_type,
         "start_value": start_value,
         "end_value": end_value,
+        "rota_view": request.POST.get("view") or request.GET.get("view") or "",
+        "rota_start": rota_start.isoformat() if rota_start else "",
     })
 
 

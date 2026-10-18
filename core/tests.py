@@ -104,7 +104,7 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=15", self.base_html)
+        self.assertIn("js/app-shell.js' %}?v=16", self.base_html)
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=23", self.base_html)
@@ -201,7 +201,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=15", html)
+        self.assertIn("js/app-shell.js?v=16", html)
         self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
@@ -335,3 +335,60 @@ class RoleEscalationTests(TestCase):
         )
         self.assertContains(response, "You can only give permissions that your own role has")
         self.assertFalse(Role.objects.filter(name="Sneaky").exists())
+
+
+class Round14CoreTests(TestCase):
+    def test_duplicate_branch_name_is_refused(self):
+        from core.forms import BranchForm
+        from core.models import Branch
+
+        Branch.objects.create(name="Main Branch", code="MB1")
+        form = BranchForm({"name": "main branch", "code": "MB2"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("name", form.errors)
+
+    def test_websocket_origin_must_be_this_site(self):
+        from core.websocket import is_allowed_origin
+
+        self.assertTrue(is_allowed_origin("https://help.example.com", "help.example.com"))
+        self.assertTrue(is_allowed_origin("http://127.0.0.1:8000", "127.0.0.1:8000"))
+        self.assertFalse(is_allowed_origin("https://evil.example", "help.example.com"))
+        self.assertFalse(is_allowed_origin("", "help.example.com"))
+        self.assertFalse(is_allowed_origin("null", "help.example.com"))
+
+    def test_settings_opens_on_the_requested_tab(self):
+        admin = User.objects.create_superuser(username="r14-settings", password="password123")
+        self.client.force_login(admin)
+        response = self.client.get(reverse("settings") + "?tab=roles")
+        self.assertContains(response, f'hx-get="{reverse("role_list")}" data-no-progress')
+        self.assertEqual(self.client.get(reverse("settings") + "?tab=nope").context["settings_tab"], "branches")
+
+    def test_reload_trigger_leaves_messages_for_the_reloaded_page(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        from core.middleware import HtmxMessagesMiddleware
+
+        request = RequestFactory().post("/x", HTTP_HX_REQUEST="true")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+
+        def view(req):
+            from django.contrib import messages
+
+            messages.success(req, "Ticket transfer accepted.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "reloadPage,refreshTickets"
+            return response
+
+        response = HtmxMessagesMiddleware(view)(request)
+        self.assertNotIn("flashMessages", response["HX-Trigger"])
+        self.assertFalse(request._messages.used)
+
+    def test_permission_denied_renders_the_styled_page(self):
+        support = User.objects.create_user(username="r14-agent", password="password123", user_type="support")
+        self.client.force_login(support)
+        response = self.client.get(reverse("shifts_types"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, "403.html")

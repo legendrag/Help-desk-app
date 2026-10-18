@@ -118,9 +118,13 @@ function buildNotificationItem(item) {
 
     const title = document.createElement("strong");
     title.textContent = copy.title;
+    // Text mixes Arabic with English names and ticket numbers; let each line
+    // pick its own direction so punctuation and numbers stay in place.
+    title.dir = "auto";
 
     const message = document.createElement("p");
     message.textContent = copy.message;
+    message.dir = "auto";
 
     const time = document.createElement("span");
     time.className = "notification-time";
@@ -130,6 +134,9 @@ function buildNotificationItem(item) {
     content.appendChild(title);
     content.appendChild(message);
     content.appendChild(time);
+    // role="button" makes its children presentational, so screen readers need
+    // the text spelled out here.
+    wrapper.setAttribute("aria-label", [copy.title, copy.message, time.textContent].filter(Boolean).join(". "));
 
     // Delete button (desktop X)
     const deleteBtn = document.createElement("button");
@@ -317,15 +324,54 @@ function addNotificationToList(item, incrementBadge) {
 }
 
 // ── Fetch from API ──
+const NOTIFICATIONS_PAGE = 20;
+let notificationsHasMore = false;
+let notificationsLoadingOlder = false;
+
 function fetchNotifications() {
-    return fetch("/notifications/api/?limit=20", { credentials: "same-origin" })
+    return fetch(`/notifications/api/?limit=${NOTIFICATIONS_PAGE}`, { credentials: "same-origin" })
         .then((response) => response.json())
         .then((data) => {
             renderNotifications(data.notifications || []);
             updateBadge(data.unread_count || 0);
+            notificationsHasMore = !!data.has_more;
         })
         .catch((err) => console.error("[Notifications] Fetch error:", err));
 }
+
+// ── Older notifications: load the next page when the list is scrolled to the end ──
+function loadOlderNotifications() {
+    const list = document.getElementById("notification-list");
+    if (!list || !notificationsHasMore || notificationsLoadingOlder) return;
+    const items = list.querySelectorAll(".notification-item[data-notif-id]");
+    const oldest = items.length ? items[items.length - 1].dataset.notifId : "";
+    if (!oldest) return;
+    notificationsLoadingOlder = true;
+    fetch(`/notifications/api/?limit=${NOTIFICATIONS_PAGE}&before=${encodeURIComponent(oldest)}`, { credentials: "same-origin" })
+        .then((response) => response.json())
+        .then((data) => {
+            (data.notifications || []).forEach((item) => {
+                if (!list.querySelector(`.notification-item[data-notif-id="${item.id}"]`)) {
+                    list.appendChild(buildNotificationItem(item));
+                }
+            });
+            notificationsHasMore = !!data.has_more;
+        })
+        .catch((err) => console.error("[Notifications] Load older error:", err))
+        .finally(() => { notificationsLoadingOlder = false; });
+}
+
+function bindNotificationScroll() {
+    const list = document.getElementById("notification-list");
+    if (!list || list.dataset.olderBound === "1") return;
+    list.dataset.olderBound = "1";
+    list.addEventListener("scroll", () => {
+        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 40) {
+            loadOlderNotifications();
+        }
+    }, { passive: true });
+}
+document.addEventListener("DOMContentLoaded", bindNotificationScroll);
 
 // ── Mark All Read ──
 let markAllReadPending = false;

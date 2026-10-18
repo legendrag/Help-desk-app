@@ -19,21 +19,21 @@
         </div>
 
         <div class="settings-tabs">
-            <button class="settings-tab active"
+            <button class="settings-tab{% if settings_tab == 'branches' %} active{% endif %}"
                     hx-get="{% url 'branch_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 {% trans "Branches" %}
             </button>
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'departments' %} active{% endif %}"
                     hx-get="{% url 'department_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 {% trans "Departments" %}
             </button>
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'categories' %} active{% endif %}"
                     hx-get="{% url 'category_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
@@ -41,7 +41,7 @@
                 {% trans "Categories" %}
             </button>
             {% if request.user.is_superuser or request.user.role.can_manage_kb %}
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'kb' %} active{% endif %}"
                     hx-get="{% url 'kb_category_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
@@ -49,21 +49,21 @@
                 {% trans "KB Categories" %}
             </button>
             {% endif %}
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'roles' %} active{% endif %}"
                     hx-get="{% url 'role_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 {% trans "Roles" %}
             </button>
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'users' %} active{% endif %}"
                     hx-get="{% url 'user_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
                     role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); switchTab(this); window.htmx.trigger(this, 'click');}">
                 {% trans "Users" %}
             </button>
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'email' %} active{% endif %}"
                     hx-get="{% url 'email_setting_list' %}"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
@@ -71,7 +71,7 @@
                 {% trans "Email Settings" %}
             </button>
             {% if request.user.is_superuser or request.user.role.can_manage_maintenance %}
-            <button class="settings-tab"
+            <button class="settings-tab{% if settings_tab == 'maintenance' %} active{% endif %}"
                     hx-get="{% url 'maintenance' %}?nocache=1"
                     hx-target="#settings-content"
                     onclick="switchTab(this)"
@@ -82,7 +82,7 @@
         </div>
     </div>
 
-    <div id="settings-content" data-current-url="{% url 'branch_list' %}" hx-trigger="load" hx-get="{% url 'branch_list' %}" data-no-progress>
+    <div id="settings-content" data-current-url="{{ settings_tab_url }}" hx-trigger="load" hx-get="{{ settings_tab_url }}" data-no-progress>
         <div class="skeleton-placeholder" aria-busy="true">
             <div class="skeleton-table">
                 <div class="skeleton-table-row" aria-hidden="true"><div class="skeleton skeleton--text skeleton-w-100"></div></div>

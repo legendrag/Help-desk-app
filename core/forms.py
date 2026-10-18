@@ -33,7 +33,13 @@ class BranchForm(forms.ModelForm):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
             raise forms.ValidationError(_("Branch name must be at least 2 characters long."))
-        return name.strip()
+        name = name.strip()
+        qs = Branch.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(_("A branch with this name already exists."))
+        return name
 
     def clean_code(self):
         import re
@@ -76,6 +82,8 @@ class CategoryForm(forms.ModelForm):
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
+        # Tom Select shows the empty option's text as the placeholder.
+        self.fields['department'].empty_label = _("Choose a department")
 
     class Meta:
         model = Category

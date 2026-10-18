@@ -504,3 +504,28 @@ class UserPreferenceTests(TestCase):
 
     def test_theme_needs_a_signed_in_user(self):
         self.assertEqual(self.client.post(reverse("set_theme"), {"theme": "dark"}).status_code, 401)
+
+
+class UserManagementRound14Tests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username="r14-admin", password="password123")
+        self.client.force_login(self.admin)
+
+    def test_inactive_user_is_shown_unticked(self):
+        gone = User.objects.create_user(username="r14-gone", password="password123", status=User.Status.INACTIVE)
+        response = self.client.get(reverse("user_update", args=[gone.pk]), HTTP_HX_REQUEST="true")
+        self.assertFalse(response.context["form"]["status"].value())
+        self.assertNotIn("checked", str(response.context["form"]["status"]))
+
+    def test_edit_page_keeps_the_signed_in_user_in_the_header(self):
+        other = User.objects.create_user(username="r14-other", password="password123", first_name="Other")
+        response = self.client.get(reverse("user_update", args=[other.pk]))
+        self.assertEqual(response.context["user"], self.admin)
+        self.assertEqual(response.context["target_user"], other)
+
+    def test_users_tab_lists_everyone(self):
+        for n in range(25):
+            User.objects.create_user(username=f"r14-u{n:02d}", password="password123")
+        response = self.client.get(reverse("user_list"), HTTP_HX_REQUEST="true")
+        self.assertEqual(len(response.context["object_list"]), User.objects.count())
+        self.assertContains(response, "r14-u24")

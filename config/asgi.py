@@ -8,7 +8,7 @@ django_asgi_app = get_asgi_application()
 
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-from channels.security.websocket import AllowedHostsOriginValidator
+from core.websocket import SameOriginValidator
 import tickets.routing
 import notifications.routing
 
@@ -16,7 +16,7 @@ application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
         # Reject sockets opened from other sites (they would ride the session cookie).
-        "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(
+        "websocket": SameOriginValidator(AuthMiddlewareStack(URLRouter(
             tickets.routing.websocket_urlpatterns +
             notifications.routing.websocket_urlpatterns
         ))),

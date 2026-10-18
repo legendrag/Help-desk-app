@@ -92,10 +92,17 @@ def drain_on_shutdown(timeout: float | None = None) -> int:
         timer.cancel()
         _QUEUES[job.lane].put(job)
 
+    # Outbox email is in the database and goes out after the restart; just
+    # stop taking new rows and let the one being sent finish.
+    _outbox_stop.set()
+    _outbox_wake.set()
+
     deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline and any(q.unfinished_tasks for q in _QUEUES.values()):
+    while time.monotonic() < deadline and (
+        any(q.unfinished_tasks for q in _QUEUES.values()) or _outbox_busy.is_set()
+    ):
         time.sleep(0.1)
-    left = sum(q.unfinished_tasks for q in _QUEUES.values())
+    left = sum(q.unfinished_tasks for q in _QUEUES.values()) + (1 if _outbox_busy.is_set() else 0)
     if left:
         logger.error("Server stopping with %s email/push job(s) unsent after %ss.", left, timeout)
     elif waiting:
@@ -119,6 +126,8 @@ def enqueue_email(
         # Tests: a worker thread would open its own connection to the shared
         # test database and race the test's transaction ("table is locked").
         _run_inline(job)
+        return
+    if lane == "email" and _store_in_outbox(job, delay_seconds):
         return
     ensure_worker_started(lane)
     if delay_seconds > 0:
@@ -161,3 +170,163 @@ def _worker_loop(lane: str) -> None:
         finally:
             close_old_connections()
             jobs.task_done()
+
+
+# ── Email outbox ────────────────────────────────────────────────────────────
+# Email jobs are saved in the EmailOutbox table and sent from there, so a
+# crash or forced kill can't lose them: whatever is still in the table is sent
+# once the server is back. Rows are claimed with a conditional update, so two
+# server processes never send the same row.
+
+# How often the worker looks for due rows (delayed replies, retries) when
+# nothing has woken it.
+OUTBOX_POLL_SECONDS = 5
+# A row still "sending" this long after it was claimed belongs to a process
+# that died mid-send; it is picked up again (it may go out twice, never zero).
+OUTBOX_STUCK_SECONDS = 15 * 60
+OUTBOX_BATCH = 20
+
+_outbox_wake = threading.Event()
+_outbox_stop = threading.Event()
+_outbox_busy = threading.Event()
+_outbox_started = False
+
+
+def _job_path(func) -> str:
+    """Dotted path of a module-level function, checked to resolve back to it."""
+    from django.utils.module_loading import import_string
+
+    path = f"{func.__module__}.{func.__qualname__}"
+    if "<" in path or import_string(path) is not func:
+        raise ValueError(f"{path} is not a module-level function")
+    return path
+
+
+def _store_in_outbox(job: EmailJob, delay_seconds: float) -> bool:
+    """Save the job; False (use the in-memory queue) if it can't be saved."""
+    from datetime import timedelta
+
+    from django.db import transaction
+    from django.utils import timezone
+
+    from notifications.models import EmailOutbox
+
+    try:
+        path = _job_path(job.func)
+        EmailOutbox.objects.create(
+            func=path,
+            args=list(job.args),
+            kwargs=job.kwargs,
+            max_attempts=job.max_attempts,
+            retry_delay=job.retry_delay,
+            next_attempt_at=timezone.now() + timedelta(seconds=max(delay_seconds, 0)),
+        )
+    except Exception as exc:  # noqa: BLE001 - unsaveable args, missing table during migrate...
+        logger.warning("Email job not saved to the outbox, queued in memory instead: %s", exc)
+        return False
+    ensure_outbox_worker()
+    # Inside a transaction the row is invisible to the worker until commit.
+    transaction.on_commit(_outbox_wake.set)
+    return True
+
+
+def ensure_outbox_worker() -> None:
+    global _outbox_started
+    with _worker_lock:
+        if _outbox_started:
+            return
+        threading.Thread(target=_outbox_loop, name="email-outbox", daemon=True).start()
+        if not _started_lanes:
+            atexit.register(drain_on_shutdown)
+        _started_lanes.add("outbox")
+        _outbox_started = True
+
+
+def _outbox_loop() -> None:
+    while not _outbox_stop.is_set():
+        close_old_connections()
+        try:
+            worked = run_due_outbox_jobs()
+        except Exception:  # noqa: BLE001 - e.g. the database is briefly unreachable
+            logger.exception("Email outbox pass failed")
+            worked = False
+        finally:
+            close_old_connections()
+        if not worked:
+            _outbox_wake.wait(OUTBOX_POLL_SECONDS)
+            _outbox_wake.clear()
+
+
+def run_due_outbox_jobs() -> int:
+    """Send the outbox rows that are due. Returns how many were attempted."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from notifications.models import EmailOutbox
+
+    now = timezone.now()
+    # Rows a dead process claimed and never finished.
+    EmailOutbox.objects.filter(
+        status=EmailOutbox.Status.SENDING,
+        updated_at__lt=now - timedelta(seconds=OUTBOX_STUCK_SECONDS),
+    ).update(status=EmailOutbox.Status.PENDING, updated_at=now)
+
+    due = list(
+        EmailOutbox.objects.filter(status=EmailOutbox.Status.PENDING, next_attempt_at__lte=now)
+        .order_by("next_attempt_at", "id")
+        .values_list("pk", flat=True)[:OUTBOX_BATCH]
+    )
+    attempted = 0
+    for pk in due:
+        if _outbox_stop.is_set():
+            break
+        claimed = EmailOutbox.objects.filter(pk=pk, status=EmailOutbox.Status.PENDING).update(
+            status=EmailOutbox.Status.SENDING, updated_at=timezone.now()
+        )
+        if not claimed:
+            continue  # another process took it
+        attempted += 1
+        _outbox_busy.set()
+        try:
+            _run_outbox_row(EmailOutbox.objects.get(pk=pk))
+        finally:
+            _outbox_busy.clear()
+    return attempted
+
+
+def _run_outbox_row(row) -> None:
+    from datetime import timedelta
+
+    from django.utils import timezone
+    from django.utils.module_loading import import_string
+
+    from notifications.models import EmailOutbox
+
+    try:
+        func = import_string(row.func)
+        result = func(*row.args, **row.kwargs)
+        if result is False:
+            logger.debug("Email job returned False (likely no recipients or disabled).")
+    except Exception as exc:  # noqa: BLE001
+        row.attempts += 1
+        row.last_error = f"{type(exc).__name__}: {exc}"[:2000]
+        row.updated_at = timezone.now()
+        if row.attempts < row.max_attempts:
+            row.status = EmailOutbox.Status.PENDING
+            row.next_attempt_at = timezone.now() + timedelta(seconds=row.retry_delay * row.attempts)
+            logger.warning("Email job %s failed (attempt %s/%s): %s", row.func, row.attempts, row.max_attempts, exc)
+        else:
+            row.status = EmailOutbox.Status.FAILED
+            logger.error("Email job %s failed for good after %s attempts: %s", row.func, row.attempts, exc)
+        row.save()
+        return
+    row.delete()
+
+
+def start_outbox_on_first_request(**_kwargs) -> None:
+    """request_started hook: send email left in the outbox by a crash, without
+    waiting for the next new email. Tests run with EMAIL_QUEUE_SYNC and skip it."""
+    if getattr(settings, "EMAIL_QUEUE_SYNC", False) or _outbox_started:
+        return
+    ensure_outbox_worker()

@@ -10,6 +10,9 @@
   <input type="hidden" name="user" value="{{ person.pk }}">
   <input type="hidden" name="date" value="{{ on|date:'Y-m-d' }}">
   <input type="hidden" name="department" value="{{ department.pk }}">
+  {# The week on screen, so the grid re-renders there after saving, not on today. #}
+  {% if rota_view %}<input type="hidden" name="view" value="{{ rota_view }}">{% endif %}
+  {% if rota_start %}<input type="hidden" name="start" value="{{ rota_start }}">{% endif %}
   {% if existing %}<input type="hidden" name="assignment" value="{{ existing.pk }}">{% endif %}
   <div class="modal-body">
     <div class="form-stack">
@@ -18,7 +21,7 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="shift-type">{% trans "Shift type" %}</label>
-          <select id="shift-type" name="shift_type">
+          <select id="shift-type" name="shift_type"{% if existing %} data-allow-empty{% endif %}>
             {% if existing %}
             <option value="">{% trans "Remove this shift" %}</option>
             {% else %}

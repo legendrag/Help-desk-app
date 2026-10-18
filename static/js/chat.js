@@ -331,7 +331,9 @@ function initChat(ticketId) {
         if (!timelineList) return;
 
         const now = new Date();
-        const timeStr = now.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+        // Same "Y-m-d H:i" as the server-rendered timeline rows.
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
         const item = document.createElement('div');
         item.className = 'timeline-item';
@@ -748,6 +750,13 @@ function initChatFormInterception() {
 
         if (!messageText && !file) {
             evt.preventDefault(); // Nothing to send
+            // Only spaces typed: say why nothing happened (an empty box needs no message).
+            if (textarea && textarea.value.length) {
+                document.body.dispatchEvent(new CustomEvent('flashMessages', {
+                    detail: { value: [{ message: (window.I18N && window.I18N.emptyMessage) || 'Type a message first.', tags: 'warning' }] }
+                }));
+                textarea.focus();
+            }
             return;
         }
 

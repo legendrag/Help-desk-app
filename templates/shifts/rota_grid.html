@@ -32,7 +32,7 @@
                 <button type="button" class="shifts-cell-btn shifts-cell--filled{% if cell.shift_type.is_night %} shifts-cell--night{% endif %}"
                         style="--shift-colour: {{ cell.shift_type.colour }};"
                         title="{{ cell.shift_type.name }} · {{ cell.start_time_override|default:cell.shift_type.start_time|shifts_clock_text }}–{{ cell.end_time_override|default:cell.shift_type.end_time|shifts_clock_text }}"
-                        hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}&assignment={{ cell.pk }}"
+                        hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}&assignment={{ cell.pk }}&view={{ view }}&start={{ start|date:'Y-m-d' }}"
                         hx-target="#modal-content"
                         onclick="openModal()">
                   {% include "shifts/cell_bits.html" %}
@@ -41,7 +41,7 @@
               {% endfor %}
               {% if not readonly %}
               <button type="button" class="shifts-cell-btn shifts-cell--empty"
-                      hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}"
+                      hx-get="{% url 'shifts_cell' %}?user={{ person.pk }}&date={{ day|date:'Y-m-d' }}&department={{ department.pk }}&view={{ view }}&start={{ start|date:'Y-m-d' }}"
                       hx-target="#modal-content"
                       onclick="openModal()"
                       aria-label="{% trans "Add shift" %}"><span aria-hidden="true">+</span></button>

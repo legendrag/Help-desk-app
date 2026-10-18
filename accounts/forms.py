@@ -132,6 +132,11 @@ class CustomUserCreationForm(RoleLimitMixin, UserCreationForm):
         if "phone" in self.fields:
             self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
 
+    def validate_password_for_user(self, user, password_field_name="password1"):
+        # Django puts "too short / too common" under the confirm field; show it
+        # under the password that needs changing.
+        return super().validate_password_for_user(user, password_field_name=password_field_name)
+
     def clean_phone(self):
         phone = self.cleaned_data.get("phone")
         if phone:
@@ -248,7 +253,9 @@ class CustomUserChangeForm(RoleLimitMixin, UserChangeForm):
             self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
             
         if self.instance and self.instance.pk:
-            self.fields['status'].initial = (self.instance.status == User.Status.ACTIVE)
+            # form.initial (copied from the instance: 'active'/'inactive', both truthy)
+            # beats field.initial, so set the boolean there or inactive users show as Active.
+            self.initial['status'] = (self.instance.status == User.Status.ACTIVE)
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''

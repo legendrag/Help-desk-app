@@ -3175,3 +3175,36 @@ class ShiftTypeTimeChangeNotifyTests(TestCase):
                 "colour": "#336699",
             })
         self.assertFalse(InAppNotification.objects.filter(recipient=person).exists())
+
+
+class Round14RotaTests(TestCase):
+    def setUp(self):
+        self.department = make_department("R14 rota")
+        self.manager = make_user("r14-lead", "support", self.department, make_role("R14 lead", can_manage_shifts=True))
+        self.agent = make_user("r14-agent", "support", self.department)
+        self.day = make_shift_type(self.department, name="Day", start=time(9, 0), end=time(17, 0))
+        self.client.force_login(self.manager)
+
+    def test_saving_a_shift_keeps_the_week_on_screen(self):
+        form = self.client.get(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": "2026-11-10", "department": self.department.pk,
+            "view": "week", "start": "2026-11-07",
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(form, 'name="start" value="2026-11-07"')
+        self.assertContains(form, 'name="view" value="week"')
+        saved = self.client.post(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": "2026-11-10", "department": self.department.pk,
+            "shift_type": self.day.pk, "view": "week", "start": "2026-11-07",
+        }, HTTP_HX_REQUEST="true")
+        self.assertEqual(saved.context["start"], date(2026, 11, 7))
+
+    def test_remove_option_survives_tom_select(self):
+        row = make_assignment(self.agent, self.day, date(2026, 11, 10))
+        form = self.client.get(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": "2026-11-10", "department": self.department.pk, "assignment": row.pk,
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(form, "data-allow-empty")
+
+    def test_add_type_starts_on_the_viewed_department(self):
+        form = self.client.get(reverse("shifts_type_add"), {"department": self.department.pk}, HTTP_HX_REQUEST="true")
+        self.assertEqual(form.context["form"]["department"].value(), self.department.pk)

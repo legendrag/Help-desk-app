@@ -18,7 +18,7 @@
               hx-target="#dashboard-live"
               hx-swap="outerHTML"
               hx-push-url="true"
-              hx-sync="this:abort">
+              hx-sync="this:replace">
             <div class="filter-group">
                 <label for="start_date">{% trans "Start Date" %}</label>
                 <input type="date" id="start_date" name="start_date" value="{{ filter_values.start_date }}">

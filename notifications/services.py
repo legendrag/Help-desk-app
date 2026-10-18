@@ -482,6 +482,9 @@ def notify_transfer_requested(ticket: Ticket, actor: User, new_assignee: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, new_assignee.id, "requested")
 
@@ -504,6 +507,9 @@ def notify_transfer_accepted(ticket: Ticket, actor: User, requester: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "accepted")
 
@@ -526,6 +532,9 @@ def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "denied")
 
@@ -699,7 +708,9 @@ def _shift_change_copy(changes):
 
     if len(changes) == 1:
         change = changes[0]
-        title = gettext(_SHIFT_CHANGE_TITLES[change.kind]) % {"date": date_format(change.date, "D, M j")}
+        title = gettext(_SHIFT_CHANGE_TITLES[change.kind]) % {
+            "date": date_format(change.date, "D" + _list_separator() + "M j")
+        }
         message = gettext(_SHIFT_CHANGE_MESSAGES[change.kind]) % {
             "shift": change.shift_name,
             "start": format_clock(change.start_dt),

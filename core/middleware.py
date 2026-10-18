@@ -37,6 +37,7 @@ class HtmxMessagesMiddleware:
     """
 
     TRIGGER = "flashMessages"
+    RELOAD_TRIGGER = "reloadPage"
     _NAVIGATION_HEADERS = ("HX-Redirect", "HX-Location", "HX-Refresh")
 
     def __init__(self, get_response):
@@ -48,6 +49,10 @@ class HtmxMessagesMiddleware:
             return response
         # A redirect or full navigation shows them on the page it lands on.
         if 300 <= response.status_code < 400 or any(h in response for h in self._NAVIGATION_HEADERS):
+            return response
+        # The page is about to reload (app-shell.js reloadPage); the reloaded
+        # page shows them. A toast now would vanish with the old page.
+        if self.RELOAD_TRIGGER in response.get("HX-Trigger", ""):
             return response
         storage = getattr(request, "_messages", None)
         if storage is None or storage.used:

@@ -228,8 +228,25 @@ def _status_breakdown_rows(queryset, group_field):
     return rows
 
 
+# ?tab=<key> opens Settings on that tab (e.g. Cancel on a role edit page).
+SETTINGS_TABS = {
+    "branches": "branch_list",
+    "departments": "department_list",
+    "categories": "category_list",
+    "kb": "kb_category_list",
+    "roles": "role_list",
+    "users": "user_list",
+    "email": "email_setting_list",
+    "maintenance": "maintenance",
+}
+
+
 class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = "core/settings.html"
+
+    def _tab(self):
+        tab = self.request.GET.get("tab", "")
+        return tab if tab in SETTINGS_TABS else "branches"
 
     def test_func(self):
         user = self.request.user
@@ -250,7 +267,7 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             kb = "1" if role and role.can_manage_kb else "0"
             maintenance = "1" if role and role.can_manage_maintenance else "0"
             perm = kb + maintenance
-        return etag_digest([get_language(), perm])
+        return etag_digest([get_language(), perm, self._tab()])
 
     def get(self, request, *args, **kwargs):
         etag = self._shell_etag()
@@ -263,6 +280,10 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        tab = self._tab()
+        context["settings_tab"] = tab
+        url = reverse(SETTINGS_TABS[tab])
+        context["settings_tab_url"] = url + "?nocache=1" if tab == "maintenance" else url
         return context
 
     def get_template_names(self):

@@ -1,7 +1,7 @@
 {% load static webpush_notifications i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}"{% if user.is_authenticated %} data-user-theme="{{ user.theme }}"{% endif %}>
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}"{% if user.is_authenticated %} data-user-theme="{{ user.theme }}"{% if user.theme == 'dark' %} data-theme="dark"{% endif %}{% endif %}>
 <head>
     <meta charset="UTF-8">
     <link rel="manifest" href="{% url 'web_manifest' %}">
@@ -49,7 +49,7 @@
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.95">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.02">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.03">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.55">
     <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=25">
     {% if LANGUAGE_CODE == 'ar' %}
@@ -91,6 +91,7 @@
             viewAttachment: "{% filter escapejs %}{% trans 'View Attachment' %}{% endfilter %}",
             sent: "{% filter escapejs %}{% trans 'Sent' %}{% endfilter %}",
             failedToSend: "{% filter escapejs %}{% trans 'Failed to send' %}{% endfilter %}",
+            emptyMessage: "{% filter escapejs %}{% trans 'Type a message first.' %}{% endfilter %}",
             retry: "{% filter escapejs %}{% trans 'Retry' %}{% endfilter %}",
             fileTypeNotAllowed: "{% filter escapejs %}{% trans 'File type not allowed. Allowed: {types}' %}{% endfilter %}",
             fileTooLarge: "{% filter escapejs %}{% trans 'File is too large. Maximum is {size}.' %}{% endfilter %}",
@@ -155,7 +156,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.30" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.31" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -834,12 +835,12 @@
     </div>
 
     {% if user.is_authenticated %}
-    <script src="{% static 'js/chat.js' %}?v=16" defer></script>
+    <script src="{% static 'js/chat.js' %}?v=17" defer></script>
     <script src="{% static 'js/kb-search.js' %}?v=1.1" defer></script>
     <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
     {% endif %}
     {% block extra_js %}{% endblock extra_js %}
-    <script src="{% static 'js/app-shell.js' %}?v=15" defer></script>
+    <script src="{% static 'js/app-shell.js' %}?v=16" defer></script>
 
     <!-- Global Loading Interceptor -->
     <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>

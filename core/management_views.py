@@ -122,6 +122,11 @@ class BaseManagementView:
                 "EmailTemplate": gettext_noop("Email Template"),
             }
             context["model_name"] = _names.get(self.model.__name__, self.model.__name__)
+            # The Settings tab this model lives on (Cancel on its standalone page).
+            context["settings_tab"] = {
+                "Branch": "branches", "Department": "departments", "Category": "categories",
+                "Role": "roles", "EmailSetting": "email",
+            }.get(self.model.__name__, "")
         return context
 
 # Branch Views

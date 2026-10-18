@@ -97,7 +97,7 @@
     <div class="form-actions--end">
         {# Opened as its own page there is no modal to close, so go back to Settings. #}
         <button type="button" class="btn secondary"
-            onclick="if (this.closest('#modal-content')) { closeModal(); } else { window.location.href = '{% url 'settings' %}'; }">{% trans "Cancel" %}</button>
+            onclick="if (this.closest('#modal-content')) { closeModal(); } else { window.location.href = '{% url 'settings' %}?tab=users'; }">{% trans "Cancel" %}</button>
         <button type="submit" class="btn primary">{% trans "Save Changes" %}</button>
     </div>
 </form>

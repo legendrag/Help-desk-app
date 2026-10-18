@@ -38,7 +38,7 @@ if (window.updateActiveNav) window.updateActiveNav();
                   hx-trigger="submit, change from:select, keyup changed delay:300ms from:#search-q, search from:#search-q"
                   hx-target="#tickets-live"
                   hx-swap="outerHTML"
-                  hx-sync="this:abort"
+                  hx-sync="this:replace"
                   hx-push-url="true">
                 <div class="search-field">
                     <span class="search-icon" aria-hidden="true">

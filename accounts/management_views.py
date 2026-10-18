@@ -92,6 +92,8 @@ class UserCreateView(UserPermissionMixin, LoginRequiredMixin, UserEditorMixin, B
 
 class UserUpdateView(UserPermissionMixin, LoginRequiredMixin, UserEditorMixin, BaseManagementView, UpdateView):
     model = User
+    # Not "user": that name is the signed-in user in base.html (greeting, menu, theme).
+    context_object_name = "target_user"
     form_class = CustomUserChangeForm
     template_name = "accounts/management/form.html"
     partial_template_name = "accounts/management/form_partial.html"
@@ -100,15 +102,18 @@ class UserUpdateView(UserPermissionMixin, LoginRequiredMixin, UserEditorMixin, B
 class UserDeleteView(UserPermissionMixin, BaseDeleteView, DeleteView):
     # BaseDeleteView turns "still has tickets or messages" into a message, not a 500.
     model = User
+    # Not "user": that name is the signed-in user in base.html (greeting, menu, theme).
+    context_object_name = "target_user"
 
 class UserListView(UserPermissionMixin, LoginRequiredMixin, ListView):
     model = User
     template_name = "core/management/list_partial_v2.html"
     context_object_name = "object_list"
-    paginate_by = 20
+    # No page cap: the shared list template has no page controls and counts
+    # the rows it shows, so a cap hid every user past the 20th.
 
     def get_queryset(self):
-        return super().get_queryset().select_related("branch", "department", "role")
+        return super().get_queryset().select_related("branch", "department", "role").order_by("username")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
