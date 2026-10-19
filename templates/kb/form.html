@@ -202,17 +202,30 @@
             event.returnValue = '';
         });
 
-        document.addEventListener('click', function (event) {
-            const link = event.target.closest('a[href]');
+        // Capture on window: runs before loading.js starts the page-loading UI.
+        window.addEventListener('click', function (event) {
+            const link = event.target.closest && event.target.closest('a[href]');
             if (!link || !dirty || submitting || link.target === '_blank') return;
             const href = link.getAttribute('href') || '';
             if (!href || href.charAt(0) === '#') return;
-            if (!window.confirm('{% trans "You have unsaved changes. Leave this page?" %}')) {
-                event.preventDefault();
-            } else {
+            event.preventDefault();
+            event.stopPropagation();
+            // The app's own dialog, not the browser's (BR20 / A2).
+            const leave = function () {
                 dirty = false;
+                window.location.href = link.href;
+            };
+            if (typeof showConfirmModal !== 'function') {
+                if (window.confirm('{% trans "You have unsaved changes. Leave this page?" %}')) leave();
+                return;
             }
-        });
+            showConfirmModal({
+                title: '{% filter escapejs %}{% trans "Unsaved Changes" %}{% endfilter %}',
+                message: '{% filter escapejs %}{% trans "You have unsaved changes. Are you sure you want to discard them?" %}{% endfilter %}',
+                yesText: '{% filter escapejs %}{% trans "Yes, Discard" %}{% endfilter %}',
+                onConfirm: leave
+            });
+        }, true);
 
         if (form) {
             form.addEventListener('input', markDirty);

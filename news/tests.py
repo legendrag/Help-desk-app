@@ -134,3 +134,23 @@ class NewsShellNavigationTests(TestCase):
         changed = self.client.get(reverse("news_list"))
         self.assertNotEqual(changed["ETag"], etag)
         self.assertContains(changed, "Expired")
+
+
+class NewsDeleteTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser(
+            username="news_delete", email="news_delete@test.com", password="password123"
+        )
+        self.client.login(username="news_delete", password="password123")
+        self.post = Announcement.objects.create(title="Old notice", content="<p>x</p>", created_by=self.user)
+
+    def test_modal_delete_closes_the_modal_instead_of_loading_the_list_into_it(self):
+        response = self.client.post(reverse("news_delete", args=[self.post.pk]), HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["HX-Trigger"], "closeModal,reloadPage")
+        self.assertFalse(Announcement.objects.filter(pk=self.post.pk).exists())
+
+    def test_plain_post_still_redirects_to_the_list(self):
+        response = self.client.post(reverse("news_delete", args=[self.post.pk]))
+        self.assertRedirects(response, reverse("news_list"), fetch_redirect_response=False)
+        self.assertFalse(Announcement.objects.filter(pk=self.post.pk).exists())

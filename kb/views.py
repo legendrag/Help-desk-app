@@ -493,12 +493,12 @@ class ArticleDeleteView(LoginRequiredMixin, KBManageMixin, DeleteView):
     def get_queryset(self):
         return articles_for_user(self.request.user, include_drafts=True)
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        if request.headers.get("HX-Request"):
+    # DeleteView.post() runs form_valid(), not delete().
+    def form_valid(self, form):
+        if self.request.headers.get("HX-Request"):
+            self.object.delete()
             return HttpResponse(status=200)
-        return super().delete(request, *args, **kwargs)
+        return super().form_valid(form)
 
 # ==========================================
 # KB Category Management Views

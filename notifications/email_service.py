@@ -73,8 +73,14 @@ def _send_each(subject, body, recipients, setting, html_body):
     """Send one message per recipient over one connection.
 
     Separate messages keep recipients from seeing each other's addresses, and
-    one bad address can't sink the rest. Returns {recipient: exception}.
+    one bad address can't sink the rest. Recipients this outbox job already
+    reached (before a crash) are skipped. Returns {recipient: exception}.
     """
+    from notifications.email_queue import already_delivered, mark_delivered
+
+    recipients = [r for r in recipients if not already_delivered(subject, r)]
+    if not recipients:
+        return {}
     from_email = f"{setting.from_name} <{setting.from_email}>"
     connection = _build_connection(setting)
     try:
@@ -100,6 +106,8 @@ def _send_each(subject, body, recipients, setting, html_body):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Email to %s failed: %s", recipient, exc)
                 failed[recipient] = exc
+            else:
+                mark_delivered(subject, recipient)
     finally:
         try:
             connection.close()

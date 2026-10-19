@@ -62,7 +62,9 @@ class EmailOutbox(models.Model):
     ``func`` is the dotted path of a module-level job (e.g.
     ``notifications.email_jobs.send_new_ticket_email``) and ``args``/``kwargs``
     are its JSON arguments (ids and strings). Sent rows are deleted; rows that
-    failed every attempt stay as ``failed`` for an admin to look at.
+    failed every attempt stay as ``failed`` for an admin to look at, and are
+    removed after EMAIL_OUTBOX_FAILED_KEEP_DAYS. ``sent_keys`` records which
+    recipients already got it, so a crash mid-send doesn't mail them again.
     """
 
     class Status(models.TextChoices):
@@ -79,6 +81,7 @@ class EmailOutbox(models.Model):
     retry_delay = models.PositiveIntegerField(default=5, help_text="Seconds; multiplied by the attempt number.")
     next_attempt_at = models.DateTimeField(default=timezone.now)
     last_error = models.TextField(blank=True, default="")
+    sent_keys = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(default=timezone.now)
 

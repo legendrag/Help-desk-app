@@ -82,8 +82,11 @@ class CategoryForm(forms.ModelForm):
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
-        # Tom Select shows the empty option's text as the placeholder.
+        # Tom Select runs without a text input, so it has no placeholder and
+        # hides value="" options; data-allow-empty keeps "Choose a department"
+        # visible instead of a blank field.
         self.fields['department'].empty_label = _("Choose a department")
+        self.fields['department'].widget.attrs['data-allow-empty'] = ''
 
     class Meta:
         model = Category

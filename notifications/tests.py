@@ -1082,6 +1082,60 @@ class EmailOutboxTests(TestCase):
         run_due_outbox_jobs()
         self.assertEqual(_OUTBOX_CALLS, [3])
 
+    def test_recipients_reached_before_a_crash_are_not_mailed_again(self):
+        from notifications import email_queue
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.email_service import send_with_retries
+        from notifications.models import EmailOutbox
+
+        EmailSetting.objects.create(
+            smtp_host="smtp.test", smtp_port=25, smtp_email="a@test", smtp_password="x",
+            from_email="desk@test", from_name="Desk", is_active=True,
+        )
+        email_queue.enqueue_email(send_with_retries, "Ticket #1", "Body", ["a@test", "b@test", "c@test"])
+        row = EmailOutbox.objects.get()
+        # A previous run mailed a@test, then the process was killed.
+        row.sent_keys = [email_queue._delivery_key("Ticket #1", "a@test")]
+        row.save()
+        sent = []
+        with patch("notifications.email_service._build_connection"),                 patch("notifications.email_service.EmailMultiAlternatives") as message:
+            message.side_effect = lambda **kw: sent.append(kw["to"][0]) or message.return_value
+            self.assertEqual(run_due_outbox_jobs(), 1)
+        self.assertEqual(sent, ["b@test", "c@test"])
+        self.assertFalse(EmailOutbox.objects.exists())
+
+    def test_each_delivered_recipient_is_recorded_as_it_goes(self):
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        row = EmailOutbox.objects.create(func="notifications.tests.outbox_test_job")
+        email_queue._current.row = row
+        try:
+            email_queue.mark_delivered("Subj", "x@test")
+            self.assertTrue(email_queue.already_delivered("Subj", "x@test"))
+            self.assertFalse(email_queue.already_delivered("Other", "x@test"))
+        finally:
+            email_queue._current.row = None
+        row.refresh_from_db()
+        self.assertEqual(row.sent_keys, [email_queue._delivery_key("Subj", "x@test")])
+        # Outside an outbox row nothing is skipped.
+        self.assertFalse(email_queue.already_delivered("Subj", "x@test"))
+
+    def test_old_failed_rows_are_pruned(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        old = timezone.now() - timedelta(days=email_queue.OUTBOX_FAILED_KEEP_DAYS + 1)
+        EmailOutbox.objects.create(func="x.y", status=EmailOutbox.Status.FAILED, updated_at=old)
+        recent = EmailOutbox.objects.create(func="x.y", status=EmailOutbox.Status.FAILED)
+        with patch.object(email_queue, "_last_prune", 0.0):
+            email_queue.run_due_outbox_jobs()
+        self.assertEqual(list(EmailOutbox.objects.values_list("pk", flat=True)), [recent.pk])
+
     def test_job_that_cannot_be_saved_falls_back_to_memory(self):
         from notifications.models import EmailOutbox
 

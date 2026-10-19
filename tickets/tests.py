@@ -2194,8 +2194,8 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'id="custom-transfer-modal"')
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "toggleTicketDetails")
-        self.assertContains(response, "js/chat.js?v=17")
-        self.assertEqual(response.content.decode().count("js/chat.js?v=17"), 1)
+        self.assertContains(response, "js/chat.js?v=18")
+        self.assertEqual(response.content.decode().count("js/chat.js?v=18"), 1)
         cache_control = response["Cache-Control"]
         self.assertIn("no-store", cache_control)
         self.assertIn("private", cache_control)
@@ -2293,7 +2293,7 @@ class SidebarMenuShellTests(TestCase):
         self.assertNotIn("hx-get", dashboard)
         self.assertNotIn("data-shell-nav", dashboard)
         self.assertIn('data-nav-key="dashboard"', dashboard)
-        self.assertEqual(html.count("js/chat.js?v=17"), 1)
+        self.assertEqual(html.count("js/chat.js?v=18"), 1)
 
     def test_settings_htmx_is_pane_only_and_still_private(self):
         full = self.client.get(reverse("settings"))

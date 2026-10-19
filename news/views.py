@@ -152,12 +152,13 @@ class NewsDeleteView(LoginRequiredMixin, NewsPermissionMixin, DeleteView):
     # The edit modal confirms before posting; there is no confirm page to GET.
     http_method_names = ["post"]
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        if request.headers.get("HX-Request"):
+    # DeleteView.post() runs form_valid(), not delete(); an override of
+    # delete() never ran and the redirect loaded the News page in the modal.
+    def form_valid(self, form):
+        if self.request.headers.get("HX-Request"):
             from django.http import HttpResponse
+            self.object.delete()
             resp = HttpResponse(status=204)
             resp["HX-Trigger"] = "closeModal,reloadPage"
             return resp
-        return super().delete(request, *args, **kwargs)
+        return super().form_valid(form)

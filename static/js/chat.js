@@ -448,18 +448,19 @@ function initChat(ticketId) {
         const canEdit = window.chatPermissions && window.chatPermissions.canEdit && (isMe || isSuper);
         const canDelete = window.chatPermissions && window.chatPermissions.canDelete && (isMe || isSuper);
 
+        const i18n = window.I18N || {};
         const menuItems = [
             canEdit ? `<button type="button" class="message-menu-item" onclick="toggleEdit(${payload.id}); closeMessageMenu(${payload.id});">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                Edit
+                ${escapeHtml(i18n.messageEdit || 'Edit')}
             </button>` : '',
             canDelete ? `<button type="button" class="message-menu-item danger" onclick="openDeleteModal(${payload.id}); closeMessageMenu(${payload.id});">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                Delete
+                ${escapeHtml(i18n.messageDelete || 'Delete')}
             </button>` : '',
             `<button type="button" class="message-menu-item" onclick="toggleMessageDetails(${payload.id}); closeMessageMenu(${payload.id});">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                Details
+                ${escapeHtml(i18n.messageDetails || 'Details')}
             </button>`
         ].filter(Boolean).join('');
 

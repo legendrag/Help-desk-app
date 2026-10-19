@@ -239,9 +239,17 @@ if _log_to_file:
     }
     _log_handlers.append("file")
 
+# A refused page (PermissionDenied -> styled 403) is normal traffic; log it as
+# one line instead of a full traceback.
+for _handler in _logging_handlers.values():
+    _handler["filters"] = ["permission_denied_one_line"]
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "permission_denied_one_line": {"()": "core.log_filters.PermissionDeniedOneLine"},
+    },
     "formatters": {
         "verbose": {
             "format": "{asctime} {levelname} {name} {message}",
@@ -260,6 +268,16 @@ LOGGING = {
             "propagate": False,
         },
     },
+}
+
+# Shared by every server process and kept across restarts: push failure
+# backoff and login attempt counts must not reset when the server restarts or
+# differ between workers. The table is created by a migration.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+    }
 }
 
 # Web Push Settings

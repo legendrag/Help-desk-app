@@ -392,3 +392,36 @@ class Round14CoreTests(TestCase):
         response = self.client.get(reverse("shifts_types"))
         self.assertEqual(response.status_code, 403)
         self.assertTemplateUsed(response, "403.html")
+
+
+class PermissionDeniedLogTests(TestCase):
+    def test_refused_page_logs_one_line_without_a_traceback(self):
+        import logging
+        import sys
+
+        from django.core.exceptions import PermissionDenied
+
+        from core.log_filters import PermissionDeniedOneLine
+
+        try:
+            raise PermissionDenied("no")
+        except PermissionDenied:
+            record = logging.LogRecord("django.request", logging.WARNING, __file__, 1, "Forbidden", None, sys.exc_info())
+        self.assertTrue(PermissionDeniedOneLine().filter(record))
+        self.assertIsNone(record.exc_info)
+
+        try:
+            raise ValueError("real error")
+        except ValueError:
+            error = logging.LogRecord("django.request", logging.ERROR, __file__, 1, "Boom", None, sys.exc_info())
+        PermissionDeniedOneLine().filter(error)
+        self.assertIsNotNone(error.exc_info)  # real errors keep their traceback
+
+
+class CategoryFormPlaceholderTests(TestCase):
+    def test_department_keeps_its_choose_option_visible(self):
+        from core.forms import CategoryForm
+
+        html = str(CategoryForm()["department"])
+        self.assertIn("data-allow-empty", html)
+        self.assertIn("Choose a department", html)

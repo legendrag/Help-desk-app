@@ -49,7 +49,7 @@
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.95">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.03">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.04">
     <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.55">
     <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=25">
     {% if LANGUAGE_CODE == 'ar' %}
@@ -93,6 +93,9 @@
             failedToSend: "{% filter escapejs %}{% trans 'Failed to send' %}{% endfilter %}",
             emptyMessage: "{% filter escapejs %}{% trans 'Type a message first.' %}{% endfilter %}",
             retry: "{% filter escapejs %}{% trans 'Retry' %}{% endfilter %}",
+            messageEdit: "{% filter escapejs %}{% trans 'Edit' %}{% endfilter %}",
+            messageDelete: "{% filter escapejs %}{% trans 'Delete' %}{% endfilter %}",
+            messageDetails: "{% filter escapejs %}{% trans 'Details' %}{% endfilter %}",
             fileTypeNotAllowed: "{% filter escapejs %}{% trans 'File type not allowed. Allowed: {types}' %}{% endfilter %}",
             fileTooLarge: "{% filter escapejs %}{% trans 'File is too large. Maximum is {size}.' %}{% endfilter %}",
             andOthers: "{% filter escapejs %}{% trans 'and others' %}{% endfilter %}",
@@ -835,7 +838,7 @@
     </div>
 
     {% if user.is_authenticated %}
-    <script src="{% static 'js/chat.js' %}?v=17" defer></script>
+    <script src="{% static 'js/chat.js' %}?v=18" defer></script>
     <script src="{% static 'js/kb-search.js' %}?v=1.1" defer></script>
     <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
     {% endif %}

@@ -2215,9 +2215,10 @@ td.mgmt-empty-cell {
   border-radius: 999px;
   background: var(--success);
 }
+/* Solid and muted: a hollow ring read as a "0" before the name. */
 .who-available-person--later .who-available-dot {
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--text-muted);
+  background: var(--text-muted);
+  opacity: 0.55;
 }
 .who-available-who {
   display: flex;
