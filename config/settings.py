@@ -277,6 +277,9 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
+        # Django's default of 300 entries culled push failure counts as soon as
+        # many devices failed. Login lockouts now live in their own table.
+        "OPTIONS": {"MAX_ENTRIES": 50000},
     }
 }
 

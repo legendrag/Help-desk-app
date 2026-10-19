@@ -56,7 +56,7 @@
   <form id="shifts-bulk-form" class="shifts-calc-form shifts-bulk-form" method="post" action="{% url 'shifts_calc_rotation' %}"
         hx-post="{% url 'shifts_calc_rotation' %}"
         hx-target="#shifts-rotation-result"
-        hx-disabled-elt="find button[type='submit']"
+        hx-disabled-elt="#shifts-bulk-form button[type='submit']"
         hx-sync="this:replace">
     {% csrf_token %}
     <div class="shifts-fields">

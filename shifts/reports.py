@@ -192,7 +192,13 @@ def build_report(person, start, end, night_only=False, now=None, shift_types=Non
 
 
 def report_filename(report):
-    return f"work-hours_{report.person.username}_{report.start:%Y-%m-%d}_{report.end:%Y-%m-%d}.xlsx"
+    from django.utils.text import slugify
+
+    picked = "nights" if report.night_only else "-".join(
+        slugify(name) or "type" for name in report.shift_type_names
+    )
+    suffix = f"_{picked[:60]}" if picked else ""
+    return f"work-hours_{report.person.username}_{report.start:%Y-%m-%d}_{report.end:%Y-%m-%d}{suffix}.xlsx"
 
 
 def report_workbook(report):

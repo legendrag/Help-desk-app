@@ -75,6 +75,16 @@ class DepartmentForm(forms.ModelForm):
             raise forms.ValidationError(_("A department with this name already exists."))
         return name
 
+class _PlaceholderSelect(forms.Select):
+    """The empty option is a disabled label ("Choose a department")."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value in ("", None):
+            option["attrs"]["disabled"] = True
+        return option
+
+
 class CategoryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -87,6 +97,8 @@ class CategoryForm(forms.ModelForm):
         # visible instead of a blank field.
         self.fields['department'].empty_label = _("Choose a department")
         self.fields['department'].widget.attrs['data-allow-empty'] = ''
+        # Shown, but not pickable in the list (see _PlaceholderSelect).
+        self.fields['department'].widget.__class__ = _PlaceholderSelect
 
     class Meta:
         model = Category

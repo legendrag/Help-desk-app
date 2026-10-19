@@ -1,3 +1,4 @@
+import logging
 from datetime import date, time, timedelta
 from urllib.parse import urlencode
 
@@ -5,14 +6,14 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import IntegrityError, OperationalError, transaction
 from django.db.models import Max, Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateformat import time_format
-from django.utils.translation import get_language, gettext as _
+from django.utils.translation import get_language, gettext as _, ngettext
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from core.http_cache import apply_read_etag, etag_digest, htmx_not_modified, htmx_revalidation_match
@@ -68,6 +69,7 @@ from shifts.services import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _forbid():
@@ -274,6 +276,7 @@ def shifts_rota_grid(request):
         "department": department,
         "view": view,
         "start": start,
+        "grid_etag": etag,
         "readonly": False,
         "today": timezone.localdate(),
         "now": timezone.now(),
@@ -1139,10 +1142,43 @@ def _people_and_existing(people):
     return by_user
 
 
-def _apply_rotation(proposals, shift_type, department, changes=None):
+def _apply_rotation(proposals, shift_type, department, changes=None, per_day=None):
+    """Create the planned rows. ``per_day`` caps people per day on this shift,
+    counted again here, so a stale preview can't overfill a day."""
+    for attempt in range(3):
+        made = []
+        # Fresh copies per try: a failed try must not leave half-set skips.
+        items = [dict(item) for item in proposals]
+        try:
+            created, skips = _apply_rotation_once(items, shift_type, department, made, per_day)
+        except (OperationalError, IntegrityError):
+            # A database deadlock or clash with another save: try again.
+            logger.warning("Rota apply clashed with another save (attempt %s)", attempt + 1, exc_info=True)
+            continue
+        if changes is not None:
+            changes.extend(made)
+        for original, item in zip(proposals, items):
+            original.update(item)  # callers read the names set here
+        return created, skips
+    return 0, [
+        dict(item, skip=_("Someone else changed the rota at the same time. Preview again."))
+        for item in proposals if not item.get("gap")
+    ]
+
+
+def _apply_rotation_once(proposals, shift_type, department, made, per_day):
     created = 0
     skips = []
     with transaction.atomic():
+        # One Apply per department at a time: a second one waits here, then
+        # sees the first one's rows (no duplicates, no deadlock between them).
+        Department.objects.select_for_update().filter(pk=department.pk).first()
+        taken = {}
+        if per_day is not None:
+            for day in ShiftAssignment.objects.filter(
+                shift_type=shift_type, date__in={item["date"] for item in proposals if not item.get("gap")},
+            ).values_list("date", flat=True):
+                taken[day] = taken.get(day, 0) + 1
         for item in proposals:
             if item.get("gap"):
                 continue
@@ -1168,6 +1204,11 @@ def _apply_rotation(proposals, shift_type, department, changes=None):
                 item["skip"] = _("already has this shift")
                 skips.append(item)
                 continue
+            if per_day is not None and taken.get(item["date"], 0) >= per_day:
+                # Someone else filled the day after the preview.
+                item["skip"] = _("this day already has enough people on this shift")
+                skips.append(item)
+                continue
             probe = ShiftAssignment(user=user, date=item["date"], shift_type=shift_type)
             start_dt, end_dt = interval_for(item["date"], shift_type.start_time, shift_type.end_time)
             other = neighbor_conflict(probe, start_dt, end_dt)
@@ -1185,8 +1226,8 @@ def _apply_rotation(proposals, shift_type, department, changes=None):
                 times_set_at=None,
                 checked_in_at=None,
             )
-            if changes is not None:
-                changes.append(ShiftChange.of("added", row))
+            made.append(ShiftChange.of("added", row))
+            taken[item["date"]] = taken.get(item["date"], 0) + 1
             created += 1
     return created, skips
 
@@ -1411,7 +1452,9 @@ def shifts_calc_rotation(request):
                 if item["user_id"] in allowed and item["date"] in open_set:
                     plan.append(item)
         changes = []
-        created, skips = _apply_rotation([dict(item) for item in plan], shift_type, department, changes)
+        created, skips = _apply_rotation(
+            [dict(item) for item in plan], shift_type, department, changes, per_day=None if everyone else per_day,
+        )
         queue_shift_changes(changes, request.user)
         skipped_keys = {(item["user_id"], item["date"]) for item in skips}
         added = {(item["user_id"], item["date"]) for item in plan} - skipped_keys
@@ -1479,6 +1522,8 @@ def _rota_action(request, department, message, *, error=False, skips=None, peopl
         context.update({
             **_rota_bundle(department, dates),
             "department": department,
+            "view": view,
+            "start": start,
             "readonly": False,
             "today": timezone.localdate(),
             "now": timezone.now(),
@@ -1570,11 +1615,11 @@ def shifts_auto_fill(request):
             "can_apply": True,
         })
     changes = []
-    created, applied = _apply_rotation(proposals, shift_type, department, changes)
+    created, applied = _apply_rotation(proposals, shift_type, department, changes, per_day=1)
     queue_shift_changes(changes, request.user)
     skips = skipped + applied
     _attach_names(skips, people)
-    notice = _("Filled %(count)s night shifts.") % {"count": created}
+    notice = ngettext("Filled %(count)s night shift.", "Filled %(count)s night shifts.", created) % {"count": created}
     return _rota_action(request, department, notice, skips=skips, people=people, refresh_grid=True)
 
 
@@ -1655,9 +1700,14 @@ def _work_hours_request(request):
     night_only = request.GET.get("shifts") == "night"
     shift_types = []
     if not night_only:
-        picked = [pk for pk in map(_parse_pk, request.GET.getlist("shift_type")) if pk is not None]
-        if picked:
-            shift_types = list(ShiftType.objects.filter(pk__in=picked).order_by("start_time", "name"))
+        picked = {pk for pk in map(_parse_pk, request.GET.getlist("shift_type")) if pk is not None}
+        department_pk = _parse_pk(request.GET.get("department")) or (person.department_id if person else None)
+        if picked and department_pk:
+            # Only the department's active types, the ones the switches list.
+            offered = _work_hours_shift_types(Department.objects.filter(pk=department_pk).first())
+            shift_types = [shift_type for shift_type in offered if shift_type.pk in picked]
+            if len(shift_types) == len(offered):
+                shift_types = []  # every type ticked is all shifts, as on the page
     return person, start, end, night_only, shift_types
 
 
@@ -1676,6 +1726,7 @@ def shifts_calc_work(request):
         ("start", report.start.isoformat()),
         ("end", report.end.isoformat()),
         ("shifts", "night" if night_only else "all"),
+        *([("department", request.GET.get("department", ""))] if shift_types else []),
         *(("shift_type", shift_type.pk) for shift_type in shift_types),
     ])
     return render(request, "shifts/calc_work.html", {

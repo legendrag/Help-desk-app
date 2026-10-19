@@ -96,6 +96,10 @@
             messageEdit: "{% filter escapejs %}{% trans 'Edit' %}{% endfilter %}",
             messageDelete: "{% filter escapejs %}{% trans 'Delete' %}{% endfilter %}",
             messageDetails: "{% filter escapejs %}{% trans 'Details' %}{% endfilter %}",
+            messageReply: "{% filter escapejs %}{% trans 'Reply' %}{% endfilter %}",
+            messageOptions: "{% filter escapejs %}{% trans 'Message options' %}{% endfilter %}",
+            messageSender: "{% filter escapejs %}{% trans 'Sender' %}{% endfilter %}",
+            messageTime: "{% filter escapejs %}{% trans 'Time' %}{% endfilter %}",
             fileTypeNotAllowed: "{% filter escapejs %}{% trans 'File type not allowed. Allowed: {types}' %}{% endfilter %}",
             fileTooLarge: "{% filter escapejs %}{% trans 'File is too large. Maximum is {size}.' %}{% endfilter %}",
             andOthers: "{% filter escapejs %}{% trans 'and others' %}{% endfilter %}",
@@ -159,7 +163,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.31" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.32" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -838,15 +842,15 @@
     </div>
 
     {% if user.is_authenticated %}
-    <script src="{% static 'js/chat.js' %}?v=18" defer></script>
+    <script src="{% static 'js/chat.js' %}?v=19" defer></script>
     <script src="{% static 'js/kb-search.js' %}?v=1.1" defer></script>
     <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
     {% endif %}
     {% block extra_js %}{% endblock extra_js %}
-    <script src="{% static 'js/app-shell.js' %}?v=16" defer></script>
+    <script src="{% static 'js/app-shell.js' %}?v=17" defer></script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>
+    <script src="{% static 'js/form-validation.js' %}?v=4" defer></script>
     <script src="{% static 'js/loading.js' %}?v=23" defer></script>
 </body>
 

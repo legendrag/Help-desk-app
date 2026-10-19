@@ -2480,8 +2480,11 @@ class WorkHoursReportTests(TestCase):
         self.assertContains(response, f"shift_type={self.long_day.pk}")
         both = self._get(shift_type=[self.evening.pk, self.long_day.pk]).context["report"]
         self.assertEqual((len(both.rows), both.total_hours), (10, 64))
-        # Start-time order, like the switches.
-        self.assertEqual(both.title, "Statement of work hours: Long day and Evening")
+        # Every type the department offers ticked is all shifts, as on the page.
+        self.assertEqual(both.title, "Statement of work hours")
+        make_shift_type(self.department, name="Early", start=time(6, 0), end=time(12, 0))
+        two = self._get(shift_type=[self.evening.pk, self.long_day.pk]).context["report"]
+        self.assertEqual(two.title, "Statement of work hours: Long day and Evening")  # start-time order
 
     def test_night_only_wins_over_picked_types(self):
         self._september()
@@ -3413,3 +3416,131 @@ class BulkAssignTests(TestCase):
         self.assertContains(self._post(end=long_end.isoformat()), f"Choose at most {BULK_MAX_DAYS} days.")
         self.assertContains(self._post(users=[]), "Tick at least one person.")
         self.assertEqual(ShiftAssignment.objects.count(), 0)
+
+
+class BulkAssignRound17Tests(TestCase):
+    """Round 17 findings on Bulk assign, Work hours and the rota."""
+
+    setUp = BulkAssignTests.setUp
+    _dates = BulkAssignTests._dates
+    _plan = BulkAssignTests._plan
+    _counts = staticmethod(BulkAssignTests._counts)
+    _post = BulkAssignTests._post
+
+    def test_stale_preview_does_not_overfill_a_day(self):
+        days = self._dates(3)
+        a, b, c = self.people
+        plan = [f"{person.pk}:{day.isoformat()}" for person, day in zip((a, b, a), days)]
+        # After the preview, someone else puts c on the night of day 3.
+        make_assignment(c, self.night, days[2])
+        response = self._post(action="apply", end=days[2].isoformat(), plan=plan)
+        self.assertContains(response, "Added 2 shifts.")
+        self.assertContains(response, "this day already has enough people on this shift")
+        self.assertEqual(ShiftAssignment.objects.filter(date=days[2], shift_type=self.night).count(), 1)
+
+    def test_everyone_mode_is_not_capped(self):
+        day = self._dates(1)[0]
+        plan = [f"{person.pk}:{day.isoformat()}" for person in self.people]
+        response = self._post(action="apply", mode="everyone", end=day.isoformat(), plan=plan)
+        self.assertContains(response, "Added 3 shifts.")
+
+    def test_a_clash_with_another_save_is_retried_then_reported(self):
+        from unittest.mock import patch
+
+        from django.db import OperationalError
+
+        from shifts import views
+
+        day = self._dates(1)[0]
+        plan = [f"{self.people[0].pk}:{day.isoformat()}"]
+        real = views._apply_rotation_once
+        calls = []
+
+        def clash_once(*args):
+            calls.append(1)
+            if len(calls) == 1:
+                raise OperationalError("deadlock")
+            return real(*args)
+
+        with patch.object(views, "_apply_rotation_once", side_effect=clash_once) as once:
+            self.assertContains(self._post(action="apply", end=day.isoformat(), plan=plan), "Added 1 shift.")
+        self.assertEqual(once.call_count, 2)
+        with patch.object(views, "_apply_rotation_once", side_effect=OperationalError("deadlock")):
+            response = self._post(action="apply", end=(day + timedelta(days=1)).isoformat(),
+                                  plan=[f"{self.people[1].pk}:{(day + timedelta(days=1)).isoformat()}"])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Someone else changed the rota at the same time.")
+
+    def test_ties_rotate_between_runs(self):
+        winners = set()
+        for offset in range(10):
+            plan, _gaps = self._plan(self.people, [self.first + timedelta(days=offset)])
+            winners.add(plan[0]["user_id"])
+        self.assertGreater(len(winners), 1)
+
+    def test_weekends_are_balanced_in_a_long_run(self):
+        from shifts.services import is_weekend
+
+        people = self.people + [make_user("bulk-dina", "support", self.department)]
+        plan, _gaps = self._plan(people, self._dates(28))
+        weekend = self._counts([item for item in plan if is_weekend(item["date"])])
+        self.assertEqual(sorted(weekend.values()), [2, 2, 2, 2])
+        self.assertEqual(sorted(self._counts(plan).values()), [7, 7, 7, 7])
+
+    def test_department_select_does_not_inherit_the_submit_selector(self):
+        page = self.client.get(reverse("shifts_calculator"), {"department": self.department.pk})
+        self.assertContains(page, '''hx-disabled-elt="#shifts-bulk-form button[type='submit']"''')
+        self.assertNotContains(page, '''hx-disabled-elt="find ''')
+
+    def test_rota_changes_are_broadcast_and_the_grid_listens(self):
+        from unittest.mock import patch
+
+        day = self._dates(1)[0]
+        sent = []
+
+        class Layer:
+            async def group_send(self, group, message):
+                sent.append((group, message))
+
+        with patch("channels.layers.get_channel_layer", return_value=Layer()), \
+                self.captureOnCommitCallbacks(execute=True):
+            self._post(action="apply", end=day.isoformat(), plan=[f"{self.people[0].pk}:{day.isoformat()}"])
+        self.assertIn(("shifts_rota", {"type": "rota.changed", "departments": [self.department.pk]}), sent)
+        # Cell buttons inside the grid must not inherit its own swap.
+        self.assertContains(
+            self.client.get(reverse("shifts_rota"), {"department": self.department.pk, "start": day.isoformat()}),
+            'hx-disinherit="*"',
+        )
+        rota = self.client.get(reverse("shifts_rota"), {"department": self.department.pk, "start": day.isoformat()})
+        self.assertContains(rota, f"rotaChanged[detail.departments.indexOf({self.department.pk}) >= 0] from:body")
+        grid_url = reverse("shifts_rota_grid")
+        query = {"department": self.department.pk, "view": "week", "start": day.isoformat()}
+        first = self.client.get(grid_url, query, HTTP_HX_REQUEST="true")
+        self.assertContains(first, 'data-etag="')
+        again = self.client.get(grid_url, query, HTTP_HX_REQUEST="true", HTTP_IF_NONE_MATCH=first["ETag"])
+        self.assertEqual(again.status_code, 304)
+
+
+class WorkHoursTypeScopeTests(TestCase):
+    setUp = WorkHoursReportTests.setUp
+    _check_in = WorkHoursReportTests._check_in
+    _september = WorkHoursReportTests._september
+    _get = WorkHoursReportTests._get
+    def test_archived_and_other_department_types_are_ignored(self):
+        self._september()
+        archived = make_shift_type(self.department, name="Old", archived=True)
+        foreign = make_shift_type(make_department("Facilities"), name="Day", start=time(9, 0), end=time(17, 0))
+        report = self._get(department=self.department.pk, shift_type=[archived.pk, foreign.pk]).context["report"]
+        self.assertEqual(report.title, "Statement of work hours")
+        self.assertEqual(len(report.rows), 10)
+        picked = self._get(department=self.department.pk, shift_type=[foreign.pk, self.long_day.pk])
+        self.assertEqual(picked.context["report"].title, "Statement of work hours: Long day")
+        self.assertContains(picked, f"department={self.department.pk}")
+
+    def test_export_filename_names_the_pick(self):
+        self._september()
+        query = {"person": self.agent.pk, "start": "2026-09-01", "end": "2026-09-30",
+                 "department": self.department.pk, "shift_type": [self.long_day.pk]}
+        with _both_clocks(aware(2026, 10, 5, 12, 0), date(2026, 10, 5)):
+            response = self.client.get(reverse("shifts_calc_work_export"), query)
+        self.assertIn("_long-day.xlsx", response["Content-Disposition"])

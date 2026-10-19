@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 from django.utils import timezone
@@ -383,6 +384,7 @@ def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyon
       shifts, then fewest in the lookback before the run, then longest since
       the last one, then a per-run rotation so ties don't always go to the
       same person;
+    * weekend days are planned first, so they are shared out evenly too;
     * a night type avoids nights in a row (the night before or after) unless
       that would make the split uneven.
 
@@ -412,8 +414,8 @@ def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyon
             "has_type": {row.date for row in rows if row.shift_type_id == shift_type.pk},
             "night_dates": {row.date for row in rows if row.shift_type.is_night},
             "intervals": [effective_interval(row) for row in rows],
-            # Knuth's multiplicative hash: a fixed but run-specific tie order.
-            "spin": (person.pk * 2654435761 + salt) % 2 ** 32,
+            # A tie order that changes with every run (hash of person and start).
+            "spin": hashlib.sha1(f"{person.pk}:{salt}".encode()).digest()[:4],
         }
 
     def free(person, day, target):
@@ -434,7 +436,9 @@ def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyon
         st["intervals"].append(target)
         plan.append({"date": day, "user_id": person.pk, "back_to_back": back_to_back})
 
-    for day in sorted(dates):
+    # Weekend days first, so they are shared out evenly before the weekdays
+    # even up the totals (otherwise the weekend count only broke ties).
+    for day in sorted(dates, key=lambda day: (not is_weekend(day), day)):
         target = interval_for(day, shift_type.start_time, shift_type.end_time)
         if everyone:
             for person in people:
@@ -466,13 +470,15 @@ def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyon
                     person for person in pool
                     if not ({day - timedelta(days=1), day + timedelta(days=1)} & stats[person.pk]["night_dates"])
                 ]
-                # Prefer someone off the night before and after, but never at
-                # the cost of an uneven split (one more shift than the fewest).
-                if rested and stats[min(rested, key=key).pk]["run"] <= stats[chosen.pk]["run"] + 1:
+                # Prefer someone off the night before and after, but only among
+                # those with the fewest shifts: the split stays even.
+                if rested and stats[min(rested, key=key).pk]["run"] == stats[chosen.pk]["run"]:
                     chosen = min(rested, key=key)
                 else:
                     back_to_back = True
             take(chosen, day, target, back_to_back)
+    plan.sort(key=lambda item: item["date"])
+    gaps.sort(key=lambda gap: gap["date"])
     return plan, gaps
 
 

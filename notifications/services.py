@@ -667,12 +667,17 @@ class ShiftChange:
     start_dt: object
     end_dt: object
 
+    department_id: object = None
+
     @classmethod
     def of(cls, kind, assignment):
         from shifts.services import effective_interval
 
         start_dt, end_dt = effective_interval(assignment)
-        return cls(kind, assignment.user, assignment.date, assignment.shift_type.name, start_dt, end_dt)
+        return cls(
+            kind, assignment.user, assignment.date, assignment.shift_type.name, start_dt, end_dt,
+            assignment.shift_type.department_id,
+        )
 
 
 _SHIFT_CHANGE_TITLES = {
@@ -762,6 +767,25 @@ def notify_shift_changes(changes, actor=None):
         )
 
 
+ROTA_GROUP = "shifts_rota"
+
+
+def broadcast_rota_changed(changes):
+    """Tell open rota grids (any tab, any manager) that a department changed."""
+    departments = sorted({change.department_id for change in changes if change.department_id})
+    if not departments:
+        return
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        if layer is not None:
+            async_to_sync(layer.group_send)(ROTA_GROUP, {"type": "rota.changed", "departments": departments})
+    except Exception:  # noqa: BLE001 - a live refresh must not undo a saved rota
+        logger.warning("Rota change broadcast failed", exc_info=True)
+
+
 def queue_shift_changes(changes, actor=None):
     """Send ``notify_shift_changes`` once the rota save commits; never break the save."""
     changes = [change for change in changes if change is not None]
@@ -773,5 +797,6 @@ def queue_shift_changes(changes, actor=None):
             notify_shift_changes(changes, actor)
         except Exception:  # noqa: BLE001 - a notification must not undo a saved rota
             logger.exception("Shift change notification failed")
+        broadcast_rota_changed(changes)
 
     transaction.on_commit(send)

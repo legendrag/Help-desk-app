@@ -497,11 +497,11 @@ function initChat(ticketId) {
                 </div>
                 <div class="chat-actions-outside">
                     <div class="chat-time" title="${fullDateStr}">${timeStr}</div>
-                    <button type="button" class="message-reply-btn" data-preview="${escapeHtml(payload.message)}" data-sender="${escapeHtml(payload.sender_username)}" onclick="replyToMessage(this)" aria-label="Reply">
+                    <button type="button" class="message-reply-btn" data-preview="${escapeHtml(payload.message)}" data-sender="${escapeHtml(payload.sender_username)}" onclick="replyToMessage(this)" aria-label="${escapeHtml(i18n.messageReply || 'Reply')}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M4 12h11a4 4 0 0 1 0 8h-1"></path></svg>
                     </button>
                     <div class="message-menu-wrapper">
-                        <button type="button" class="message-menu-btn" onclick="toggleMessageMenu(${payload.id})" aria-label="Message options">
+                        <button type="button" class="message-menu-btn" onclick="toggleMessageMenu(${payload.id})" aria-label="${escapeHtml(i18n.messageOptions || 'Message options')}">
                             <span></span><span></span><span></span>
                         </button>
                         <div class="message-menu" id="message-menu-${payload.id}">
@@ -511,8 +511,8 @@ function initChat(ticketId) {
                 </div>
             </div>
             <div class="message-details" id="message-details-${payload.id}">
-                <span>Sender: ${escapeHtml(payload.sender_username || '')}</span>
-                <span>Time: ${fullDateStr}</span>
+                <span>${escapeHtml(i18n.messageSender || 'Sender')}: ${escapeHtml(payload.sender_username || '')}</span>
+                <span>${escapeHtml(i18n.messageTime || 'Time')}: ${fullDateStr}</span>
             </div>
             ${canEdit ? `
             <form id="msg-edit-${payload.id}" action="${getEditUrl(payload.id)}" method="post" class="msg-edit-form" style="display: none;">

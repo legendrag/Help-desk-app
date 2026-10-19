@@ -1121,6 +1121,29 @@ class EmailOutboxTests(TestCase):
         # Outside an outbox row nothing is skipped.
         self.assertFalse(email_queue.already_delivered("Subj", "x@test"))
 
+    def test_recording_a_delivery_keeps_a_long_send_from_looking_stuck(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        old = timezone.now() - timedelta(seconds=email_queue.OUTBOX_STUCK_SECONDS + 60)
+        row = EmailOutbox.objects.create(
+            func="notifications.tests.outbox_test_job", status=EmailOutbox.Status.SENDING, updated_at=old,
+        )
+        email_queue._current.row = row
+        try:
+            email_queue.mark_delivered("Subj", "x@test")
+        finally:
+            email_queue._current.row = None
+        email_queue.run_due_outbox_jobs()
+        row.refresh_from_db()
+        # Still the first worker's: not reset and claimed again.
+        self.assertEqual(row.status, EmailOutbox.Status.SENDING)
+        self.assertGreater(row.updated_at, old)
+
     def test_old_failed_rows_are_pruned(self):
         from datetime import timedelta
 

@@ -205,7 +205,9 @@
         // Capture on window: runs before loading.js starts the page-loading UI.
         window.addEventListener('click', function (event) {
             const link = event.target.closest && event.target.closest('a[href]');
-            if (!link || !dirty || submitting || link.target === '_blank') return;
+            if (!link || !dirty || submitting || link.target === '_blank' || link.hasAttribute('download')) return;
+            // A new-tab or new-window click leaves this page alone.
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
             const href = link.getAttribute('href') || '';
             if (!href || href.charAt(0) === '#') return;
             event.preventDefault();

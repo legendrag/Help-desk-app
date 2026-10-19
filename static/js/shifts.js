@@ -2,15 +2,17 @@
   if (window.__shiftsBound) return;
   window.__shiftsBound = true;
 
+  // Self-refreshing panes revalidate with their ETag: unchanged = 304, kept.
+  var REVALIDATED = { "shifts-available-now": true, "shifts-rota-grid": true };
   document.body.addEventListener("htmx:configRequest", function (evt) {
     var elt = evt.detail.elt;
-    if (!elt || elt.id !== "shifts-available-now") return;
+    if (!elt || !REVALIDATED[elt.id] || evt.detail.verb !== "get") return;
     var etag = elt.getAttribute("data-etag");
     if (etag) evt.detail.headers["If-None-Match"] = etag;
   });
   document.body.addEventListener("htmx:beforeSwap", function (evt) {
     var target = evt.detail.target;
-    if (!target || target.id !== "shifts-available-now") return;
+    if (!target || !REVALIDATED[target.id]) return;
     var xhr = evt.detail.xhr;
     if (xhr && xhr.status === 304) {
       evt.detail.shouldSwap = false;

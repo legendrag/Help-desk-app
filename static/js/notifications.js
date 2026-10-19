@@ -484,6 +484,13 @@ function initNotifications() {
 
     socket.onmessage = function(e) {
         const data = JSON.parse(e.data);
+        // A rota changed somewhere: open rota grids reload themselves.
+        if (data && data.kind === "rota_changed") {
+            document.body.dispatchEvent(new CustomEvent("rotaChanged", {
+                detail: { departments: data.departments || [] },
+            }));
+            return;
+        }
         console.log("[Notifications WS] message:", data);
 
         // Suppress only when already viewing that ticket chat (/tickets/<id>).

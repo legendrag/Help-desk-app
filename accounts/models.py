@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -109,3 +110,17 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
 
 
+class LoginThrottle(models.Model):
+    """Failed sign-ins per username, for the lockout on the login form.
+
+    A table rather than the cache: the count is raised with one conditional
+    UPDATE, so parallel attempts can't slip past it, and nothing evicts it.
+    ``username`` is stored case-folded, as sign-in ignores case.
+    """
+
+    username = models.CharField(max_length=150, unique=True)
+    failures = models.PositiveSmallIntegerField(default=0)
+    last_failure_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    def __str__(self):
+        return f"{self.username} ({self.failures})"

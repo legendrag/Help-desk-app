@@ -737,7 +737,9 @@ function initializeChoices(targetElement) {
 
         let options = {
             controlInput: null,
-            sortField: null,
+            // Template order. null fell back to key order, which for numeric
+            // ids is pk order (night types listed after day types).
+            sortField: [{ field: '$order' }],
             searchField: []
         };
         // Tom Select hides value="" options. Selects whose empty option is a

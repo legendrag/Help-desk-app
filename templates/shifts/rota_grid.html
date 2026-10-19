@@ -1,5 +1,9 @@
 {% load i18n shifts_extras %}
-<div id="shifts-rota-grid" class="panel"{% if grid_oob %} hx-swap-oob="outerHTML"{% endif %}>
+<div id="shifts-rota-grid" class="panel"{% if grid_oob %} hx-swap-oob="outerHTML"{% endif %}{% if department and not readonly %}
+     hx-get="{% url 'shifts_rota_grid' %}?department={{ department.pk }}&view={{ view }}&start={{ start|date:'Y-m-d' }}"
+     hx-trigger="rotaChanged[detail.departments.indexOf({{ department.pk }}) >= 0] from:body, visibilitychange[!document.hidden] from:document"
+     hx-swap="outerHTML" hx-disinherit="*" data-no-progress data-etag="{% firstof grid_etag shell_etag %}"{% endif %}>
+  {# Reloads when this department changes in another tab or for another manager (ETag: unchanged = 304). #}
   <div class="table-wrap shifts-grid-wrap">
     <table class="shifts-grid{% if dates|length > 7 %} shifts-grid--month{% endif %}">
       <thead>

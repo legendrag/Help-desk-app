@@ -529,3 +529,57 @@ class UserManagementRound14Tests(TestCase):
         response = self.client.get(reverse("user_list"), HTTP_HX_REQUEST="true")
         self.assertEqual(len(response.context["object_list"]), User.objects.count())
         self.assertContains(response, "r14-u24")
+
+
+class LoginLockoutTests(TestCase):
+    """Five wrong passwords lock a username for five minutes (round 16 M1)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="r16lock", email="lock@test.local", password="str0ng-Passw0rd!")
+
+    def _login(self, username, password="wrong-password"):
+        return self.client.post(reverse("login"), {"username": username, "password": password})
+
+    def test_case_variants_share_one_lockout(self):
+        for username in ("r16lock", "R16LOCK", "R16Lock", "r16LOCK", "r16lock"):
+            self._login(username)
+        locked = self._login("r16LOCK", "str0ng-Passw0rd!")
+        self.assertContains(locked, "Too many failed login attempts")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_each_try_is_counted_before_the_password_is_checked(self):
+        from accounts.forms import LOGIN_MAX_ATTEMPTS
+        from accounts.models import LoginThrottle
+
+        # As if four other requests already took their tries in parallel.
+        LoginThrottle.objects.create(username="r16lock", failures=LOGIN_MAX_ATTEMPTS - 1)
+        self.assertContains(self._login("r16lock"), "Incorrect username or password")
+        self.assertEqual(LoginThrottle.objects.get().failures, LOGIN_MAX_ATTEMPTS)
+        self.assertContains(self._login("r16lock", "str0ng-Passw0rd!"), "Too many failed login attempts")
+        # A refused try does not add more.
+        self.assertEqual(LoginThrottle.objects.get().failures, LOGIN_MAX_ATTEMPTS)
+
+    def test_lock_ends_after_five_minutes_and_success_clears_it(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from accounts.models import LoginThrottle
+
+        for _ in range(5):
+            self._login("r16lock")
+        LoginThrottle.objects.update(last_failure_at=timezone.now() - timedelta(minutes=6))
+        response = self._login("R16Lock", "str0ng-Passw0rd!")
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(LoginThrottle.objects.exists())
+
+    def test_unknown_names_do_not_fill_the_cache(self):
+        from django.core.cache import cache
+
+        from accounts.models import LoginThrottle
+
+        cache.clear()
+        for n in range(5):
+            self._login(f"nobody-{n}")
+        self.assertEqual(LoginThrottle.objects.count(), 5)
+        self.assertIsNone(cache.get("login_attempts_nobody-0"))

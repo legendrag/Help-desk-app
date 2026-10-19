@@ -234,9 +234,13 @@ def mark_delivered(subject: str, recipient: str) -> None:
         return
     from notifications.models import EmailOutbox
 
+    from django.utils import timezone
+
     row.sent_keys.append(_delivery_key(subject, recipient))
     try:
-        EmailOutbox.objects.filter(pk=row.pk).update(sent_keys=row.sent_keys)
+        # updated_at doubles as a heartbeat: a long send (many recipients, a
+        # slow server) is not mistaken for a dead process and sent again.
+        EmailOutbox.objects.filter(pk=row.pk).update(sent_keys=row.sent_keys, updated_at=timezone.now())
     except Exception:  # noqa: BLE001 - worst case it goes out twice after a crash
         logger.warning("Could not record a sent email on outbox row %s", row.pk, exc_info=True)
 
