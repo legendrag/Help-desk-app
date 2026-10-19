@@ -149,4 +149,65 @@
       scrollActiveShiftTab();
     }
   });
+  // Calculator → Work hours → Shifts (shifts/calc_work_shifts.html). No shift
+  // type ticked means all shifts; "Night shifts only" ticks the night types.
+  // Capture phase: this runs before htmx reads the form for the report.
+  function syncShiftSwitches(root, changed) {
+    var all = root.querySelector("[data-multi-all]");
+    var night = root.querySelector("[data-multi-night]");
+    var mode = root.querySelector("[data-multi-mode]");
+    var summary = root.querySelector(".shifts-multi-summary");
+    var types = Array.prototype.slice.call(root.querySelectorAll('input[name="shift_type"]'));
+    var nights = types.filter(function (box) { return box.hasAttribute("data-night"); });
+    if (changed && changed === all) {
+      types.forEach(function (box) { box.checked = false; });
+    } else if (changed && changed === night) {
+      types.forEach(function (box) { box.checked = night.checked && box.hasAttribute("data-night"); });
+    }
+    var on = types.filter(function (box) { return box.checked; });
+    if (types.length && on.length === types.length) {
+      // Every type ticked is the same as all shifts.
+      types.forEach(function (box) { box.checked = false; });
+      on = [];
+    }
+    var isNight = nights.length > 0 && nights.length < types.length && on.length === nights.length &&
+      on.every(function (box) { return box.hasAttribute("data-night"); });
+    if (all) all.checked = on.length === 0;
+    if (night) night.checked = isNight;
+    if (mode) mode.value = isNight ? "night" : "all";
+    if (summary) {
+      var names = on.map(function (box) {
+        var text = box.parentNode.querySelector(".shifts-switch-text");
+        return text ? text.textContent.trim() : "";
+      });
+      if (!on.length) summary.textContent = summary.getAttribute("data-all");
+      else if (isNight) summary.textContent = summary.getAttribute("data-night");
+      else if (names.length <= 2) summary.textContent = names.join(", ");
+      else summary.textContent = names.slice(0, 2).join(", ") + " +" + (names.length - 2);
+    }
+  }
+  document.addEventListener("change", function (evt) {
+    var root = evt.target && evt.target.closest && evt.target.closest("[data-shifts-multi]");
+    if (root) syncShiftSwitches(root, evt.target);
+  }, true);
+  function syncAllShiftSwitches() {
+    document.querySelectorAll("[data-shifts-multi]").forEach(function (root) { syncShiftSwitches(root, null); });
+  }
+  // On load too: a browser going Back can restore the switches' old state.
+  syncAllShiftSwitches();
+  document.body.addEventListener("htmx:afterSettle", syncAllShiftSwitches);
+  // Close the drop-down on a click outside it or on Escape.
+  document.addEventListener("click", function (evt) {
+    document.querySelectorAll("[data-shifts-multi][open]").forEach(function (root) {
+      if (!root.contains(evt.target)) root.removeAttribute("open");
+    });
+  });
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Escape") return;
+    document.querySelectorAll("[data-shifts-multi][open]").forEach(function (root) {
+      root.removeAttribute("open");
+      var button = root.querySelector("summary");
+      if (button) button.focus();
+    });
+  });
 })();

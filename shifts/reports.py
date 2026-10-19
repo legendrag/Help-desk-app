@@ -7,6 +7,7 @@ from io import BytesIO
 
 from django.utils import timezone
 from django.utils.dateformat import format as date_format
+from django.utils.text import get_text_list
 from django.utils.translation import get_language, gettext as _, pgettext
 
 from shifts.access import can_check_in, display_name
@@ -77,6 +78,8 @@ class WorkHoursReport:
     end: date
     night_only: bool
     rows: list = field(default_factory=list)
+    # Names of the shift types picked in the calculator; empty means all.
+    shift_type_names: list = field(default_factory=list)
 
     @property
     def name(self):
@@ -86,6 +89,10 @@ class WorkHoursReport:
     def title(self):
         if self.night_only:
             return _("Statement of work hours in the night shifts")
+        if self.shift_type_names:
+            return _("Statement of work hours: %(shifts)s") % {
+                "shifts": get_text_list(self.shift_type_names, _("and")),
+            }
         return _("Statement of work hours")
 
     @property
@@ -132,7 +139,9 @@ def clamp_range(start, end):
     return start, end
 
 
-def build_report(person, start, end, night_only=False, now=None):
+def build_report(person, start, end, night_only=False, now=None, shift_types=None):
+    """``shift_types`` (a list) limits the report to those types; ``night_only``
+    to the night ones. Neither means every shift."""
     now = now or timezone.now()
     start, end = clamp_range(start, end)
     query = ShiftAssignment.objects.filter(
@@ -140,9 +149,13 @@ def build_report(person, start, end, night_only=False, now=None):
     ).select_related("shift_type", "shift_type__department")
     if night_only:
         query = query.filter(shift_type__is_night=True)
+    elif shift_types:
+        query = query.filter(shift_type__in=shift_types)
     assignments = sorted(query, key=lambda row: (effective_interval(row)[0], row.pk))
     uses_check_in = can_check_in(person)
     report = WorkHoursReport(person=person, start=start, end=end, night_only=night_only)
+    if shift_types and not night_only:
+        report.shift_type_names = [shift_type.name for shift_type in shift_types]
     for number, assignment in enumerate(assignments, start=1):
         # A report is a read: settle an ended check-in in memory only.
         settle_check_in(assignment, now, save=False)

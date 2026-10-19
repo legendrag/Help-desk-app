@@ -1458,6 +1458,8 @@ def shifts_calculator(request):
     if request.GET.get("part") == "rotation":
         return render(request, "shifts/calculator_rotation_options.html", context)
     context["work_people"] = _work_hours_people(department)
+    context["work_shift_types"] = _work_hours_shift_types(department)
+    context["work_has_night"] = any(shift_type.is_night for shift_type in context["work_shift_types"])
     if request.GET.get("part") == "work_people":
         context["reset_result"] = True
         return render(request, "shifts/calc_work_people.html", context)
@@ -1485,6 +1487,13 @@ def _work_hours_people(department):
     return people
 
 
+def _work_hours_shift_types(department):
+    """The department's shift types for the work hours Shifts switches."""
+    if department is None:
+        return []
+    return list(ShiftType.objects.filter(department=department, archived=False).order_by("start_time", "name"))
+
+
 def _work_hours_request(request):
     """Person, date range and shift filter from the query string."""
     person_pk = _parse_pk(request.GET.get("person"))
@@ -1498,8 +1507,14 @@ def _work_hours_request(request):
     first, last = _this_month()
     start = _parse_day(request.GET.get("start")) or first
     end = _parse_day(request.GET.get("end")) or last
+    # "Night shifts only" wins; otherwise the ticked shift types, none = all.
     night_only = request.GET.get("shifts") == "night"
-    return person, start, end, night_only
+    shift_types = []
+    if not night_only:
+        picked = [pk for pk in map(_parse_pk, request.GET.getlist("shift_type")) if pk is not None]
+        if picked:
+            shift_types = list(ShiftType.objects.filter(pk__in=picked).order_by("start_time", "name"))
+    return person, start, end, night_only, shift_types
 
 
 @login_required
@@ -1508,16 +1523,17 @@ def shifts_calc_work(request):
     """One person's shifts in a date range, laid out like the paper statement."""
     if not is_shift_manager(request.user):
         return _forbid()
-    person, start, end, night_only = _work_hours_request(request)
+    person, start, end, night_only, shift_types = _work_hours_request(request)
     if person is None:
         return render(request, "shifts/calc_work.html", {"error": _("Choose a person.")})
-    report = build_report(person, start, end, night_only)
-    export_query = urlencode({
-        "person": person.pk,
-        "start": report.start.isoformat(),
-        "end": report.end.isoformat(),
-        "shifts": "night" if night_only else "all",
-    })
+    report = build_report(person, start, end, night_only, shift_types=shift_types)
+    export_query = urlencode([
+        ("person", person.pk),
+        ("start", report.start.isoformat()),
+        ("end", report.end.isoformat()),
+        ("shifts", "night" if night_only else "all"),
+        *(("shift_type", shift_type.pk) for shift_type in shift_types),
+    ])
     return render(request, "shifts/calc_work.html", {
         "report": report,
         "export_url": f"{reverse('shifts_calc_work_export')}?{export_query}",
@@ -1530,10 +1546,10 @@ def shifts_calc_work_export(request):
     """The same report as an Excel file."""
     if not is_shift_manager(request.user):
         return _forbid()
-    person, start, end, night_only = _work_hours_request(request)
+    person, start, end, night_only, shift_types = _work_hours_request(request)
     if person is None:
         raise Http404(_("Choose a person."))
-    report = build_report(person, start, end, night_only)
+    report = build_report(person, start, end, night_only, shift_types=shift_types)
     response = HttpResponse(
         report_workbook(report),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

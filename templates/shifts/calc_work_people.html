@@ -13,7 +13,8 @@
   </select>
 </div>
 {% if reset_result %}
-{# A new department means a new person: clear the old report. #}
+{# A new department has its own shift types, and a new person: clear the old report. #}
+{% include "shifts/calc_work_shifts.html" %}
 <div id="shifts-work-result" hx-swap-oob="innerHTML">
   <p class="shifts-muted">{% trans "Choose a person to see their shifts and hours for the period." %}</p>
 </div>

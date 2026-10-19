@@ -487,7 +487,9 @@ class RotationTests(TestCase):
         self.assertContains(page, "Select all")
         self.assertContains(page, "checked")
         self.assertNotContains(page, "multiple")
-        self.assertNotContains(page, "Picker day")
+        # The rotation card lists night types only (Work hours has its own switches).
+        rotation = page.content.decode().split('id="shifts-rotation"', 1)[1]
+        self.assertNotIn("Picker day", rotation)
         self.assertNotContains(page, "Picker old")
         preview = self.client.post(reverse("shifts_calc_rotation"), {
             "department": department.pk,
@@ -2461,6 +2463,50 @@ class WorkHoursReportTests(TestCase):
         self.assertEqual(len(report.rows), 8)
         self.assertEqual(report.total_hours, 40)
         self.assertIn("night shifts", report.title)
+
+    def test_picked_shift_types_filter(self):
+        self._september()
+        response = self._get(shift_type=[self.long_day.pk])
+        report = response.context["report"]
+        self.assertEqual(len(report.rows), 2)
+        self.assertEqual(report.total_hours, 24)
+        self.assertEqual(report.title, "Statement of work hours: Long day")
+        # The Excel link carries the same pick.
+        self.assertContains(response, f"shift_type={self.long_day.pk}")
+        both = self._get(shift_type=[self.evening.pk, self.long_day.pk]).context["report"]
+        self.assertEqual((len(both.rows), both.total_hours), (10, 64))
+        # Start-time order, like the switches.
+        self.assertEqual(both.title, "Statement of work hours: Long day and Evening")
+
+    def test_night_only_wins_over_picked_types(self):
+        self._september()
+        report = self._get(shifts="night", shift_type=[self.long_day.pk]).context["report"]
+        self.assertEqual(len(report.rows), 8)
+        self.assertIn("night shifts", report.title)
+
+    def test_junk_shift_type_ids_mean_all_shifts(self):
+        self._september()
+        report = self._get(shift_type=["x", "99999"]).context["report"]
+        self.assertEqual(len(report.rows), 10)
+        self.assertEqual(report.title, "Statement of work hours")
+
+    def test_calculator_shows_a_switch_per_shift_type(self):
+        page = self.client.get(reverse("shifts_calculator"), {"department": self.department.pk})
+        content = page.content.decode()
+        self.assertIn('id="work-shifts-field"', content)
+        for shift_type in (self.evening, self.long_day):
+            self.assertIn(f'name="shift_type" value="{shift_type.pk}"', content)
+        self.assertIn("data-multi-night", content)  # Evening is a night shift
+        self.assertNotIn('hx-swap-oob="true"', content[content.index('id="work-shifts-field"') - 60:])
+        # Changing department swaps in that department's switches.
+        other = make_department("Report other")
+        mine = make_shift_type(other, name="Other early", start=time(6, 0), end=time(14, 0))
+        part = self.client.get(reverse("shifts_calculator"), {"department": other.pk, "part": "work_people"})
+        part_content = part.content.decode()
+        self.assertIn('id="work-shifts-field" hx-swap-oob="true"', part_content)
+        self.assertIn(f'value="{mine.pk}"', part_content)
+        self.assertNotIn(f'value="{self.evening.pk}"', part_content)
+        self.assertNotIn("data-multi-night", part_content)  # no night types there
 
     def test_report_is_read_only(self):
         row = make_assignment(self.agent, self.evening, date(2026, 10, 1))
