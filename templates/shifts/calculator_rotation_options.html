@@ -1,9 +1,11 @@
 {% load i18n %}
 <div class="form-group">
   <label for="rot-type">{% trans "Shift type" %}</label>
-  <select id="rot-type" name="shift_type">
-    {% for row in night_types %}
-    <option value="{{ row.pk }}">{{ row.name }}</option>
+  <select id="rot-type" name="shift_type"{% if not bulk_types %} disabled{% endif %}>
+    {% for row in bulk_types %}
+    <option value="{{ row.pk }}">{{ row.name }}{% if row.is_night %} ({% trans "night" %}){% endif %}</option>
+    {% empty %}
+    <option value="">{% trans "No shift types in this department yet." %}</option>
     {% endfor %}
   </select>
 </div>

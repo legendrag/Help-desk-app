@@ -348,73 +348,156 @@ def overlap_message(other) -> str:
     }
 
 
-def suggest_nights(people, dates, shift_type, existing_by_user):
-    if not dates:
-        return []
-    start = dates[0]
-    lookback_from = start - timedelta(days=NIGHT_ROTATION_LOOKBACK_DAYS)
+# Bulk assign (Calculator) and the rota's night auto-fill share this planner.
+BULK_MAX_DAYS = 92
+# Friday and Saturday, as on the rota (date.weekday()).
+WEEKEND_DAYS = (4, 5)
+
+
+def is_weekend(day):
+    return day.weekday() in WEEKEND_DAYS
+
+
+def _same_kind(row, shift_type):
+    """Rows that count toward a person's share of ``shift_type``: any night
+    for a night type (nights are what people trade), else that exact type."""
+    if shift_type.is_night:
+        return row.shift_type.is_night
+    return row.shift_type_id == shift_type.pk
+
+
+def _shift_minutes(shift_type):
+    return clock_length(shift_type.start_time, shift_type.end_time)[0]
+
+
+def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyone=False, covered=None):
+    """Plan ``shift_type`` for ``people`` on ``dates`` (skipped days already removed).
+
+    ``everyone``: each person gets the shift on every date they are free.
+
+    Otherwise ``per_day`` people a day, split evenly across this run:
+
+    * a day that already has ``covered[day]`` people on this shift needs fewer,
+      and the shifts people already hold on these dates count toward their share;
+    * fewest shifts in this run first, then (on a weekend day) fewest weekend
+      shifts, then fewest in the lookback before the run, then longest since
+      the last one, then a per-run rotation so ties don't always go to the
+      same person;
+    * a night type avoids nights in a row (the night before or after) unless
+      that would make the split uneven.
+
+    Nobody is given a shift that overlaps one they already have, or the same
+    shift twice on one day. Returns ``(plan, gaps)``: plan items are
+    ``{"date", "user_id", "back_to_back"}``; gaps are ``{"date", "missing"}``.
+    """
+    plan, gaps = [], []
+    if not dates or not people:
+        return plan, gaps
+    covered = covered or {}
+    run_dates = set(dates)
+    first = min(dates)
+    lookback_from = first - timedelta(days=NIGHT_ROTATION_LOOKBACK_DAYS)
+    salt = first.toordinal()
     stats = {}
     for person in people:
         rows = existing_by_user.get(person.pk, [])
-        nights = [
-            row.date for row in rows
-            if lookback_from <= row.date < start and row.shift_type.is_night
-        ]
+        kind = [row for row in rows if _same_kind(row, shift_type)]
+        in_run = [row for row in kind if row.date in run_dates and row.shift_type_id == shift_type.pk]
+        before = [row.date for row in kind if lookback_from <= row.date < first]
         stats[person.pk] = {
-            "lookback": len(nights),
-            "last": max(nights) if nights else None,
-            "proposed": 0,
-            "dates": {row.date for row in rows},
+            "run": len(in_run),
+            "weekend": sum(1 for row in in_run if is_weekend(row.date)),
+            "lookback": len(before),
+            "last": max(before) if before else None,
+            "has_type": {row.date for row in rows if row.shift_type_id == shift_type.pk},
             "night_dates": {row.date for row in rows if row.shift_type.is_night},
             "intervals": [effective_interval(row) for row in rows],
+            # Knuth's multiplicative hash: a fixed but run-specific tie order.
+            "spin": (person.pk * 2654435761 + salt) % 2 ** 32,
         }
+
+    def free(person, day, target):
+        st = stats[person.pk]
+        if day in st["has_type"]:
+            return False
+        return not any(overlaps(target, existing) for existing in st["intervals"])
+
+    def take(person, day, target, back_to_back):
+        st = stats[person.pk]
+        st["run"] += 1
+        if is_weekend(day):
+            st["weekend"] += 1
+        st["last"] = day
+        st["has_type"].add(day)
+        if shift_type.is_night:
+            st["night_dates"].add(day)
+        st["intervals"].append(target)
+        plan.append({"date": day, "user_id": person.pk, "back_to_back": back_to_back})
+
+    for day in sorted(dates):
+        target = interval_for(day, shift_type.start_time, shift_type.end_time)
+        if everyone:
+            for person in people:
+                if free(person, day, target):
+                    take(person, day, target, False)
+            continue
+        need = per_day - covered.get(day, 0)
+        weekend = is_weekend(day)
+
+        def key(person):
+            st = stats[person.pk]
+            return (
+                st["run"],
+                st["weekend"] if weekend else 0,
+                st["lookback"],
+                st["last"] or date.min,
+                st["spin"],
+            )
+
+        for slot in range(max(need, 0)):
+            pool = [person for person in people if free(person, day, target)]
+            if not pool:
+                gaps.append({"date": day, "missing": need - slot})
+                break
+            chosen = min(pool, key=key)
+            back_to_back = False
+            if shift_type.is_night:
+                rested = [
+                    person for person in pool
+                    if not ({day - timedelta(days=1), day + timedelta(days=1)} & stats[person.pk]["night_dates"])
+                ]
+                # Prefer someone off the night before and after, but never at
+                # the cost of an uneven split (one more shift than the fewest).
+                if rested and stats[min(rested, key=key).pk]["run"] <= stats[chosen.pk]["run"] + 1:
+                    chosen = min(rested, key=key)
+                else:
+                    back_to_back = True
+            take(chosen, day, target, back_to_back)
+    return plan, gaps
+
+
+def suggest_nights(people, dates, shift_type, existing_by_user):
+    """One person a night (the rota's auto-fill), with a reason on back-to-back nights."""
+    plan, gaps = plan_bulk(people, dates, shift_type, existing_by_user)
+    by_date = {item["date"]: item for item in plan}
+    gap_dates = {gap["date"] for gap in gaps}
     result = []
     for day in dates:
-        target = interval_for(day, shift_type.start_time, shift_type.end_time)
-        preferred = []
-        backup = []
-        for person in people:
-            st = stats[person.pk]
-            if any(overlaps(target, existing) for existing in st["intervals"]):
-                continue
-            if (day - timedelta(days=1)) in st["night_dates"]:
-                backup.append(person)
-            else:
-                preferred.append(person)
-        pool = preferred or backup
-        if not pool:
+        if day in gap_dates or day not in by_date:
             result.append({"date": day, "gap": True})
             continue
-
-        def sort_key(person, stats=stats):
-            st = stats[person.pk]
-            last = st["last"] or date.min
-            return (st["lookback"] + st["proposed"], last, person.pk)
-
-        chosen = min(pool, key=sort_key)
-        reason = ""
-        if not preferred:
+        item = dict(by_date[day], reason="")
+        if item["back_to_back"]:
             others_assigned = any(
-                day in stats[person.pk]["dates"]
-                for person in people
-                if person.pk != chosen.pk
+                row.date == day
+                for person in people if person.pk != item["user_id"]
+                for row in existing_by_user.get(person.pk, [])
             )
             if others_assigned:
-                reason = _("Others already assigned on this date")
+                item["reason"] = _("Others already assigned on this date")
             elif len(people) == 1:
-                reason = _("Only one person available")
+                item["reason"] = _("Only one person available")
             else:
-                reason = _("Back-to-back")
-        st = stats[chosen.pk]
-        st["proposed"] += 1
-        st["last"] = day
-        st["dates"].add(day)
-        st["night_dates"].add(day)
-        st["intervals"].append(target)
-        result.append({
-            "date": day,
-            "user_id": chosen.pk,
-            "back_to_back": not preferred,
-            "reason": reason,
-        })
+                item["reason"] = _("Back-to-back")
+        result.append(item)
     return result

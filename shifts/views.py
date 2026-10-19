@@ -37,6 +37,7 @@ from shifts.services import (
     MISSED,
     NOT_CHECKED_IN,
     ON_SHIFT,
+    BULK_MAX_DAYS,
     REPEAT_WEEKS_MAX,
     WORKER_HOURS_LOOKBACK_DAYS,
     WORKER_HOURS_MAX_MINUTES,
@@ -50,6 +51,7 @@ from shifts.services import (
     settle_check_in,
     effective_times,
     interval_for,
+    is_weekend,
     month_dates,
     neighbor_conflict,
     next_check_in_change,
@@ -57,6 +59,7 @@ from shifts.services import (
     normalize_start,
     overlap_message,
     overrides_set_by_worker,
+    plan_bulk,
     plan_copy,
     saturday_of,
     shift_outcome,
@@ -1155,14 +1158,14 @@ def _apply_rotation(proposals, shift_type, department, changes=None):
                 item["skip"] = _("Only active support users in this department can be assigned.")
                 skips.append(item)
                 continue
-            if shift_type.archived or not shift_type.is_night or shift_type.department_id != department.pk:
+            if shift_type.archived or shift_type.department_id != department.pk:
                 item["skip"] = _("Archived shift types cannot be assigned.")
                 skips.append(item)
                 continue
             if ShiftAssignment.objects.filter(
                 user_id=user.pk, date=item["date"], shift_type=shift_type
             ).exists():
-                item["skip"] = "already assigned"
+                item["skip"] = _("already has this shift")
                 skips.append(item)
                 continue
             probe = ShiftAssignment(user=user, date=item["date"], shift_type=shift_type)
@@ -1191,8 +1194,8 @@ def _apply_rotation(proposals, shift_type, department, changes=None):
 def _rotation_choices(department):
     if department is None:
         return [], []
-    night_types = list(
-        ShiftType.objects.filter(department=department, archived=False, is_night=True).order_by("name")
+    bulk_types = list(
+        ShiftType.objects.filter(department=department, archived=False).order_by("-is_night", "start_time", "name")
     )
     people = list(User.objects.filter(
         department=department,
@@ -1201,7 +1204,7 @@ def _rotation_choices(department):
     ).order_by("first_name", "last_name", "username"))
     for person in people:
         person.shift_label = display_name(person)
-    return night_types, people
+    return bulk_types, people
 
 
 def _attach_names(rows, people=()):
@@ -1221,13 +1224,11 @@ def _attach_names(rows, people=()):
     return rows
 
 
-def _posted_night_type(request, department):
+def _posted_bulk_type(request, department):
     raw = (request.POST.get("shift_type") or "").strip()
     if not raw.isdigit():
         raise Http404(_("Archived shift types cannot be assigned."))
-    return get_object_or_404(
-        ShiftType, pk=int(raw), department=department, archived=False, is_night=True,
-    )
+    return get_object_or_404(ShiftType, pk=int(raw), department=department, archived=False)
 
 
 def _posted_dates(request):
@@ -1239,61 +1240,203 @@ def _posted_dates(request):
     return start, end
 
 
+def _bulk_weekdays():
+    """(weekday number, name) for the Skip weekdays chips, Saturday first like the rota."""
+    from shifts.templatetags.shifts_extras import shifts_weekday
+
+    first = saturday_of(timezone.localdate())
+    return [((first + timedelta(days=i)).weekday(), shifts_weekday(first + timedelta(days=i))) for i in range(7)]
+
+
+def _hours_text(minutes):
+    hours = round(minutes / 60, 1)
+    return f"{hours:g}"
+
+
+def _bulk_existing(people, first, last):
+    """Each person's shifts around the run: the fair-share lookback, the run,
+    and a day either side for nights in a row and overlaps."""
+    from shifts.services import NIGHT_ROTATION_LOOKBACK_DAYS
+
+    by_user = {person.pk: [] for person in people}
+    rows = ShiftAssignment.objects.filter(
+        user__in=people,
+        date__gte=first - timedelta(days=NIGHT_ROTATION_LOOKBACK_DAYS + 1),
+        date__lte=last + timedelta(days=1),
+    ).select_related("shift_type", "user")
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    return by_user
+
+
+def _bulk_grid(people, dates, day_notes, shift_type, plan, gaps, added=()):
+    """The preview as a small rota: a row per person, a column per day."""
+    existing = {}
+    rows = ShiftAssignment.objects.filter(user__in=people, date__in=dates).select_related("shift_type")
+    for row in rows:
+        existing.setdefault((row.user_id, row.date), []).append(row)
+    for cell_rows in existing.values():
+        cell_rows.sort(key=lambda row: (effective_interval(row)[0], row.pk))
+    proposed = {(item["user_id"], item["date"]): item for item in plan}
+    missing = {gap["date"]: gap["missing"] for gap in gaps}
+    today = timezone.localdate()
+    shift_minutes = clock_length(shift_type.start_time, shift_type.end_time)[0]
+    columns = [
+        {
+            "day": day,
+            "skip": day_notes.get(day, ""),
+            "missing": missing.get(day, 0),
+            "weekend": is_weekend(day),
+            "today": day == today,
+        }
+        for day in dates
+    ]
+    grid = []
+    for person in people:
+        cells = []
+        total = new = weekend = minutes = 0
+        for column in columns:
+            day = column["day"]
+            mine = existing.get((person.pk, day), [])
+            item = proposed.get((person.pk, day))
+            for row in mine:
+                row.just_added = (person.pk, day) in added and row.shift_type_id == shift_type.pk
+                if row.shift_type_id == shift_type.pk:
+                    total += 1
+                    weekend += column["weekend"]
+                    minutes += clock_length(*effective_times(row))[0]
+            if item:
+                total += 1
+                new += 1
+                weekend += column["weekend"]
+                minutes += shift_minutes
+            cells.append({"column": column, "rows": mine, "proposed": item})
+        grid.append({
+            "person": person,
+            "name": display_name(person),
+            "cells": cells,
+            "total": total,
+            "new": new,
+            "weekend": weekend,
+            "hours": _hours_text(minutes),
+        })
+    return columns, grid
+
+
+def _bulk_form(request, people):
+    """Every field of the card, so Apply resends exactly what was previewed."""
+    keys = ("department", "shift_type", "start", "end", "mode", "per_day")
+    fields = [(key, request.POST.get(key, "")) for key in keys]
+    fields += [("skip_weekday", value) for value in request.POST.getlist("skip_weekday")]
+    fields += [("skip_date", value) for value in request.POST.getlist("skip_date") if value]
+    fields += [("users", person.pk) for person in people]
+    return fields
+
+
 @login_required
 @require_POST
 def shifts_calc_rotation(request):
+    """Calculator → Bulk assign: preview a shift for the ticked people over a
+    date range, shared fairly or given to everyone, then apply exactly that."""
     if not is_shift_manager(request.user):
         return _forbid()
     department = _selected_department(request)
-    shift_type = _posted_night_type(request, department)
+    shift_type = _posted_bulk_type(request, department)
     start, end = _posted_dates(request)
+    context = {"department": department, "shift_type": shift_type}
     if start is None or end is None:
-        return render(request, "shifts/calc_rotation.html", {
-            "proposals": [],
-            "skips": [],
-            "created": 0,
-            "department": department,
-            "shift_type": shift_type,
-            "error": _("Enter a start and an end date."),
-        })
+        return render(request, "shifts/calc_bulk.html", {**context, "error": _("Enter a start and an end date.")})
     dates = _dates_inclusive(start, end)
+    if len(dates) > BULK_MAX_DAYS:
+        return render(request, "shifts/calc_bulk.html", {
+            **context, "error": _("Choose at most %(days)s days.") % {"days": BULK_MAX_DAYS},
+        })
     people = list(User.objects.filter(
         pk__in=[pk for pk in map(_parse_pk, request.POST.getlist("users")) if pk is not None],
         department=department,
         user_type=User.UserType.SUPPORT,
         status=User.Status.ACTIVE,
-    ))
-    proposals = suggest_nights(people, dates, shift_type, _people_and_existing(people))
-    created = 0
-    skips = []
+    ).order_by("first_name", "last_name", "username"))
+    if not people:
+        return render(request, "shifts/calc_bulk.html", {**context, "error": _("Tick at least one person.")})
+
+    everyone = request.POST.get("mode") == "everyone"
+    try:
+        per_day = int(request.POST.get("per_day") or 1)
+    except ValueError:
+        per_day = 1
+    per_day = min(max(per_day, 1), len(people))
+    skip_weekdays = {
+        int(value) for value in request.POST.getlist("skip_weekday") if value.isdigit() and int(value) < 7
+    }
+    skip_dates = set()
+    for value in request.POST.getlist("skip_date"):
+        try:
+            skip_dates.add(date.fromisoformat(value))
+        except ValueError:
+            continue
+    today = timezone.localdate()
+    day_notes = {}
+    for day in dates:
+        if day < today:
+            day_notes[day] = _("Past")
+        elif day in skip_dates:
+            day_notes[day] = _("Skipped date")
+        elif day.weekday() in skip_weekdays:
+            day_notes[day] = _("Skipped day")
+    open_dates = [day for day in dates if day not in day_notes]
+
+    covered = {}
+    for day in ShiftAssignment.objects.filter(shift_type=shift_type, date__in=open_dates).values_list("date", flat=True):
+        covered[day] = covered.get(day, 0) + 1
+    plan, gaps = plan_bulk(
+        people, open_dates, shift_type, _bulk_existing(people, dates[0], dates[-1]),
+        per_day=per_day, everyone=everyone, covered=covered,
+    )
+
+    created, skips, added = 0, [], set()
     if request.POST.get("action") == "apply":
-        for person in people:
-            for day in dates:
-                if ShiftAssignment.objects.filter(user=person, date=day, shift_type=shift_type).exists():
-                    skips.append({
-                        "date": day,
-                        "user_id": person.pk,
-                        "name": display_name(person),
-                        "skip": "already assigned",
-                    })
+        posted = request.POST.getlist("plan")
+        if posted:
+            # Apply what the preview showed, still checked row by row below.
+            allowed = {person.pk for person in people}
+            open_set = set(open_dates)
+            plan = []
+            for value in posted:
+                user_raw, _sep, day_raw = value.partition(":")
+                try:
+                    item = {"user_id": int(user_raw), "date": date.fromisoformat(day_raw)}
+                except ValueError:
+                    continue
+                if item["user_id"] in allowed and item["date"] in open_set:
+                    plan.append(item)
         changes = []
-        created, applied_skips = _apply_rotation(
-            [item for item in proposals if not item.get("gap")],
-            shift_type,
-            department,
-            changes,
-        )
+        created, skips = _apply_rotation([dict(item) for item in plan], shift_type, department, changes)
         queue_shift_changes(changes, request.user)
-        skips.extend(applied_skips)
-    _attach_names(proposals, people)
-    _attach_names(skips, people)
-    return render(request, "shifts/calc_rotation.html", {
-        "proposals": proposals,
+        skipped_keys = {(item["user_id"], item["date"]) for item in skips}
+        added = {(item["user_id"], item["date"]) for item in plan} - skipped_keys
+        _attach_names(skips, people)
+        plan = []
+
+    columns, grid = _bulk_grid(people, dates, day_notes, shift_type, plan, gaps, added)
+    response = render(request, "shifts/calc_bulk.html", {
+        **context,
+        "columns": columns,
+        "grid": grid,
+        "plan": plan,
+        "gaps": gaps,
         "skips": skips,
         "created": created,
-        "department": department,
-        "shift_type": shift_type,
+        "applied": request.POST.get("action") == "apply",
+        "everyone": everyone,
+        "per_day": per_day,
+        "back_to_back": sum(1 for item in plan if item.get("back_to_back")),
+        "form_fields": _bulk_form(request, people),
+        "month_view": len(dates) > 7,
     })
+    if created:
+        response["HX-Trigger"] = "shiftsChanged"
+    return response
 
 
 def _rota_redirect(request, department, view, start, message=None, *, error=False):
@@ -1448,12 +1591,13 @@ def shifts_calculator(request):
     department = _department_or_404(raw) if raw else _department_with_shift_types()
     if department is None:
         department = Department.objects.order_by("name").first()
-    night_types, people = _rotation_choices(department)
+    bulk_types, people = _rotation_choices(department)
     context = {
         "departments": Department.objects.order_by("name"),
         "department": department,
-        "night_types": night_types,
+        "bulk_types": bulk_types,
         "people": people,
+        "bulk_weekdays": _bulk_weekdays(),
     }
     if request.GET.get("part") == "rotation":
         return render(request, "shifts/calculator_rotation_options.html", context)

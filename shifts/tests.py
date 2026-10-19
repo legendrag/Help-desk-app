@@ -1,3 +1,4 @@
+import re
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from decimal import Decimal
@@ -423,43 +424,40 @@ class RotationTests(TestCase):
         manager = make_user("keep-lead", "support", department, role)
         agent = make_user("keep-agent", "support", department)
         night = make_shift_type(department, name="Keep night")
-        existing = make_assignment(agent, night, date(2026, 10, 5))
+        day = timezone.localdate() + timedelta(days=7)
+        existing = make_assignment(agent, night, day)
         self.client.force_login(manager)
         response = self.client.post(reverse("shifts_calc_rotation"), {
             "department": department.pk,
-            "start": "2026-10-05",
-            "end": "2026-10-05",
+            "start": day.isoformat(),
+            "end": day.isoformat(),
             "shift_type": night.pk,
             "users": [agent.pk],
             "action": "apply",
         })
-        self.assertContains(response, "already assigned")
+        self.assertContains(response, "Added 0 shifts.")
+        self.assertEqual(ShiftAssignment.objects.count(), 1)
         existing.refresh_from_db()
         self.assertEqual(existing.shift_type_id, night.pk)
-
-    def test_day_or_archived_night_type_returns_404_and_writes_nothing(self):
+    def test_archived_or_other_department_type_returns_404_and_writes_nothing(self):
         department = make_department("Gate")
         role = make_role("Gate lead", can_manage_shifts=True)
         manager = make_user("gate-lead", "support", department, role)
         agent = make_user("gate-agent", "support", department)
-        day = make_shift_type(department, name="Gate day", start=time(9, 0), end=time(17, 0))
         archived = make_shift_type(department, name="Gate old night", archived=True)
+        elsewhere = make_shift_type(make_department("Gate other"), name="Other night")
+        day = make_shift_type(department, name="Gate day", start=time(9, 0), end=time(17, 0))
+        on = (timezone.localdate() + timedelta(days=7)).isoformat()
         self.client.force_login(manager)
-        payload = {
-            "department": department.pk,
-            "start": "2026-10-05",
-            "end": "2026-10-05",
-            "users": [agent.pk],
-            "action": "apply",
-        }
-        for bad in (day, archived):
-            response = self.client.post(
-                reverse("shifts_calc_rotation"),
-                {**payload, "shift_type": bad.pk},
-            )
+        payload = {"department": department.pk, "start": on, "end": on, "users": [agent.pk], "action": "apply"}
+        for bad in (archived, elsewhere):
+            response = self.client.post(reverse("shifts_calc_rotation"), {**payload, "shift_type": bad.pk})
             self.assertEqual(response.status_code, 404)
         self.assertEqual(ShiftAssignment.objects.count(), 0)
-
+        # Bulk assign takes any active type, day shifts included.
+        response = self.client.post(reverse("shifts_calc_rotation"), {**payload, "shift_type": day.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ShiftAssignment.objects.get().shift_type_id, day.pk)
     def test_two_people_two_dates_are_one_each(self):
         from shifts.services import suggest_nights
 
@@ -468,10 +466,11 @@ class RotationTests(TestCase):
         night = make_shift_type(department, name="Pair night")
         dates = [date(2026, 10, 5), date(2026, 10, 6)]
         result = suggest_nights(people, dates, night, {person.pk: [] for person in people})
-        self.assertEqual([row["user_id"] for row in result], [people[0].pk, people[1].pk])
+        # Who goes first on a tie rotates per run; each still gets one night.
+        self.assertEqual(sorted(row["user_id"] for row in result), sorted(person.pk for person in people))
         self.assertFalse(any(row["back_to_back"] for row in result))
 
-    def test_calculator_lists_night_types_and_preview_uses_names(self):
+    def test_calculator_lists_active_types_and_preview_uses_names(self):
         department = make_department("Picker")
         manager = make_user("picker-lead", "support", department, make_role("Picker lead", can_manage_shifts=True))
         agent = make_user("picker-agent", "support", department, first_name="Nora", last_name="Saleh")
@@ -481,26 +480,29 @@ class RotationTests(TestCase):
         make_shift_type(department, name="Picker old", archived=True)
         self.client.force_login(manager)
         page = self.client.get(reverse("shifts_calculator"))
-        self.assertContains(page, "Picker night")
-        self.assertContains(page, "Nora Saleh")
-        self.assertContains(page, 'name="users"')
-        self.assertContains(page, "Select all")
-        self.assertContains(page, "checked")
-        self.assertNotContains(page, "multiple")
-        # The rotation card lists night types only (Work hours has its own switches).
-        rotation = page.content.decode().split('id="shifts-rotation"', 1)[1]
-        self.assertNotIn("Picker day", rotation)
-        self.assertNotContains(page, "Picker old")
+        rotation = page.content.decode().split('id="shifts-rotation"', 1)[1].split("</section>", 1)[0]
+        self.assertIn("Bulk assign", rotation)
+        self.assertIn("Picker night (night)", rotation)
+        self.assertIn("Picker day", rotation)
+        self.assertNotIn("Picker old", rotation)
+        self.assertIn("Nora Saleh", rotation)
+        self.assertIn('name="users"', rotation)
+        self.assertIn("Select all", rotation)
+        self.assertIn('name="skip_weekday"', rotation)
+        self.assertIn('name="skip_date"', rotation)
+        on = (timezone.localdate() + timedelta(days=7)).isoformat()
         preview = self.client.post(reverse("shifts_calc_rotation"), {
             "department": department.pk,
-            "start": "2026-10-05",
-            "end": "2026-10-05",
+            "start": on,
+            "end": on,
             "shift_type": night.pk,
             "users": [agent.pk],
             "action": "preview",
         })
         self.assertEqual(preview.status_code, 200)
         self.assertContains(preview, "Nora Saleh")
+        self.assertContains(preview, "shifts-grid--mini")
+        self.assertContains(preview, f'name="plan" value="{agent.pk}:{on}"')
         hx = self.client.get(reverse("shifts_calculator"), HTTP_HX_REQUEST="true")
         self.assertEqual(hx.status_code, 200)
         self.assertNotContains(hx, "<main")
@@ -512,7 +514,6 @@ class RotationTests(TestCase):
             "action": "preview",
         })
         self.assertEqual(empty.status_code, 404)
-
     def test_plain_auto_fill_post_redirects_to_the_rota(self):
         department = make_department("Fill page")
         manager = make_user("fill-lead", "support", department, make_role("Fill lead", can_manage_shifts=True))
@@ -640,24 +641,24 @@ class RotationTests(TestCase):
         result = suggest_nights([person], dates, night, {person.pk: []})
         self.assertEqual(result[1]["back_to_back"], True)
 
-    def test_back_to_back_preview_names_the_reason(self):
+    def test_back_to_back_preview_warns(self):
         department = make_department("Reason")
         manager = make_user("reason-lead", "support", department, make_role("Reason lead", can_manage_shifts=True))
         agent = make_user("reason-agent", "support", department, first_name="Mona", last_name="Saleh")
         night = make_shift_type(department, name="Reason night")
+        first = timezone.localdate() + timedelta(days=7)
         self.client.force_login(manager)
         preview = self.client.post(reverse("shifts_calc_rotation"), {
             "department": department.pk,
-            "start": "2026-10-05",
-            "end": "2026-10-06",
+            "start": first.isoformat(),
+            "end": (first + timedelta(days=1)).isoformat(),
             "shift_type": night.pk,
             "users": [agent.pk],
             "action": "preview",
         })
         self.assertEqual(preview.status_code, 200)
-        self.assertContains(preview, "Only one person available")
-        self.assertNotContains(preview, "Others already assigned on this date")
-
+        self.assertContains(preview, "1 night is next to another night for the same person.")
+        self.assertContains(preview, "shifts-mini--warn", count=1)
     def test_back_to_back_reason_names_others_when_the_date_is_taken(self):
         from shifts.services import suggest_nights
 
@@ -685,9 +686,13 @@ class RotationTests(TestCase):
                 other.pk: [make_assignment(other, night, date(2026, 10, 5)), existing_day],
             },
         )
-        self.assertEqual(both_nights[0]["user_id"], veteran.pk)
+        # Both worked the night before, so either way it is back to back. The
+        # reason names the other person's shift on the date when there is one.
         self.assertTrue(both_nights[0]["back_to_back"])
-        self.assertEqual(str(both_nights[0]["reason"]), "Others already assigned on this date")
+        expected = (
+            "Others already assigned on this date" if both_nights[0]["user_id"] == veteran.pk else "Back-to-back"
+        )
+        self.assertEqual(str(both_nights[0]["reason"]), expected)
 
     def test_missing_rotation_dates_ask_for_dates(self):
         department = make_department("Dates")
@@ -3254,3 +3259,157 @@ class Round14RotaTests(TestCase):
     def test_add_type_starts_on_the_viewed_department(self):
         form = self.client.get(reverse("shifts_type_add"), {"department": self.department.pk}, HTTP_HX_REQUEST="true")
         self.assertEqual(form.context["form"]["department"].value(), self.department.pk)
+
+
+class BulkAssignTests(TestCase):
+    """Calculator → Bulk assign: the fair-share planner and the card."""
+
+    def setUp(self):
+        self.department = make_department("Bulk")
+        self.manager = make_user("bulk-lead", "support", self.department, make_role("Bulk lead", can_manage_shifts=True))
+        self.people = [
+            make_user(f"bulk-{name}", "support", self.department, first_name=name.title())
+            for name in ("amal", "badr", "chadi")
+        ]
+        self.night = make_shift_type(self.department, name="Bulk night")
+        self.day = make_shift_type(self.department, name="Bulk day", start=time(9, 0), end=time(17, 0))
+        # A Saturday a week or more ahead, so nothing is in the past.
+        today = timezone.localdate()
+        self.first = today + timedelta(days=7 + (5 - today.weekday()) % 7)
+        self.client.force_login(self.manager)
+
+    def _dates(self, count):
+        return [self.first + timedelta(days=i) for i in range(count)]
+
+    def _plan(self, people, dates, shift_type=None, existing=None, **kwargs):
+        from shifts.services import plan_bulk
+
+        existing = existing if existing is not None else {person.pk: [] for person in people}
+        return plan_bulk(people, dates, shift_type or self.night, existing, **kwargs)
+
+    @staticmethod
+    def _counts(plan):
+        counts = {}
+        for item in plan:
+            counts[item["user_id"]] = counts.get(item["user_id"], 0) + 1
+        return counts
+
+    def _post(self, **data):
+        payload = {
+            "department": self.department.pk,
+            "shift_type": self.night.pk,
+            "start": self.first.isoformat(),
+            "end": (self.first + timedelta(days=6)).isoformat(),
+            "users": [person.pk for person in self.people],
+            "action": "preview",
+            **data,
+        }
+        return self.client.post(reverse("shifts_calc_rotation"), payload)
+
+    def test_covered_days_are_not_given_a_second_person(self):
+        dates = self._dates(3)
+        held = make_assignment(self.people[0], self.night, dates[1])
+        plan, gaps = self._plan(
+            self.people, dates, existing={self.people[0].pk: [held], self.people[1].pk: [], self.people[2].pk: []},
+            covered={dates[1]: 1},
+        )
+        self.assertEqual(sorted(item["date"] for item in plan), [dates[0], dates[2]])
+        self.assertEqual(gaps, [])
+
+    def test_shifts_already_held_in_the_run_count_toward_the_share(self):
+        dates = self._dates(4)
+        a, b = self.people[:2]
+        held = make_assignment(a, self.night, dates[0])
+        plan, _gaps = self._plan([a, b], dates, existing={a.pk: [held], b.pk: []}, covered={dates[0]: 1})
+        counts = self._counts(plan)
+        # a already has one of the four nights: one more for a, two for b.
+        self.assertEqual((counts.get(a.pk, 0) + 1, counts.get(b.pk, 0)), (2, 2))
+
+    def test_no_catch_up_burst_for_someone_with_no_recent_nights(self):
+        dates = self._dates(6)
+        veteran, newcomer = self.people[:2]
+        history = [make_assignment(veteran, self.night, self.first - timedelta(days=d)) for d in range(1, 8)]
+        plan, _gaps = self._plan([veteran, newcomer], dates, existing={veteran.pk: history, newcomer.pk: []})
+        self.assertEqual(sorted(self._counts(plan).values()), [3, 3])
+
+    def test_avoids_a_night_right_before_one_already_held(self):
+        dates = self._dates(2)
+        a, b = self.people[:2]
+        # a works the night after the run starts' first night.
+        held = make_assignment(a, self.night, dates[1])
+        plan, _gaps = self._plan([a, b], dates[:1], existing={a.pk: [held], b.pk: []})
+        self.assertEqual(plan[0]["user_id"], b.pk)
+        self.assertFalse(plan[0]["back_to_back"])
+
+    def test_weekend_nights_are_shared_too(self):
+        dates = self._dates(14)  # two Friday-Saturday weekends
+        plan, _gaps = self._plan(self.people[:2], dates)
+        from shifts.services import is_weekend
+
+        weekend = self._counts([item for item in plan if is_weekend(item["date"])])
+        self.assertEqual(sorted(weekend.values()), [2, 2])
+        self.assertEqual(sorted(self._counts(plan).values()), [7, 7])
+
+    def test_two_people_per_day_and_gaps(self):
+        dates = self._dates(3)
+        plan, gaps = self._plan(self.people, dates, per_day=2)
+        self.assertEqual(len(plan), 6)
+        self.assertEqual(sorted(self._counts(plan).values()), [2, 2, 2])
+        for day in dates:
+            self.assertEqual(len({item["user_id"] for item in plan if item["date"] == day}), 2)
+        _plan, short = self._plan(self.people[:1], dates[:1], per_day=2)
+        self.assertEqual(short, [{"date": dates[0], "missing": 1}])
+
+    def test_everyone_mode_gives_each_free_person_every_day(self):
+        dates = self._dates(3)
+        busy = make_assignment(self.people[0], self.day, dates[0])
+        plan, _gaps = self._plan(
+            self.people, dates, shift_type=self.day,
+            existing={self.people[0].pk: [busy], self.people[1].pk: [], self.people[2].pk: []},
+            everyone=True,
+        )
+        self.assertEqual(len(plan), 8)  # 3 people x 3 days, minus the one already held
+
+    def test_preview_skips_weekdays_dates_and_shows_a_mini_rota(self):
+        friday = self.first + timedelta(days=6)
+        holiday = self.first + timedelta(days=2)
+        response = self._post(skip_weekday=["4"], skip_date=[holiday.isoformat()])
+        content = response.content.decode()
+        self.assertContains(response, "shifts-grid--mini")
+        self.assertContains(response, "Skipped day")
+        self.assertContains(response, "Skipped date")
+        planned_days = set(re.findall(r'name="plan" value="\d+:([\d-]+)"', content))
+        self.assertEqual(len(planned_days), 5)
+        self.assertNotIn(friday.isoformat(), planned_days)
+        self.assertNotIn(holiday.isoformat(), planned_days)
+        self.assertContains(response, "Apply 5 shifts")
+
+    def test_apply_creates_exactly_the_previewed_plan(self):
+        a, b = self.people[:2]
+        days = self._dates(2)
+        # A plan the planner would not pick by itself: both nights to a.
+        response = self._post(
+            action="apply",
+            end=days[1].isoformat(),
+            users=[a.pk, b.pk],
+            plan=[f"{a.pk}:{days[0].isoformat()}", f"{a.pk}:{days[1].isoformat()}", f"{a.pk}:2001-01-01"],
+        )
+        self.assertContains(response, "Added 2 shifts.")
+        self.assertEqual(
+            sorted(ShiftAssignment.objects.values_list("user_id", "date")), [(a.pk, days[0]), (a.pk, days[1])],
+        )
+        self.assertEqual(response["HX-Trigger"], "shiftsChanged")
+
+    def test_past_days_are_skipped(self):
+        today = timezone.localdate()
+        response = self._post(start=(today - timedelta(days=2)).isoformat(), end=(today - timedelta(days=1)).isoformat())
+        self.assertContains(response, "Past")
+        self.assertNotContains(response, 'name="plan"')
+
+    def test_long_ranges_and_empty_people_are_refused(self):
+        from shifts.services import BULK_MAX_DAYS
+
+        long_end = self.first + timedelta(days=BULK_MAX_DAYS)
+        self.assertContains(self._post(end=long_end.isoformat()), f"Choose at most {BULK_MAX_DAYS} days.")
+        self.assertContains(self._post(users=[]), "Tick at least one person.")
+        self.assertEqual(ShiftAssignment.objects.count(), 0)

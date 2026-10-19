@@ -137,9 +137,18 @@
   });
   document.body.addEventListener("htmx:afterSettle", filterAvailable);
 
+  // Centre the active tab in its strip. Only the strip scrolls sideways:
+  // scrollIntoView also scrolled the page, so every update inside the Shifts
+  // page (a calculator preview, a report refresh) jumped back to the top.
   function scrollActiveShiftTab() {
     var tab = document.querySelector("#shifts-shell-pane .settings-tab[aria-current='page'], #shifts-shell-pane .settings-tab.active");
-    if (tab && tab.scrollIntoView) tab.scrollIntoView({inline: "center", block: "nearest"});
+    if (!tab) return;
+    var strip = tab.parentElement;
+    while (strip && strip !== document.body && strip.scrollWidth <= strip.clientWidth) strip = strip.parentElement;
+    if (!strip || strip === document.body) return;
+    var tabBox = tab.getBoundingClientRect();
+    var stripBox = strip.getBoundingClientRect();
+    strip.scrollLeft += (tabBox.left + tabBox.width / 2) - (stripBox.left + stripBox.width / 2);
   }
   scrollActiveShiftTab();
   document.body.addEventListener("htmx:afterSwap", function (evt) {
@@ -209,5 +218,102 @@
       var button = root.querySelector("summary");
       if (button) button.focus();
     });
+  });
+  // Calculator → Bulk assign (shifts/calculator.html, calc_bulk.html).
+  function bulkForm() { return document.getElementById("shifts-bulk-form"); }
+
+  function syncBulkMode() {
+    var form = bulkForm();
+    if (!form) return;
+    var everyone = form.querySelector('input[name="mode"][value="everyone"]');
+    var perDay = form.querySelector("[data-bulk-per-day]");
+    if (!perDay) return;
+    var off = !!(everyone && everyone.checked);
+    perDay.hidden = off;
+    var input = perDay.querySelector("input");
+    if (input) input.disabled = off;
+  }
+
+  function markBulkStale() {
+    var result = document.getElementById("shifts-rotation-result");
+    if (!result) return;
+    var note = result.querySelector("[data-bulk-stale]");
+    var apply = result.querySelector("[data-bulk-apply]");
+    if (note) note.hidden = false;
+    if (apply) apply.disabled = true;
+  }
+
+  function addSkipDate(form) {
+    var input = form.querySelector("#rot-skip-date");
+    var list = form.querySelector("[data-bulk-date-list]");
+    if (!input || !list || !input.value) return;
+    var value = input.value;
+    input.value = "";
+    if (list.querySelector('input[value="' + value + '"]')) return;
+    var parts = value.split("-");
+    var item = document.createElement("li");
+    item.className = "shifts-chip-date";
+    var text = document.createElement("bdi");
+    text.setAttribute("dir", "ltr");
+    text.textContent = parts.length === 3 ? parts[2] + "/" + parts[1] + "/" + parts[0] : value;
+    var hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.name = "skip_date";
+    hidden.value = value;
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.setAttribute("data-bulk-remove-date", "");
+    remove.setAttribute("aria-label", (list.getAttribute("data-remove-label") || "Remove") + " " + text.textContent);
+    remove.textContent = "×";
+    item.appendChild(text);
+    item.appendChild(hidden);
+    item.appendChild(remove);
+    // Keep the chips in date order.
+    var after = Array.prototype.find.call(list.children, function (other) {
+      var otherInput = other.querySelector("input");
+      return otherInput && otherInput.value > value;
+    });
+    list.insertBefore(item, after || null);
+    markBulkStale();
+  }
+
+  document.addEventListener("click", function (evt) {
+    var form = bulkForm();
+    if (!form || !evt.target.closest || !form.contains(evt.target)) return;
+    if (evt.target.closest("[data-bulk-add-date]")) {
+      addSkipDate(form);
+      return;
+    }
+    var remove = evt.target.closest("[data-bulk-remove-date]");
+    if (remove) {
+      remove.closest("li").remove();
+      markBulkStale();
+    }
+  });
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Enter" || !evt.target || evt.target.id !== "rot-skip-date") return;
+    var form = bulkForm();
+    if (!form) return;
+    evt.preventDefault();  // Enter adds the date instead of sending a preview
+    addSkipDate(form);
+  });
+  document.addEventListener("change", function (evt) {
+    var form = bulkForm();
+    if (!form || !form.contains(evt.target)) return;
+    if (evt.target.name === "mode") syncBulkMode();
+    if (evt.target.id !== "rot-skip-date") markBulkStale();
+  });
+  document.addEventListener("input", function (evt) {
+    var form = bulkForm();
+    if (form && form.contains(evt.target) && evt.target.id === "rot-per-day") markBulkStale();
+  });
+  syncBulkMode();
+  document.body.addEventListener("htmx:afterSettle", function (evt) {
+    syncBulkMode();
+    var target = evt.detail && evt.detail.target;
+    // Bring a new preview into view without jumping if it is already visible.
+    if (target && target.id === "shifts-rotation-result" && target.scrollIntoView) {
+      target.scrollIntoView({block: "nearest"});
+    }
   });
 })();

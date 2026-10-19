@@ -48,15 +48,15 @@
   </div>
 </section>
 
-<section id="shifts-rotation" class="panel shifts-tool" aria-labelledby="rotation-title">
+<section id="shifts-rotation" class="panel shifts-tool shifts-tool-wide" aria-labelledby="rotation-title">
   <div class="shifts-tool-head">
-    <h2 id="rotation-title">{% trans "Night rotation" %}</h2>
-    <p class="shifts-muted">{% trans "Share night shifts fairly across the team for a date range. Preview first, then apply." %}</p>
+    <h2 id="rotation-title">{% trans "Bulk assign" %}</h2>
+    <p class="shifts-muted">{% trans "Give a shift to the ticked people over a date range, shared fairly or to everyone. Preview first, then apply." %}</p>
   </div>
-  <form class="shifts-calc-form" method="post" action="{% url 'shifts_calc_rotation' %}"
+  <form id="shifts-bulk-form" class="shifts-calc-form shifts-bulk-form" method="post" action="{% url 'shifts_calc_rotation' %}"
         hx-post="{% url 'shifts_calc_rotation' %}"
         hx-target="#shifts-rotation-result"
-        hx-disabled-elt="this"
+        hx-disabled-elt="find button[type='submit']"
         hx-sync="this:replace">
     {% csrf_token %}
     <div class="shifts-fields">
@@ -74,23 +74,67 @@
         </select>
       </div>
       <div class="form-group">
-        <label for="rot-start">{% trans "Start" %}</label>
+        <label for="rot-start">{% trans "From" %}</label>
         <input id="rot-start" type="date" name="start">
       </div>
       <div class="form-group">
-        <label for="rot-end">{% trans "End" %}</label>
+        <label for="rot-end">{% trans "To" %}</label>
         <input id="rot-end" type="date" name="end">
       </div>
       <div id="shifts-rotation-options" class="shifts-fields-contents">
         {% include "shifts/calculator_rotation_options.html" %}
       </div>
     </div>
+
+    <div class="shifts-bulk-row">
+      <fieldset class="shifts-bulk-group">
+        <legend>{% trans "How to assign" %}</legend>
+        <div class="shifts-segmented" role="radiogroup">
+          <label class="shifts-segment">
+            <input type="radio" name="mode" value="fair" checked>
+            <span>{% trans "Share fairly" %}</span>
+          </label>
+          <label class="shifts-segment">
+            <input type="radio" name="mode" value="everyone">
+            <span>{% trans "Everyone, every day" %}</span>
+          </label>
+        </div>
+        <label class="shifts-bulk-per-day" data-bulk-per-day>
+          <input id="rot-per-day" type="number" name="per_day" value="1" min="1" max="50" inputmode="numeric">
+          <span>{% trans "people per day" %}</span>
+        </label>
+      </fieldset>
+
+      <fieldset class="shifts-bulk-group">
+        <legend>{% trans "Skip weekdays" %}</legend>
+        <div class="shifts-chips">
+          {% for value, name in bulk_weekdays %}
+          <label class="shifts-chip-toggle">
+            <input type="checkbox" name="skip_weekday" value="{{ value }}">
+            <span>{{ name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset class="shifts-bulk-group">
+        <legend>{% trans "Skip dates" %}</legend>
+        <div class="shifts-bulk-dates" data-bulk-dates>
+          <div class="shifts-bulk-date-add">
+            <input id="rot-skip-date" type="date" name="skip_date" aria-label="{% trans 'Date to skip' %}">
+            <button type="button" class="btn secondary btn--sm" data-bulk-add-date>{% trans "Add" %}</button>
+          </div>
+          <ul class="shifts-chips shifts-bulk-date-list" data-bulk-date-list
+              data-remove-label="{% trans 'Remove' %}"></ul>
+        </div>
+      </fieldset>
+    </div>
+
     <div class="shifts-calc-actions">
-      <button class="btn secondary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
-      <button class="btn primary" type="submit" name="action" value="apply">{% trans "Apply" %}</button>
+      <button class="btn primary" type="submit" name="action" value="preview">{% trans "Preview" %}</button>
     </div>
   </form>
-  <div id="shifts-rotation-result"></div>
+  <div id="shifts-rotation-result" class="shifts-bulk-result"></div>
 </section>
 
 <section id="shifts-length" class="panel shifts-tool" aria-labelledby="length-title">
