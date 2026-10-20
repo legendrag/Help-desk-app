@@ -19,6 +19,14 @@
       evt.detail.isError = false;
     }
   });
+  // Rota: Copy and Repeat share one result box. Clear it as either starts
+  // (before the confirm), so a cancelled one never leaves the other's result.
+  document.body.addEventListener("htmx:confirm", function (evt) {
+    var elt = evt.detail && evt.detail.elt;
+    if (!elt || !elt.closest || !elt.closest("[data-rota-actions]")) return;
+    var result = document.getElementById("shifts-action-result");
+    if (result) result.innerHTML = "";
+  });
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) return;
     var board = document.getElementById("shifts-available-now");
@@ -212,6 +220,21 @@
     document.querySelectorAll("[data-shifts-multi][open]").forEach(function (root) {
       if (!root.contains(evt.target)) root.removeAttribute("open");
     });
+  });
+  // The open panel can cover Export: close it once focus moves on (Tab) or the
+  // pointer has left it for a moment, so the next click reaches what is under it.
+  document.addEventListener("focusout", function (evt) {
+    var root = evt.target && evt.target.closest && evt.target.closest("[data-shifts-multi][open]");
+    if (root && evt.relatedTarget && !root.contains(evt.relatedTarget)) root.removeAttribute("open");
+  });
+  var multiLeaveTimer = null;
+  document.addEventListener("mouseout", function (evt) {
+    var root = evt.target && evt.target.closest && evt.target.closest("[data-shifts-multi][open]");
+    if (!root || (evt.relatedTarget && root.contains(evt.relatedTarget))) return;
+    clearTimeout(multiLeaveTimer);
+    multiLeaveTimer = setTimeout(function () {
+      if (!root.matches(":hover")) root.removeAttribute("open");
+    }, 500);
   });
   document.addEventListener("keydown", function (evt) {
     if (evt.key !== "Escape") return;

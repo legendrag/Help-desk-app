@@ -8,7 +8,7 @@ def recompute_night_flags(apps, schema_editor):
     type is a night shift when more than half its hours are night hours."""
     ShiftType = apps.get_model("shifts", "ShiftType")
     Settings = apps.get_model("shifts", "DepartmentShiftSettings")
-    from shifts.services import is_night_shift
+    from shifts.migrations._night_legacy import is_night_shift
 
     windows = {
         row.department_id: (row.night_starts_at, row.night_ends_at)

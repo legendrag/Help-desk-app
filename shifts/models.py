@@ -1,5 +1,3 @@
-from datetime import time
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -10,11 +8,6 @@ from core.models import TimeStampedModel
 
 
 class ShiftType(TimeStampedModel):
-    class NightMode(models.TextChoices):
-        AUTO = "auto", _("Automatic")
-        ALWAYS = "always", _("Always")
-        NEVER = "never", _("Never")
-
     department = models.ForeignKey(
         "core.Department",
         on_delete=models.PROTECT,
@@ -24,13 +17,8 @@ class ShiftType(TimeStampedModel):
     name = models.CharField(_("Name"), max_length=100)
     start_time = models.TimeField(_("Start time"))
     end_time = models.TimeField(_("End time"))
-    is_night = models.BooleanField(default=False, editable=False, verbose_name=_("Night"))
-    night_mode = models.CharField(
-        _("Counts as night shift"),
-        max_length=10,
-        choices=NightMode.choices,
-        default=NightMode.AUTO,
-    )
+    # Ticked by the manager on the shift type form.
+    is_night = models.BooleanField(_("Night shift"), default=False)
     colour = models.CharField(
         _("Colour"),
         max_length=7,
@@ -55,18 +43,6 @@ class ShiftType(TimeStampedModel):
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        if self.start_time and self.end_time and self.department_id:
-            from shifts.services import is_night_shift, night_window_for
-
-            self.is_night = is_night_shift(
-                self.start_time,
-                self.end_time,
-                *night_window_for(self.department),
-                mode=self.night_mode,
-            )
-        super().save(*args, **kwargs)
 
 
 class ShiftAssignment(TimeStampedModel):
@@ -129,23 +105,3 @@ class ShiftAssignment(TimeStampedModel):
             raise ValidationError(_("Clear the audit fields when the override is cleared."))
         if start is not None and not (self.times_set_by_id and self.times_set_at):
             raise ValidationError(_("Record who set the times."))
-
-
-class DepartmentShiftSettings(TimeStampedModel):
-    department = models.OneToOneField(
-        "core.Department",
-        on_delete=models.CASCADE,
-        related_name="shift_settings",
-        verbose_name=_("Department"),
-    )
-    night_starts_at = models.TimeField(_("Night starts at"), default=time(18, 0))
-    night_ends_at = models.TimeField(_("Night ends at"), default=time(6, 0))
-
-    class Meta:
-        verbose_name = _("Shift settings")
-        verbose_name_plural = _("Shift settings")
-
-    def __str__(self):
-        from shifts.clock import format_clock
-
-        return f"{self.department} · {format_clock(self.night_starts_at)}–{format_clock(self.night_ends_at)}"

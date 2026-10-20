@@ -93,6 +93,6 @@
   {% endwith %}
   {% block shifts_body %}{% endblock %}
 </div>
-<script src="{% static 'js/shifts.js' %}?v=10"></script>
+{# Inside content so HTMX tab swaps (hx_base.html has no extra_js) load it too. #}
+<script src="{% static 'js/shifts.js' %}?v=12"></script>
 {% endblock %}
-{% block extra_js %}{{ block.super }}<script src="{% static 'js/shifts.js' %}?v=10"></script>{% endblock %}

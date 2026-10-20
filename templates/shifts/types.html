@@ -25,26 +25,7 @@
       </select>
     </div>
   </form>
-  <form method="post" class="shifts-night-start" action="{% url 'shifts_night_starts' %}"
-        hx-post="{% url 'shifts_night_starts' %}"
-        hx-target="#shell-content"
-        hx-swap="innerHTML show:window:top settle:0"
-        hx-disabled-elt="this"
-        hx-sync="this:replace">
-    {% csrf_token %}
-    <input type="hidden" name="department" value="{{ department.pk }}">
-    <div class="form-group">
-      <label for="night-starts">{% trans "Night starts at" %}</label>
-      <input id="night-starts" type="time" name="night_starts_at" value="{{ night_starts_value }}" required>
-    </div>
-    <div class="form-group">
-      <label for="night-ends">{% trans "Night ends at" %}</label>
-      <input id="night-ends" type="time" name="night_ends_at" value="{{ night_ends_value }}" required>
-    </div>
-    <button class="btn secondary" type="submit">{% trans "Save" %}</button>
-  </form>
 </div>
-{% if night_error %}<p class="notice notice-error">{{ night_error }}</p>{% endif %}
 <div class="panel">
   <div class="table-wrap">
     <table class="shifts-list">
@@ -62,7 +43,7 @@
         <tr{% if row.archived %} class="shifts-archived"{% endif %}>
           <td data-label="{% trans "Name" %}">{{ row.name }}</td>
           <td data-label="{% trans "Times" %}">{% shifts_time_range row.start_time row.end_time %}</td>
-          <td data-label="{% trans "Night" %}">{% if row.is_night %}<span class="badge shifts-type-badge"><span class="shifts-moon" aria-hidden="true"></span>{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}{% if row.night_mode != "auto" %}<span class="shifts-sub">{% trans "Set manually" %}</span>{% endif %}</td>
+          <td data-label="{% trans "Night" %}">{% if row.is_night %}<span class="badge shifts-type-badge"><span class="shifts-moon" aria-hidden="true"></span>{% trans "Night" %}</span>{% else %}<span class="shifts-muted" aria-hidden="true">–</span>{% endif %}</td>
           <td data-label="{% trans "Colour" %}"><span class="shifts-swatch" style="background-color: {{ row.colour }}" aria-hidden="true"></span></td>
           <td class="shifts-actions" data-label="{% trans "Actions" %}">
             <button class="btn secondary" type="button"
@@ -71,8 +52,16 @@
                     onclick="openModal()">{% trans "Edit" %}</button>
             {% if not row.archived %}
             <form method="post" action="{% url 'shifts_type_archive' row.pk %}"
+                  hx-post="{% url 'shifts_type_archive' row.pk %}"
+                  hx-target="#shell-content"
+                  hx-swap="innerHTML settle:0"
+                  hx-confirm="{% blocktrans trimmed with name=row.name %}Archive {{ name }}? It can no longer be assigned; shifts already on the rota keep it.{% endblocktrans %}"
+                  data-confirm-title="{% trans "Confirm Action" %}"
+                  data-confirm-ok="{% trans "Archive" %}"
+                  data-confirm-cancel="{% trans "Cancel" %}"
                   hx-disabled-elt="this" hx-sync="this:replace">
               {% csrf_token %}
+              <input type="hidden" name="department" value="{{ department.pk }}">
               <button class="btn secondary" type="submit">{% trans "Archive" %}</button>
             </form>
             {% else %}

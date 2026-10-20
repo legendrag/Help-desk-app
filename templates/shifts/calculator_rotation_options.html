@@ -8,9 +8,11 @@
     <option value="">{% trans "No shift types in this department yet." %}</option>
     {% endfor %}
   </select>
+  {% if not bulk_types %}<p class="shifts-muted">{% trans "No shift types in this department yet." %}</p>{% endif %}
 </div>
 <fieldset class="shifts-people">
   <legend>{% trans "People" %}</legend>
+  {% if people %}
   <label class="shifts-check">
     <input type="checkbox" class="shifts-select-all" checked>
     {% trans "Select all" %}
@@ -21,4 +23,7 @@
     {{ person.shift_label }}
   </label>
   {% endfor %}
+  {% else %}
+  <p class="shifts-muted">{% trans "No active support staff in this department." %}</p>
+  {% endif %}
 </fieldset>

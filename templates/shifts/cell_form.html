@@ -44,6 +44,15 @@
     </div>
   </div>
   <div class="form-actions--end">
+    {% if existing %}
+    {# Its own hx-post, so htmx asks the hx-confirm question for this button only. #}
+    <button class="btn danger" type="button" name="remove" value="1"
+            hx-post="{% url 'shifts_cell' %}"
+            hx-confirm="{% trans "Remove this shift?" %}"
+            data-confirm-title="{% trans "Confirm Action" %}"
+            data-confirm-ok="{% trans "Remove" %}"
+            data-confirm-cancel="{% trans "Cancel" %}">{% trans "Remove shift" %}</button>
+    {% endif %}
     <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
     {% if existing %}
     <button class="btn secondary" type="submit" name="reset_times" value="1">{% trans "Reset to shift default" %}</button>

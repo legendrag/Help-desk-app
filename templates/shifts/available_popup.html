@@ -24,6 +24,25 @@
 <p class="who-available-empty">{% trans "Nobody on shift now" %}</p>
 {% endif %}
 
+{% if late %}
+<h3 class="who-available-heading">{% trans "Not checked in" %}</h3>
+<ul class="who-available-list">
+  {% for person in late %}
+  <li class="who-available-person who-available-person--late">
+    <span class="who-available-dot" aria-hidden="true"></span>
+    <span class="who-available-who">
+      <bdi dir="auto" class="who-available-name">{{ person.name }}</bdi>
+      <span class="who-available-sub">
+        {% if show_shift_type %}<span class="who-available-chip {{ person.shift_type.colour|chip_ink }}" style="background-color: {{ person.shift_type.colour }}">{{ person.shift_type.name }}</span>{% endif %}
+        {% trans "until" %} {{ person.end|shifts_clock }}
+      </span>
+      {% if person.phone %}{% include "shifts/phone.html" with phone=person.phone %}{% endif %}
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
 {% if later %}
 <h3 class="who-available-heading">{% trans "Later today" %}</h3>
 <ul class="who-available-list">

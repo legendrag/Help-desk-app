@@ -8,7 +8,7 @@ def seed_night_cutoff(apps, schema_editor):
     Department = apps.get_model("core", "Department")
     Settings = apps.get_model("shifts", "DepartmentShiftSettings")
     ShiftType = apps.get_model("shifts", "ShiftType")
-    from shifts.services import type_includes_night
+    from shifts.migrations._night_legacy import type_includes_night
 
     cutoff = time(18, 0)
     for department in Department.objects.all():

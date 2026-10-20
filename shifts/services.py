@@ -88,99 +88,6 @@ def clock_length(start_t: time, end_t: time):
     return total, after
 
 
-DEFAULT_NIGHT_STARTS = time(18, 0)
-DEFAULT_NIGHT_ENDS = time(6, 0)
-
-
-def night_window_for(department):
-    """(night starts, night ends) for a department, cached on the instance."""
-    cached = getattr(department, "_night_window", None)
-    if cached is not None:
-        return cached
-    from shifts.models import DepartmentShiftSettings
-
-    try:
-        settings = department.shift_settings
-        starts, ends = settings.night_starts_at, settings.night_ends_at
-    except DepartmentShiftSettings.DoesNotExist:
-        starts, ends = DEFAULT_NIGHT_STARTS, DEFAULT_NIGHT_ENDS
-    department._night_window = (time(starts.hour, starts.minute), time(ends.hour, ends.minute))
-    return department._night_window
-
-
-def _night_segments(day, night_starts_at, night_ends_at):
-    """The night stretches that fall on one calendar day."""
-    starts = time(night_starts_at.hour, night_starts_at.minute)
-    ends = time(night_ends_at.hour, night_ends_at.minute)
-    if starts == ends:
-        return []
-    if ends < starts:
-        # The usual case, e.g. 6 PM to 6 AM: early morning plus late evening.
-        return [
-            (aware_on(day, time(0, 0)), aware_on(day, ends)),
-            (aware_on(day, starts), aware_on(day + timedelta(days=1), time(0, 0))),
-        ]
-    return [(aware_on(day, starts), aware_on(day, ends))]
-
-
-def split_day_night_minutes(start_dt, end_dt, night_starts_at, night_ends_at=DEFAULT_NIGHT_ENDS):
-    """Split an interval into day minutes and night minutes.
-
-    Night runs from the department's night start to its night end, across
-    midnight (by default 6 PM to 6 AM). Everything else is day.
-    """
-    if end_dt <= start_dt:
-        return 0, 0
-    tz = timezone.get_current_timezone()
-    first = timezone.localtime(start_dt, tz).date()
-    last = timezone.localtime(end_dt - timedelta(microseconds=1), tz).date()
-    total = int((end_dt - start_dt).total_seconds() // 60)
-    night_m = 0
-    cursor = first
-    while cursor <= last:
-        for seg_start, seg_end in _night_segments(cursor, night_starts_at, night_ends_at):
-            clip_start = max(start_dt, seg_start)
-            clip_end = min(end_dt, seg_end)
-            if clip_end > clip_start:
-                night_m += int((clip_end - clip_start).total_seconds() // 60)
-        cursor += timedelta(days=1)
-    return total - night_m, night_m
-
-
-def is_night_shift(start_t, end_t, night_starts_at, night_ends_at, mode="auto") -> bool:
-    """Whether a shift type counts as a night shift.
-
-    Automatic: more than half of its hours are night hours. A manager can
-    override that with Always or Never; night hours are counted either way.
-    """
-    if mode == "always":
-        return True
-    if mode == "never":
-        return False
-    anchor = date(2026, 1, 5)
-    start_dt, end_dt = interval_for(anchor, start_t, end_t)
-    day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at, night_ends_at)
-    return night_m * 2 > day_m + night_m
-
-
-def type_includes_night(start_t, end_t, night_starts_at) -> bool:
-    """Old rule (any minute after the night start). Kept for migration 0004 only."""
-    anchor = date(2026, 1, 5)
-    start_dt, end_dt = interval_for(anchor, start_t, end_t)
-    _day_m, night_m = split_day_night_minutes(start_dt, end_dt, night_starts_at, time(0, 0))
-    return night_m > 0
-
-
-def clipped_day_night_minutes(assignment, range_start, range_end):
-    start_dt, end_dt = effective_interval(assignment)
-    clip_start = max(start_dt, range_start)
-    clip_end = min(end_dt, range_end)
-    if clip_end <= clip_start:
-        return 0, 0
-    starts, ends = night_window_for(assignment.shift_type.department)
-    return split_day_night_minutes(clip_start, clip_end, starts, ends)
-
-
 def overrides_set_by_worker(assignment) -> bool:
     if assignment.start_time_override is None or assignment.end_time_override is None:
         return False
@@ -349,7 +256,7 @@ def overlap_message(other) -> str:
     }
 
 
-# Bulk assign (Calculator) and the rota's night auto-fill share this planner.
+# Bulk assign (Calculator) planner.
 BULK_MAX_DAYS = 92
 # Friday and Saturday, as on the rota (date.weekday()).
 WEEKEND_DAYS = (4, 5)
@@ -480,30 +387,3 @@ def plan_bulk(people, dates, shift_type, existing_by_user, *, per_day=1, everyon
     plan.sort(key=lambda item: item["date"])
     gaps.sort(key=lambda gap: gap["date"])
     return plan, gaps
-
-
-def suggest_nights(people, dates, shift_type, existing_by_user):
-    """One person a night (the rota's auto-fill), with a reason on back-to-back nights."""
-    plan, gaps = plan_bulk(people, dates, shift_type, existing_by_user)
-    by_date = {item["date"]: item for item in plan}
-    gap_dates = {gap["date"] for gap in gaps}
-    result = []
-    for day in dates:
-        if day in gap_dates or day not in by_date:
-            result.append({"date": day, "gap": True})
-            continue
-        item = dict(by_date[day], reason="")
-        if item["back_to_back"]:
-            others_assigned = any(
-                row.date == day
-                for person in people if person.pk != item["user_id"]
-                for row in existing_by_user.get(person.pk, [])
-            )
-            if others_assigned:
-                item["reason"] = _("Others already assigned on this date")
-            elif len(people) == 1:
-                item["reason"] = _("Only one person available")
-            else:
-                item["reason"] = _("Back-to-back")
-        result.append(item)
-    return result

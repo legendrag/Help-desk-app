@@ -46,7 +46,7 @@
           </td>
           <td data-label="{% trans "From" %}"><bdi>{{ row.starts }}</bdi></td>
           <td data-label="{% trans "To" %}"><bdi>{{ row.ends }}</bdi></td>
-          <td data-label="{% trans "Work hours" %}" class="shifts-report-hours">{{ row.hours }}</td>
+          <td data-label="{% trans "Work hours" %}" class="shifts-report-hours"{% if not row.counted %} title="{% trans "Not counted in the totals" %}"{% endif %}>{{ row.hours }}{% if not row.counted %}<span class="visually-hidden"> ({% trans "Not counted in the totals" %})</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -62,7 +62,7 @@
       <dd>{{ report.total_hours }}</dd>
     </div>
   </dl>
-  <p class="help-text">{% trans "Totals count shifts marked Present, and Scheduled shifts for people whose role does not use check-in." %}</p>
+  <p class="help-text">{% trans "Totals count shifts marked Present, and Scheduled shifts for people whose role does not use check-in." %} {% trans "Struck-through hours are planned, not worked, and are not counted." %}</p>
   {% else %}
   <p class="empty-state">{% trans "No shifts in this period." %}</p>
   {% endif %}

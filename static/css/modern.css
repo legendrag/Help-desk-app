@@ -2220,6 +2220,10 @@ td.mgmt-empty-cell {
   background: var(--text-muted);
   opacity: 0.55;
 }
+/* On the clock but not checked in: amber, like the board's "late" bars. */
+.who-available-person--late .who-available-dot {
+  background: var(--warning);
+}
 .who-available-who {
   display: flex;
   flex-direction: column;
