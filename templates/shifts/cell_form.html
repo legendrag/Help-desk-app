@@ -21,10 +21,9 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="shift-type">{% trans "Shift type" %}</label>
-          <select id="shift-type" name="shift_type"{% if existing %} data-allow-empty{% endif %}>
-            {% if existing %}
-            <option value="">{% trans "Remove this shift" %}</option>
-            {% else %}
+          {# Removing a shift is the Remove shift button below, which asks first. #}
+          <select id="shift-type" name="shift_type">
+            {% if not existing %}
             <option value="">{% trans "Choose a shift" %}</option>
             {% endif %}
             {% for row in types %}

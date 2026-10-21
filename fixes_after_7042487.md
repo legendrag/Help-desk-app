@@ -67,7 +67,7 @@ Some fixes are in commit 7ccad9c. The rest are in the working tree and will be i
 - **BR8. The dashboard cards ignore the filters on purpose.** A test pins this (`test_headline_stats_ignore_dashboard_filters`). "Total Users" counts the people who created or were assigned tickets, and "Departments" counts departments that have tickets.
 - **U3.** The transfer list shows full name and department without the username, on purpose. Tests pin this format.
 - **NB1.** Archiving a shift type doesn't change anyone's shifts. It only removes the type from the picker for new future dates, so there's nothing to notify about.
-- **BR17.** Auto-fill first shows a preview for the week or month on screen. Nothing is saved until you press Apply.
+- **BR17.** No longer applies: the rota's Auto-fill was removed in 28f682a. Bulk assign (Calculator) does the night rotation, with the same Preview then Apply.
 - **U6.** A reply on the ticket you're viewing is marked read silently, because you're already looking at it.
 - **U12 (part).** Password fields are cleared after a failed submit. That's the standard security default.
 - **U14 (part).** Role badges show the role's name as an admin typed it. That's data, not translatable text.

@@ -8,8 +8,8 @@
 {% if error %}
 <p class="notice notice-error">{{ error }}</p>
 {% else %}
-{% if is_manager %}
 <form method="get" class="shifts-toolbar panel" action="{% url 'shifts_team' %}">
+  {% if is_manager %}
   <div class="form-group">
     <label for="team-department">{% trans "Department" %}</label>
     <select id="team-department" name="department"
@@ -24,10 +24,27 @@
       {% endfor %}
     </select>
   </div>
+  {% endif %}
+  {# Same navigation as the Rota. Agents may only pass their own department. #}
   <input type="hidden" name="view" value="{{ view }}">
-  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <a class="btn secondary" href="{% url 'shifts_team' %}?department={{ department.pk }}&view={{ view }}&start={{ prev_start|date:'Y-m-d' }}">{% trans "Previous" %}</a>
+  <a class="btn secondary" href="{% url 'shifts_team' %}?department={{ department.pk }}&view={{ view }}&start={{ next_start|date:'Y-m-d' }}">{% trans "Next" %}</a>
+  <div class="form-group">
+    <label for="team-start">{% trans "Date" %}</label>
+    <input id="team-start" type="date" name="start" value="{{ start|date:'Y-m-d' }}"
+           hx-get="{% url 'shifts_team' %}"
+           hx-trigger="change"
+           hx-include="closest form"
+           hx-vals='{"department": "{{ department.pk }}"}'
+           hx-target="#shell-content"
+           hx-swap="innerHTML show:window:top settle:0"
+           hx-push-url="true">
+  </div>
+  <div class="shifts-segment" role="group" aria-label="{% trans "View" %}">
+    <a class="{% if view == 'week' %}is-active{% endif %}" href="{% url 'shifts_team' %}?department={{ department.pk }}&view=week&start={{ week_start|date:'Y-m-d' }}">{% trans "Week" %}</a>
+    <a class="{% if view == 'month' %}is-active{% endif %}" href="{% url 'shifts_team' %}?department={{ department.pk }}&view=month&start={{ start|date:'Y-m-d' }}">{% trans "Month" %}</a>
+  </div>
 </form>
-{% endif %}
 {% include "shifts/rota_grid.html" %}
 {% endif %}
 {% endblock %}

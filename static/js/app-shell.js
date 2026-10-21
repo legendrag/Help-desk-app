@@ -743,7 +743,7 @@ function initializeChoices(targetElement) {
             searchField: []
         };
         // Tom Select hides value="" options. Selects whose empty option is a
-        // real choice (e.g. "Remove this shift") opt back in.
+        // real choice opt back in with data-allow-empty.
         if (select.hasAttribute('data-allow-empty')) {
             options.allowEmptyOption = true;
         }

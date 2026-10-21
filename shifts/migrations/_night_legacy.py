@@ -5,11 +5,27 @@ Night used to be worked out from a department night window (default 6 PM to
 underscore keeps Django's migration loader from reading this as a migration.
 """
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 from django.utils import timezone
 
-from shifts.services import aware_on, interval_for
+# aware_on and interval_for are copied from shifts.services as they were, so
+# these migrations never change with the app's code.
+
+
+def aware_on(on, clock):
+    tz = timezone.get_current_timezone()
+    naive = datetime.combine(on, clock)
+    aware = timezone.make_aware(naive, tz)
+    if aware.astimezone(dt_timezone.utc).astimezone(tz).replace(tzinfo=None) != naive:
+        raise ValueError("That time does not exist on this date.")
+    return aware
+
+
+def interval_for(on, start_t, end_t):
+    start_dt = aware_on(on, start_t)
+    end_day = on + timedelta(days=1) if end_t < start_t else on
+    return start_dt, aware_on(end_day, end_t)
 
 
 def _night_segments(day, night_starts_at, night_ends_at):

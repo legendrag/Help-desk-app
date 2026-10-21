@@ -2930,12 +2930,13 @@ class Round14RotaTests(TestCase):
         }, HTTP_HX_REQUEST="true")
         self.assertEqual(saved.context["start"], date(2026, 11, 7))
 
-    def test_remove_option_survives_tom_select(self):
+    def test_remove_is_only_the_confirmed_button(self):
         row = make_assignment(self.agent, self.day, date(2026, 11, 10))
         form = self.client.get(reverse("shifts_cell"), {
             "user": self.agent.pk, "date": "2026-11-10", "department": self.department.pk, "assignment": row.pk,
         }, HTTP_HX_REQUEST="true")
-        self.assertContains(form, "data-allow-empty")
+        self.assertNotContains(form, '<option value="">')
+        self.assertContains(form, 'hx-confirm="Remove this shift?"')
 
     def test_add_type_starts_on_the_viewed_department(self):
         form = self.client.get(reverse("shifts_type_add"), {"department": self.department.pk}, HTTP_HX_REQUEST="true")
@@ -3309,3 +3310,58 @@ class ShiftsRound19Tests(TestCase):
         self.assertContains(page, "No shift types in this department yet.")
         self.assertContains(page, "No active support staff in this department.")
         self.assertNotContains(page, "shifts-select-all")
+
+
+class ShiftsRound20Tests(TestCase):
+    """R20 findings at 28f682a: Team rota navigation, default department, legend, remove."""
+
+    def setUp(self):
+        self.first = make_department("Aaa facilities")  # first by name, has types
+        make_shift_type(self.first, name="Facilities night")
+        self.department = make_department("IT")
+        self.lead_role = make_role("R20 lead", can_manage_shifts=True)
+        self.manager = make_user("r20-lead", "support", self.department, self.lead_role)
+        self.agent = make_user("r20-agent", "support", self.department)
+        self.night = make_shift_type(self.department, name="IT night")
+
+    def test_shift_pages_open_on_the_managers_own_department(self):
+        self.client.force_login(self.manager)
+        for name in ("shifts_rota", "shifts_types", "shifts_team", "shifts_calculator"):
+            page = self.client.get(reverse(name))
+            self.assertEqual(page.context["department"], self.department, name)
+
+    def test_own_department_without_types_falls_back_to_one_with_types(self):
+        empty = make_department("Zzz empty")
+        lead = make_user("r20-empty-lead", "support", empty, self.lead_role)
+        self.client.force_login(lead)
+        self.assertEqual(self.client.get(reverse("shifts_rota")).context["department"], self.first)
+
+    def test_team_rota_has_navigation_for_agents(self):
+        self.client.force_login(self.agent)
+        page = self.client.get(reverse("shifts_team"), {"view": "week", "start": "2026-10-07"})
+        self.assertEqual(page.status_code, 200)
+        base = f"{reverse('shifts_team')}?department={self.department.pk}"
+        self.assertContains(page, f"{base}&view=week&start=2026-09-26")  # Previous
+        self.assertContains(page, f"{base}&view=week&start=2026-10-10")  # Next
+        self.assertContains(page, f"{base}&view=month&start=2026-10-03")
+        self.assertNotContains(page, 'id="team-department"')
+        # The links an agent follows carry their own department, which is allowed.
+        self.assertEqual(self.client.get(reverse("shifts_team"), {
+            "department": self.department.pk, "view": "month", "start": "2026-10-01",
+        }).status_code, 200)
+
+    def test_board_legend_lists_missed(self):
+        self.client.force_login(self.manager)
+        page = self.client.get(reverse("shifts_available"))
+        self.assertContains(page, 'shifts-tl-key shifts-tl-bar--missed')
+
+    def test_cell_keeps_an_archived_type_selected(self):
+        old = make_shift_type(self.department, name="Old IT day", start=time(9, 0), end=time(17, 0))
+        row = make_assignment(self.agent, old, date(2026, 10, 1))
+        old.archived = True
+        old.save()
+        self.client.force_login(self.manager)
+        form = self.client.get(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": "2026-10-01", "department": self.department.pk, "assignment": row.pk,
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(form, f'<option value="{old.pk}" selected>Old IT day</option>', html=False)

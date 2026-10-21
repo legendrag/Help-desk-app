@@ -142,6 +142,16 @@ def _step_start(view, start):
     return start - timedelta(days=7), start + timedelta(days=7)
 
 
+def _rota_nav(view, start, dates, today):
+    """Previous, Next and the Week link's start for the rota toolbars.
+
+    Month → Week opens this week when it is in the month, else the month's first week.
+    """
+    prev_start, next_start = _step_start(view, start)
+    week_start = saturday_of(today if view == "month" and dates[0] <= today <= dates[-1] else start)
+    return {"prev_start": prev_start, "next_start": next_start, "week_start": week_start}
+
+
 def _rota_bundle(department, dates):
     first, last = dates[0], dates[-1]
     assignments = list(
@@ -217,11 +227,8 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
     etag = _rota_etag(department, view, start, bundle["assignments"])
     if not retarget and htmx_revalidation_match(request, etag):
         return htmx_not_modified(etag)
-    prev_start, next_start = _step_start(view, start)
     now = timezone.now()
     today = timezone.localdate()
-    # Month → Week opens this week when it is in the month, else the month's first week.
-    week_start = saturday_of(today if view == "month" and dates[0] <= today <= dates[-1] else start)
     check_ins = _open_check_ins(request.user, now)
     my_assignments = [a for a in bundle["assignments"] if a.user_id == request.user.id]
     refresh_in = next_check_in_change(my_assignments, now) if can_check_in(request.user) else None
@@ -231,9 +238,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
         "departments": Department.objects.order_by("name"),
         "view": view,
         "start": start,
-        "prev_start": prev_start,
-        "next_start": next_start,
-        "week_start": week_start,
+        **_rota_nav(view, start, dates, today),
         "readonly": False,
         "shell_etag": etag,
         "now": now,
@@ -259,7 +264,7 @@ def _grid_response(request, department, retarget=False, notice="", skips=None, e
 def shifts_rota(request):
     if not is_shift_manager(request.user):
         return _forbid()
-    return _grid_response(request, _types_department(request), retarget=False)
+    return _grid_response(request, _selected_department(request), retarget=False)
 
 
 @login_required
@@ -655,7 +660,7 @@ def _selected_department(request):
     raw = request.POST.get("department") or request.GET.get("department")
     if raw:
         return _department_or_404(raw)
-    department = Department.objects.order_by("name").first()
+    department = _default_department(request.user)
     if department is None:
         raise Http404(_("No department exists."))
     return department
@@ -752,15 +757,22 @@ def _department_with_shift_types():
     )
 
 
-def _types_department(request):
-    raw = request.POST.get("department") or request.GET.get("department")
-    if raw:
-        return _department_or_404(raw)
-    return _department_with_shift_types() or _selected_department(request)
+def _default_department(user):
+    """The department a Shifts page opens on when none is chosen: the user's own
+    when it has shift types, else the first that has any, else the user's own,
+    else the first by name."""
+    own_id = getattr(user, "department_id", None)
+    if own_id and ShiftType.objects.filter(department_id=own_id).exists():
+        return user.department
+    return (
+        _department_with_shift_types()
+        or (user.department if own_id else None)
+        or Department.objects.order_by("name").first()
+    )
 
 
 def _render_types(request):
-    department = _types_department(request)
+    department = _selected_department(request)
     rows = (
         ShiftType.objects.filter(department=department)
         .select_related("department")
@@ -978,7 +990,11 @@ def _cell_form(request, department, user, on, existing, now, *, error="", select
         "person": user,
         "on": on,
         "existing": existing,
-        "types": ShiftType.objects.filter(department=department, archived=False),
+        # The shift's own type stays listed even when archived, so the select
+        # never silently falls back to another type.
+        "types": ShiftType.objects.filter(department=department).filter(
+            Q(archived=False) | Q(pk=getattr(existing, "shift_type_id", None))
+        ),
         "can_restore": _can_restore_check_in(existing, now),
         "error": error,
         "selected_type": selected_type,
@@ -1518,9 +1534,7 @@ def shifts_calculator(request):
     if not is_shift_manager(request.user):
         return _forbid()
     raw = request.GET.get("department")
-    department = _department_or_404(raw) if raw else _department_with_shift_types()
-    if department is None:
-        department = Department.objects.order_by("name").first()
+    department = _department_or_404(raw) if raw else _default_department(request.user)
     bulk_types, people = _rotation_choices(department)
     context = {
         "departments": Department.objects.order_by("name"),
@@ -1733,7 +1747,7 @@ def shifts_team(request):
     if request.user.user_type != "support" and not is_shift_manager(request.user):
         return _forbid()
     if is_shift_manager(request.user):
-        department = _types_department(request)
+        department = _selected_department(request)
     else:
         requested = request.GET.get("department")
         if requested and str(request.user.department_id) != str(requested):
@@ -1746,14 +1760,16 @@ def shifts_team(request):
         department = request.user.department
     view, start, dates = _rota_dates(request)
     bundle = _rota_bundle(department, dates)
+    today = timezone.localdate()
     return _shell(request, "shifts/team.html", {
         **bundle,
         "department": department,
         "departments": Department.objects.order_by("name"),
         "view": view,
         "start": start,
+        **_rota_nav(view, start, dates, today),
         "readonly": True,
-        "today": timezone.localdate(),
+        "today": today,
         "now": timezone.now(),
     })
 
