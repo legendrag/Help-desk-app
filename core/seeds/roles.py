@@ -34,6 +34,7 @@ def seed_roles(stdout=None):
     support_role.can_access_dashboard = True
     support_role.can_access_kb = True
     support_role.can_manage_kb = True
+    support_role.can_check_in = True
     support_role.save()
 
     branch_role.can_create_ticket = True
@@ -50,6 +51,7 @@ def seed_roles(stdout=None):
     team_lead_role.can_access_kb = True
     team_lead_role.can_manage_kb = True
     team_lead_role.can_manage_news = True
+    team_lead_role.can_check_in = True
     team_lead_role.save()
 
     kb_editor_role.can_access_kb = True

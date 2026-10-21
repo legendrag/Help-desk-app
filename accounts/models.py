@@ -1,5 +1,7 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -64,6 +66,16 @@ class User(AbstractUser):
     user_type = models.CharField(_("User Type"), max_length=20, choices=UserType.choices, default=UserType.BRANCH)
     status = models.CharField(_("Status"), max_length=20, choices=Status.choices, default=Status.ACTIVE)
     requires_password_change = models.BooleanField(_("Requires password change"), default=False)
+
+    class Theme(models.TextChoices):
+        LIGHT = "light", _("Light")
+        DARK = "dark", _("Dark")
+
+    # Personal preferences, so they follow the user to every device. Blank
+    # means "not chosen yet": the browser's cookie / OS setting is used and
+    # adopted on the first signed-in request.
+    language = models.CharField(_("Language"), max_length=8, choices=settings.LANGUAGES, blank=True, default="")
+    theme = models.CharField(_("Theme"), max_length=8, choices=Theme.choices, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -98,3 +110,17 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
 
 
+class LoginThrottle(models.Model):
+    """Failed sign-ins per username, for the lockout on the login form.
+
+    A table rather than the cache: the count is raised with one conditional
+    UPDATE, so parallel attempts can't slip past it, and nothing evicts it.
+    ``username`` is stored case-folded, as sign-in ignores case.
+    """
+
+    username = models.CharField(max_length=150, unique=True)
+    failures = models.PositiveSmallIntegerField(default=0)
+    last_failure_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    def __str__(self):
+        return f"{self.username} ({self.failures})"

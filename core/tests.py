@@ -10,7 +10,7 @@ from django.urls import reverse
 from accounts.models import User
 from config.settings import mysql_connect_host
 from core.management_views import CategoryListView
-from core.models import Category, Department
+from core.models import Category, Department, Role
 from core.version import get_app_version
 from tickets.models import Ticket
 
@@ -104,7 +104,8 @@ class LanguageSwitchLoadingTests(SimpleTestCase):
 
     def test_language_switch_starts_progress_then_submits(self):
         self.assertIn('id="lang-switch-form" data-no-loading', self.base_html)
-        self.assertIn("js/app-shell.js' %}?v=8", self.base_html)
+        # Any version: the pin only checks the script is cache-busted.
+        self.assertRegex(self.base_html, r"js/app-shell\.js' %\}\?v=\d+")
         self.assertIn("window.beginProgressNavigation()", self.app_shell)
         self.assertIn("requestAnimationFrame(function () { form.submit(); })", self.app_shell)
         self.assertIn("loading.js' %}?v=23", self.base_html)
@@ -201,7 +202,7 @@ class LanguageSwitchRenderedTests(TestCase):
         response = self.client.get(reverse("tickets_list"))
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn("js/app-shell.js?v=8", html)
+        self.assertRegex(html, r"js/app-shell\.js\?v=\d+")
         self.assertIn("js/loading.js?v=23", html)
         self.assertIn('id="lang-switch-form"', html)
         self.assertIn("data-no-loading", html)
@@ -269,3 +270,159 @@ class SeedDemoDataTests(TestCase):
         
         branches = set(Ticket.objects.values_list("branch__code", flat=True))
         self.assertGreater(len(branches), 1)
+
+
+class ManageShiftsFlagTests(TestCase):
+    def test_admin_role_name_forces_the_flag(self):
+        role = Role(name=" Admin ", can_manage_shifts=False)
+        role.save()
+        role.refresh_from_db()
+        self.assertTrue(role.can_manage_shifts)
+        self.assertTrue(role.can_check_in)
+
+    def test_other_role_keeps_false(self):
+        role = Role.objects.create(name="Desk agent", can_manage_shifts=False)
+        self.assertFalse(role.can_manage_shifts)
+        self.assertFalse(role.can_check_in)
+
+
+class SettingsListsLoggedOutTests(TestCase):
+    def test_settings_lists_send_anonymous_users_to_login(self):
+        for name in ("department_list", "role_list", "branch_list", "category_list"):
+            response = self.client.get(reverse(name))
+            self.assertEqual(response.status_code, 302, name)
+            self.assertIn(reverse("login"), response["Location"], name)
+
+
+class RoleEscalationTests(TestCase):
+    """A role editor can only hand out permissions their own role already has."""
+
+    def setUp(self):
+        from core.forms import RoleForm
+
+        self.role = Role.objects.create(
+            name="Role editor", can_access_settings=True, can_update_role=True, can_create_role=True,
+        )
+        self.editor = User.objects.create_user(
+            username="role-editor", password="password123", user_type=User.UserType.SUPPORT, role=self.role,
+        )
+        self.client.force_login(self.editor)
+        # Every field the form posts, as the settings page sends it.
+        self.data = {name: "on" for name in RoleForm.base_fields if name.startswith("can_")}
+
+    def _post(self, role, **overrides):
+        data = {**self.data, "name": role.name, **overrides}
+        return self.client.post(reverse("role_update", args=[role.pk]), data, HTTP_HX_REQUEST="true")
+
+    def test_cannot_give_own_role_everything(self):
+        response = self._post(self.role)
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.role.refresh_from_db()
+        self.assertFalse(self.role.can_delete_role)
+        self.assertFalse(self.role.can_manage_shifts)
+
+    def test_can_pass_on_what_they_hold_and_keep_existing_flags(self):
+        other = Role.objects.create(name="Other role", can_manage_shifts=True)
+        data = {"name": other.name, "can_access_settings": "on", "can_manage_shifts": "on"}
+        response = self.client.post(reverse("role_update", args=[other.pk]), data, HTTP_HX_REQUEST="true")
+        self.assertNotContains(response, "You can only give permissions", status_code=response.status_code)
+        other.refresh_from_db()
+        self.assertTrue(other.can_access_settings)  # the editor has it
+        self.assertTrue(other.can_manage_shifts)  # already on, so it may stay
+
+    def test_cannot_create_a_stronger_role(self):
+        response = self.client.post(
+            reverse("role_create"), {"name": "Sneaky", "can_delete_user": "on"}, HTTP_HX_REQUEST="true",
+        )
+        self.assertContains(response, "You can only give permissions that your own role has")
+        self.assertFalse(Role.objects.filter(name="Sneaky").exists())
+
+
+class Round14CoreTests(TestCase):
+    def test_duplicate_branch_name_is_refused(self):
+        from core.forms import BranchForm
+        from core.models import Branch
+
+        Branch.objects.create(name="Main Branch", code="MB1")
+        form = BranchForm({"name": "main branch", "code": "MB2"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("name", form.errors)
+
+    def test_websocket_origin_must_be_this_site(self):
+        from core.websocket import is_allowed_origin
+
+        self.assertTrue(is_allowed_origin("https://help.example.com", "help.example.com"))
+        self.assertTrue(is_allowed_origin("http://127.0.0.1:8000", "127.0.0.1:8000"))
+        self.assertFalse(is_allowed_origin("https://evil.example", "help.example.com"))
+        self.assertFalse(is_allowed_origin("", "help.example.com"))
+        self.assertFalse(is_allowed_origin("null", "help.example.com"))
+
+    def test_settings_opens_on_the_requested_tab(self):
+        admin = User.objects.create_superuser(username="r14-settings", password="password123")
+        self.client.force_login(admin)
+        response = self.client.get(reverse("settings") + "?tab=roles")
+        self.assertContains(response, f'hx-get="{reverse("role_list")}" data-no-progress')
+        self.assertEqual(self.client.get(reverse("settings") + "?tab=nope").context["settings_tab"], "branches")
+
+    def test_reload_trigger_leaves_messages_for_the_reloaded_page(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        from core.middleware import HtmxMessagesMiddleware
+
+        request = RequestFactory().post("/x", HTTP_HX_REQUEST="true")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+
+        def view(req):
+            from django.contrib import messages
+
+            messages.success(req, "Ticket transfer accepted.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "reloadPage,refreshTickets"
+            return response
+
+        response = HtmxMessagesMiddleware(view)(request)
+        self.assertNotIn("flashMessages", response["HX-Trigger"])
+        self.assertFalse(request._messages.used)
+
+    def test_permission_denied_renders_the_styled_page(self):
+        support = User.objects.create_user(username="r14-agent", password="password123", user_type="support")
+        self.client.force_login(support)
+        response = self.client.get(reverse("shifts_types"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, "403.html")
+
+
+class PermissionDeniedLogTests(TestCase):
+    def test_refused_page_logs_one_line_without_a_traceback(self):
+        import logging
+        import sys
+
+        from django.core.exceptions import PermissionDenied
+
+        from core.log_filters import PermissionDeniedOneLine
+
+        try:
+            raise PermissionDenied("no")
+        except PermissionDenied:
+            record = logging.LogRecord("django.request", logging.WARNING, __file__, 1, "Forbidden", None, sys.exc_info())
+        self.assertTrue(PermissionDeniedOneLine().filter(record))
+        self.assertIsNone(record.exc_info)
+
+        try:
+            raise ValueError("real error")
+        except ValueError:
+            error = logging.LogRecord("django.request", logging.ERROR, __file__, 1, "Boom", None, sys.exc_info())
+        PermissionDeniedOneLine().filter(error)
+        self.assertIsNotNone(error.exc_info)  # real errors keep their traceback
+
+
+class CategoryFormPlaceholderTests(TestCase):
+    def test_department_keeps_its_choose_option_visible(self):
+        from core.forms import CategoryForm
+
+        html = str(CategoryForm()["department"])
+        self.assertIn("data-allow-empty", html)
+        self.assertIn('<option value="" selected disabled>Choose a department</option>', html)

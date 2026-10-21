@@ -1,12 +1,192 @@
 import sys
 from types import ModuleType
 from django.apps import AppConfig
+import logging
+from urllib.parse import urlsplit
+
+logger = logging.getLogger(__name__)
+
+# A push service that never answers must not hold up the delivery queue.
+PUSH_TIMEOUT_SECONDS = 5
+# Drop a subscription after this many failures in a row with no success.
+PUSH_MAX_CONSECUTIVE_FAILURES = 20
+# After a failure a device is skipped for a while (30 s, 1 min, 2 min, ... up
+# to 1 h) so a few broken devices can't keep the push workers busy.
+PUSH_BACKOFF_SECONDS = 30
+PUSH_BACKOFF_MAX_SECONDS = 3600
+
+# The push services browsers actually use. Anything else is refused, which
+# also stops a DNS name that points at an internal address
+# (e.g. 169.254.169.254.nip.io) from being called by the server.
+DEFAULT_PUSH_HOST_SUFFIXES = (
+    "fcm.googleapis.com",  # Chrome, Samsung Internet, Opera, Brave
+    "android.googleapis.com",
+    "push.services.mozilla.com",  # Firefox
+    "notify.windows.com",  # Edge (wns2-*.notify.windows.com)
+    "push.apple.com",  # Safari (web.push.apple.com)
+)
+
+
+def _allowed_push_suffixes():
+    from django.conf import settings
+
+    return tuple(getattr(settings, "WEBPUSH_ALLOWED_HOST_SUFFIXES", DEFAULT_PUSH_HOST_SUFFIXES))
+
+
+def _is_public_push_endpoint(endpoint):
+    """An HTTPS URL on a known browser push service."""
+    try:
+        parts = urlsplit(endpoint)
+        host = (parts.hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    if parts.scheme != "https" or not host:
+        return False
+    return any(host == suffix or host.endswith("." + suffix) for suffix in _allowed_push_suffixes())
+
+
+def _send_push(subscription, payload, ttl):
+    from django.conf import settings
+    from pywebpush import webpush as pywebpush_send
+    from webpush.utils import _process_subscription_info
+
+    webpush_settings = getattr(settings, "WEBPUSH_SETTINGS", {})
+    vapid = {}
+    if webpush_settings.get("VAPID_PRIVATE_KEY"):
+        vapid = {
+            "vapid_private_key": webpush_settings["VAPID_PRIVATE_KEY"],
+            "vapid_claims": {"sub": "mailto:{}".format(webpush_settings.get("VAPID_ADMIN_EMAIL"))},
+        }
+    return pywebpush_send(
+        subscription_info=_process_subscription_info(subscription),
+        data=payload,
+        ttl=ttl,
+        timeout=PUSH_TIMEOUT_SECONDS,
+        **vapid,
+    )
+
+
+def _push_failure_key(subscription):
+    return f"webpush_failures_{subscription.pk}"
+
+
+def _push_skip_key(subscription):
+    return f"webpush_skip_until_{subscription.pk}"
+
+
+def _push_backing_off(subscription):
+    """True while a recently failing device is being skipped."""
+    import time
+
+    from django.core.cache import cache
+
+    try:
+        return (cache.get(_push_skip_key(subscription)) or 0) > time.time()
+    except Exception:
+        return False
+
+
+def _delete_subscription(subscription):
+    try:
+        subscription.delete()
+    except Exception:
+        pass
+
+
+def _record_push_failure(subscription, detail):
+    import time
+
+    from django.core.cache import cache
+
+    key = _push_failure_key(subscription)
+    try:
+        count = cache.get(key, 0) + 1
+        cache.set(key, count, 7 * 24 * 3600)
+        wait = min(PUSH_BACKOFF_SECONDS * 2 ** (count - 1), PUSH_BACKOFF_MAX_SECONDS)
+        cache.set(_push_skip_key(subscription), time.time() + wait, wait)
+    except Exception:
+        count = 1
+    if count >= PUSH_MAX_CONSECUTIVE_FAILURES:
+        logger.warning(
+            "WebPush subscription %s removed after %s failures in a row (%s)", subscription.pk, count, detail
+        )
+        _delete_subscription(subscription)
+        cache.delete(key)
+    elif count == 1 or count % 5 == 0:
+        # The first failure, then every fifth, so a dead endpoint can't flood the log.
+        logger.warning(
+            "WebPush failed for subscription %s (failure %s in a row): %s", subscription.pk, count, detail
+        )
+
+
+def _clear_push_failures(subscription):
+    from django.core.cache import cache
+
+    try:
+        cache.delete_many([_push_failure_key(subscription), _push_skip_key(subscription)])
+    except Exception:
+        pass
+
+
+def _push_to_each(subscriptions, send_one):
+    """Send to a user's devices side by side, so one slow device doesn't hold up the rest."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import close_old_connections
+
+    from django.conf import settings
+
+    subscriptions = list(subscriptions)
+    # EMAIL_QUEUE_SYNC (tests, management commands): stay on this thread and connection.
+    if len(subscriptions) <= 1 or getattr(settings, "EMAIL_QUEUE_SYNC", False):
+        for subscription in subscriptions:
+            send_one(subscription)
+        return
+
+    def run(subscription):
+        try:
+            send_one(subscription)
+        finally:
+            close_old_connections()  # each pool thread opens its own DB connection
+
+    with ThreadPoolExecutor(max_workers=min(len(subscriptions), 4), thread_name_prefix="push-device") as pool:
+        list(pool.map(run, subscriptions))
+
+
+def _close_session_sockets(sender, request, user, **kwargs):
+    """Stop an open page from receiving notifications after its session logs out."""
+    session_key = getattr(getattr(request, "session", None), "session_key", None)
+    if user is None or not session_key:
+        return
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        if layer is None:
+            return
+        async_to_sync(layer.group_send)(
+            f"user_{user.pk}_notifications",
+            {"type": "session.ended", "session_key": session_key},
+        )
+    except Exception:
+        pass
 
 
 class NotificationsConfig(AppConfig):
     name = 'notifications'
 
     def ready(self):
+        from django.contrib.auth.signals import user_logged_out
+
+        user_logged_out.connect(_close_session_sockets, dispatch_uid="notifications.close_session_sockets")
+
+        from django.core.signals import request_started
+
+        from notifications.email_queue import start_outbox_on_first_request
+
+        request_started.connect(start_outbox_on_first_request, dispatch_uid="notifications.email_outbox")
+
         # 1. Patch webpush.models.SubscriptionInfo to exclude user_agent field
         try:
             from webpush.models import SubscriptionInfo
@@ -65,13 +245,13 @@ class NotificationsConfig(AppConfig):
                 ])
 
                 def save_or_delete(self, subscription, user, status_type, group_name):
-                    data = {"user": None, "group": None}
-                    if user.is_authenticated:
-                        data["user"] = user
-                    if group_name:
-                        group, created = Group.objects.get_or_create(name=group_name)
-                        data["group"] = group
-                    data["subscription"] = subscription
+                    # The app only pushes to users. Anonymous "group" sign-ups
+                    # would let anyone register endpoints the server then calls.
+                    if not user.is_authenticated:
+                        if not PushInformation.objects.filter(subscription=subscription).exists():
+                            subscription.delete()
+                        return
+                    data = {"user": user, "group": None, "subscription": subscription}
                     try:
                         push_info, created = PushInformation.objects.get_or_create(**data)
                     except PushInformation.MultipleObjectsReturned:
@@ -81,12 +261,17 @@ class NotificationsConfig(AppConfig):
                         created = False
 
                     if status_type == "unsubscribe":
-                        if created:
-                            push_info.delete()
-                        else:
-                            PushInformation.objects.filter(**data).delete()
-                        subscription.delete()
+                        # Only drop the caller's own rows; the subscription goes
+                        # once nobody else holds it.
+                        PushInformation.objects.filter(**data).delete()
+                        if not PushInformation.objects.filter(subscription=subscription).exists():
+                            subscription.delete()
                         return
+
+                    # A browser subscription belongs to whoever registered it last
+                    # (e.g. another user logged in on the same browser), so pushes
+                    # never reach a previous user's device.
+                    PushInformation.objects.filter(subscription=subscription).exclude(user=user).delete()
 
                     # Allow multiple devices (browser + PWA + phone). Only remove
                     # other PushInformation rows that share this exact endpoint.
@@ -111,6 +296,12 @@ class NotificationsConfig(AppConfig):
                 class Meta:
                     model = SubscriptionInfo
                     fields = ('endpoint', 'auth', 'p256dh', 'browser')
+
+                def clean_endpoint(self):
+                    endpoint = self.cleaned_data.get("endpoint") or ""
+                    if not _is_public_push_endpoint(endpoint):
+                        raise forms.ValidationError("Invalid push endpoint.")
+                    return endpoint
 
                 def get_or_save(self):
                     from django.db.utils import OperationalError
@@ -152,16 +343,33 @@ class NotificationsConfig(AppConfig):
 
         # 3. Patch webpush sending functions to be resilient and not crash the whole loop
         try:
-            import logging
-            logger = logging.getLogger(__name__)
-
             import webpush.utils
             import webpush
             from pywebpush import WebPushException
 
-            def resilient_send_notification_to_user(user, payload, ttl=0):
-                from webpush.utils import _send_notification
-                push_infos = user.webpush_info.select_related("subscription")
+            def _push_one(subscription, payload, ttl, label):
+                if not _is_public_push_endpoint(getattr(subscription, "endpoint", "") or ""):
+                    # Saved before the endpoint check existed; never call it.
+                    _delete_subscription(subscription)
+                    return
+                if _push_backing_off(subscription):
+                    return
+                try:
+                    _send_push(subscription, payload, ttl)
+                except WebPushException as e:
+                    status_code = e.response.status_code if e.response is not None else None
+                    # 404/410: the browser dropped the subscription. Anything
+                    # else (403 after a VAPID key change, 429, 5xx) may recover.
+                    if status_code in (404, 410):
+                        _delete_subscription(subscription)
+                        return
+                    _record_push_failure(subscription, f"{label}: {e}")
+                except Exception as e:
+                    _record_push_failure(subscription, f"{label}: unexpected error {e}")
+                else:
+                    _clear_push_failures(subscription)
+
+            def _unique_subscriptions(push_infos):
                 seen_endpoints = set()
                 for push_info in push_infos:
                     subscription = push_info.subscription
@@ -170,26 +378,17 @@ class NotificationsConfig(AppConfig):
                         continue
                     if endpoint:
                         seen_endpoints.add(endpoint)
-                    try:
-                        _send_notification(subscription, payload, ttl)
-                    except WebPushException as e:
-                        status_code = e.response.status_code if e.response is not None else None
-                        logger.warning(
-                            f"WebPush failed for user {user.id} subscription {subscription.id}: {e}"
-                        )
-                        if status_code in [403, 404, 410]:
-                            try:
-                                subscription.delete()
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        logger.warning(
-                            f"WebPush unexpected error for user {user.id} subscription {subscription.id}: {e}"
-                        )
+                    yield subscription
+
+            def resilient_send_notification_to_user(user, payload, ttl=0):
+                push_infos = user.webpush_info.select_related("subscription")
+                _push_to_each(
+                    _unique_subscriptions(push_infos),
+                    lambda subscription: _push_one(subscription, payload, ttl, f"user {user.id}"),
+                )
 
             def resilient_send_notification_to_group(group_name, payload, ttl=0, exclude_user_id=None):
                 from webpush.models import Group
-                from webpush.utils import _send_notification
                 try:
                     group = Group.objects.get(name=group_name)
                 except Group.DoesNotExist:
@@ -199,30 +398,10 @@ class NotificationsConfig(AppConfig):
                 if exclude_user_id is not None:
                     push_infos = push_infos.exclude(user__id=exclude_user_id)
 
-                seen_endpoints = set()
-                for push_info in push_infos:
-                    subscription = push_info.subscription
-                    endpoint = getattr(subscription, "endpoint", None) or ""
-                    if endpoint in seen_endpoints:
-                        continue
-                    if endpoint:
-                        seen_endpoints.add(endpoint)
-                    try:
-                        _send_notification(subscription, payload, ttl)
-                    except WebPushException as e:
-                        status_code = e.response.status_code if e.response is not None else None
-                        logger.warning(
-                            f"WebPush group notify failed for subscription {subscription.id}: {e}"
-                        )
-                        if status_code in [403, 404, 410]:
-                            try:
-                                subscription.delete()
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        logger.warning(
-                            f"WebPush unexpected error for subscription {subscription.id}: {e}"
-                        )
+                _push_to_each(
+                    _unique_subscriptions(push_infos),
+                    lambda subscription: _push_one(subscription, payload, ttl, f"group {group_name}"),
+                )
 
             # Apply the patches to utils module
             webpush.utils.send_notification_to_user = resilient_send_notification_to_user

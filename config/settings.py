@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "news",
     "kb",
     "webpush",
+    "shifts",
 ]
 
 MIDDLEWARE = [
@@ -48,7 +49,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "core.middleware.HtmxMessagesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.NoCacheAfterLogoutMiddleware",
     "accounts.middleware.ForcePasswordChangeMiddleware",
@@ -69,6 +72,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.app_version",
+                "core.context_processors.attachment_limits",
             ],
         },
     },
@@ -77,6 +81,9 @@ TEMPLATES = [
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "tickets_list"
 LOGOUT_REDIRECT_URL = "login"
+# A stale CSRF token (a page left open across a sign-in) gets a reload or a
+# branded page instead of Django's plain one.
+CSRF_FAILURE_VIEW = "core.error_views.csrf_failure"
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
@@ -86,10 +93,8 @@ def mysql_connect_host(raw_host, platform_name=None):
 
     On Windows, ``localhost`` resolves to ``::1`` before ``127.0.0.1``. The
     installer MySQL listens on IPv4, so that first attempt can sit for
-    ``connect_timeout`` (5s) on every new connection. Daphne closes the
-    request thread when the response finishes, so ``CONN_MAX_AGE`` does not
-    carry the connection to the next pane. Linux ``localhost`` is a unix
-    socket and must stay as written.
+    ``connect_timeout`` (5s) on every new connection. Linux ``localhost`` is
+    a unix socket and must stay as written.
     """
     host = (raw_host or "").strip() or "localhost"
     name = os.name if platform_name is None else platform_name
@@ -109,7 +114,11 @@ if _db_engine == "mysql":
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": mysql_connect_host(os.getenv("DB_HOST", "localhost")),
             "PORT": os.getenv("DB_PORT", "3306"),
-            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 600)),
+            # Under Daphne each request's sync code runs on a pooled executor thread
+            # (up to ASGI_THREADS). Connections are per thread, so a non-zero max age
+            # leaves one idle connection parked on every thread and exhausts MySQL's
+            # max_connections under load. Django recommends 0 for ASGI.
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", 0)),
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
                 "charset": "utf8mb4",
@@ -233,9 +242,17 @@ if _log_to_file:
     }
     _log_handlers.append("file")
 
+# A refused page (PermissionDenied -> styled 403) is normal traffic; log it as
+# one line instead of a full traceback.
+for _handler in _logging_handlers.values():
+    _handler["filters"] = ["permission_denied_one_line"]
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "permission_denied_one_line": {"()": "core.log_filters.PermissionDeniedOneLine"},
+    },
     "formatters": {
         "verbose": {
             "format": "{asctime} {levelname} {name} {message}",
@@ -254,6 +271,19 @@ LOGGING = {
             "propagate": False,
         },
     },
+}
+
+# Shared by every server process and kept across restarts: push failure
+# backoff and login attempt counts must not reset when the server restarts or
+# differ between workers. The table is created by a migration.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        # Django's default of 300 entries culled push failure counts as soon as
+        # many devices failed. Login lockouts now live in their own table.
+        "OPTIONS": {"MAX_ENTRIES": 50000},
+    }
 }
 
 # Web Push Settings
@@ -302,6 +332,9 @@ WEBPUSH_SETTINGS = {
 TICKET_UNPICKED_SYSTEM_MESSAGE = os.getenv("TICKET_UNPICKED_SYSTEM_MESSAGE", "Someone will help you soon.")
 
 if 'test' in sys.argv:
+    # Run email/push jobs in the calling thread; see notifications/email_queue.py.
+    EMAIL_QUEUE_SYNC = True
+
     class DisableMigrations:
         def __contains__(self, item):
             return True

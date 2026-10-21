@@ -1,8 +1,13 @@
+from urllib.parse import urlencode, urlsplit
+
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.http import HttpResponse
+from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
+from django.views import View
 
 # We can reuse the built-in Django LoginView
 from .forms import CustomAuthenticationForm, CustomPasswordChangeForm
@@ -27,6 +32,26 @@ class UserLoginView(LoginView):
         htmx_response["HX-Redirect"] = redirect_to
         return htmx_response
 
+    def get(self, request, *args, **kwargs):
+        # An HTMX request lands here when the session expired mid-page (a poll or
+        # a click followed the login redirect). Swapping this full page into a
+        # fragment would run base.html's scripts twice, so load it as a page.
+        if request.headers.get("HX-Request") and not request.user.is_authenticated:
+            response = HttpResponse(status=204)
+            response["HX-Redirect"] = self._login_url_for_htmx(request)
+            return response
+        return super().get(request, *args, **kwargs)
+
+    @staticmethod
+    def _login_url_for_htmx(request):
+        """Login URL that returns to the page the user was on, not the fragment URL."""
+        current = urlsplit(request.headers.get("HX-Current-URL") or "")
+        if current.path and (not current.netloc or current.netloc == request.get_host()):
+            next_path = current.path + (f"?{current.query}" if current.query else "")
+            if url_has_allowed_host_and_scheme(next_path, allowed_hosts={request.get_host()}):
+                return f"{reverse('login')}?{urlencode({'next': next_path})}"
+        return request.get_full_path()
+
     def get_template_names(self):
         if self.request.headers.get("HX-Request") and self.request.method == "POST":
             return ["accounts/login_form_partial.html"]
@@ -43,11 +68,11 @@ class UserLogoutView(LogoutView):
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        # Belt-and-suspenders when JS unsubscribe did not run (no-JS / failed fetch).
-        # Clears every device for this account; remaining open sessions re-subscribe
-        # on their next authenticated page load via initWebPush().
+        # The logout JS unsubscribes this device and says so. Only when it did
+        # not run (no JS, failed fetch) clear every device for the account;
+        # other open sessions re-subscribe on their next page load.
         user = getattr(self, "_logout_user", None)
-        if user is not None:
+        if user is not None and request.POST.get("webpush_cleaned") != "1":
             try:
                 from notifications.webpush_cleanup import clear_user_webpush_subscriptions
 
@@ -55,6 +80,50 @@ class UserLogoutView(LogoutView):
             except Exception:
                 pass
         return response
+
+
+def logout_cancel_url(request):
+    """Same-origin page that sent the user here, otherwise the ticket list."""
+    fallback = reverse("tickets_list")
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return fallback
+
+    parsed = urlsplit(referer)
+    path = parsed.path or ""
+    # A path of "//..." is protocol-relative and would leave this site.
+    if not path.startswith("/") or path.startswith("//") or "\\" in path:
+        return fallback
+    if path.rstrip("/") == reverse("logout").rstrip("/"):
+        return fallback
+    if parsed.query:
+        return f"{path}?{parsed.query}"
+    return path
+
+
+class LogoutEntryView(View):
+    """
+    GET never logs the user out. Authenticated visitors confirm with a POST
+    form; anonymous visitors go to login. POST stays on UserLogoutView.
+    """
+
+    http_method_names = ["get", "post", "options"]
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect("login")
+        return render(
+            request,
+            "accounts/logout_confirm.html",
+            {"cancel_url": logout_cancel_url(request)},
+        )
+
+    def post(self, request, *args, **kwargs):
+        return UserLogoutView.as_view()(request, *args, **kwargs)
 
 
 class UserPasswordChangeView(PasswordChangeView):
@@ -103,3 +172,38 @@ class UserPasswordChangeView(PasswordChangeView):
         if self.request.headers.get("HX-Request"):
             return ["accounts/password_change_partial.html"]
         return [self.template_name]
+
+
+def set_language(request):
+    """Django's language switch, also saved on the account so it follows the user."""
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.views.i18n import set_language as django_set_language
+
+    response = django_set_language(request)
+    language = request.POST.get("language")
+    user = request.user
+    if (
+        request.method == "POST"
+        and user.is_authenticated
+        and language in {code for code, _name in settings.LANGUAGES}
+    ):
+        user.language = language
+        get_user_model().objects.filter(pk=user.pk).update(language=language)
+    return response
+
+
+def set_theme(request):
+    """Save the light/dark choice on the account (the page has already switched)."""
+    from django.contrib.auth import get_user_model
+    from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if not request.user.is_authenticated:
+        return HttpResponse(status=401)
+    theme = request.POST.get("theme", "")
+    if theme not in request.user.Theme.values:
+        return HttpResponseBadRequest()
+    get_user_model().objects.filter(pk=request.user.pk).update(theme=theme)
+    return HttpResponse(status=204)

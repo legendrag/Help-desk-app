@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{# CSRF_FAILURE_VIEW: the form's token is stale, usually after a sign-in in another tab. #}
+{% block title %}{% trans "Session changed" %} - MlamehTicket{% endblock title %}
+
+{% block content %}
+<div class="content-container">
+    <section class="panel error-page" role="alert">
+        <h1>{% trans "Your session changed" %}</h1>
+        <p>{% trans "This page was opened before you signed in or out, for example in another tab, so it can't be sent." %}</p>
+        <p>{% trans "Reload the page and try again." %}</p>
+        <a class="btn primary" href="{{ back_url }}">{% trans "Reload the page" %}</a>
+    </section>
+</div>
+{% endblock content %}

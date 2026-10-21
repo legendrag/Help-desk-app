@@ -1,0 +1,80 @@
+{% load i18n l10n shifts_extras %}
+<div id="shifts-available-now"
+     hx-get="{% url 'shifts_available_board' %}"
+     hx-trigger="every 20s [!document.hidden], refresh"
+     hx-swap="outerHTML"
+     data-no-progress
+     data-etag="{{ board_etag }}"
+     data-day-start="{{ timeline.day_start|date:'U' }}"
+     data-day-end="{{ timeline.day_end|date:'U' }}"
+     data-time-zone="{{ timeline.time_zone }}"
+     style="--tl-now: {{ timeline.now|unlocalize }}%; --tl-step: {{ timeline.step|unlocalize }}%"{% if not timeline.now_inside %} data-now-outside{% endif %}
+     data-total="{% blocktrans count counter=on_shift_total %}{{ counter }} person on shift{% plural %}{{ counter }} people on shift{% endblocktrans %}"
+     aria-live="polite">
+  <div class="panel shifts-tl">
+    <div class="shifts-tl-row shifts-tl-axis">
+      {# The first department's name sits in the corner; shifts.js follows the search. #}
+      <div class="shifts-tl-who shifts-tl-corner">
+        {% if anyone_scheduled %}{% with first=cards.0 %}
+        <h2 class="shifts-tl-corner-name">{{ first.department.name }}</h2>
+        <span class="pill shifts-tl-corner-count" title="{% trans 'On shift' %}"{% if not first.on_count %} hidden{% endif %}>{{ first.on_count }}</span>
+        {% endwith %}{% endif %}
+      </div>
+      <div class="shifts-tl-track" aria-hidden="true">
+        {% for tick in timeline.ticks %}
+        <span class="shifts-tl-tick{% if not tick.major %} shifts-tl-tick--minor{% endif %}{% if tick.edge %} shifts-tl-tick--edge{% endif %}{% if tick.last %} shifts-tl-tick--last{% endif %}" style="inset-inline-start: {{ tick.left|unlocalize }}%"><span class="shifts-tl-tick-full">{{ tick.label }}</span><span class="shifts-tl-tick-short">{{ tick.short }}</span></span>
+        {% endfor %}
+        <span class="shifts-tl-now-label">{{ timeline.now_label }}</span>
+      </div>
+    </div>
+
+    {% for card in cards %}{% if card.people %}
+    <section class="shifts-tl-dept" data-filter-group="{{ card.department.name|lower }}" data-dept-name="{{ card.department.name }}" data-on-count="{{ card.on_count }}">
+      <div class="shifts-tl-row shifts-tl-dept-row"{% if forloop.first %} hidden{% endif %}>
+        <div class="shifts-tl-who">
+          <h2>{{ card.department.name }}</h2>
+          {% if card.on_count %}<span class="pill" title="{% trans 'On shift' %}">{{ card.on_count }}</span>{% endif %}
+        </div>
+        <div class="shifts-tl-track"></div>
+      </div>
+      {% for person in card.people %}
+      <div class="shifts-tl-row shifts-tl-person shifts-tl-person--{{ person.status }}" data-filter-item="{{ person.name|lower }}{% if person.phone %} {{ person.phone }}{% endif %}">
+        <div class="shifts-tl-who">
+          <bdi dir="auto" class="shifts-person-name">{{ person.name }}</bdi>
+          {% if person.phone %}{% include "shifts/phone.html" with phone=person.phone %}{% endif %}
+          <span class="shifts-sub">{% for bar in person.bars %}{% if not forloop.first %}, {% endif %}{% shifts_time_range bar.start bar.end %}{% endfor %}</span>
+        </div>
+        <div class="shifts-tl-track">
+          {% for bar in person.bars %}
+          <span class="shifts-tl-bar shifts-tl-bar--{{ bar.state }}{% if bar.clipped_start %} shifts-tl-bar--from-yesterday{% endif %}{% if bar.clipped_end %} shifts-tl-bar--to-tomorrow{% endif %}"
+                style="inset-inline-start: {{ bar.left|unlocalize }}%; inline-size: {{ bar.width|unlocalize }}%;{% if show_shift_type %} --shift-colour: {{ bar.shift_type.colour }};{% endif %}"
+                title="{% if show_shift_type %}{{ bar.shift_type.name }} · {% endif %}{{ bar.start|shifts_clock_text }} – {{ bar.end|shifts_clock_text }} · {% if bar.state == 'on' %}{% trans 'On shift' %}{% elif bar.state == 'late' %}{% trans 'Not checked in' %}{% elif bar.state == 'later' %}{% trans 'Upcoming' %}{% elif bar.state == 'missed' %}{% trans 'Missed' %}{% else %}{% trans 'Completed' %}{% endif %}">
+            {% if show_shift_type and bar.state == 'on' %}<span class="shifts-tl-label {{ bar.shift_type.colour|chip_ink }}">{{ bar.shift_type.name }}</span>{% endif %}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}{% endfor %}
+
+    {% if not anyone_scheduled %}
+    <p class="shifts-empty shifts-tl-none">{% trans "Nobody is scheduled today." %}</p>
+    {% endif %}
+    <p class="shifts-empty shifts-avail-nomatch" hidden>{% trans "No one matches your search." %}</p>
+  </div>
+
+  <ul class="shifts-tl-legend" aria-label="{% trans 'Legend' %}">
+    <li><span class="shifts-tl-key shifts-tl-bar--on"></span>{% trans "On shift" %}</li>
+    <li><span class="shifts-tl-key shifts-tl-bar--late"></span>{% trans "Not checked in" %}</li>
+    <li><span class="shifts-tl-key shifts-tl-bar--later"></span>{% trans "Upcoming" %}</li>
+    <li><span class="shifts-tl-key shifts-tl-bar--done"></span>{% trans "Completed" %}</li>
+    <li><span class="shifts-tl-key shifts-tl-bar--missed"></span>{% trans "Missed" %}</li>
+  </ul>
+
+  {% if anyone_scheduled and unscheduled %}
+  <p class="shifts-empty shifts-tl-unscheduled">
+    {% trans "Nobody scheduled today:" %} {% for department in unscheduled %}{% if not forloop.first %}, {% endif %}{{ department.name }}{% endfor %}
+  </p>
+  {% endif %}
+</div>

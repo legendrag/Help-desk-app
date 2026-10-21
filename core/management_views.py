@@ -7,7 +7,9 @@ from django.urls import reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_noop
+from django.db import transaction
+from django.db.models import ProtectedError, RestrictedError
+from django.utils.translation import gettext as _, gettext_noop, ngettext
 
 from notifications.email_content import brand_asset_urls, render_notification_email
 from notifications.email_service import send_with_retries
@@ -32,6 +34,9 @@ from .forms import (
 
 class BaseSettingsRequiredMixin(UserPassesTestMixin):
     def test_func(self):
+        # AnonymousUser has no role; failing here sends them to the login page.
+        if not self.request.user.is_authenticated:
+            return False
         return self.request.user.is_superuser or (self.request.user.role and self.request.user.role.can_access_settings)
 
 class BranchPermissionMixin(BaseSettingsRequiredMixin):
@@ -117,6 +122,11 @@ class BaseManagementView:
                 "EmailTemplate": gettext_noop("Email Template"),
             }
             context["model_name"] = _names.get(self.model.__name__, self.model.__name__)
+            # The Settings tab this model lives on (Cancel on its standalone page).
+            context["settings_tab"] = {
+                "Branch": "branches", "Department": "departments", "Category": "categories",
+                "Role": "roles", "EmailSetting": "email",
+            }.get(self.model.__name__, "")
         return context
 
 # Branch Views
@@ -163,14 +173,23 @@ class CategoryUpdateView(CategoryPermissionMixin, LoginRequiredMixin, BaseManage
     partial_template_name = "core/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class RoleCreateView(RolePermissionMixin, LoginRequiredMixin, BaseManagementView, CreateView):
+class RoleEditorMixin:
+    """RoleForm checks new permissions against the editor's own role."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["editor"] = self.request.user
+        return kwargs
+
+
+class RoleCreateView(RolePermissionMixin, LoginRequiredMixin, RoleEditorMixin, BaseManagementView, CreateView):
     model = Role
     form_class = RoleForm
     template_name = "core/management/form.html"
     partial_template_name = "core/management/form_partial.html"
     success_url = reverse_lazy('settings')
 
-class RoleUpdateView(RolePermissionMixin, LoginRequiredMixin, BaseManagementView, UpdateView):
+class RoleUpdateView(RolePermissionMixin, LoginRequiredMixin, RoleEditorMixin, BaseManagementView, UpdateView):
     model = Role
     form_class = RoleForm
     template_name = "core/management/form.html"
@@ -199,32 +218,93 @@ class BaseDeleteView(LoginRequiredMixin):
     template_name = "core/management/delete_confirm.html"
     partial_template_name = "core/management/delete_confirm_partial.html"
     success_url = reverse_lazy('settings')
+    # Things that stop a delete: (related name, singular, plural). Users are
+    # listed even where the key is SET_NULL, so nobody silently loses a role,
+    # branch or department.
+    blocking_relations = ()
+
+    def in_use(self, obj):
+        """Plain-language list of what still uses ``obj``; empty when it is free."""
+        parts = []
+        for related_name, singular, plural in self.blocking_relations:
+            count = getattr(obj, related_name).count()
+            if count:
+                parts.append(ngettext(singular, plural, count) % {"count": count})
+        return parts
+
+    # Things deleted along with it: (related name, singular, plural). The
+    # confirm screen names them, so nothing goes without a warning.
+    cascading_relations = ()
+
+    def also_deletes(self, obj):
+        """Plain-language list of what deleting ``obj`` takes with it."""
+        parts = []
+        for related_name, singular, plural in self.cascading_relations:
+            names = [getattr(item, "name", None) or str(item) for item in getattr(obj, related_name).all()]
+            if names:
+                parts.append(ngettext(singular, plural, len(names)) % {
+                    "count": len(names),
+                    "names": ", ".join(names),
+                })
+        return parts
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return self.render_to_response(self.get_context_data(
+            in_use=self.in_use(self.object),
+            also_deletes=self.also_deletes(self.object),
+        ))
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if self.request.headers.get('HX-Request'):
-            from django.http import HttpResponse
-            resp = HttpResponse(status=204)
-            resp['HX-Trigger'] = 'closeModal,refreshSettings'
-            return resp
-        return response
+        self.object = self.get_object()
+        in_use = self.in_use(self.object)
+        if not in_use:
+            try:
+                with transaction.atomic():
+                    response = super().post(request, *args, **kwargs)
+            except (ProtectedError, RestrictedError):
+                in_use = [_("other records in the app")]
+            else:
+                if self.request.headers.get('HX-Request'):
+                    resp = HttpResponse(status=204)
+                    resp['HX-Trigger'] = 'closeModal,refreshSettings'
+                    return resp
+                return response
+        return self.render_to_response(self.get_context_data(in_use=in_use))
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
             return [self.partial_template_name]
         return [self.template_name]
 
+_TICKETS = ("tickets", gettext_noop("%(count)d ticket"), gettext_noop("%(count)d tickets"))
+_USERS = ("users", gettext_noop("%(count)d user"), gettext_noop("%(count)d users"))
+
+
 class BranchDeleteView(BranchPermissionMixin, BaseDeleteView, DeleteView):
     model = Branch
+    blocking_relations = (_TICKETS, _USERS)
 
 class DepartmentDeleteView(DepartmentPermissionMixin, BaseDeleteView, DeleteView):
     model = Department
+    blocking_relations = (
+        _TICKETS,
+        _USERS,
+        ("shift_types", gettext_noop("%(count)d shift type"), gettext_noop("%(count)d shift types")),
+    )
+    # Categories with tickets are already blocked by the department's tickets.
+    cascading_relations = (
+        ("categories", gettext_noop("%(count)d category (%(names)s)"),
+         gettext_noop("%(count)d categories (%(names)s)")),
+    )
 
 class CategoryDeleteView(CategoryPermissionMixin, BaseDeleteView, DeleteView):
     model = Category
+    blocking_relations = (_TICKETS,)
 
 class RoleDeleteView(RolePermissionMixin, BaseDeleteView, DeleteView):
     model = Role
+    blocking_relations = (_USERS,)
 
     def get_queryset(self):
         return super().get_queryset().exclude(name__iexact="admin")
@@ -464,7 +544,7 @@ class EmailTemplateTestSendView(EmailPermissionMixin, LoginRequiredMixin, View):
         if not recipient:
             return self._trigger_response(False, "Your account has no email address.")
 
-        form = EmailTemplateForm(request.POST)
+        form = EmailTemplateForm(request.POST, event_type=event_type)
         if not form.is_valid():
             errors = []
             for field_errors in form.errors.values():

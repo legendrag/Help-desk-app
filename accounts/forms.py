@@ -7,7 +7,6 @@ class CustomPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
-from django.core.cache import cache
 from .models import User
 
 def _style_fields(form):
@@ -17,6 +16,11 @@ def _style_fields(form):
         elif not isinstance(field.widget, forms.HiddenInput):
             field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} form-control".strip()
 
+# Lockout: 5 failed sign-ins, then 5 minutes after the last one.
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_LOCK_SECONDS = 300
+
+
 class CustomAuthenticationForm(AuthenticationForm):
     error_messages = {
         "invalid_login": _("Incorrect username or password. Please try again."),
@@ -25,40 +29,53 @@ class CustomAuthenticationForm(AuthenticationForm):
 
     def clean(self):
         username = self.cleaned_data.get('username')
-        
-        if username:
-            cache_key = f'login_attempts_{username}'
-            attempts = cache.get(cache_key, 0)
-            
-            # Rate limiting configuration: 5 attempts / 5 minutes
-            MAX_ATTEMPTS = 5
-            TIMEOUT = 300  # 5 minutes in seconds
-            
-            if attempts >= MAX_ATTEMPTS:
-                raise forms.ValidationError(
-                    _("Too many failed login attempts. Please try again in 5 minutes."),
-                    code='too_many_attempts',
-                )
-
-            try:
-                cleaned_data = super().clean()
-                # On successful login, clear the cache
-                cache.delete(cache_key)
-                return cleaned_data
-            except forms.ValidationError as e:
-                # Increment attempts only on a failed auth error (not other random validation errors)
-                if e.code == 'invalid_login':
-                    password = self.cleaned_data.get("password")
-                    if password and self._inactive_account_with_password(username, password):
-                        raise forms.ValidationError(
-                            self.error_messages["inactive"],
-                            code="inactive",
-                        )
-                    attempts += 1
-                    cache.set(cache_key, attempts, TIMEOUT)
-                raise e
-        else:
+        if not username:
             return super().clean()
+
+        from datetime import timedelta
+
+        from django.db import IntegrityError
+        from django.db.models import F
+        from django.utils import timezone
+
+        from .models import LoginThrottle
+
+        # Sign-in ignores case, so R16LOCK and r16lock share one count.
+        key = username.strip().casefold()[:150]
+        now = timezone.now()
+        rows = LoginThrottle.objects.filter(username=key)
+        rows.filter(last_failure_at__lt=now - timedelta(seconds=LOGIN_LOCK_SECONDS)).update(failures=0)
+        try:
+            LoginThrottle.objects.get_or_create(username=key)
+        except IntegrityError:  # a parallel attempt created it first
+            pass
+        # Take a try before checking the password, with one conditional
+        # UPDATE, so parallel attempts can't all read the same count.
+        if not rows.filter(failures__lt=LOGIN_MAX_ATTEMPTS).update(
+            failures=F("failures") + 1, last_failure_at=now,
+        ):
+            raise forms.ValidationError(
+                _("Too many failed login attempts. Please try again in 5 minutes."),
+                code='too_many_attempts',
+            )
+        try:
+            cleaned_data = super().clean()
+        except forms.ValidationError as e:
+            if e.code != 'invalid_login':
+                # Not a wrong password: give the try back.
+                rows.filter(failures__gt=0).update(failures=F("failures") - 1)
+                raise
+            password = self.cleaned_data.get("password")
+            if password and self._inactive_account_with_password(username, password):
+                raise forms.ValidationError(
+                    self.error_messages["inactive"],
+                    code="inactive",
+                )
+            raise
+        rows.delete()
+        # Old rows for names nobody signs in with any more.
+        LoginThrottle.objects.filter(last_failure_at__lt=now - timedelta(days=1)).delete()
+        return cleaned_data
 
     def _inactive_account_with_password(self, username, password):
         user = (
@@ -71,7 +88,34 @@ class CustomAuthenticationForm(AuthenticationForm):
         return not user.is_active or not user.is_active_user
 
 
-class CustomUserCreationForm(UserCreationForm):
+class RoleLimitMixin:
+    """Only a superuser can hand out a role with permissions they don't hold."""
+
+    def __init__(self, *args, editor=None, **kwargs):
+        self.editor = editor
+        super().__init__(*args, **kwargs)
+        field = self.fields.get("role")
+        if field is not None and editor is not None and not editor.is_superuser:
+            allowed = [r.pk for r in field.queryset if not r.permissions_beyond(editor.role)]
+            if self.instance.pk and self.instance.role_id:
+                allowed.append(self.instance.role_id)
+            field.queryset = field.queryset.filter(pk__in=allowed)
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        editor = self.editor
+        if role is None or editor is None or editor.is_superuser:
+            return role
+        if self.instance.pk and self.instance.role_id == role.pk:
+            return role  # unchanged, so nothing is being handed out
+        if role.permissions_beyond(editor.role):
+            raise forms.ValidationError(
+                _("You can only assign roles that have no more permissions than your own role.")
+            )
+        return role
+
+
+class CustomUserCreationForm(RoleLimitMixin, UserCreationForm):
     status = forms.BooleanField(label=_("Is Active"), required=False, initial=True)
     field_order = (
         'username', 'email', 'first_name', 'last_name',
@@ -104,6 +148,11 @@ class CustomUserCreationForm(UserCreationForm):
                 self.fields[fname].widget.attrs.setdefault("placeholder", ph)
         if "phone" in self.fields:
             self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
+
+    def validate_password_for_user(self, user, password_field_name="password1"):
+        # Django puts "too short / too common" under the confirm field; show it
+        # under the password that needs changing.
+        return super().validate_password_for_user(user, password_field_name=password_field_name)
 
     def clean_phone(self):
         phone = self.cleaned_data.get("phone")
@@ -174,7 +223,7 @@ class CustomUserCreationForm(UserCreationForm):
         )
 
 
-class CustomUserChangeForm(UserChangeForm):
+class CustomUserChangeForm(RoleLimitMixin, UserChangeForm):
     status = forms.BooleanField(label=_("Is Active"), required=False)
     field_order = (
         'username', 'email', 'first_name', 'last_name',
@@ -221,7 +270,9 @@ class CustomUserChangeForm(UserChangeForm):
             self.fields["phone"].widget.attrs.update({"inputmode": "tel", "data-normalize-digits": "1"})
             
         if self.instance and self.instance.pk:
-            self.fields['status'].initial = (self.instance.status == User.Status.ACTIVE)
+            # form.initial (copied from the instance: 'active'/'inactive', both truthy)
+            # beats field.initial, so set the boolean there or inactive users show as Active.
+            self.initial['status'] = (self.instance.status == User.Status.ACTIVE)
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''

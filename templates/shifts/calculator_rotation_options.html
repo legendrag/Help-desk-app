@@ -1,0 +1,29 @@
+{% load i18n %}
+<div class="form-group">
+  <label for="rot-type">{% trans "Shift type" %}</label>
+  <select id="rot-type" name="shift_type"{% if not bulk_types %} disabled{% endif %}>
+    {% for row in bulk_types %}
+    <option value="{{ row.pk }}">{{ row.name }}{% if row.is_night %} ({% trans "night" %}){% endif %}</option>
+    {% empty %}
+    <option value="">{% trans "No shift types in this department yet." %}</option>
+    {% endfor %}
+  </select>
+  {% if not bulk_types %}<p class="shifts-muted">{% trans "No shift types in this department yet." %}</p>{% endif %}
+</div>
+<fieldset class="shifts-people">
+  <legend>{% trans "People" %}</legend>
+  {% if people %}
+  <label class="shifts-check">
+    <input type="checkbox" class="shifts-select-all" checked>
+    {% trans "Select all" %}
+  </label>
+  {% for person in people %}
+  <label class="shifts-check">
+    <input type="checkbox" name="users" value="{{ person.pk }}" checked>
+    {{ person.shift_label }}
+  </label>
+  {% endfor %}
+  {% else %}
+  <p class="shifts-muted">{% trans "No active support staff in this department." %}</p>
+  {% endif %}
+</fieldset>

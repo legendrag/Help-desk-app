@@ -1,4 +1,6 @@
-﻿from django.conf import settings
+﻿import html
+
+from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -119,5 +121,6 @@ def render_notification_email(
     }
     html_body = render_to_string("notifications/email/notification.html", context)
     text_body = render_to_string("notifications/email/notification.txt", context)
-    text_body = strip_tags(text_body).replace("\r\n", "\n")
+    # The .txt template is autoescaped like any other; undo that for plain text.
+    text_body = html.unescape(strip_tags(text_body)).replace("\r\n", "\n")
     return text_body.strip() + "\n", html_body

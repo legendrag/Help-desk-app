@@ -17,7 +17,7 @@
                   hx-target="#dashboard-live"
                   hx-swap="outerHTML"
                   hx-push-url="true"
-                  hx-sync="this:abort">
+                  hx-sync="this:replace">
                 <div class="date-filter-group">
                     <input type="date" name="start_date" value="{{ filter_values.start_date }}" class="inline-input">
                     <span class="muted">{% trans "to" %}</span>

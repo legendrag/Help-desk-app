@@ -33,7 +33,13 @@ class BranchForm(forms.ModelForm):
         name = self.cleaned_data.get('name')
         if not name or len(name.strip()) < 2:
             raise forms.ValidationError(_("Branch name must be at least 2 characters long."))
-        return name.strip()
+        name = name.strip()
+        qs = Branch.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(_("A branch with this name already exists."))
+        return name
 
     def clean_code(self):
         import re
@@ -69,6 +75,16 @@ class DepartmentForm(forms.ModelForm):
             raise forms.ValidationError(_("A department with this name already exists."))
         return name
 
+class _PlaceholderSelect(forms.Select):
+    """The empty option is a disabled label ("Choose a department")."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value in ("", None):
+            option["attrs"]["disabled"] = True
+        return option
+
+
 class CategoryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,6 +92,13 @@ class CategoryForm(forms.ModelForm):
         for field in self.fields.values():
             if hasattr(field, 'empty_label'):
                 field.empty_label = ''
+        # Tom Select runs without a text input, so it has no placeholder and
+        # hides value="" options; data-allow-empty keeps "Choose a department"
+        # visible instead of a blank field.
+        self.fields['department'].empty_label = _("Choose a department")
+        self.fields['department'].widget.attrs['data-allow-empty'] = ''
+        # Shown, but not pickable in the list (see _PlaceholderSelect).
+        self.fields['department'].widget.__class__ = _PlaceholderSelect
 
     class Meta:
         model = Category
@@ -91,9 +114,34 @@ class CategoryForm(forms.ModelForm):
         return name.strip()
 
 class RoleForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.editor = editor
         _style_fields(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        # Nobody but a superuser can hand out a permission they don't hold,
+        # on another role or their own. Flags a role already has can stay.
+        editor = self.editor
+        if editor is None or editor.is_superuser:
+            return cleaned
+        held = editor.role
+        refused = []
+        for name, field in self.fields.items():
+            if not name.startswith("can_") or not cleaned.get(name):
+                continue
+            already_on = bool(self.instance.pk and getattr(self.instance, name))
+            if not already_on and not (held and getattr(held, name, False)):
+                refused.append(str(field.label))
+                cleaned[name] = False
+        if refused:
+            # The checkboxes have no error slot, so say it once at the top.
+            raise forms.ValidationError(
+                _("You can only give permissions that your own role has: %(names)s."),
+                params={"names": ", ".join(refused)},
+            )
+        return cleaned
 
     class Meta:
 
@@ -130,6 +178,8 @@ class RoleForm(forms.ModelForm):
             'can_access_kb': forms.CheckboxInput(),
             'can_manage_kb': forms.CheckboxInput(),
             'can_manage_maintenance': forms.CheckboxInput(),
+            'can_manage_shifts': forms.CheckboxInput(),
+            'can_check_in': forms.CheckboxInput(),
         }
         model = Role
         fields = [
@@ -160,6 +210,8 @@ class RoleForm(forms.ModelForm):
             'can_access_kb',
             'can_manage_kb',
             'can_manage_maintenance',
+            'can_manage_shifts',
+            'can_check_in',
         ]
 
     def clean_name(self):
@@ -172,6 +224,16 @@ class EmailSettingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        if self.instance.pk and self.instance.smtp_password:
+            # Editing: the box starts empty, and empty keeps the saved password.
+            self.fields['smtp_password'].required = False
+            self.fields['smtp_password'].widget.attrs['placeholder'] = _('Leave blank to keep the current password')
+
+    def clean_smtp_password(self):
+        password = self.cleaned_data.get('smtp_password')
+        if not password and self.instance.pk:
+            return self.instance.smtp_password
+        return password
 
     def clean(self):
         cleaned = super().clean()
@@ -191,20 +253,23 @@ class EmailSettingForm(forms.ModelForm):
             'encryption', 'from_name', 'from_email', 'is_active',
             'notify_new_ticket', 'notify_ticket_picked', 'notify_ticket_message',
             'notify_ticket_status', 'notify_ticket_update', 'notify_announcement',
+            'notify_shift_reminder',
         ]
         widgets = {
             'smtp_host': forms.TextInput(attrs={'placeholder': _('e.g., smtp.gmail.com')}),
             'smtp_port': forms.NumberInput(attrs={'placeholder': _('e.g., 587')}),
             'smtp_email': forms.EmailInput(attrs={'placeholder': _('sender@example.com')}),
-            'smtp_password': forms.PasswordInput(render_value=True, attrs={'placeholder': '••••••••'}),
+            # Never echo the saved password into the page source.
+            'smtp_password': forms.PasswordInput(render_value=False, attrs={'placeholder': '••••••••'}),
             'from_name': forms.TextInput(attrs={'placeholder': _('e.g., MlamehTicket Support')}),
             'from_email': forms.EmailInput(attrs={'placeholder': _('noreply@example.com')}),
         }
 
 
 class EmailTemplateForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, event_type=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.event_type = event_type or getattr(self.instance, "event_type", None) or None
         _style_fields(self)
         self.fields["subject"].widget.attrs.update(
             {"placeholder": _("[{{ brand_name }}] New ticket #{{ ticket_number }}")}
@@ -222,7 +287,26 @@ class EmailTemplateForm(forms.ModelForm):
             raise forms.ValidationError(
                 _("%(label)s contains unsupported template tags.") % {"label": label}
             )
+        self._check_fields(value, label)
         return value
+
+    def _check_fields(self, value: str, label: str) -> None:
+        """Broken or unknown {{ fields }} would otherwise be emailed as literal text."""
+        from notifications.email_templates import TOKEN_RE, merge_fields_for_event
+
+        if "{{" in TOKEN_RE.sub("", value) or "}}" in TOKEN_RE.sub("", value):
+            raise forms.ValidationError(
+                _("%(label)s has a broken field. Fields look like {{ ticket_number }}.") % {"label": label}
+            )
+        if not self.event_type:
+            return
+        allowed = {name for name, _label in merge_fields_for_event(self.event_type)}
+        unknown = sorted({name for name in TOKEN_RE.findall(value) if name not in allowed})
+        if unknown:
+            raise forms.ValidationError(
+                _("%(label)s uses fields this email doesn't have: %(names)s.")
+                % {"label": label, "names": ", ".join(unknown)}
+            )
 
     def clean_subject(self):
         subject = self._reject_tags(self.cleaned_data.get("subject"), _("Subject"))

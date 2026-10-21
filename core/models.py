@@ -119,6 +119,9 @@ class Role(TimeStampedModel):
     # System Maintenance Permissions
     can_manage_maintenance = models.BooleanField(default=False, verbose_name=_("Manage System Maintenance"))
 
+    can_manage_shifts = models.BooleanField(default=False, verbose_name=_("Manage Shifts"))
+    can_check_in = models.BooleanField(default=False, verbose_name=_("Check in to shifts"))
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -134,6 +137,16 @@ class Role(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def permissions_beyond(self, held):
+        """Names of the can_* flags this role has that ``held`` (a Role or None) lacks."""
+        return [
+            field.name
+            for field in self._meta.fields
+            if field.name.startswith("can_")
+            and getattr(self, field.name)
+            and not (held and getattr(held, field.name, False))
+        ]
 
     def save(self, *args, **kwargs):
         if self.name and self.name.strip().lower() == "admin":
@@ -164,6 +177,7 @@ class EmailSetting(TimeStampedModel):
     notify_ticket_status = models.BooleanField(default=True, verbose_name=_("Status changes"))
     notify_ticket_update = models.BooleanField(default=True, verbose_name=_("Ticket updates"))
     notify_announcement = models.BooleanField(default=True, verbose_name=_("Announcements"))
+    notify_shift_reminder = models.BooleanField(default=True, verbose_name=_("Shift reminders"))
 
     class Meta:
         ordering = ["-updated_at"]
@@ -201,6 +215,7 @@ class EmailTemplate(TimeStampedModel):
         TRANSFER_ACCEPTED = "transfer_accepted", _("Transfer accepted")
         TRANSFER_DENIED = "transfer_denied", _("Transfer declined")
         ANNOUNCEMENT = "announcement", _("Announcement")
+        SHIFT_REMINDER = "shift_reminder", _("Shift reminder")
 
     event_type = models.CharField(
         max_length=40,

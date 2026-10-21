@@ -76,6 +76,8 @@
                     <label class="perm-item">{{ form.can_access_kb }} <span>{{ form.can_access_kb.label }}</span></label>
                     <label class="perm-item">{{ form.can_manage_kb }} <span>{{ form.can_manage_kb.label }}</span></label>
                     <label class="perm-item">{{ form.can_manage_maintenance }} <span>{{ form.can_manage_maintenance.label }}</span></label>
+                    <label class="perm-item">{{ form.can_manage_shifts }} <span>{{ form.can_manage_shifts.label }}</span></label>
+                    <label class="perm-item">{{ form.can_check_in }} <span>{{ form.can_check_in.label }}</span></label>
                 </div>
             </div>
 
@@ -289,6 +291,10 @@
                 {{ form.notify_announcement }}
                 <label for="{{ form.notify_announcement.id_for_label }}" class="checkbox-label">{{ form.notify_announcement.label }}</label>
             </div>
+            <div class="form-group checkbox-field">
+                {{ form.notify_shift_reminder }}
+                <label for="{{ form.notify_shift_reminder.id_for_label }}" class="checkbox-label">{{ form.notify_shift_reminder.label }}</label>
+            </div>
         </div>
 
     </div>
@@ -415,7 +421,9 @@
     </div>
 
     <div class="form-actions--end">
-        <button type="button" class="btn secondary" onclick="closeModal()">{% trans "Cancel" %}</button>
+        {# Opened as its own page there is no modal to close, so go back to Settings. #}
+        <button type="button" class="btn secondary"
+            onclick="if (this.closest('#modal-content')) { closeModal(); } else { window.location.href = '{% url 'settings' %}{% if settings_tab %}?tab={{ settings_tab }}{% endif %}'; }">{% trans "Cancel" %}</button>
         <button type="submit" class="btn primary">{% trans "Save Changes" %}</button>
     </div>
 </form>

@@ -10,13 +10,33 @@ try {
 // Dark mode toggle
 function toggleDarkMode() {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var theme = isDark ? 'light' : 'dark';
     if (isDark) {
         document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
     } else {
         document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
     }
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+    saveThemeToAccount(theme);
+}
+
+// Signed in, the theme is saved on the account so it follows the user to
+// every device. Signed out (no data-user-theme), it stays in this browser.
+function saveThemeToAccount(theme) {
+    var root = document.documentElement;
+    if (!root.hasAttribute('data-user-theme')) return;
+    root.setAttribute('data-user-theme', theme);
+    var tokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+    var cookie = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    var token = tokenInput ? tokenInput.value : (cookie ? decodeURIComponent(cookie[1]) : '');
+    var body = new URLSearchParams();
+    body.set('theme', theme);
+    fetch('/accounts/preferences/theme/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': token },
+        body: body
+    }).catch(function () { /* the page already switched; it saves next time */ });
 }
 
 // Language switch: animate first, then POST with progress bar only
@@ -25,11 +45,27 @@ function toggleDarkMode() {
     var btn = document.getElementById('lang-toggle-btn');
     if (!form || !btn) return;
 
+    // Restored from the back/forward cache: the switch may still be mid-flip
+    // from the click that left this page. Put it back to the page's language.
+    window.addEventListener('pageshow', function (evt) {
+        if (!evt.persisted) return;
+        btn.dataset.animating = '';
+        var isAr = document.documentElement.lang === 'ar';
+        btn.classList.toggle('is-ar', isAr);
+        btn.setAttribute('aria-checked', isAr ? 'true' : 'false');
+    });
+
     btn.addEventListener('click', function () {
         if (btn.dataset.animating === '1') return;
         btn.dataset.animating = '1';
 
-        var toAr = !btn.classList.contains('is-ar');
+        // Decide from the page as it is now, not from when the sidebar was
+        // rendered: shell navigation swaps the content but not the sidebar.
+        var toAr = document.documentElement.lang !== 'ar';
+        var languageInput = form.querySelector('input[name="language"]');
+        if (languageInput) languageInput.value = toAr ? 'ar' : 'en';
+        var nextInput = form.querySelector('input[name="next"]');
+        if (nextInput) nextInput.value = window.location.pathname + window.location.search;
         // Force a paint so the class change always transitions
         void btn.offsetWidth;
         btn.classList.toggle('is-ar', toAr);
@@ -283,6 +319,8 @@ function cancelDiscard() {
 
 let globalConfirmCallback = null;
 
+let defaultConfirmCancelText = null;
+
 function showConfirmModal(options) {
     const titleEl = document.getElementById('global-confirm-title');
     titleEl.textContent = options.title || 'Confirm Action';
@@ -290,6 +328,14 @@ function showConfirmModal(options) {
 
     const actionBtn = document.getElementById('global-confirm-action-btn');
     actionBtn.textContent = options.yesText || 'Yes, Delete';
+
+    const cancelBtn = document.getElementById('global-confirm-cancel-btn');
+    if (cancelBtn) {
+        if (defaultConfirmCancelText === null) {
+            defaultConfirmCancelText = cancelBtn.textContent;
+        }
+        cancelBtn.textContent = options.cancelText || defaultConfirmCancelText;
+    }
 
     if (options.isDanger === false) {
         actionBtn.className = 'btn primary discard-modal-btn';
@@ -328,6 +374,10 @@ document.body.addEventListener('htmx:confirm', function (evt) {
     if (confirmQuestion) {
         evt.preventDefault();
         const element = evt.detail.elt;
+        const host = element.closest('[hx-confirm]') || element;
+        const confirmAttr = function (name) {
+            return element.getAttribute(name) || host.getAttribute(name);
+        };
 
         // Smart defaults based on context/classes
         const isDelete = confirmQuestion.toLowerCase().includes('delete') ||
@@ -335,17 +385,20 @@ document.body.addEventListener('htmx:confirm', function (evt) {
             (element.getAttribute('hx-post') && element.getAttribute('hx-post').toLowerCase().includes('delete')) ||
             (element.getAttribute('hx-get') && element.getAttribute('hx-get').toLowerCase().includes('delete'));
 
-        const title = element.getAttribute('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
-        const yesText = element.getAttribute('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
+        const title = confirmAttr('data-confirm-title') || (isDelete ? 'Confirm Deletion' : 'Confirm Action');
+        const yesText = confirmAttr('data-confirm-ok') || confirmAttr('data-confirm-button') || (isDelete ? 'Yes, Delete' : 'Yes, Proceed');
         const isDanger = element.getAttribute('data-confirm-type') !== 'primary' && (isDelete || element.classList.contains('danger'));
 
         showConfirmModal({
             title: title,
             message: confirmQuestion,
             yesText: yesText,
+            cancelText: confirmAttr('data-confirm-cancel'),
             isDanger: isDanger,
             onConfirm: function () {
-                evt.detail.issueRequest();
+                // true = already confirmed; without it htmx 1.9 also shows the
+                // browser's native confirm(), so every hx-confirm asked twice.
+                evt.detail.issueRequest(true);
             }
         });
     }
@@ -494,7 +547,7 @@ document.addEventListener('keydown', (e) => {
         }
 
         // Handle custom modals from detail.html
-        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'lightbox-modal'];
+        const customModals = ['custom-close-modal', 'custom-merge-modal', 'custom-transfer-modal', 'who-available-modal', 'lightbox-modal'];
         customModals.forEach(id => {
             const el = document.getElementById(id);
             if (el && el.style.display !== 'none' && el.style.display !== '') {
@@ -522,6 +575,75 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     initUserTypeToggle(document);
     initPasswordToggles(document);
+});
+
+// Django messages from an HTMX request (core.middleware.HtmxMessagesMiddleware),
+// shown with the same markup as partials/messages.html.
+document.body.addEventListener('flashMessages', function (evt) {
+    const items = Array.isArray(evt.detail && evt.detail.value) ? evt.detail.value : [];
+    if (!items.length) return;
+    // Its own list on <body>, outside #shell-content, so htmx history
+    // snapshots never capture (and later replay) these toasts.
+    let list = document.getElementById('flash-toasts-live');
+    if (!list) {
+        list = document.createElement('ul');
+        list.id = 'flash-toasts-live';
+        list.className = 'flash-toasts';
+        list.setAttribute('role', 'status');
+        list.setAttribute('aria-live', 'polite');
+        document.body.appendChild(list);
+    }
+    const closeLabel = document.documentElement.lang === 'ar' ? 'إغلاق' : 'Close';
+    items.forEach(function (item) {
+        const li = document.createElement('li');
+        li.className = 'flash-toast' + (item.sticky ? ' flash-toast--sticky' : '');
+        const notice = document.createElement('p');
+        notice.className = 'notice' + (item.tags ? ' notice-' + item.tags.split(' ').join(' notice-') : '');
+        const text = document.createElement('span');
+        text.textContent = item.message;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'flash-toast-close';
+        close.setAttribute('aria-label', closeLabel);
+        close.innerHTML = '&times;';
+        close.addEventListener('click', function () { li.remove(); });
+        notice.appendChild(text);
+        notice.appendChild(close);
+        li.appendChild(notice);
+        list.appendChild(li);
+        if (!item.sticky) setTimeout(function () { li.remove(); }, 7000);
+    });
+});
+
+// A faded toast is only hidden by CSS, so take it out of the page. Otherwise
+// htmx saves it in the history snapshot and Back replays every old toast.
+document.addEventListener('animationend', function (evt) {
+    if (evt.animationName === 'flash-toast-out' && evt.target.classList.contains('flash-toast')) {
+        evt.target.remove();
+    }
+});
+document.body.addEventListener('htmx:beforeHistorySave', function () {
+    document.querySelectorAll('#shell-content .flash-toasts').forEach(function (list) { list.remove(); });
+});
+
+// A new ticket search cancels a list poll still in flight; that poll would
+// otherwise land after the search and put back the unfiltered list.
+document.body.addEventListener('htmx:beforeRequest', function (evt) {
+    if (!evt.target.matches || !evt.target.matches('form.tickets-filters')) return;
+    const live = document.getElementById('tickets-live');
+    if (live && window.htmx) window.htmx.trigger(live, 'htmx:abort');
+});
+
+// A server-side field error ("This field is required") goes away once that
+// field is edited, instead of staying until the next submit.
+['input', 'change'].forEach(function (type) {
+    document.addEventListener(type, function (evt) {
+        const field = evt.target;
+        if (!field || !field.closest || !evt.isTrusted) return;
+        const group = field.closest('.form-group, .kb-form-field');
+        const error = group && group.querySelector('.field-error');
+        if (error) error.remove();
+    });
 });
 
 // Listen for HX-Trigger: closeModal from server
@@ -615,12 +737,20 @@ function initializeChoices(targetElement) {
 
         let options = {
             controlInput: null,
-            sortField: null,
+            // Template order. null fell back to key order, which for numeric
+            // ids is pk order (night types listed after day types).
+            sortField: [{ field: '$order' }],
             searchField: []
         };
+        // Tom Select hides value="" options. Selects whose empty option is a
+        // real choice opt back in with data-allow-empty.
+        if (select.hasAttribute('data-allow-empty')) {
+            options.allowEmptyOption = true;
+        }
 
-        // Modal/offcanvas use overflow:hidden — keep the menu outside so it isn't clipped
-        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas')) {
+        // Modal/offcanvas use overflow:hidden. Shift panels use backdrop-filter,
+        // which is its own layer, so a menu inside one card paints under the next.
+        if (select.closest('.modal-content, .modal-overlay, .ticket-offcanvas, #shifts-shell-pane')) {
             options.dropdownParent = 'body';
         }
 
@@ -643,7 +773,20 @@ function initializeChoices(targetElement) {
             options.dropdownParent = 'body';
         }
 
+        const label = select.id
+            ? document.querySelector('label[for="' + CSS.escape(select.id) + '"]')
+            : null;
+
         new TomSelect(select, options);
+
+        // Tom Select opens the menu when its label is clicked. On the shifts
+        // toolbars that makes the caption above the field open the list too.
+        if (label && select.closest('#shifts-shell-pane')) {
+            label.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }, true);
+        }
     });
 }
 
@@ -727,6 +870,7 @@ function shellPageKindFromHtml(html) {
     if (html.indexOf('id="ticket-shell-pane"') !== -1) return "ticket";
     if (html.indexOf('id="tickets-live"') !== -1) return "tickets";
     if (html.indexOf('id="kb-shell-pane"') !== -1) return "kb";
+    if (html.indexOf('id="shifts-shell-pane"') !== -1) return "shifts";
     if (html.indexOf('id="settings-shell-pane"') !== -1) return "settings";
     if (html.indexOf('id="news-shell-pane"') !== -1) return "news";
     return "";
@@ -736,6 +880,7 @@ function shellPageKindFromDom() {
     if (document.getElementById("ticket-shell-pane")) return "ticket";
     if (document.getElementById("tickets-live")) return "tickets";
     if (document.getElementById("kb-shell-pane")) return "kb";
+    if (document.getElementById("shifts-shell-pane")) return "shifts";
     if (document.getElementById("settings-shell-pane")) return "settings";
     if (document.getElementById("news-shell-pane")) return "news";
     if (document.body.classList.contains("dashboard-page")) return "dashboard";
@@ -766,6 +911,7 @@ function updateActiveNav() {
     else if (path === "/tickets/settings" || path.indexOf("/tickets/settings/") === 0) key = "settings";
     else if (path === "/news" || path.indexOf("/news/") === 0) key = "news";
     else if (path === "/kb" || path.indexOf("/kb/") === 0) key = "kb";
+    else if (path === "/shifts" || path.indexOf("/shifts/") === 0) key = "shifts";
     else if (path === "/tickets" || path.indexOf("/tickets/") === 0) key = "tickets";
     document.querySelectorAll("#sidebar .sidebar-nav a[data-nav-key]").forEach(function (anchor) {
         var on = anchor.getAttribute("data-nav-key") === key;
@@ -944,7 +1090,8 @@ function shellPaneEtag(kind) {
     var ids = {
         news: "news-shell-pane",
         kb: "kb-shell-pane",
-        settings: "settings-shell-pane"
+        settings: "settings-shell-pane",
+        shifts: "shifts-shell-pane"
     };
     var id = ids[kind];
     if (!id) return "";
@@ -1230,3 +1377,71 @@ document.body.addEventListener('htmx:beforeSwap', function (evt) {
     var body = document.getElementById('tickets-tbody');
     if (body) evt.detail.target = body;
 });
+
+// Ticket chat "Who's available": Transfer on a person opens the Transfer
+// Ticket form with that agent already chosen.
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-who-transfer]');
+    if (!btn) return;
+    const popup = document.getElementById('who-available-modal');
+    const transfer = document.getElementById('custom-transfer-modal');
+    const select = document.getElementById('new_assignee');
+    if (!transfer || !select) return;
+    if (popup) popup.style.display = 'none';
+    select.value = btn.getAttribute('data-who-transfer');
+    transfer.style.display = 'flex';
+    select.focus();
+});
+
+// Copy buttons (tickets/partials/copy_field_button.html): ticket details,
+// and phone numbers on Shifts → Available and the Who's available popup.
+window.copyTicketNumber = function(btn) {
+    if (!btn) return;
+    const text = btn.getAttribute('data-copy-text') || '';
+    if (!text) return;
+    const copyLabel = btn.getAttribute('data-copy-label') || '';
+    const copiedLabel = btn.getAttribute('data-copied-label') || '';
+    const statusEl = btn.parentElement
+        ? btn.parentElement.querySelector('.ticket-copy-status')
+        : null;
+
+    function markCopied() {
+        btn.classList.add('copied');
+        if (copiedLabel) {
+            btn.setAttribute('aria-label', copiedLabel);
+            btn.setAttribute('title', copiedLabel);
+        }
+        if (statusEl) statusEl.textContent = copiedLabel;
+        clearTimeout(btn._copyResetTimer);
+        btn._copyResetTimer = setTimeout(function() {
+            btn.classList.remove('copied');
+            if (copyLabel) {
+                btn.setAttribute('aria-label', copyLabel);
+                btn.setAttribute('title', copyLabel);
+            }
+            if (statusEl) statusEl.textContent = '';
+        }, 1600);
+    }
+
+    function fallbackCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            markCopied();
+        } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
+    }
+};

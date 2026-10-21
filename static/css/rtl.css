@@ -313,3 +313,8 @@ html[dir="rtl"] .push-allow-arrow,
 html[dir="rtl"] .push-allow-arrow svg {
   transform: none;
 }
+
+/* Forward chevrons on buttons point the reading direction. */
+html[dir="rtl"] .btn-chevron {
+  transform: scaleX(-1);
+}

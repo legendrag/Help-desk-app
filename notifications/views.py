@@ -9,14 +9,29 @@ except ImportError:
     send_user_notification = None
 
 
+MAX_NOTIFICATIONS_LIMIT = 100
+
+
+def _parse_limit(raw, default=20):
+    try:
+        limit = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(limit, MAX_NOTIFICATIONS_LIMIT))
+
+
 @require_GET
 @login_required
 def notifications_list(request):
-    limit = int(request.GET.get("limit", 20))
+    limit = _parse_limit(request.GET.get("limit"))
     qs = (
         InAppNotification.objects.filter(recipient=request.user)
-        .order_by("-created_at")
+        .order_by("-created_at", "-id")
     )
+    # ?before=<id> pages back through older notifications.
+    before = request.GET.get("before")
+    if before and before.isdigit():
+        qs = qs.filter(id__lt=int(before))
     notifications = [
         {
             "id": n.id,
@@ -29,13 +44,17 @@ def notifications_list(request):
             "is_read": n.is_read,
             "created_at": n.created_at.isoformat() if n.created_at else None,
         }
-        for n in qs[:limit]
+        for n in qs[: limit + 1]
     ]
+    has_more = len(notifications) > limit
+    notifications = notifications[:limit]
     unread_count = InAppNotification.objects.filter(
         recipient=request.user,
         is_read=False,
     ).count()
-    return JsonResponse({"notifications": notifications, "unread_count": unread_count})
+    return JsonResponse(
+        {"notifications": notifications, "unread_count": unread_count, "has_more": has_more}
+    )
 
 
 @require_POST

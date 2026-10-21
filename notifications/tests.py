@@ -735,3 +735,440 @@ class WebPushQueuedTests(TestCase):
         self.assertEqual(len(sent), 1)
         self.assertEqual(sent[0]["user"], user)
         self.assertIn("Hello", sent[0]["payload"])
+
+
+class NotificationDeliveryFixTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="fix_user", email="fix@test.com", password="pw123456")
+
+    @patch("notifications.services._enqueue")
+    @patch("notifications.services._broadcast_notification")
+    def test_second_event_with_same_title_is_not_dropped(self, _broadcast, _enqueue):
+        from notifications.services import _notify_users
+
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Pending.", "/tickets/1/")
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Closed.", "/tickets/1/")
+        self.assertEqual(InAppNotification.objects.filter(recipient=self.user).count(), 2)
+        # The exact same event firing twice is still collapsed.
+        _notify_users([self.user], "Status Changed: #1", "a updated the status to Closed.", "/tickets/1/")
+        self.assertEqual(InAppNotification.objects.filter(recipient=self.user).count(), 2)
+
+    def test_bad_limit_does_not_500_and_is_capped(self):
+        self.client.force_login(self.user)
+        for raw in ("abc", "-1", "1e3", ""):
+            response = self.client.get(f"/notifications/api/?limit={raw}")
+            self.assertEqual(response.status_code, 200, raw)
+        InAppNotification.objects.bulk_create(
+            [InAppNotification(recipient=self.user, title=f"t{i}", message="m", link="/") for i in range(105)]
+        )
+        payload = self.client.get("/notifications/api/?limit=100000").json()
+        self.assertEqual(len(payload["notifications"]), 100)
+        self.assertTrue(payload["has_more"])
+        older = self.client.get(f"/notifications/api/?before={payload['notifications'][-1]['id']}").json()
+        self.assertEqual(len(older["notifications"]), 5)
+
+
+class EmailSendingFixTests(TestCase):
+    def setUp(self):
+        self.setting = EmailSetting.objects.create(
+            smtp_host="smtp.test.local", smtp_port=587, smtp_email="noreply@test.local",
+            smtp_password="secret", encryption="tls", from_name="Test", from_email="noreply@test.local",
+            is_active=True,
+        )
+
+    def test_each_recipient_gets_their_own_message(self):
+        from django.core import mail
+        from notifications.email_service import send_with_retries
+
+        self.assertTrue(send_with_retries("Hello", "Body", ["a@test.com", "b@test.com", "a@test.com"]))
+        self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["a@test.com", "b@test.com"])
+        self.assertTrue(all(len(m.to) == 1 for m in mail.outbox))
+
+    def test_line_break_in_subject_still_sends(self):
+        from django.core import mail
+        from notifications.email_service import send_with_retries
+
+        self.assertTrue(send_with_retries("Printer\r\ndown", "Body", ["a@test.com"]))
+        self.assertEqual(mail.outbox[0].subject, "Printer down")
+
+    def test_temporary_and_permanent_errors(self):
+        import smtplib
+        from notifications.email_service import _is_temporary
+
+        self.assertTrue(_is_temporary(smtplib.SMTPResponseException(451, b"try later")))
+        self.assertFalse(_is_temporary(smtplib.SMTPResponseException(554, b"rejected")))
+        self.assertTrue(_is_temporary(ConnectionRefusedError()))
+        self.assertTrue(_is_temporary(smtplib.SMTPServerDisconnected()))
+
+    def test_plain_text_has_no_html_entities(self):
+        text, _html = render_notification_email(body='Tom & Jerry said "hi"')
+        self.assertIn('Tom & Jerry said "hi"', text)
+        self.assertNotIn("&amp;", text)
+        self.assertNotIn("&quot;", text)
+
+    @patch("notifications.email_jobs.send_with_retries", return_value=True)
+    def test_deactivated_user_gets_no_transfer_email(self, send):
+        from notifications.email_jobs import send_transfer_event_email
+
+        branch = Branch.objects.create(code="EF-BR", name="EF Branch")
+        department = Department.objects.create(name="EF Dept")
+        actor = User.objects.create_user(username="ef_actor", email="actor@test.com", password="pw123456",
+                                         user_type=User.UserType.SUPPORT, department=department)
+        gone = User.objects.create_user(username="ef_gone", email="gone@test.com", password="pw123456",
+                                        user_type=User.UserType.SUPPORT, department=department,
+                                        status=User.Status.INACTIVE)
+        ticket = Ticket.objects.create(
+            title="T", description="D", branch=branch, department=department,
+            category=Category.objects.create(name="EF Cat", department=department),
+            created_by=actor, client_name="C", client_phone="0500000000",
+        )
+        self.assertFalse(send_transfer_event_email(ticket.id, actor.id, gone.id, "requested"))
+        send.assert_not_called()
+
+
+class WebPushFixTests(TestCase):
+    def test_endpoint_must_be_a_public_https_url(self):
+        from notifications.apps import _is_public_push_endpoint
+
+        self.assertTrue(_is_public_push_endpoint("https://fcm.googleapis.com/fcm/send/abc"))
+        for bad in (
+            "http://fcm.googleapis.com/x", "https://169.254.169.254/latest", "https://localhost/x",
+            "https://10.0.0.5/x", "https://[::1]/x", "https://printer.local/x", "not a url",
+            "https://169.254.169.254.nip.io/x", "https://evil-fcm.googleapis.com.attacker.io/x",
+        ):
+            self.assertFalse(_is_public_push_endpoint(bad), bad)
+
+    def _subscription(self, user):
+        from webpush.models import PushInformation, SubscriptionInfo
+
+        sub = SubscriptionInfo.objects.create(
+            browser="chrome", endpoint="https://fcm.googleapis.com/fcm/send/x", auth="a", p256dh="p",
+        )
+        PushInformation.objects.create(user=user, subscription=sub)
+        return sub
+
+    def _push_error(self, status):
+        from types import SimpleNamespace
+
+        from pywebpush import WebPushException
+
+        return WebPushException("failed", response=SimpleNamespace(status_code=status))
+
+    def test_403_keeps_subscription_but_410_removes_it(self):
+        import webpush
+        from webpush.models import SubscriptionInfo
+
+        user = User.objects.create_user(username="wp_user", password="pw123456")
+        sub = self._subscription(user)
+        with patch("notifications.apps._send_push", side_effect=self._push_error(403)) as send:
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+            # A failing device is skipped for a while instead of being tried on every push.
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+            self.assertEqual(send.call_count, 1)
+        self.assertTrue(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+        from notifications.apps import _clear_push_failures
+
+        _clear_push_failures(sub)
+        with patch("notifications.apps._send_push", side_effect=self._push_error(410)):
+            webpush.send_user_notification(user=user, payload="{}", ttl=0)
+        self.assertFalse(SubscriptionInfo.objects.filter(pk=sub.pk).exists())
+        _clear_push_failures(sub)  # don't leave backoff state for a later test reusing the id
+
+    def _save(self, extra=None):
+        import json
+
+        body = {
+            "status_type": "subscribe", "browser": "chrome",
+            "subscription": {"endpoint": "https://fcm.googleapis.com/fcm/send/shared",
+                             "keys": {"auth": "a", "p256dh": "p"}},
+            **(extra or {}),
+        }
+        return self.client.post(reverse("save_webpush_info"), json.dumps(body), content_type="application/json")
+
+    def test_subscription_moves_to_the_user_who_registered_it_last(self):
+        from webpush.models import PushInformation
+
+        for name in ("wp_first", "wp_second"):
+            self.client.force_login(User.objects.create_user(username=name, password="pw123456"))
+            self.assertEqual(self._save().status_code, 201)
+        owners = set(PushInformation.objects.values_list("user__username", flat=True))
+        self.assertEqual(owners, {"wp_second"})
+
+    def test_anonymous_group_subscription_is_refused(self):
+        from webpush.models import PushInformation
+
+        self._save({"group": "everyone"})
+        self.assertFalse(PushInformation.objects.exists())
+
+
+class HtmxMessagesMiddlewareTests(TestCase):
+    def test_messages_from_an_htmx_204_become_a_toast_trigger(self):
+        import json
+
+        from django.contrib.messages import get_messages
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        from core.middleware import HtmxMessagesMiddleware
+
+        request = RequestFactory().post("/x", HTTP_HX_REQUEST="true")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+
+        def view(req):
+            from django.contrib import messages
+
+            messages.success(req, "Ticket updated successfully.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "closeModal,refreshTickets"
+            return response
+
+        response = HtmxMessagesMiddleware(view)(request)
+        events = json.loads(response["HX-Trigger"])
+        self.assertIn("closeModal", events)
+        self.assertIn("refreshTickets", events)
+        self.assertEqual(events["flashMessages"][0]["message"], "Ticket updated successfully.")
+        # Marked as shown, so MessageMiddleware won't keep it for a later page.
+        self.assertTrue(get_messages(request).used)
+
+
+class EmailTemplateFieldValidationTests(TestCase):
+    def _form(self, body):
+        from core.forms import EmailTemplateForm
+
+        return EmailTemplateForm({"subject": "Hi {{ ticket_number }}", "body": body}, event_type="new_ticket")
+
+    def test_known_fields_are_accepted(self):
+        self.assertTrue(self._form("{{ requester }} wrote {{ description }}").is_valid())
+
+    def test_broken_and_unknown_fields_are_refused(self):
+        for body in ("Hello {{ requester", "Hello {{ requester.name }}", "Hello {{ nonsense }}"):
+            self.assertFalse(self._form(body).is_valid(), body)
+
+
+class WebPushLanguageTests(TestCase):
+    @patch("notifications.services._broadcast_notification")
+    def test_push_uses_the_recipients_language(self, _broadcast):
+        from notifications.services import _notify_users
+
+        arabic = User.objects.create_user(username="push_ar", password="pw123456", language="ar")
+        english = User.objects.create_user(username="push_en", password="pw123456", language="en")
+        pushed = {}
+        with patch("notifications.services._enqueue_web_push",
+                   side_effect=lambda user, title, message, link: pushed.__setitem__(user.username, title)):
+            _notify_users([arabic, english], "Hello", "Body", "/x/", title_ar="مرحبا", message_ar="نص")
+        self.assertEqual(pushed, {"push_ar": "مرحبا", "push_en": "Hello"})
+
+
+@override_settings(EMAIL_QUEUE_SYNC=False)
+class EmailQueueShutdownTests(TestCase):
+    """A normal server stop sends what is queued or delayed instead of dropping it."""
+
+    def tearDown(self):
+        from notifications import email_queue
+
+        email_queue._shutting_down = False
+        email_queue._outbox_stop.clear()
+
+    def test_queued_and_delayed_jobs_are_sent_before_exit(self):
+        import threading
+
+        from notifications import email_queue
+
+        sent = []
+        lock = threading.Lock()
+
+        def job(n):
+            with lock:
+                sent.append(n)
+
+        with patch("notifications.email_queue.close_old_connections"):
+            for n in range(10):
+                email_queue.enqueue_email(job, n)
+            # e.g. the 2-minute reply email, still waiting on its timer
+            email_queue.enqueue_email(job, "delayed", delay_seconds=120)
+            left = email_queue.drain_on_shutdown(timeout=10)
+
+        self.assertEqual(left, 0)
+        self.assertEqual(sorted(map(str, sent)), sorted([str(n) for n in range(10)] + ["delayed"]))
+
+
+_OUTBOX_CALLS = []
+
+
+def outbox_test_job(n, fail=False):
+    """Module-level, so the outbox can store it by dotted path."""
+    if fail:
+        raise RuntimeError("smtp down")
+    _OUTBOX_CALLS.append(n)
+
+
+@override_settings(EMAIL_QUEUE_SYNC=False)
+class EmailOutboxTests(TestCase):
+    """Email jobs are saved before sending, so a crash or forced kill can't lose them."""
+
+    def setUp(self):
+        from notifications import email_queue
+
+        _OUTBOX_CALLS.clear()
+        email_queue._outbox_stop.clear()
+        patcher = patch("notifications.email_queue.ensure_outbox_worker")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _enqueue(self, *args, **kwargs):
+        from notifications.email_queue import enqueue_email
+
+        enqueue_email(outbox_test_job, *args, **kwargs)
+
+    def test_job_is_saved_then_sent_and_removed(self):
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue(7)
+        row = EmailOutbox.objects.get()
+        self.assertEqual(row.func, "notifications.tests.outbox_test_job")
+        self.assertEqual(row.args, [7])
+        self.assertEqual(_OUTBOX_CALLS, [])  # nothing sent yet: a crash now loses nothing
+
+        # e.g. after a restart, the worker finds it in the table
+        self.assertEqual(run_due_outbox_jobs(), 1)
+        self.assertEqual(_OUTBOX_CALLS, [7])
+        self.assertFalse(EmailOutbox.objects.exists())
+
+    def test_delayed_job_waits_until_due(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue("reply", delay_seconds=120)
+        self.assertEqual(run_due_outbox_jobs(), 0)
+        EmailOutbox.objects.update(next_attempt_at=timezone.now() - timedelta(seconds=1))
+        run_due_outbox_jobs()
+        self.assertEqual(_OUTBOX_CALLS, ["reply"])
+
+    def test_failing_job_retries_then_stays_as_failed(self):
+        from django.utils import timezone
+
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        self._enqueue(1, fail=True, max_attempts=2, retry_delay=0)
+        run_due_outbox_jobs()
+        row = EmailOutbox.objects.get()
+        self.assertEqual((row.status, row.attempts), (EmailOutbox.Status.PENDING, 1))
+        EmailOutbox.objects.update(next_attempt_at=timezone.now())
+        run_due_outbox_jobs()
+        row.refresh_from_db()
+        self.assertEqual((row.status, row.attempts), (EmailOutbox.Status.FAILED, 2))
+        self.assertIn("smtp down", row.last_error)
+
+    def test_row_left_mid_send_by_a_dead_process_is_sent_again(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications.email_queue import OUTBOX_STUCK_SECONDS, run_due_outbox_jobs
+        from notifications.models import EmailOutbox
+
+        EmailOutbox.objects.create(
+            func="notifications.tests.outbox_test_job", args=[3], status=EmailOutbox.Status.SENDING,
+            updated_at=timezone.now() - timedelta(seconds=OUTBOX_STUCK_SECONDS + 1),
+        )
+        run_due_outbox_jobs()
+        self.assertEqual(_OUTBOX_CALLS, [3])
+
+    def test_recipients_reached_before_a_crash_are_not_mailed_again(self):
+        from notifications import email_queue
+        from notifications.email_queue import run_due_outbox_jobs
+        from notifications.email_service import send_with_retries
+        from notifications.models import EmailOutbox
+
+        EmailSetting.objects.create(
+            smtp_host="smtp.test", smtp_port=25, smtp_email="a@test", smtp_password="x",
+            from_email="desk@test", from_name="Desk", is_active=True,
+        )
+        email_queue.enqueue_email(send_with_retries, "Ticket #1", "Body", ["a@test", "b@test", "c@test"])
+        row = EmailOutbox.objects.get()
+        # A previous run mailed a@test, then the process was killed.
+        row.sent_keys = [email_queue._delivery_key("Ticket #1", "a@test")]
+        row.save()
+        sent = []
+        with patch("notifications.email_service._build_connection"),                 patch("notifications.email_service.EmailMultiAlternatives") as message:
+            message.side_effect = lambda **kw: sent.append(kw["to"][0]) or message.return_value
+            self.assertEqual(run_due_outbox_jobs(), 1)
+        self.assertEqual(sent, ["b@test", "c@test"])
+        self.assertFalse(EmailOutbox.objects.exists())
+
+    def test_each_delivered_recipient_is_recorded_as_it_goes(self):
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        row = EmailOutbox.objects.create(func="notifications.tests.outbox_test_job")
+        email_queue._current.row = row
+        try:
+            email_queue.mark_delivered("Subj", "x@test")
+            self.assertTrue(email_queue.already_delivered("Subj", "x@test"))
+            self.assertFalse(email_queue.already_delivered("Other", "x@test"))
+        finally:
+            email_queue._current.row = None
+        row.refresh_from_db()
+        self.assertEqual(row.sent_keys, [email_queue._delivery_key("Subj", "x@test")])
+        # Outside an outbox row nothing is skipped.
+        self.assertFalse(email_queue.already_delivered("Subj", "x@test"))
+
+    def test_recording_a_delivery_keeps_a_long_send_from_looking_stuck(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        old = timezone.now() - timedelta(seconds=email_queue.OUTBOX_STUCK_SECONDS + 60)
+        row = EmailOutbox.objects.create(
+            func="notifications.tests.outbox_test_job", status=EmailOutbox.Status.SENDING, updated_at=old,
+        )
+        email_queue._current.row = row
+        try:
+            email_queue.mark_delivered("Subj", "x@test")
+        finally:
+            email_queue._current.row = None
+        email_queue.run_due_outbox_jobs()
+        row.refresh_from_db()
+        # Still the first worker's: not reset and claimed again.
+        self.assertEqual(row.status, EmailOutbox.Status.SENDING)
+        self.assertGreater(row.updated_at, old)
+
+    def test_old_failed_rows_are_pruned(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from notifications import email_queue
+        from notifications.models import EmailOutbox
+
+        old = timezone.now() - timedelta(days=email_queue.OUTBOX_FAILED_KEEP_DAYS + 1)
+        EmailOutbox.objects.create(func="x.y", status=EmailOutbox.Status.FAILED, updated_at=old)
+        recent = EmailOutbox.objects.create(func="x.y", status=EmailOutbox.Status.FAILED)
+        with patch.object(email_queue, "_last_prune", 0.0):
+            email_queue.run_due_outbox_jobs()
+        self.assertEqual(list(EmailOutbox.objects.values_list("pk", flat=True)), [recent.pk])
+
+    def test_job_that_cannot_be_saved_falls_back_to_memory(self):
+        from notifications.models import EmailOutbox
+
+        def nested_job():
+            pass
+
+        with patch("notifications.email_queue.ensure_worker_started"), \
+                patch("notifications.email_queue._QUEUES") as queues:
+            from notifications.email_queue import enqueue_email
+
+            enqueue_email(nested_job)
+            queues.__getitem__.return_value.put.assert_called_once()
+        self.assertFalse(EmailOutbox.objects.exists())

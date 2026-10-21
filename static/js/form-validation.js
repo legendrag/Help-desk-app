@@ -105,9 +105,17 @@
             target.scrollIntoView({ block: "center", behavior: "smooth" });
         }
         if (field.tomselect) {
+            // Focus without opening the list: after a failed save the
+            // dropdown used to pop open by itself.
+            var ts = field.tomselect;
+            var openOnFocus = ts.settings.openOnFocus;
             try {
-                field.tomselect.focus();
-            } catch (err) {}
+                ts.settings.openOnFocus = false;
+                ts.focus();
+            } catch (err) {
+            } finally {
+                ts.settings.openOnFocus = openOnFocus;
+            }
         } else if (field.focus) {
             try {
                 field.focus({ preventScroll: true });

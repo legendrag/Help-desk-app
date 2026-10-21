@@ -7,6 +7,7 @@ import os
 from django.utils import timezone as tz
 from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_str
+from django.utils.html import escapejs, format_html
 from django.utils.translation import gettext as _
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
@@ -15,10 +16,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages as django_messages
 from django.urls import reverse, reverse_lazy
+from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Prefetch, Q, Sum, Value, fields
 from django.db.models.functions import Cast, Greatest, TruncDay, TruncMonth, TruncWeek, TruncYear
 from .models import Ticket, TicketMessage, TicketStatusHistory
-from .access import user_can_view_ticket, user_can_pick_ticket, user_can_reopen_ticket
+from .access import (
+    user_can_merge,
+    user_can_pick_ticket,
+    user_can_reopen_ticket,
+    user_can_send_message,
+    user_can_update_status,
+    user_can_view_ticket,
+)
 from core.models import Branch, Category, Department
 from accounts.models import User
 from .forms import TicketCreateForm, TicketUpdateForm
@@ -45,6 +54,31 @@ def _kb_articles_prefetch(user):
             "created_by__last_name",
         ),
     )
+
+
+def _filter_id(value):
+    """A filter's id as an int, or None for "all", blanks and junk like "abc"."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _apply_id_filters(queryset, filters):
+    """Department, branch and assignee filters; bad values are ignored, not 500s."""
+    department = _filter_id(filters.get("department"))
+    if department is not None:
+        queryset = queryset.filter(department_id=department)
+    branch = _filter_id(filters.get("branch"))
+    if branch is not None:
+        queryset = queryset.filter(branch_id=branch)
+    assigned_to = filters.get("assigned_to")
+    if assigned_to == "unassigned":
+        queryset = queryset.filter(assigned_to__isnull=True)
+    elif _filter_id(assigned_to) is not None:
+        queryset = queryset.filter(assigned_to_id=_filter_id(assigned_to))
+    return queryset
 
 
 def _default_month_range():
@@ -194,8 +228,25 @@ def _status_breakdown_rows(queryset, group_field):
     return rows
 
 
+# ?tab=<key> opens Settings on that tab (e.g. Cancel on a role edit page).
+SETTINGS_TABS = {
+    "branches": "branch_list",
+    "departments": "department_list",
+    "categories": "category_list",
+    "kb": "kb_category_list",
+    "roles": "role_list",
+    "users": "user_list",
+    "email": "email_setting_list",
+    "maintenance": "maintenance",
+}
+
+
 class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = "core/settings.html"
+
+    def _tab(self):
+        tab = self.request.GET.get("tab", "")
+        return tab if tab in SETTINGS_TABS else "branches"
 
     def test_func(self):
         user = self.request.user
@@ -216,7 +267,7 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             kb = "1" if role and role.can_manage_kb else "0"
             maintenance = "1" if role and role.can_manage_maintenance else "0"
             perm = kb + maintenance
-        return etag_digest([get_language(), perm])
+        return etag_digest([get_language(), perm, self._tab()])
 
     def get(self, request, *args, **kwargs):
         etag = self._shell_etag()
@@ -229,6 +280,10 @@ class SettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["shell_etag"] = getattr(self, "_shell_etag_value", "")
+        tab = self._tab()
+        context["settings_tab"] = tab
+        url = reverse(SETTINGS_TABS[tab])
+        context["settings_tab_url"] = url + "?nocache=1" if tab == "maintenance" else url
         return context
 
     def get_template_names(self):
@@ -321,15 +376,7 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         if end_dt:
             filtered_queryset = filtered_queryset.filter(created_at__lt=end_dt)
 
-        if filters["department"] and filters["department"] != "all":
-            filtered_queryset = filtered_queryset.filter(department_id=filters["department"])
-        if filters["branch"] and filters["branch"] != "all":
-            filtered_queryset = filtered_queryset.filter(branch_id=filters["branch"])
-        if filters["assigned_to"] and filters["assigned_to"] != "all":
-            if filters["assigned_to"] == "unassigned":
-                filtered_queryset = filtered_queryset.filter(assigned_to__isnull=True)
-            else:
-                filtered_queryset = filtered_queryset.filter(assigned_to_id=filters["assigned_to"])
+        filtered_queryset = _apply_id_filters(filtered_queryset, filters)
 
         status_counts = {
             item["status"]: item["count"]
@@ -616,15 +663,7 @@ class ExportDashboardExcelView(DashboardView):
             qs = qs.filter(created_at__gte=start_dt)
         if end_dt:
             qs = qs.filter(created_at__lt=end_dt)
-        if filters["department"] and filters["department"] != "all":
-            qs = qs.filter(department_id=filters["department"])
-        if filters["branch"] and filters["branch"] != "all":
-            qs = qs.filter(branch_id=filters["branch"])
-        if filters["assigned_to"] and filters["assigned_to"] != "all":
-            if filters["assigned_to"] == "unassigned":
-                qs = qs.filter(assigned_to__isnull=True)
-            else:
-                qs = qs.filter(assigned_to_id=filters["assigned_to"])
+        qs = _apply_id_filters(qs, filters)
 
         context = self.get_context_data(object_list=self.object_list)
         
@@ -964,8 +1003,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         return queryset.none()
 
     def _apply_list_filters(self, queryset):
-        branch_filter = self.request.GET.get("branch")
-        if branch_filter and branch_filter != "all":
+        branch_filter = _filter_id(self.request.GET.get("branch"))
+        if branch_filter is not None:
             queryset = queryset.filter(branch_id=branch_filter)
 
         status_filter = self.request.GET.get("status")
@@ -973,11 +1012,10 @@ class TicketListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(status=status_filter)
 
         assignment_filter = self.request.GET.get("assignment")
-        if assignment_filter and assignment_filter != "all":
-            if assignment_filter == "unassigned":
-                queryset = queryset.filter(assigned_to__isnull=True)
-            else:
-                queryset = queryset.filter(assigned_to_id=assignment_filter)
+        if assignment_filter == "unassigned":
+            queryset = queryset.filter(assigned_to__isnull=True)
+        elif _filter_id(assignment_filter) is not None:
+            queryset = queryset.filter(assigned_to_id=_filter_id(assignment_filter))
 
         # Apply search last so relevance ordering wins over default created_at order.
         search_query = self.request.GET.get("q", "").strip()
@@ -1208,6 +1246,11 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         elif user.user_type == "support":
             can_chat = (ticket.assigned_to_id == user.id)
         context['can_chat'] = can_chat
+        context['can_update_status'] = user_can_update_status(user, ticket)
+        context['can_accept'] = user_can_pick_ticket(user, ticket)
+        context['can_transfer'] = (
+            (user.is_superuser or ticket.assigned_to_id == user.id) and not ticket.pending_transfer_to_id
+        )
 
         supporters = User.objects.filter(
             status=User.Status.ACTIVE
@@ -1215,8 +1258,20 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             Q(department_id=ticket.department_id, user_type=User.UserType.SUPPORT) |
             Q(is_superuser=True)
         ).exclude(id=ticket.assigned_to_id).select_related("department").only(
-            "id", "username", "department", "department__name"
+            "id", "username", "first_name", "last_name", "department", "department__name"
         )
+
+        # Agents on shift right now come first, marked with when they finish.
+        from shifts.access import display_name
+        from shifts.availability import on_shift_now
+
+        on_shift = on_shift_now(ticket.department_id) if ticket.department_id else {}
+        supporters = list(supporters)
+        for supporter in supporters:
+            # Full names, as in the "Who's available" popup.
+            supporter.display_name = display_name(supporter)
+            supporter.on_shift_until = on_shift.get(supporter.id)
+        supporters.sort(key=lambda supporter: supporter.on_shift_until is None)
 
         context['supporters'] = supporters
 
@@ -1331,8 +1386,8 @@ def ticket_category_options(request):
             if not (user.role and (user.role.can_create_ticket or user.role.can_update_ticket)):
                 raise PermissionDenied(_("You do not have permission to access categories."))
 
-    department_id = request.GET.get("department")
-    if department_id:
+    department_id = _filter_id(request.GET.get("department"))
+    if department_id is not None:
         categories = Category.objects.filter(department_id=department_id).order_by("name")
     else:
         categories = Category.objects.none()
@@ -1344,22 +1399,20 @@ def ticket_category_options(request):
 def post_message(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     
-    # Permission: Superuser, Assignee, Branch (if theirs), or has role permission.
     if not request.user.is_superuser:
-        if request.user.user_type == "branch":
-            if ticket.branch_id != request.user.branch_id:
-                raise PermissionDenied(_("You can only send messages on tickets for your branch."))
-        elif request.user.user_type == "support":
-            if ticket.assigned_to_id != request.user.id and not (request.user.role and request.user.role.can_send_message):
-                raise PermissionDenied(_("You do not have permission to send messages."))
+        if request.user.user_type == "branch" and ticket.branch_id != request.user.branch_id:
+            raise PermissionDenied(_("You can only send messages on tickets for your branch."))
+        if not user_can_send_message(request.user, ticket):
+            raise PermissionDenied(_("You do not have permission to send messages."))
 
     if request.method == "POST":
-        message_text = request.POST.get("message")
+        message_text = (request.POST.get("message") or "").strip()  # same as the chat socket
         attachment = request.FILES.get("attachment")
         reply_to_id = request.POST.get("reply_to")
 
+        errors = []
         if not message_text and not attachment:
-            django_messages.error(request, _("Message or attachment is required."))
+            errors.append(_("Message or attachment is required."))
         else:
             try:
                 reply_to = None
@@ -1374,15 +1427,18 @@ def post_message(request, ticket_id):
                 )
 
             except ValidationError as e:
-                for message in e.messages:
-                    django_messages.error(request, message)
+                errors.extend(e.messages)
             except Exception as e:
-                django_messages.error(request, _("Failed to send message: {}").format(str(e)))
+                errors.append(_("Failed to send message: {}").format(str(e)))
 
-        # For HTMX requests, return 204 to avoid full page reload
+        # HTMX: 204 on success; 400 with the reason so chat.js can mark the message failed.
         if request.headers.get('HX-Request'):
             from django.http import HttpResponse
+            if errors:
+                return HttpResponse(" ".join(str(e) for e in errors), status=400, content_type="text/plain; charset=utf-8")
             return HttpResponse(status=204)
+        for error in errors:
+            django_messages.error(request, error)
 
     return redirect("ticket_detail", ticket_id=ticket_id)
 
@@ -1423,8 +1479,8 @@ def edit_message(request, message_id):
         raise PermissionDenied(_("You do not have permission to edit this message."))
     ticket_id = message.ticket.id
     if request.method == "POST":
-        new_text = request.POST.get("message")
-        if new_text:
+        new_text = request.POST.get("message") or ""
+        if new_text.strip():
             message.message = new_text
             message.save()
             django_messages.success(request, _("Message updated."))
@@ -1506,6 +1562,8 @@ def update_ticket_status(request, ticket_id):
         if ticket.status != Ticket.Status.CLOSED:
             if not request.user.is_superuser and ticket.assigned_to_id != request.user.id:
                 raise PermissionDenied(_("You can only update the status of tickets assigned to you."))
+            if not user_can_update_status(request.user, ticket):
+                raise PermissionDenied(_("You do not have permission to update ticket status."))
         else:
             if not user_can_reopen_ticket(request.user, ticket):
                 raise PermissionDenied(_("You do not have permission to update a closed ticket."))
@@ -1513,33 +1571,45 @@ def update_ticket_status(request, ticket_id):
         new_status = request.POST.get("status")
         if new_status in Ticket.Status.values:
             try:
-                if ticket.status != new_status:
-                    old_status = ticket.status
-                    if ticket.status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
-                        ticket.assigned_to = request.user
-                        
-                    ticket.status = new_status
-                    
-                    if new_status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
-                        ticket.pending_transfer_to = None
-                        ticket.pending_transfer_by = None
-                        
-                    ticket.save()
-                    
-                    if old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
-                        TicketStatusHistory.objects.create(
-                            ticket=ticket,
-                            status=new_status,
-                            event_type=TicketStatusHistory.EventType.REOPENED,
-                            changed_by=request.user,
+                old_status = ticket.status
+                claimed = False
+                if old_status != new_status:
+                    with transaction.atomic():
+                        # Claim the change: only the request that still sees the
+                        # old status wins. Two people pressing at once would
+                        # otherwise both save, log and notify.
+                        claimed = bool(
+                            Ticket.objects.filter(pk=ticket.pk, status=old_status).update(status=new_status)
                         )
-                    else:
-                        TicketStatusHistory.objects.create(
-                            ticket=ticket,
-                            status=new_status,
-                            event_type=TicketStatusHistory.EventType.STATUS_CHANGE,
-                            changed_by=request.user,
+                        if claimed:
+                            if old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED:
+                                ticket.assigned_to = request.user
+                            ticket.status = new_status
+                            if new_status in [Ticket.Status.CLOSED, Ticket.Status.MERGED]:
+                                ticket.pending_transfer_to = None
+                                ticket.pending_transfer_by = None
+                            ticket.save()
+                            reopened = old_status == Ticket.Status.CLOSED and new_status != Ticket.Status.CLOSED
+                            TicketStatusHistory.objects.create(
+                                ticket=ticket,
+                                status=new_status,
+                                event_type=(
+                                    TicketStatusHistory.EventType.REOPENED
+                                    if reopened
+                                    else TicketStatusHistory.EventType.STATUS_CHANGE
+                                ),
+                                changed_by=request.user,
+                            )
+                    if not claimed:
+                        ticket.refresh_from_db()
+                        django_messages.info(
+                            request,
+                            _("Someone else changed this ticket's status just now. It is now {}.").format(
+                                ticket.get_status_display()
+                            ),
                         )
+
+                if claimed:
                     django_messages.success(request, _("Status updated to {}.").format(ticket.get_status_display()))
                     notify_ticket_update(ticket, request.user, status_changed=True, new_status=new_status)
 
@@ -1549,7 +1619,7 @@ def update_ticket_status(request, ticket_id):
                         "new_status": new_status,
                         "new_status_display": ticket.get_status_display(),
                     })
-                
+
                 if request.headers.get('HX-Request'):
                     from django.http import HttpResponse
                     resp = HttpResponse(status=204)
@@ -1561,6 +1631,10 @@ def update_ticket_status(request, ticket_id):
             except Exception as e:
                 django_messages.error(request, _("Failed to update status: {}").format(str(e)))
     return redirect("ticket_detail", ticket_id=ticket_id)
+
+class _AlreadyPicked(Exception):
+    """Another agent claimed the ticket first."""
+
 
 @login_required
 def pick_ticket(request, ticket_id):
@@ -1576,14 +1650,23 @@ def pick_ticket(request, ticket_id):
             django_messages.error(request, _("Cannot pick a merged ticket."))
         else:
             try:
-                ticket.assigned_to = request.user
-                ticket.status = Ticket.Status.IN_PROGRESS
-                ticket.save()
-                TicketStatusHistory.objects.create(
-                    ticket=ticket,
-                    status=Ticket.Status.IN_PROGRESS,
-                    changed_by=request.user,
-                )
+                with transaction.atomic():
+                    # Claim it: when two agents pick at once, only one gets it.
+                    claimed = Ticket.objects.filter(pk=ticket.pk, assigned_to__isnull=True).update(
+                        assigned_to=request.user
+                    )
+                    if claimed:
+                        ticket.assigned_to = request.user
+                        ticket.status = Ticket.Status.IN_PROGRESS
+                        ticket.save()
+                        TicketStatusHistory.objects.create(
+                            ticket=ticket,
+                            status=Ticket.Status.IN_PROGRESS,
+                            changed_by=request.user,
+                        )
+                if not claimed:
+                    ticket.refresh_from_db()
+                    raise _AlreadyPicked()
                 django_messages.success(request, _("Ticket assigned to you."))
                 notify_ticket_picked(ticket, request.user)
 
@@ -1593,6 +1676,8 @@ def pick_ticket(request, ticket_id):
                 })
                 picked = True
 
+            except _AlreadyPicked:
+                django_messages.info(request, _("Someone else picked this ticket just now."))
             except ValidationError as e:
                 for message in e.messages:
                     django_messages.error(request, message)
@@ -1829,32 +1914,42 @@ def ticket_search_options(request):
     )[:10]
     
     if not tickets.exists():
-        return HttpResponse('<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">No matching tickets found</div></div>')
+        return HttpResponse(format_html(
+            '<div id="search-results-container" class="merge-search-results"><div class="merge-search-empty">{}</div></div>',
+            _("No matching tickets found"),
+        ))
 
     options = ['<div id="search-results-container" class="merge-search-results">']
     for t in tickets:
-        status_label = t.get_status_display()
-        priority_label = t.get_priority_display().upper()
-        options.append(
-            f'<div class="merge-search-item" '
-            f'hx-get="/tickets/merge-preview/{t.id}/" '
-            f'hx-target="#selected-ticket-preview" '
-            f'hx-swap="innerHTML" '
-            f'onclick="selectTicketForMerge(\'{t.ticket_number}\')">'
-            f'  <div class="merge-item-header">'
-            f'    <span class="merge-item-number">{t.ticket_number}</span>'
-            f'    <div class="merge-item-badges">'
-            f'      <span class="badge badge-{t.status}">{status_label}</span>'
-            f'      <span class="priority-badge priority-{t.priority}">{priority_label}</span>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="merge-item-title">{t.title}</div>'
-            f'  <div class="merge-item-meta">'
-            f'    <span>Dept: {t.department.name}</span> | '
-            f'    <span>By: {t.created_by.username}</span>'
-            f'  </div>'
-            f'</div>'
-        )
+        # format_html escapes every value: titles are typed by branch users.
+        options.append(format_html(
+            '<div class="merge-search-item" '
+            'hx-get="{}" '
+            'hx-target="#selected-ticket-preview" '
+            'hx-swap="innerHTML" '
+            'onclick="selectTicketForMerge(\'{}\')">'
+            '  <div class="merge-item-header">'
+            '    <span class="merge-item-number">{}</span>'
+            '    <div class="merge-item-badges">'
+            '      <span class="badge badge-{}">{}</span>'
+            '      <span class="priority-badge priority-{}">{}</span>'
+            '    </div>'
+            '  </div>'
+            '  <div class="merge-item-title">{}</div>'
+            '  <div class="merge-item-meta">'
+            '    <span>{}</span> | '
+            '    <span>{}</span>'
+            '  </div>'
+            '</div>',
+            f"/tickets/merge-preview/{t.id}/",
+            escapejs(t.ticket_number),
+            t.ticket_number,
+            t.status, t.get_status_display(),
+            t.priority, t.get_priority_display().upper(),
+            t.title,
+            _("Dept: %(name)s") % {"name": t.department.name},
+            _("By: %(name)s") % {"name": t.created_by.username},
+        ))
     options.append('</div>')
         
     return HttpResponse("\n".join(options))
@@ -1878,20 +1973,20 @@ def ticket_merge_preview(request, ticket_id):
 
 @login_required
 def merge_ticket(request, ticket_id):
-    if not (request.user.is_superuser or (request.user.role and request.user.role.can_update_status)):
+    primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
+    if not user_can_update_status(request.user, primary_ticket):
         raise PermissionDenied(_("You do not have permission to merge tickets."))
 
-    primary_ticket = get_object_or_404(Ticket, pk=ticket_id)
-
     if request.method == "POST":
-        target_ticket_number = request.POST.get("target_ticket_number")
+        target_ticket_number = (request.POST.get("target_ticket_number") or "").strip()
         if not target_ticket_number:
             django_messages.error(request, _("Target ticket number is required."))
             return redirect("ticket_detail", ticket_id=ticket_id)
 
-        try:
-            secondary_ticket = Ticket.objects.get(ticket_number=target_ticket_number)
-        except Ticket.DoesNotExist:
+        secondary_ticket = Ticket.objects.filter(ticket_number=target_ticket_number).first()
+        # A ticket the user may not touch reads as "not found", so numbers
+        # from other departments can't be probed.
+        if secondary_ticket is None or not user_can_merge(request.user, primary_ticket, secondary_ticket):
             django_messages.error(request, _("Ticket {} not found.").format(target_ticket_number))
             return redirect("ticket_detail", ticket_id=ticket_id)
 

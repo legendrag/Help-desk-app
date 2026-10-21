@@ -1,0 +1,36 @@
+{% load i18n shifts_extras %}
+<tr id="shift-mine-{{ assignment.pk }}"{% if assignment.live %} hx-get="{% url 'shifts_mine_row' assignment.pk %}" hx-trigger="shiftsCheckIn from:body" hx-swap="outerHTML"{% endif %}>
+  <td class="shifts-date{% if assignment.is_today %} shifts-day--today{% endif %}" data-label="{% trans "Date" %}">
+    <div class="shifts-mine-cell">
+      <bdi class="shifts-date-text">{{ assignment.date|shifts_day }}</bdi>
+      {% if assignment.day_label %}<span class="pill shifts-day-pill{% if assignment.is_today %} shifts-day-pill--today{% endif %}">{{ assignment.day_label }}</span>{% endif %}
+    </div>
+  </td>
+  <td{% if assignment.is_today %} class="shifts-day--today"{% endif %} data-label="{% trans "Shift type" %}">
+    <div class="shifts-mine-cell">
+      <span class="shifts-chip {{ assignment.shift_type.colour|chip_ink }}{% if assignment.shift_type.is_night %} shifts-chip--night{% endif %}" style="background-color: {{ assignment.shift_type.colour }}">{{ assignment.shift_type.name }}</span>
+    </div>
+  </td>
+  <td{% if assignment.is_today %} class="shifts-day--today"{% endif %} data-label="{% trans "Times" %}">
+    <div class="shifts-mine-cell">
+      <div class="shifts-mine-times">
+        {% shifts_time_range assignment.start_time_override|default:assignment.shift_type.start_time assignment.end_time_override|default:assignment.shift_type.end_time %}
+        {% if assignment.ends_next_day %}<span class="badge badge-closed" title="{% trans "Ends the next day" %}">{% trans "Next day" %}</span>{% endif %}
+      </div>
+      <span class="shifts-sub">{{ assignment.length_text }}{% if assignment.set_by_me %} · {% trans "Hours changed by you" %}{% endif %}</span>
+    </div>
+  </td>
+  <td{% if assignment.is_today %} class="shifts-day--today"{% endif %} data-label="{% trans "Status" %}">
+    <div class="shifts-mine-cell">
+      {% if assignment.status == "on_shift" %}<span class="badge badge-open">{% trans "On shift" %}</span>
+      {% elif assignment.status == "open" %}<span class="badge badge-waiting_for_branch">{% trans "Check-in open" %}</span>
+      {% elif assignment.status == "completed" %}<span class="badge badge-closed">{% trans "Completed" %}</span>
+      {% elif assignment.status == "missed" %}<span class="badge badge-expired">{% trans "Missed" %}</span>
+      {% elif assignment.status == "not_checked_in" %}<span class="badge badge-waiting_for_branch">{% trans "Not checked in" %}</span>
+      {% else %}<span class="badge badge-in_progress">{% trans "Upcoming" %}</span>{% endif %}
+      {% if assignment.checked_in_at %}<span class="shifts-sub">{% blocktrans trimmed with time=assignment.checked_in_at|shifts_clock %}Checked in at {{ time }}{% endblocktrans %}</span>{% endif %}
+    </div>
+  </td>
+  {# No whitespace when empty, so phones can drop the blank Actions line with :empty. #}
+  <td class="shifts-row-actions{% if assignment.is_today %} shifts-day--today{% endif %}" data-label="{% trans "Actions" %}">{% if assignment.can_edit_hours %}<button class="btn secondary" type="button" hx-get="{% url 'shifts_mine_hours' assignment.pk %}" hx-target="#modal-content" onclick="openModal()">{% trans "Edit hours" %}</button>{% endif %}</td>
+</tr>

@@ -1,0 +1,49 @@
+{% load i18n %}
+{# Accept, status and Transfer. Shown with the chat box, or on its own when the user can't send messages. #}
+<div class="action-bar" id="action-bar">
+    {# ── Accept Button (only if unassigned) ── #}
+    {% if can_accept %}
+    <button type="submit" class="action-bar-accept" form="pick-ticket-form">{% trans "Accept" %}</button>
+    {% endif %}
+
+    {# ── Action + Dropdown Group ── #}
+    {# Status items need "Update Ticket Status"; Transfer only needs the ticket. #}
+    {% if can_update_status or can_transfer %}
+    <div class="action-bar-group">
+        {% if can_update_status %}
+        <button type="button" class="action-bar-execute" id="action-bar-execute"
+            data-action="closed" data-confirm="close" onclick="executeActionBar()">{% trans "Close" %}</button>
+        {% else %}
+        <button type="button" class="action-bar-execute" id="action-bar-execute"
+            data-action="transfer" data-confirm="transfer" onclick="executeActionBar()">{% trans "Transfer" %}</button>
+        {% endif %}
+        <button type="button" class="action-bar-toggle" id="action-bar-toggle"
+            onclick="toggleActionMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+        <div class="action-bar-menu" id="action-bar-menu">
+            {% if can_update_status %}
+            <button type="button" class="action-bar-menu-item active" data-action="closed"
+                data-label="{% trans 'Close' %}" data-confirm="close" onclick="selectAction(this)">{% trans "Close" %}</button>
+            {% if ticket.status != 'waiting_for_branch' %}
+            <button type="button" class="action-bar-menu-item" data-action="waiting_for_branch"
+                data-label="{% trans 'Wait for User' %}" onclick="selectAction(this)">{% trans "Wait for User" %}</button>
+            {% endif %}
+            {% if ticket.status != 'in_progress' %}
+            <button type="button" class="action-bar-menu-item" data-action="in_progress"
+                data-label="{% trans 'In Progress' %}" onclick="selectAction(this)">{% trans "In Progress" %}</button>
+            {% endif %}
+            <button type="button" class="action-bar-menu-item" data-action="merge"
+                data-label="{% trans 'Merge' %}" data-confirm="merge" onclick="selectAction(this)">{% trans "Merge Ticket" %}</button>
+            {% endif %}
+            {% if can_transfer %}
+            <button type="button" class="action-bar-menu-item{% if not can_update_status %} active{% endif %}" data-action="transfer"
+                data-label="{% trans 'Transfer' %}" data-confirm="transfer" onclick="selectAction(this)">{% trans "Transfer Ticket" %}</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

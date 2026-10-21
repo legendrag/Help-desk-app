@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{# Django renders this for PermissionDenied (handler403). #}
+{% block title %}{% trans "No access" %} - MlamehTicket{% endblock title %}
+
+{% block content %}
+<div class="content-container">
+    <section class="panel error-page" role="alert">
+        <h1>{% trans "You can't open this page" %}</h1>
+        <p>{% if exception %}{{ exception }}{% else %}{% trans "Your account doesn't have permission for this page." %}{% endif %}</p>
+        <p>{% trans "If you think you should have access, ask an administrator to check your role." %}</p>
+        <a class="btn primary" href="{% url 'tickets_list' %}">{% trans "Go to tickets" %}</a>
+    </section>
+</div>
+{% endblock content %}

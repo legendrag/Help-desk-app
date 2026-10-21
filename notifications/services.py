@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from datetime import timedelta
 
 from asgiref.sync import async_to_sync
@@ -19,6 +20,7 @@ except ImportError:
 from .email_jobs import (
     send_announcement_email,
     send_new_ticket_email,
+    send_shift_reminder_email,
     send_ticket_picked_email,
     send_ticket_update_email,
     send_transfer_event_email,
@@ -182,12 +184,12 @@ def _deliver_notification(notification):
         )
         return
     _broadcast_notification(notification)
-    _enqueue_web_push(
-        notification.recipient,
-        notification.title,
-        notification.message,
-        notification.link,
-    )
+    title, message = notification.title, notification.message
+    # Push is shown by the OS, outside the app, so pick the recipient's language here.
+    if getattr(notification.recipient, "language", "") == "ar":
+        title = notification.arabic_title() or title
+        message = notification.arabic_message() or message
+    _enqueue_web_push(notification.recipient, title, message, notification.link)
 
 
 def _notification_row(user, title, message, link, notification_type, title_ar, message_ar):
@@ -265,13 +267,17 @@ def _notify_users(
     exclude_user=None,
     title_ar="",
     message_ar="",
+    dedupe=True,
 ):
     """Create and broadcast in-app notifications with deduplication.
 
     `title`/`message` are English and required for dedupe, web push, and fallback.
     `title_ar`/`message_ar` are optional; the panel falls back to English if empty.
     """
-    dedup_window = timezone.now() - timedelta(seconds=60)
+    # Only catches the same event firing twice (double submit, duplicate
+    # signal). A wider window or a title-only match drops real events, such
+    # as a second status change or a re-requested transfer.
+    dedup_window = timezone.now() - timedelta(seconds=5)
     exclude_id = getattr(exclude_user, "id", None) if exclude_user is not None else None
     recipients = []
     seen = set()
@@ -286,11 +292,12 @@ def _notify_users(
         return
 
     skip = set()
-    if notification_type != "message":
+    if dedupe and notification_type != "message":
         skip = set(
             InAppNotification.objects.filter(
                 recipient_id__in=[user.id for user in recipients],
                 title=title,
+                message=message,
                 link=link,
                 created_at__gte=dedup_window,
             ).values_list("recipient_id", flat=True)
@@ -309,8 +316,19 @@ def _notify_users(
 
 
 def _enqueue(func, *args, **kwargs):
+    # Push runs on its own lane so it can't be held up by a slow mail server
+    # (and vice versa). Push failures are handled per subscription, so a whole
+    # job only fails before anything was sent and can safely run again.
+    is_push = webpush is not None and func is getattr(webpush, "send_user_notification", None)
     try:
-        enqueue_email(func, *args, max_attempts=1, retry_delay=2, **kwargs)
+        enqueue_email(
+            func,
+            *args,
+            max_attempts=3,
+            retry_delay=5,
+            lane="push" if is_push else "email",
+            **kwargs,
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to enqueue email job: %s", exc)
 
@@ -464,6 +482,9 @@ def notify_transfer_requested(ticket: Ticket, actor: User, new_assignee: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, new_assignee.id, "requested")
 
@@ -486,6 +507,9 @@ def notify_transfer_accepted(ticket: Ticket, actor: User, requester: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "accepted")
 
@@ -508,6 +532,9 @@ def notify_transfer_denied(ticket: Ticket, actor: User, requester: User):
         exclude_user=actor,
         title_ar=title_ar,
         message_ar=message_ar,
+        # Each transfer step is a separate deliberate action (the pending
+        # transfer state stops double submits), e.g. re-requesting right after a deny.
+        dedupe=False,
     )
     _enqueue(send_transfer_event_email, ticket.id, actor.id, requester.id, "denied")
 
@@ -579,3 +606,197 @@ def notify_announcement_created(announcement, actor=None):
         announcement.id,
         actor.id if actor else None,
     )
+
+
+SHIFT_REMINDER_LINK = "/shifts/mine/#shifts-check-in"
+
+
+def notify_shift_reminder(assignment):
+    """Tell an agent their shift starts soon: bell, web push, then email.
+
+    Copy is built in each language so the start time reads "9:00 AM" in
+    English and "9:00 ص" in Arabic.
+    """
+    from django.utils import translation
+    from django.utils.translation import gettext
+
+    from shifts.access import can_check_in
+    from shifts.clock import format_clock
+    from shifts.services import effective_interval
+
+    start_dt, _end_dt = effective_interval(assignment)
+    title_msgid = gettext_noop("Your shift starts at %(time)s")
+    if can_check_in(assignment.user):
+        message_msgid = gettext_noop("%(shift)s · %(department)s. You can check in now.")
+    else:
+        message_msgid = gettext_noop("%(shift)s · %(department)s. Have a good shift.")
+    copy = {}
+    for language in ("en", "ar"):
+        with translation.override(language):
+            params = {
+                "time": format_clock(start_dt),
+                "shift": assignment.shift_type.name,
+                "department": assignment.shift_type.department.name,
+            }
+            copy[language] = (gettext(title_msgid) % params, gettext(message_msgid) % params)
+    _notify_users(
+        [assignment.user],
+        copy["en"][0],
+        copy["en"][1],
+        SHIFT_REMINDER_LINK,
+        notification_type=InAppNotification.NotificationType.SHIFT,
+        title_ar=copy["ar"][0],
+        message_ar=copy["ar"][1],
+    )
+    _enqueue(send_shift_reminder_email, assignment.pk)
+
+
+SHIFT_CHANGES_LINK = "/shifts/mine/"
+# A summary names this many dates per kind, then "+N more".
+SHIFT_CHANGE_DATES_SHOWN = 5
+
+
+@dataclass(frozen=True)
+class ShiftChange:
+    """One rota change for one person. Removals are captured before the delete."""
+
+    kind: str  # "added", "changed" or "removed"
+    user: object
+    date: object
+    shift_name: str
+    start_dt: object
+    end_dt: object
+
+    department_id: object = None
+
+    @classmethod
+    def of(cls, kind, assignment):
+        from shifts.services import effective_interval
+
+        start_dt, end_dt = effective_interval(assignment)
+        return cls(
+            kind, assignment.user, assignment.date, assignment.shift_type.name, start_dt, end_dt,
+            assignment.shift_type.department_id,
+        )
+
+
+_SHIFT_CHANGE_TITLES = {
+    "added": gettext_noop("New shift: %(date)s"),
+    "changed": gettext_noop("Shift changed: %(date)s"),
+    "removed": gettext_noop("Shift removed: %(date)s"),
+}
+_SHIFT_CHANGE_MESSAGES = {
+    "added": gettext_noop("%(shift)s · %(start)s – %(end)s"),
+    "changed": gettext_noop("Now %(shift)s · %(start)s – %(end)s"),
+    "removed": gettext_noop("%(shift)s · %(start)s – %(end)s"),
+}
+_SHIFT_CHANGE_LISTS = {
+    "added": gettext_noop("Added: %(dates)s."),
+    "changed": gettext_noop("Changed: %(dates)s."),
+    "removed": gettext_noop("Removed: %(dates)s."),
+}
+
+
+def _list_separator():
+    from django.utils.translation import get_language
+
+    # Arabic uses its own comma.
+    return "، " if (get_language() or "").startswith("ar") else ", "
+
+
+def _shift_change_copy(changes):
+    """(title, message) for one person's changes, in the active language."""
+    from django.utils.formats import date_format
+    from django.utils.translation import gettext
+
+    from shifts.clock import format_clock
+
+    if len(changes) == 1:
+        change = changes[0]
+        title = gettext(_SHIFT_CHANGE_TITLES[change.kind]) % {
+            "date": date_format(change.date, "D" + _list_separator() + "M j")
+        }
+        message = gettext(_SHIFT_CHANGE_MESSAGES[change.kind]) % {
+            "shift": change.shift_name,
+            "start": format_clock(change.start_dt),
+            "end": format_clock(change.end_dt),
+        }
+        return title, message
+    parts = []
+    for kind in ("added", "changed", "removed"):
+        days = sorted({change.date for change in changes if change.kind == kind})
+        if not days:
+            continue
+        shown = [date_format(day, "M j") for day in days[:SHIFT_CHANGE_DATES_SHOWN]]
+        if len(days) > SHIFT_CHANGE_DATES_SHOWN:
+            shown.append(gettext("+%(count)s more") % {"count": len(days) - SHIFT_CHANGE_DATES_SHOWN})
+        parts.append(gettext(_SHIFT_CHANGE_LISTS[kind]) % {"dates": _list_separator().join(shown)})
+    return gettext("Your shifts were updated"), " ".join(parts)
+
+
+def notify_shift_changes(changes, actor=None):
+    """Bell and web push when a manager adds, changes or removes someone's shifts.
+
+    One notification per person per action. Shifts that are already over,
+    and the manager's own shifts, are left out.
+    """
+    from django.utils import translation
+
+    now = timezone.now()
+    by_user = {}
+    for change in changes:
+        if change.end_dt <= now or (actor is not None and change.user.pk == actor.pk):
+            continue
+        by_user.setdefault(change.user.pk, []).append(change)
+    for person_changes in by_user.values():
+        person_changes.sort(key=lambda change: change.start_dt)
+        copy = {}
+        for language in ("en", "ar"):
+            with translation.override(language):
+                copy[language] = _shift_change_copy(person_changes)
+        _notify_users(
+            [person_changes[0].user],
+            copy["en"][0],
+            copy["en"][1],
+            SHIFT_CHANGES_LINK,
+            notification_type=InAppNotification.NotificationType.SHIFT,
+            title_ar=copy["ar"][0],
+            message_ar=copy["ar"][1],
+            # Two quick edits can share a title; both must arrive.
+            dedupe=False,
+        )
+
+
+ROTA_GROUP = "shifts_rota"
+
+
+def broadcast_rota_changed(changes):
+    """Tell open rota grids (any tab, any manager) that a department changed."""
+    departments = sorted({change.department_id for change in changes if change.department_id})
+    if not departments:
+        return
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        if layer is not None:
+            async_to_sync(layer.group_send)(ROTA_GROUP, {"type": "rota.changed", "departments": departments})
+    except Exception:  # noqa: BLE001 - a live refresh must not undo a saved rota
+        logger.warning("Rota change broadcast failed", exc_info=True)
+
+
+def queue_shift_changes(changes, actor=None):
+    """Send ``notify_shift_changes`` once the rota save commits; never break the save."""
+    changes = [change for change in changes if change is not None]
+    if not changes:
+        return
+
+    def send():
+        try:
+            notify_shift_changes(changes, actor)
+        except Exception:  # noqa: BLE001 - a notification must not undo a saved rota
+            logger.exception("Shift change notification failed")
+        broadcast_rota_changed(changes)
+
+    transaction.on_commit(send)

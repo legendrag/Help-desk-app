@@ -32,7 +32,7 @@ Related: [Installation](installation.md) · [Deployment](deployment.md) · [Secu
 | `DB_PASSWORD` | MySQL password. | empty | Yes |
 | `DB_HOST` | MySQL host. | `localhost` | Yes |
 | `DB_PORT` | MySQL port. | `3306` | Yes |
-| `DB_CONN_MAX_AGE` | Persistent DB connection lifetime in seconds (MySQL). | `600` | Settings-only |
+| `DB_CONN_MAX_AGE` | Persistent DB connection lifetime in seconds (MySQL). Keep `0` under Daphne: connections are per executor thread, so persistent ones pile up and hit MySQL `max_connections`. | `0` | Settings-only |
 | `TIME_ZONE` | Django time zone name. | `UTC` | Settings-only |
 | `DEFAULT_SUPERADMIN_USERNAME` | Username created on migrate when bootstrap password is strong. | `admin` | Yes |
 | `DEFAULT_SUPERADMIN_EMAIL` | Email for the bootstrap superuser. | `admin@mlamehticket.local` | Yes |
@@ -85,7 +85,7 @@ Without a usable `SITE_URL`, email clients often cannot open ticket links. Alway
 - Required for the Windows installer post-setup (`install.ps1` forces `DB_ENGINE=mysql`).
 - Recommended for **local performance testing** — replicates production page-load behavior more accurately than SQLite.
 - Create the schema with **utf8mb4** before migrate — see [Deployment](deployment.md).
-- Connection uses PyMySQL; `DB_CONN_MAX_AGE` defaults to **600** seconds.
+- Connection uses PyMySQL; `DB_CONN_MAX_AGE` defaults to **0** (close after each request). Raising it under ASGI causes `Too many connections` errors under load.
 
 For step-by-step local MySQL setup with performance seeding, see **[MySQL Performance Testing Setup](../reference/management-commands.md#mysql-performance-testing-setup)** in the management commands reference.
 
@@ -98,7 +98,7 @@ DB_USER=mlamehticket_user
 DB_PASSWORD=strong-db-password
 DB_HOST=localhost
 DB_PORT=3306
-DB_CONN_MAX_AGE=600
+DB_CONN_MAX_AGE=0
 ```
 
 ---

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import re
 
+from django.utils.translation import gettext_noop
+
+from django.utils import timezone
 from django.utils.html import escape
 from django.utils.translation import gettext_lazy as _
 
@@ -21,103 +24,115 @@ BRAND_NAME = "MlamehTicket"
 TOKEN_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 
 # Fields shown as insert buttons in the settings form (per event).
+# Labels are translated where they're shown (|gettext in the template).
 MERGE_FIELDS = {
     "new_ticket": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("requester", "Requester"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("department", "Department"),
-        ("branch", "Branch"),
-        ("priority", "Priority"),
-        ("status", "Status"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("requester", gettext_noop("Requester")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("department", gettext_noop("Department")),
+        ("branch", gettext_noop("Branch")),
+        ("priority", gettext_noop("Priority")),
+        ("status", gettext_noop("Status")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "ticket_picked": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("status", "Status"),
-        ("assignee", "Assignee"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("status", gettext_noop("Status")),
+        ("assignee", gettext_noop("Assignee")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "ticket_message": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("message", "Message"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("message", gettext_noop("Message")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "ticket_status": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("status", "Status"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("status", gettext_noop("Status")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "ticket_update": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("status", "Status"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("status", gettext_noop("Status")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "transfer_requested": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "transfer_accepted": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "transfer_denied": [
-        ("brand_name", "Brand"),
-        ("ticket_number", "Ticket #"),
-        ("title", "Title"),
-        ("client_name", "Name"),
-        ("client_phone", "Phone"),
-        ("actor", "Actor"),
-        ("description", "Description"),
-        ("ticket_url", "Ticket URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("ticket_number", gettext_noop("Ticket #")),
+        ("title", gettext_noop("Title")),
+        ("client_name", gettext_noop("Name")),
+        ("client_phone", gettext_noop("Phone")),
+        ("actor", gettext_noop("Actor")),
+        ("description", gettext_noop("Description")),
+        ("ticket_url", gettext_noop("Ticket URL")),
     ],
     "announcement": [
-        ("brand_name", "Brand"),
-        ("title", "Title"),
-        ("content", "Content"),
-        ("audience", "Audience"),
-        ("expires", "Expires"),
-        ("posted_by", "Posted by"),
-        ("announcement_url", "URL"),
+        ("brand_name", gettext_noop("Brand")),
+        ("title", gettext_noop("Title")),
+        ("content", gettext_noop("Content")),
+        ("audience", gettext_noop("Audience")),
+        ("expires", gettext_noop("Expires")),
+        ("posted_by", gettext_noop("Posted by")),
+        ("announcement_url", gettext_noop("URL")),
+    ],
+    "shift_reminder": [
+        ("brand_name", gettext_noop("Brand")),
+        ("agent_name", gettext_noop("Agent")),
+        ("shift_name", gettext_noop("Shift")),
+        ("department", gettext_noop("Department")),
+        ("shift_date", gettext_noop("Date")),
+        ("start_time", gettext_noop("Starts")),
+        ("end_time", gettext_noop("Ends")),
+        ("check_in_note", gettext_noop("Check-in line")),
+        ("check_in_url", gettext_noop("Check-in URL")),
     ],
 }
 
@@ -203,6 +218,16 @@ DEFAULT_TEMPLATES = {
         ),
         "cta_label": "View announcements",
     },
+    "shift_reminder": {
+        "subject": "[{{ brand_name }}] Your shift starts at {{ start_time }}",
+        "body": (
+            "Hi {{ agent_name }},\n\n"
+            "Your {{ shift_name }} shift in {{ department }} starts at {{ start_time }} "
+            "on {{ shift_date }} and runs until {{ end_time }}.\n\n"
+            "{{ check_in_note }}"
+        ),
+        "cta_label": "Check in",
+    },
 }
 
 EVENT_META = [
@@ -217,6 +242,7 @@ EVENT_META = [
         ("transfer_accepted", _("Transfer accepted")),
         ("transfer_denied", _("Transfer declined")),
         ("announcement", _("Announcement")),
+        ("shift_reminder", _("Shift reminder")),
     ]
 ]
 
@@ -310,6 +336,34 @@ def announcement_merge_context(announcement) -> dict:
     }
 
 
+# Roles without check-in still get the reminder, so the line and the button
+# say what they can actually do.
+SHIFT_CHECK_IN_NOTE = "Check-in is open now."
+SHIFT_NO_CHECK_IN_NOTE = "Have a good shift."
+SHIFT_NO_CHECK_IN_CTA = "View my shifts"
+
+
+def shift_merge_context(assignment) -> dict:
+    from shifts.access import can_check_in
+    from shifts.access import display_name as shift_person
+    from shifts.clock import format_clock
+    from shifts.services import effective_interval
+
+    start_dt, end_dt = effective_interval(assignment)
+    return {
+        "brand_name": BRAND_NAME,
+        "agent_name": shift_person(assignment.user),
+        "shift_name": assignment.shift_type.name,
+        "department": assignment.shift_type.department.name,
+        # Same "Jul 14, 2026" shape format_datetime uses for other emails.
+        "shift_date": timezone.localtime(start_dt).strftime("%b %d, %Y"),
+        "start_time": format_clock(start_dt),
+        "end_time": format_clock(end_dt),
+        "check_in_note": SHIFT_CHECK_IN_NOTE if can_check_in(assignment.user) else SHIFT_NO_CHECK_IN_NOTE,
+        "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
+    }
+
+
 def body_to_html(body: str) -> str:
     """Escape plain body text and preserve line breaks for the email shell."""
     return escape(body or "").replace("\n", "<br>\n")
@@ -345,6 +399,18 @@ def sample_context_for_event(event_type: str) -> dict:
             "posted_by": "Admin User",
             "announcement_url": absolute_url("/tickets/") or "/tickets/",
         }
+    if event_type == "shift_reminder":
+        return {
+            "brand_name": BRAND_NAME,
+            "agent_name": "Sam Agent",
+            "shift_name": "Morning",
+            "department": "IT Support",
+            "shift_date": "Jul 14, 2026",
+            "start_time": "9:00 AM",
+            "end_time": "5:00 PM",
+            "check_in_note": SHIFT_CHECK_IN_NOTE,
+            "check_in_url": absolute_url("/shifts/mine/") or "/shifts/mine/",
+        }
     if event_type == "ticket_status":
         ticketish["status"] = "In Progress"
     if event_type == "ticket_picked":
@@ -372,4 +438,6 @@ def render_subject_body(
 def cta_url_for_event(event_type: str, context: dict) -> str:
     if event_type == "announcement":
         return context.get("announcement_url") or ""
+    if event_type == "shift_reminder":
+        return context.get("check_in_url") or ""
     return context.get("ticket_url") or ""

@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n i18n_extras %}
 <script>
 (function () {
     var drop = ["ticket-detail-page", "kb-page", "kb-search-page", "kb-detail-page", "kb-form-page", "settings-page", "dashboard-page"];
@@ -60,7 +60,7 @@
                         <td class="muted" data-col="expires" data-label="{% trans 'Expires' %}">
                             {% if announcement.expires_at %}
                             <div class="date-stack news-expires-stack">
-                                <span>{{ announcement.expires_at|date:"M j, Y" }}</span>
+                                <span>{{ announcement.expires_at|day_month_year }}</span>
                                 <small>{{ announcement.expires_at|date:"g:i A" }}</small>
                             </div>
                             {% else %}
@@ -70,7 +70,7 @@
                         <td data-col="created-by" data-label="{% trans 'Created By' %}">{{ announcement.created_by.username }}</td>
                         <td class="muted" data-col="date" data-label="{% trans 'Date' %}">
                             <div class="date-stack news-created-stack">
-                                <span>{{ announcement.created_at|date:"M j, Y" }}</span>
+                                <span>{{ announcement.created_at|day_month_year }}</span>
                                 <small>{{ announcement.created_at|date:"g:i A" }}</small>
                             </div>
                         </td>

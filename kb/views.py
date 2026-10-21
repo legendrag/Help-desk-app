@@ -487,16 +487,18 @@ class ArticleUpdateView(ArticleWriteMixin, LoginRequiredMixin, KBManageMixin, Up
 class ArticleDeleteView(LoginRequiredMixin, KBManageMixin, DeleteView):
     model = Article
     success_url = reverse_lazy("kb_list")
+    # The article page confirms before posting; there is no confirm page to GET.
+    http_method_names = ["post"]
 
     def get_queryset(self):
         return articles_for_user(self.request.user, include_drafts=True)
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        if request.headers.get("HX-Request"):
+    # DeleteView.post() runs form_valid(), not delete().
+    def form_valid(self, form):
+        if self.request.headers.get("HX-Request"):
+            self.object.delete()
             return HttpResponse(status=200)
-        return super().delete(request, *args, **kwargs)
+        return super().form_valid(form)
 
 # ==========================================
 # KB Category Management Views

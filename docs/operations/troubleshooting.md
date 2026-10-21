@@ -16,7 +16,8 @@ Practical fixes for common mlamehticket operations issues.
 | Arabic mojibake in DB | Database not utf8mb4 | [MySQL charset](#mysql-charset-and-garbled-text) |
 | UI stays English when Arabic selected | `.mo` not compiled / catalog drift | [Arabic showing as English](#arabic-showing-as-english) |
 | “Too many failed login attempts” | Rate limit (5 / 5 minutes) | [Login lockout](#login-lockout) |
-| Attachment or image URLs 404 in production | Media only auto-mounted when `DEBUG=1` | [Media 404 in production](#media-404-in-production) |
+| Attachment or image URLs 404 | File missing on disk / user cannot view the ticket | [Media 404](#media-404-in-production) |
+| 500 errors with “Too many connections” under load | Persistent DB connections parked on Daphne threads | [MySQL too many connections](#mysql-too-many-connections) |
 | Realtime broken after “prod” start | Started `runserver` instead of Daphne | [Daphne vs runserver](#daphne-vs-runserver-mistakes) |
 
 Related: [Configuration](configuration.md) · [Deployment](deployment.md) · [Installation](installation.md) · [Security hardening](security-hardening.md)
@@ -66,6 +67,17 @@ Checklist:
 3. Reverse proxies (nginx, IIS ARR) must allow WebSocket upgrade and not idle-timeout too aggressively.
 4. Default **`InMemoryChannelLayer`** is per-process. Multiple workers/processes do not share events — stick to one Daphne process or introduce a shared channel layer (not bundled by default).
 5. Laptop sleep, Wi-Fi roam, or VPN blips drop sockets; the client should reconnect — if not, hard-refresh and retest on a stable LAN.
+
+---
+
+## MySQL too many connections
+
+Symptoms: pages fail with **500** under load; the log shows `OperationalError (1040, 'Too many connections')`.
+
+Under Daphne, each request's sync code runs on a pooled thread (up to `ASGI_THREADS`, 200 in the service). Django database connections are per thread, so with a non-zero `DB_CONN_MAX_AGE` every busy thread keeps an idle connection open and the total passes MySQL's `max_connections` (default 151).
+
+1. Leave `DB_CONN_MAX_AGE` unset or `0` in `.env` (the default) and restart the service.
+2. New installs set `max_connections=300` in MySQL's `my.ini`. On older installs, add it under `[mysqld]` and restart MySQL if you still see the error at peak.
 
 ---
 
@@ -128,16 +140,13 @@ Bootstrap accounts may also force **password change** (`requires_password_change
 
 ## Media 404 in production
 
-With `DEBUG=0`, `config/urls.py` does **not** add Django’s static-media helper for `MEDIA_URL`. WhiteNoise serves **`STATIC_ROOT`** (CSS/JS/images collected by `collectstatic`), **not** user uploads under `MEDIA_ROOT`.
+Ticket attachments under `/media/tickets/<id>/` are served by Django in every environment (`config/urls.py`), to logged-in users who can view that ticket. Anyone else gets **404**; logged-out users are redirected to login. KB files are never served from `/media/`.
 
-Symptoms: ticket attachments and KB files return **404** while the rest of the site works.
+If an attachment 404s for a user who can see the ticket:
 
-Mitigations:
-
-1. Serve `/media/` from a reverse proxy (nginx, IIS, Caddy) pointing at the project `media/` directory.
-2. Or another controlled ASGI/static mapping you maintain — do **not** turn `DEBUG=1` in production just to serve uploads.
-3. Confirm files exist on disk under `media/` and that restore/unzip put them in the expected tree ([Backup and restore](backup-restore.md)).
-4. After `cleanup_media --delete`, intentionally removed orphans will 404 — expected.
+1. Confirm the file exists on disk under `media/` and that restore/unzip put it in the expected tree ([Backup and restore](backup-restore.md)).
+2. After `cleanup_media --delete`, intentionally removed orphans will 404 — expected.
+3. A reverse proxy in front of Daphne may serve `/media/` itself; if so, it bypasses the ticket permission check — prefer letting Django serve it.
 
 ---
 

@@ -497,13 +497,17 @@ class SecurityXSSAndUploadTests(TestCase):
             b"\x00\x00\x00\x00IEND\xaeB`\x82"
         )
         good = SimpleUploadedFile("ok.png", png, content_type="image/png")
-        msg = TicketMessage.objects.create(
-            ticket=self.ticket,
-            sender=self.user,
-            message="with image",
-            attachment=good,
-        )
-        self.assertTrue(msg.attachment.name.endswith(".png"))
+        import tempfile
+
+        # Keep test uploads out of the real media/ tree.
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            msg = TicketMessage.objects.create(
+                ticket=self.ticket,
+                sender=self.user,
+                message="with image",
+                attachment=good,
+            )
+            self.assertTrue(msg.attachment.name.endswith(".png"))
 
 
 class SecurityTenancyTests(TestCase):
@@ -637,6 +641,175 @@ class SecurityTenancyTests(TestCase):
         self.assertIn(response.status_code, (200, 204, 302))
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
+
+
+class TicketRoleFlagTests(TestCase):
+    """"Update Ticket Status" and "Send Message" are enforced, not just hidden."""
+
+    def setUp(self):
+        self.branch = Branch.objects.create(code="FLG", name="Flag Branch")
+        self.department = Department.objects.create(name="Flag Dept")
+        category = Category.objects.create(department=self.department, name="Flag Cat")
+        self.agent_role = Role.objects.create(name="Flag agent", can_update_status=False, can_send_message=True)
+        self.agent = User.objects.create_user(
+            username="flag_agent", password="password123", user_type=User.UserType.SUPPORT,
+            department=self.department, role=self.agent_role,
+        )
+        self.branch_role = Role.objects.create(name="Flag branch", can_send_message=False)
+        self.branch_user = User.objects.create_user(
+            username="flag_branch", password="password123", user_type=User.UserType.BRANCH,
+            branch=self.branch, role=self.branch_role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-FLG1", title="Flag", description="Flag", branch=self.branch,
+            department=self.department, category=category, created_by=self.branch_user,
+            assigned_to=self.agent, status=Ticket.Status.IN_PROGRESS,
+            client_name="Client", client_phone="123",
+        )
+
+    def _set_status(self, status):
+        return self.client.post(reverse("update_status", kwargs={"ticket_id": self.ticket.id}), {"status": status})
+
+    def test_assignee_without_update_status_cannot_change_it(self):
+        self.client.force_login(self.agent)
+        for status in (Ticket.Status.CLOSED, Ticket.Status.WAITING_FOR_BRANCH):
+            self.assertEqual(self._set_status(status).status_code, 403, status)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
+        # The page offers Transfer only: no status form, no Close or Merge.
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'id="action-bar-form"')
+        self.assertNotContains(page, 'data-action="closed"')
+        self.assertNotContains(page, 'data-action="merge"')
+        self.assertContains(page, 'data-action="transfer" data-confirm="transfer" onclick="executeActionBar()"')
+
+    def test_assignee_with_update_status_can_change_it(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        self.assertEqual(self._set_status(Ticket.Status.WAITING_FOR_BRANCH).status_code, 302)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.WAITING_FOR_BRANCH)
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, 'id="action-bar-form"')
+
+    def test_branch_user_without_send_message_cannot_post(self):
+        self.client.force_login(self.branch_user)
+        url = reverse("post_message", kwargs={"ticket_id": self.ticket.id})
+        self.assertEqual(self.client.post(url, {"message": "blocked"}).status_code, 403)
+        self.assertFalse(TicketMessage.objects.filter(message="blocked").exists())
+        self.branch_role.can_send_message = True
+        self.branch_role.save()
+        self.client.post(url, {"message": "allowed"})
+        self.assertTrue(TicketMessage.objects.filter(message="allowed").exists())
+
+    def test_durations_are_translated(self):
+        from django.utils import translation
+
+        from tickets.templatetags.ticket_extras import human_duration
+
+        self.assertEqual(human_duration(2 * 3600), "2 hrs")
+        self.assertEqual(human_duration(3600), "1 hr")
+        with translation.override("ar"):
+            self.assertEqual(human_duration(2 * 3600), "ساعتان")
+            self.assertEqual(human_duration(5 * 3600), "5 ساعات")
+            self.assertEqual(human_duration(None), "غير متاح")
+
+    def _other_department_ticket(self):
+        other = Department.objects.create(name="Flag Other")
+        owner = User.objects.create_user(
+            username="flag_other", password="password123", user_type=User.UserType.SUPPORT, department=other,
+        )
+        return Ticket.objects.create(
+            ticket_number="TK-FLG2", title="Other", description="Other", branch=self.branch,
+            department=other, category=Category.objects.create(department=other, name="Other Cat"),
+            created_by=self.branch_user, assigned_to=owner, client_name="C", client_phone="1",
+        )
+
+    def test_merge_needs_the_status_rule_and_a_ticket_in_reach(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        outside = self._other_department_ticket()
+        self.client.force_login(self.agent)
+        merge = lambda primary, number: self.client.post(  # noqa: E731
+            reverse("merge_ticket", kwargs={"ticket_id": primary.id}), {"target_ticket_number": number},
+        )
+        # A ticket from another department is "not found" and stays as it is.
+        merge(self.ticket, outside.ticket_number)
+        outside.refresh_from_db()
+        self.assertIsNone(outside.merged_into_id)
+        # Merging into a ticket the user doesn't hold is refused outright.
+        self.assertEqual(merge(outside, self.ticket.ticket_number).status_code, 403)
+        # Without the flag, not even their own ticket.
+        self.agent_role.can_update_status = False
+        self.agent_role.save()
+        self.assertEqual(merge(self.ticket, "TK-ANY").status_code, 403)
+
+    def test_merge_search_escapes_titles(self):
+        self.ticket.title = '<img src=x onerror="alert(1)">'
+        self.ticket.save()
+        self.client.force_login(self.agent)
+        response = self.client.get(reverse("ticket_search_options"), {"q": "TK-FLG1"})
+        self.assertNotContains(response, "<img src=x")
+        self.assertContains(response, "&lt;img src=x")
+
+    def test_action_bar_shows_without_send_message(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.can_send_message = False
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'id="chat-message-form"')
+        self.assertContains(page, "You do not have permission to send messages.")
+        self.assertContains(page, 'data-action="closed"')
+        # Both flags off: Transfer alone.
+        self.agent_role.can_update_status = False
+        self.agent_role.save()
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertNotContains(page, 'data-action="closed"')
+        self.assertContains(page, 'data-action="transfer"')
+
+    def test_status_messages_show_on_the_next_page(self):
+        self.agent_role.can_update_status = True
+        self.agent_role.save()
+        self.client.force_login(self.agent)
+        self.client.post(
+            reverse("merge_ticket", kwargs={"ticket_id": self.ticket.id}), {"target_ticket_number": " "},
+        )
+        page = self.client.get(reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, "Target ticket number is required.")
+        self.assertContains(page, 'class="flash-toasts"')
+        # Shown once, not saved up for another page.
+        self.assertNotContains(self.client.get(reverse("tickets_list")), "Target ticket number is required.")
+
+    def test_merged_tickets_are_not_links_for_branch_users(self):
+        from tickets.services import merge_tickets
+
+        duplicate = Ticket.objects.create(
+            ticket_number="TK-FLG3", title="Dup", description="Dup", branch=self.branch,
+            department=self.department, category=self.ticket.category, created_by=self.branch_user,
+            client_name="C", client_phone="1",
+        )
+        merge_tickets(self.ticket.id, [duplicate.id], self.agent)
+        link = f'href="{reverse("ticket_detail", kwargs={"ticket_id": duplicate.id})}"'
+        detail = reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id})
+
+        self.client.force_login(self.branch_user)
+        page = self.client.get(detail)
+        self.assertContains(page, "#TK-FLG3")
+        self.assertNotContains(page, link)
+
+        self.client.force_login(self.agent)
+        self.assertContains(self.client.get(detail), link)
+
+    def test_whitespace_message_is_refused(self):
+        self.client.force_login(self.agent)
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}), {"message": "   \n "},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(TicketMessage.objects.filter(ticket=self.ticket, sender=self.agent).exists())
 
 
 class TicketNumberCopyButtonTests(TestCase):
@@ -2021,8 +2194,8 @@ class TicketShellNavigationTests(TestCase):
         self.assertContains(response, 'id="custom-transfer-modal"')
         self.assertContains(response, 'id="ticket-offcanvas"')
         self.assertContains(response, "toggleTicketDetails")
-        self.assertContains(response, "js/chat.js?v=15")
-        self.assertEqual(response.content.decode().count("js/chat.js?v=15"), 1)
+        self.assertContains(response, "js/chat.js?v=19")
+        self.assertEqual(response.content.decode().count("js/chat.js?v=19"), 1)
         cache_control = response["Cache-Control"]
         self.assertIn("no-store", cache_control)
         self.assertIn("private", cache_control)
@@ -2120,7 +2293,7 @@ class SidebarMenuShellTests(TestCase):
         self.assertNotIn("hx-get", dashboard)
         self.assertNotIn("data-shell-nav", dashboard)
         self.assertIn('data-nav-key="dashboard"', dashboard)
-        self.assertEqual(html.count("js/chat.js?v=15"), 1)
+        self.assertEqual(html.count("js/chat.js?v=19"), 1)
 
     def test_settings_htmx_is_pane_only_and_still_private(self):
         full = self.client.get(reverse("settings"))
@@ -2367,3 +2540,333 @@ def _opening_tag(html, href):
     open_at = nav.rfind("<a", 0, start)
     close_at = nav.find(">", start)
     return nav[open_at:close_at + 1]
+
+
+class TicketAttachmentMediaTests(TestCase):
+    """Chat attachments must be served with DEBUG=0 (installer default), scoped to the ticket."""
+
+    def setUp(self):
+        import tempfile
+
+        self._media = tempfile.TemporaryDirectory()
+        self._override = override_settings(MEDIA_ROOT=self._media.name)
+        self._override.enable()
+
+        self.branch = Branch.objects.create(code="MED", name="Media Branch")
+        self.other_branch = Branch.objects.create(code="OTH", name="Other Branch")
+        self.department = Department.objects.create(name="Media Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Media Cat", default_priority=Ticket.Priority.MEDIUM
+        )
+        self.user = User.objects.create_user(
+            username="media_branch", password="password123",
+            user_type=User.UserType.BRANCH, branch=self.branch,
+            role=Role.objects.create(name="Media branch", can_send_message=True),
+        )
+        self.outsider = User.objects.create_user(
+            username="media_outsider", password="password123",
+            user_type=User.UserType.BRANCH, branch=self.other_branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-MED-1", title="Media", description="desc",
+            branch=self.branch, department=self.department, category=self.category,
+            created_by=self.user, client_name="Client", client_phone="123",
+        )
+        self.msg = TicketMessage.objects.create(
+            ticket=self.ticket, sender=self.user, message="",
+            attachment=SimpleUploadedFile("shot.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"),
+        )
+
+    def tearDown(self):
+        self._override.disable()
+        self._media.cleanup()
+
+    def test_attachment_served_without_debug(self):
+        self.assertFalse(settings.DEBUG)
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.get(self.msg.attachment.url)
+        self.assertEqual(response.status_code, 200)
+        response.close()
+
+    def test_attachment_hidden_from_other_branch(self):
+        self.client.login(username="media_outsider", password="password123")
+        self.assertEqual(self.client.get(self.msg.attachment.url).status_code, 404)
+
+    def test_attachment_requires_login(self):
+        response = self.client.get(self.msg.attachment.url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_htmx_post_rejected_attachment_returns_400_with_reason(self):
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}),
+            {"message": "hi", "attachment": SimpleUploadedFile("anim.gif", b"GIF89a", content_type="image/gif")},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response["Content-Type"].startswith("text/plain"))
+        self.assertIn(".gif", response.content.decode())
+        self.assertFalse(TicketMessage.objects.filter(ticket=self.ticket, message="hi").exists())
+
+    def test_htmx_post_attachment_only_returns_204(self):
+        self.client.login(username="media_branch", password="password123")
+        response = self.client.post(
+            reverse("post_message", kwargs={"ticket_id": self.ticket.id}),
+            {"message": "", "attachment": SimpleUploadedFile("doc.pdf", b"%PDF-1.4", content_type="application/pdf")},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertTrue(TicketMessage.objects.filter(ticket=self.ticket, attachment__endswith=".pdf").exists())
+
+
+class SettingsAndFilterRobustnessTests(TestCase):
+    """Deleting records still in use, junk filter values and the SMTP password."""
+
+    def setUp(self):
+        from django.urls import reverse
+
+        self.reverse = reverse
+        self.admin = User.objects.create_user(
+            username="robust_admin", email="robust@test.com", password="testpassword123",
+            user_type=User.UserType.SUPPORT, is_superuser=True,
+        )
+        self.branch = Branch.objects.create(code="RB", name="Robust Branch")
+        self.department = Department.objects.create(name="Robust Dept")
+        self.category = Category.objects.create(
+            department=self.department, name="Robust Cat", default_priority=Ticket.Priority.MEDIUM,
+        )
+        self.branch_user = User.objects.create_user(
+            username="robust_branch", email="rb@test.com", password="testpassword123",
+            user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="TK-RB1", title="Robust", description="Robust", branch=self.branch,
+            department=self.department, category=self.category, created_by=self.branch_user,
+            client_name="Client", client_phone="123",
+        )
+        self.client.force_login(self.admin)
+
+    def _delete(self, name, obj):
+        return self.client.post(self.reverse(name, args=[obj.pk]), HTTP_HX_REQUEST="true")
+
+    def test_records_in_use_are_not_deleted_and_say_why(self):
+        for name, obj, model in (
+            ("department_delete", self.department, Department),
+            ("branch_delete", self.branch, Branch),
+            ("category_delete", self.category, Category),
+        ):
+            response = self._delete(name, obj)
+            self.assertEqual(response.status_code, 200, name)
+            self.assertContains(response, "1 ticket")
+            self.assertContains(response, "be deleted yet")
+            self.assertTrue(model.objects.filter(pk=obj.pk).exists(), name)
+
+    def test_role_in_use_keeps_its_users(self):
+        role = Role.objects.create(name="Robust role")
+        self.branch_user.role = role
+        self.branch_user.save()
+        response = self._delete("role_delete", role)
+        self.assertContains(response, "1 user")
+        self.assertTrue(Role.objects.filter(pk=role.pk).exists())
+        self.branch_user.refresh_from_db()
+        self.assertEqual(self.branch_user.role, role)
+        # The confirm dialog already warns before anyone presses delete.
+        confirm = self.client.get(self.reverse("role_delete", args=[role.pk]), HTTP_HX_REQUEST="true")
+        self.assertContains(confirm, "be deleted yet")
+        self.assertNotContains(confirm, "Yes, Delete")
+
+    def test_unused_records_still_delete(self):
+        role = Role.objects.create(name="Spare role")
+        response = self._delete("role_delete", role)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Role.objects.filter(pk=role.pk).exists())
+
+    def test_department_confirm_names_the_categories_it_takes(self):
+        spare = Department.objects.create(name="IT Support")
+        for name in ("Printers", "VPN"):
+            Category.objects.create(department=spare, name=name, default_priority=Ticket.Priority.MEDIUM)
+        confirm = self.client.get(self.reverse("department_delete", args=[spare.pk]), HTTP_HX_REQUEST="true")
+        self.assertContains(confirm, "delete this IT Support?")  # the name as written, not lowercased
+        self.assertContains(confirm, "Deleting it also deletes 2 categories (Printers, VPN).")
+        self.assertContains(confirm, "Yes, Delete")
+
+    def test_kb_and_news_delete_urls_refuse_get(self):
+        # Their buttons confirm on the page and POST; a direct visit used to 500.
+        for name in ("kb_delete", "news_delete"):
+            self.assertEqual(self.client.get(self.reverse(name, args=[1])).status_code, 405, name)
+
+    def test_transfer_list_shows_full_names(self):
+        User.objects.create_user(
+            username="robust_agent", email="ra@test.com", password="testpassword123",
+            user_type=User.UserType.SUPPORT, department=self.department,
+            first_name="Rana", last_name="Adel",
+        )
+        page = self.client.get(self.reverse("ticket_detail", kwargs={"ticket_id": self.ticket.id}))
+        self.assertContains(page, "Rana Adel (Robust Dept)")
+        # No department: just the name, not "robust_admin ()".
+        self.assertNotContains(page, "robust_admin ()")
+        self.assertContains(page, f'<option value="{self.admin.pk}">robust_admin\n')
+
+    def test_user_with_tickets_is_not_deleted(self):
+        response = self._delete("user_delete", self.branch_user)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(User.objects.filter(pk=self.branch_user.pk).exists())
+
+    def test_junk_filter_values_are_ignored(self):
+        for query in (
+            {"branch": "abc"}, {"assignment": "mine"}, {"assignment": "-1"},
+        ):
+            response = self.client.get(self.reverse("tickets_list"), query)
+            self.assertEqual(response.status_code, 200, query)
+            self.assertContains(response, "TK-RB1")
+        for query in ({"department": "x"}, {"branch": "1e3"}, {"assigned_to": "me"}):
+            self.assertEqual(self.client.get(self.reverse("dashboard"), query).status_code, 200, query)
+        options = self.client.get(self.reverse("ticket_category_options"), {"department": "abc"})
+        self.assertEqual(options.status_code, 200)
+
+    def test_smtp_password_is_never_in_the_page_and_blank_keeps_it(self):
+        from core.models import EmailSetting
+
+        setting = EmailSetting.objects.create(
+            smtp_host="smtp.test.local", smtp_port=587, smtp_email="noreply@test.local",
+            smtp_password="s3cret-pass", encryption="tls", from_name="Test",
+            from_email="noreply@test.local", is_active=False,
+        )
+        url = self.reverse("email_setting_update", args=[setting.pk])
+        page = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "s3cret-pass")
+        self.client.post(url, {
+            "smtp_host": "smtp.changed.local", "smtp_port": 587, "smtp_email": "noreply@test.local",
+            "smtp_password": "", "encryption": "tls", "from_name": "Test",
+            "from_email": "noreply@test.local",
+        }, HTTP_HX_REQUEST="true")
+        setting.refresh_from_db()
+        self.assertEqual(setting.smtp_host, "smtp.changed.local")
+        self.assertEqual(setting.smtp_password, "s3cret-pass")
+
+
+class NewTicketAfterCommitTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(code="RB-BR", name="Rollback Branch")
+        self.department = Department.objects.create(name="Rollback Dept")
+        self.category = Category.objects.create(name="Rollback Cat", department=self.department)
+        self.creator = User.objects.create_user(
+            username="rb-creator", password="pw123456", user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+
+    def _create(self, number):
+        return Ticket.objects.create(
+            ticket_number=number, title="T", description="D", branch=self.branch, department=self.department,
+            category=self.category, created_by=self.creator, client_name="C", client_phone="0500000000",
+        )
+
+    def test_rolled_back_ticket_notifies_nobody(self):
+        from unittest.mock import patch
+
+        from django.db import transaction
+
+        with patch("tickets.signals.notify_new_ticket") as notify, \
+                patch("tickets.signals.broadcast_ticket_list_event") as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                try:
+                    with transaction.atomic():
+                        self._create("RB-1")
+                        raise RuntimeError("roll back")
+                except RuntimeError:
+                    pass
+            notify.assert_not_called()
+            broadcast.assert_not_called()
+
+            with self.captureOnCommitCallbacks(execute=True):
+                self._create("RB-2")
+            notify.assert_called_once()
+
+
+class TimelineDetailTranslationTests(TestCase):
+    def test_merge_detail_is_translated(self):
+        from django.utils import translation
+
+        from tickets.models import TicketStatusHistory
+
+        item = TicketStatusHistory(event_type=TicketStatusHistory.EventType.MERGED, detail="absorbed #MAIN-1")
+        with translation.override("en"):
+            self.assertEqual(item.display_detail, "absorbed ⁦#MAIN-1⁩")
+        with translation.override("ar"):
+            self.assertNotIn("absorbed", item.display_detail)
+            self.assertIn("#MAIN-1", item.display_detail)
+
+
+class SimultaneousTicketChangeTests(TestCase):
+    """Two people acting on the same ticket at the same moment: only one wins."""
+
+    def setUp(self):
+        from core.models import Role
+
+        self.branch = Branch.objects.create(code="RC-BR", name="Race Branch")
+        self.department = Department.objects.create(name="Race Dept")
+        self.category = Category.objects.create(name="Race Cat", department=self.department)
+        role = Role.objects.create(name="Race agent", can_update_status=True, can_pick_ticket=True)
+        self.creator = User.objects.create_user(
+            username="rc-creator", password="pw123456", user_type=User.UserType.BRANCH, branch=self.branch,
+        )
+        self.agent = User.objects.create_user(
+            username="rc-agent", password="pw123456", user_type=User.UserType.SUPPORT,
+            department=self.department, role=role,
+        )
+        self.other = User.objects.create_user(
+            username="rc-other", password="pw123456", user_type=User.UserType.SUPPORT,
+            department=self.department, role=role,
+        )
+        self.ticket = Ticket.objects.create(
+            ticket_number="RC-1", title="T", description="D", branch=self.branch, department=self.department,
+            category=self.category, created_by=self.creator, client_name="C", client_phone="0500000000",
+        )
+
+    def _as_if_loaded_before(self, change):
+        """Return the ticket as a request loaded it, then apply ``change`` in the DB (the other person)."""
+        from unittest.mock import patch
+
+        stale = Ticket.objects.get(pk=self.ticket.pk)
+        change()
+        return patch("tickets.template_views.get_object_or_404", return_value=stale)
+
+    def test_second_status_change_is_not_saved_or_notified_twice(self):
+        from unittest.mock import patch
+
+        from tickets.models import TicketStatusHistory
+
+        Ticket.objects.filter(pk=self.ticket.pk).update(assigned_to=self.agent, status=Ticket.Status.IN_PROGRESS)
+        before = TicketStatusHistory.objects.filter(ticket=self.ticket).count()
+        self.client.force_login(self.agent)
+        url = reverse("update_status", kwargs={"ticket_id": self.ticket.pk})
+        with patch("tickets.template_views.notify_ticket_update") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            with self._as_if_loaded_before(
+                lambda: Ticket.objects.filter(pk=self.ticket.pk).update(status=Ticket.Status.WAITING_FOR_BRANCH)
+            ):
+                self.client.post(url, {"status": Ticket.Status.WAITING_FOR_BRANCH})
+            notify.assert_not_called()
+        self.assertEqual(TicketStatusHistory.objects.filter(ticket=self.ticket).count(), before)
+
+        # A normal change still goes through once.
+        with patch("tickets.template_views.notify_ticket_update") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            self.client.post(url, {"status": Ticket.Status.CLOSED})
+            notify.assert_called_once()
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.CLOSED)
+
+    def test_two_agents_picking_at_once_only_one_gets_it(self):
+        from unittest.mock import patch
+
+        self.client.force_login(self.agent)
+        with patch("tickets.template_views.notify_ticket_picked") as notify, \
+                patch("tickets.template_views._broadcast_ticket_update"):
+            with self._as_if_loaded_before(
+                lambda: Ticket.objects.filter(pk=self.ticket.pk).update(assigned_to=self.other)
+            ):
+                self.client.post(reverse("pick_ticket", kwargs={"ticket_id": self.ticket.pk}))
+            notify.assert_not_called()
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.assigned_to, self.other)

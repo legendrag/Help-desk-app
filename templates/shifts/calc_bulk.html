@@ -1,0 +1,102 @@
+{% load i18n shifts_extras %}
+{# Calculator → Bulk assign preview: a small rota of the ticked people. #}
+{% if error %}
+<p class="notice notice-error">{{ error }}</p>
+{% else %}
+<div class="shifts-bulk-preview" data-bulk-preview>
+  <div class="shifts-bulk-summary">
+    {% if applied %}
+    <p class="notice notice-success">{% blocktrans trimmed count counter=created %}Added {{ counter }} shift.{% plural %}Added {{ counter }} shifts.{% endblocktrans %}</p>
+    {% elif plan %}
+    <p>
+      <strong>{% blocktrans trimmed count counter=plan|length %}{{ counter }} new shift{% plural %}{{ counter }} new shifts{% endblocktrans %}</strong>
+      · <span class="shifts-chip-inline" style="--shift-colour: {{ shift_type.colour }}">{{ shift_type.name }}</span>
+      · {% if everyone %}{% trans "everyone, every day" %}{% else %}{% blocktrans trimmed count counter=per_day %}{{ counter }} person per day, shared fairly{% plural %}{{ counter }} people per day, shared fairly{% endblocktrans %}{% endif %}
+    </p>
+    {% else %}
+    <p>{% trans "Nothing to add: the ticked people already have this shift on these days, or are busy." %}</p>
+    {% endif %}
+    {% if gaps %}
+    <p class="shifts-bulk-warn">{% blocktrans trimmed count counter=gaps|length %}{{ counter }} day is short of people: nobody ticked is free.{% plural %}{{ counter }} days are short of people: nobody ticked is free.{% endblocktrans %}</p>
+    {% endif %}
+    {% if back_to_back %}
+    <p class="shifts-bulk-warn">{% blocktrans trimmed count counter=back_to_back %}{{ counter }} night is next to another night for the same person.{% plural %}{{ counter }} nights are next to another night for the same person.{% endblocktrans %}</p>
+    {% endif %}
+  </div>
+
+  <div class="table-wrap shifts-grid-wrap">
+    <table class="shifts-grid shifts-grid--mini" style="--days: {{ columns|length }}">
+      <thead>
+        <tr>
+          <th class="shifts-person">{% trans "Person" %}</th>
+          {% for column in columns %}
+          <th class="{% if column.today %}shifts-day--today{% endif %}{% if column.weekend %} shifts-day--weekend{% endif %}{% if column.skip %} shifts-day--skipped{% endif %}"{% if column.skip %} title="{{ column.skip }}"{% endif %}>
+            <span class="shifts-th-weekday">{{ column.day|shifts_weekday }}</span>
+            <span class="shifts-th-daynum">{{ column.day|date:"j" }}</span>
+            {% if column.skip %}<span class="shifts-mini-note">{{ column.skip }}</span>
+            {% elif column.missing %}<span class="shifts-mini-note shifts-mini-note--warn">{% blocktrans trimmed count counter=column.missing %}{{ counter }} short{% plural %}{{ counter }} short{% endblocktrans %}</span>{% endif %}
+          </th>
+          {% endfor %}
+          <th class="shifts-bulk-total">{% trans "Total" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in grid %}
+        <tr>
+          <th class="shifts-person">{{ row.name }}</th>
+          {% for cell in row.cells %}
+          <td class="{% if cell.column.today %}shifts-day--today{% endif %}{% if cell.column.weekend %} shifts-day--weekend{% endif %}{% if cell.column.skip %} shifts-day--skipped{% endif %}">
+            <div class="shifts-mini-stack">
+              {% for shift in cell.rows %}
+              <span class="shifts-mini{% if shift.just_added %} shifts-mini--new{% endif %}" style="--shift-colour: {{ shift.shift_type.colour }}"
+                    title="{{ shift.shift_type.name }}{% if shift.just_added %} · {% trans 'Added' %}{% else %} · {% trans 'Already on the rota' %}{% endif %}">{{ shift.shift_type.name }}</span>
+              {% endfor %}
+              {% if cell.proposed %}
+              <span class="shifts-mini shifts-mini--new{% if cell.proposed.back_to_back %} shifts-mini--warn{% endif %}" style="--shift-colour: {{ shift_type.colour }}"
+                    title="{{ shift_type.name }} · {% trans 'New' %}{% if cell.proposed.back_to_back %} · {% trans 'Night before or after too' %}{% endif %}">{% if cell.proposed.back_to_back %}<span aria-hidden="true">⚠ </span>{% endif %}{{ shift_type.name }}</span>
+              {% endif %}
+            </div>
+          </td>
+          {% endfor %}
+          <td class="shifts-bulk-total">
+            <strong>{{ row.total }}</strong>{% if row.new %} <span class="shifts-bulk-new">+{{ row.new }}</span>{% endif %}
+            <span class="shifts-bulk-total-sub">{% blocktrans trimmed with hours=row.hours %}{{ hours }} h{% endblocktrans %}{% if row.weekend %} · {% blocktrans trimmed count counter=row.weekend %}{{ counter }} weekend{% plural %}{{ counter }} weekend{% endblocktrans %}{% endif %}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="shifts-bulk-legend">
+    <li><span class="shifts-mini shifts-mini--new" style="--shift-colour: {{ shift_type.colour }}">{% if applied %}{% trans "Added" %}{% else %}{% trans "New" %}{% endif %}</span></li>
+    <li><span class="shifts-mini" style="--shift-colour: var(--text-muted)">{% trans "Already on the rota" %}</span></li>
+    <li><span class="shifts-bulk-legend-skip" aria-hidden="true"></span>{% trans "Skipped or past" %}</li>
+    <li>{% trans "Total: this shift in the period, with new ones in +" %}</li>
+  </ul>
+
+  {% if skips %}
+  <ul class="shifts-bulk-skips">
+    {% for skip in skips %}
+    <li>{% if skip.name %}{{ skip.name }} · {% endif %}<bdi class="shifts-ltr" dir="ltr">{{ skip.date|date:"d/m/Y" }}</bdi> · {{ skip.skip }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if plan and not applied %}
+  {# Apply sends the plan shown above plus the settings it came from. #}
+  <form class="shifts-calc-actions shifts-bulk-apply" method="post" action="{% url 'shifts_calc_rotation' %}"
+        hx-post="{% url 'shifts_calc_rotation' %}"
+        hx-target="#shifts-rotation-result"
+        hx-disabled-elt="find button"
+        hx-sync="this:replace">
+    {% csrf_token %}
+    {% for name, value in form_fields %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    {% for item in plan %}<input type="hidden" name="plan" value="{{ item.user_id }}:{{ item.date|date:'Y-m-d' }}">{% endfor %}
+    <input type="hidden" name="action" value="apply">
+    <p class="shifts-muted shifts-bulk-stale" data-bulk-stale hidden>{% trans "The settings above changed. Preview again before applying." %}</p>
+    <button class="btn primary" type="submit" data-bulk-apply>{% blocktrans trimmed count counter=plan|length %}Apply {{ counter }} shift{% plural %}Apply {{ counter }} shifts{% endblocktrans %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}

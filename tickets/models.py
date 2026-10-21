@@ -207,6 +207,28 @@ class TicketStatusHistory(models.Model):
     changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def display_detail(self):
+        """``detail`` in the viewer's language. It is stored in English."""
+        from django.utils.translation import gettext
+
+        detail = self.detail or ""
+        if self.event_type == self.EventType.MERGED and detail.startswith("absorbed #"):
+            # ⁦…⁩ keeps "#NUMBER" in order inside right-to-left text.
+            number = "⁦#" + detail[len("absorbed #"):] + "⁩"
+            return gettext("absorbed %(number)s") % {"number": number}
+        if self.event_type == self.EventType.PRIORITY_CHANGED:
+            labels = dict(Ticket.Priority.choices)
+            if detail.startswith("set to "):
+                value = detail[len("set to "):]
+                return gettext("set to %(priority)s") % {"priority": labels.get(value, value)}
+            if " → " in detail:
+                old, new = detail.split(" → ", 1)
+                return f"{labels.get(old, old)} → {labels.get(new, new)}"
+        if self.event_type == self.EventType.ASSIGNED and detail == "Unassigned":
+            return gettext("Unassigned")
+        return detail
+
     class Meta:
         ordering = ["created_at"]
         verbose_name_plural = "Ticket status histories"

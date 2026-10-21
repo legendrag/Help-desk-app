@@ -30,6 +30,7 @@ const NOTIF_ICONS = {
     message: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     transfer: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
     announcement: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
+    shift: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
     general: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
 };
 
@@ -117,9 +118,13 @@ function buildNotificationItem(item) {
 
     const title = document.createElement("strong");
     title.textContent = copy.title;
+    // Text mixes Arabic with English names and ticket numbers; let each line
+    // pick its own direction so punctuation and numbers stay in place.
+    title.dir = "auto";
 
     const message = document.createElement("p");
     message.textContent = copy.message;
+    message.dir = "auto";
 
     const time = document.createElement("span");
     time.className = "notification-time";
@@ -129,6 +134,9 @@ function buildNotificationItem(item) {
     content.appendChild(title);
     content.appendChild(message);
     content.appendChild(time);
+    // role="button" makes its children presentational, so screen readers need
+    // the text spelled out here.
+    wrapper.setAttribute("aria-label", [copy.title, copy.message, time.textContent].filter(Boolean).join(". "));
 
     // Delete button (desktop X)
     const deleteBtn = document.createElement("button");
@@ -316,15 +324,54 @@ function addNotificationToList(item, incrementBadge) {
 }
 
 // ── Fetch from API ──
+const NOTIFICATIONS_PAGE = 20;
+let notificationsHasMore = false;
+let notificationsLoadingOlder = false;
+
 function fetchNotifications() {
-    return fetch("/notifications/api/?limit=20", { credentials: "same-origin" })
+    return fetch(`/notifications/api/?limit=${NOTIFICATIONS_PAGE}`, { credentials: "same-origin" })
         .then((response) => response.json())
         .then((data) => {
             renderNotifications(data.notifications || []);
             updateBadge(data.unread_count || 0);
+            notificationsHasMore = !!data.has_more;
         })
         .catch((err) => console.error("[Notifications] Fetch error:", err));
 }
+
+// ── Older notifications: load the next page when the list is scrolled to the end ──
+function loadOlderNotifications() {
+    const list = document.getElementById("notification-list");
+    if (!list || !notificationsHasMore || notificationsLoadingOlder) return;
+    const items = list.querySelectorAll(".notification-item[data-notif-id]");
+    const oldest = items.length ? items[items.length - 1].dataset.notifId : "";
+    if (!oldest) return;
+    notificationsLoadingOlder = true;
+    fetch(`/notifications/api/?limit=${NOTIFICATIONS_PAGE}&before=${encodeURIComponent(oldest)}`, { credentials: "same-origin" })
+        .then((response) => response.json())
+        .then((data) => {
+            (data.notifications || []).forEach((item) => {
+                if (!list.querySelector(`.notification-item[data-notif-id="${item.id}"]`)) {
+                    list.appendChild(buildNotificationItem(item));
+                }
+            });
+            notificationsHasMore = !!data.has_more;
+        })
+        .catch((err) => console.error("[Notifications] Load older error:", err))
+        .finally(() => { notificationsLoadingOlder = false; });
+}
+
+function bindNotificationScroll() {
+    const list = document.getElementById("notification-list");
+    if (!list || list.dataset.olderBound === "1") return;
+    list.dataset.olderBound = "1";
+    list.addEventListener("scroll", () => {
+        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 40) {
+            loadOlderNotifications();
+        }
+    }, { passive: true });
+}
+document.addEventListener("DOMContentLoaded", bindNotificationScroll);
 
 // ── Mark All Read ──
 let markAllReadPending = false;
@@ -418,6 +465,8 @@ function refreshTimestamps() {
 }
 
 // ── WebSocket Connection ──
+var notificationsSocketConnectedBefore = false;
+
 function initNotifications() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
@@ -425,11 +474,23 @@ function initNotifications() {
 
     socket.onopen = function() {
         console.log("[Notifications WS] Connected");
+        // Anything sent while we were disconnected never reached this page.
+        if (notificationsSocketConnectedBefore) {
+            fetchNotifications();
+        }
+        notificationsSocketConnectedBefore = true;
     };
 
 
     socket.onmessage = function(e) {
         const data = JSON.parse(e.data);
+        // A rota changed somewhere: open rota grids reload themselves.
+        if (data && data.kind === "rota_changed") {
+            document.body.dispatchEvent(new CustomEvent("rotaChanged", {
+                detail: { departments: data.departments || [] },
+            }));
+            return;
+        }
         console.log("[Notifications WS] message:", data);
 
         // Suppress only when already viewing that ticket chat (/tickets/<id>).
@@ -491,7 +552,9 @@ function updatePushPermissionPrompt() {
         return;
     }
 
-    if (!window.Notification) {
+    // Old Mac Safari has Notification but no PushManager: asking would get a
+    // yes that can never deliver a push, so stay quiet.
+    if (!isPushSupported()) {
         prompt.hidden = true;
         prompt.classList.remove("is-visible");
         return;
@@ -540,15 +603,22 @@ function requestNotificationPermission() {
     });
 }
 
-async function requestPushPermissionFromUi() {
+// Asks with the browser's own Allow / Block pop-up. Call it straight from a
+// click or key press: browsers ignore the request outside a user gesture.
+// With showGuide the in-app guide follows the answer (Turn on); without it
+// (first interaction, bell) only the browser pop-up is ever shown.
+async function requestPushPermissionFromUi(showGuide = false) {
     if (!window.Notification) return;
     try {
         const perm = await requestNotificationPermission();
         syncPushOffUi();
         if (perm === "granted") {
+            if (showGuide) closePushAllowModal();
             initWebPush();
-        } else if (perm === "denied") {
+        } else if (perm === "denied" && showGuide) {
             openPushAllowModal(pushGuideMode() || "site-settings");
+        } else if (showGuide) {
+            closePushAllowModal();
         }
         return perm;
     } catch (err) {
@@ -583,13 +653,23 @@ function isIosDevice() {
 }
 
 function iosVersion() {
-    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/);
+    // iPad "Request Desktop Website" sends a Mac user agent without "OS x_y",
+    // but Safari's own Version/x.y there still matches the iPadOS version.
+    const match = navigator.userAgent.match(/OS (\d+)[._](\d+)/)
+        || navigator.userAgent.match(/Version\/(\d+)\.(\d+)/);
     if (!match) return null;
     return { major: Number(match[1]), minor: Number(match[2]) };
 }
 
+function isInAppBrowser() {
+    // Browsers inside other apps (Instagram, Facebook, TikTok...) have no
+    // Add to Home Screen, so the install guide cannot help there.
+    return /FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|musical_ly|BytedanceWebview|LinkedInApp|GSA\//.test(navigator.userAgent);
+}
+
 function isIosWebPushCapableOs() {
     // Home Screen web push exists only on iOS/iPadOS 16.4+.
+    if (isInAppBrowser()) return false;
     const version = iosVersion();
     if (!version) {
         // iPad "Request Desktop Website" hides the iOS version. Do not
@@ -665,11 +745,15 @@ function isPushAllowModalOpen() {
 async function handleTurnOnNotifications() {
     const mode = pushGuideMode();
     if (mode) {
+        // Blocked or not installed: the browser will not pop up, so only the guide can help.
         openPushAllowModal(mode);
         return;
     }
-    if (!window.Notification) return;
-    await requestPushPermissionFromUi();
+    if (!isPushSupported()) return;
+    // Show the guide and the browser pop-up together. requestPermission runs
+    // before the first await, so it still counts as part of this click.
+    openPushAllowModal("prompt");
+    await requestPushPermissionFromUi(true);
 }
 
 function initPushOffBanner() {
@@ -735,13 +819,24 @@ function bindFirstInteractionPushPrompt() {
     if (!window.userIsAuthenticated) return;
     if (!isPushSupported() || Notification.permission !== "default") return;
 
-    const requestOnInteraction = () => {
+    // click and keydown count as user gestures everywhere; a touch pointerdown
+    // does not, and browsers turn that request down without the pop-up.
+    const requestOnInteraction = (event) => {
+        if (event.type === "keydown" && ["Escape", "Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+            return;
+        }
+        // The bell and the Turn on buttons ask for themselves.
+        if (event.target.closest && event.target.closest("#notification-btn, #push-off-turn-on, #notification-push-enable")) {
+            return;
+        }
         document.removeEventListener("click", requestOnInteraction, true);
-        document.removeEventListener("pointerdown", requestOnInteraction, true);
-        requestPushPermissionFromUi();
+        document.removeEventListener("keydown", requestOnInteraction, true);
+        if (Notification.permission === "default") {
+            requestPushPermissionFromUi();
+        }
     };
     document.addEventListener("click", requestOnInteraction, true);
-    document.addEventListener("pointerdown", requestOnInteraction, true);
+    document.addEventListener("keydown", requestOnInteraction, true);
 }
 
 // ── Init UI ──
@@ -1007,11 +1102,12 @@ async function syncSubscription(subscription, saveUrl) {
 /**
  * Remove this browser's push subscription from the server and PushManager.
  * Runs before logout so the OS stops showing toasts for this device.
- * LogoutView also clears all server-side push rows for the account as a fallback.
+ * If this fails, LogoutView clears all server-side push rows for the account instead.
  */
 async function unsubscribeWebPush() {
+    // Resolves true once this browser has no push subscription left.
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        return;
+        return true;
     }
 
     const saveUrlMeta = document.querySelector('meta[name="django-webpush-save-url"]');
@@ -1020,12 +1116,12 @@ async function unsubscribeWebPush() {
     try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg || !reg.pushManager) {
-            return;
+            return true;
         }
 
         const subscription = await reg.pushManager.getSubscription();
         if (!subscription) {
-            return;
+            return true;
         }
 
         if (saveUrl) {
@@ -1034,8 +1130,10 @@ async function unsubscribeWebPush() {
 
         await subscription.unsubscribe();
         console.log("[WebPush] Unsubscribed (session ending).");
+        return true;
     } catch (err) {
         console.warn("[WebPush] Unsubscribe on logout failed:", err);
+        return false;
     }
 }
 
@@ -1074,10 +1172,20 @@ function bindWebPushLogoutCleanup() {
             event.preventDefault();
             event.stopImmediatePropagation();
 
+            let cleaned = false;
             try {
-                await unsubscribeWebPush();
+                cleaned = await unsubscribeWebPush();
             } catch (e) {
                 /* still log out even if push cleanup fails */
+            }
+            if (cleaned) {
+                // This device is done; the server then leaves the account's
+                // other devices subscribed.
+                const flag = document.createElement("input");
+                flag.type = "hidden";
+                flag.name = "webpush_cleaned";
+                flag.value = "1";
+                form.appendChild(flag);
             }
 
             form.dataset.webpushUnsubscribed = "1";

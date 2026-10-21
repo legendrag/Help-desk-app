@@ -717,6 +717,11 @@ body:has(.ticket-offcanvas.open) .topbar {
   color: #0ea5e9;
 }
 
+.notif-icon-shift {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+}
+
 .notif-icon-general {
   background: rgba(100, 116, 139, 0.1);
   color: #64748b;
@@ -2782,7 +2787,10 @@ button.success:hover,
 
 .chat-header-details {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
+  gap: 0.5rem;
 }
 
 @media (max-width: 600px) {
@@ -2798,6 +2806,11 @@ button.success:hover,
 
   .chat-header-details {
     grid-area: details;
+  }
+
+  /* Room is short on phones: Who's available keeps only its icon. */
+  .chat-header-btn-label {
+    display: none;
   }
 
   .chat-footer-actions {

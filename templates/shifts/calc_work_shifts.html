@@ -1,0 +1,42 @@
+{% load i18n %}
+{# Work hours "Shifts" filter: switches in a drop-down. None ticked = all shifts. #}
+{# shifts.js keeps All / Night only / the summary in step; without it the switches still submit. #}
+<div class="form-group" id="work-shifts-field"{% if reset_result %} hx-swap-oob="true"{% endif %}>
+  <span class="shifts-multi-caption" id="work-shifts-label">{% trans "Shifts" %}</span>
+  <details class="shifts-multi" data-shifts-multi>
+    <summary class="shifts-multi-button" aria-labelledby="work-shifts-label work-shifts-summary">
+      <span class="shifts-multi-summary" id="work-shifts-summary"
+            data-all="{% trans 'All shifts' %}" data-night="{% trans 'Night shifts only' %}">{% trans "All shifts" %}</span>
+      <svg class="shifts-multi-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </summary>
+    <div class="shifts-multi-panel" role="group" aria-labelledby="work-shifts-label">
+      <input type="hidden" name="shifts" value="all" data-multi-mode>
+      <label class="shifts-switch">
+        <input type="checkbox" role="switch" data-multi-all checked>
+        <span class="shifts-switch-track" aria-hidden="true"></span>
+        <span class="shifts-switch-text">{% trans "All shifts" %}</span>
+      </label>
+      {% if work_shift_types %}
+      {% if work_has_night %}
+      <label class="shifts-switch">
+        <input type="checkbox" role="switch" data-multi-night>
+        <span class="shifts-switch-track" aria-hidden="true"></span>
+        <span class="shifts-switch-text">{% trans "Night shifts only" %}</span>
+      </label>
+      {% endif %}
+      <hr class="shifts-multi-rule">
+      {% for shift_type in work_shift_types %}
+      <label class="shifts-switch">
+        <input type="checkbox" role="switch" name="shift_type" value="{{ shift_type.pk }}"{% if shift_type.is_night %} data-night{% endif %}>
+        <span class="shifts-switch-track" aria-hidden="true"></span>
+        <span class="shifts-switch-swatch" style="background-color: {{ shift_type.colour }}" aria-hidden="true"></span>
+        <span class="shifts-switch-text">{{ shift_type.name }}</span>
+      </label>
+      {% endfor %}
+      {% else %}
+      <p class="shifts-muted shifts-multi-empty">{% trans "No shift types in this department yet." %}</p>
+      {% endif %}
+    </div>
+  </details>
+</div>

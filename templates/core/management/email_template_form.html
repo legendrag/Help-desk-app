@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n i18n_extras %}
 <form
     id="email-template-editor"
     class="email-template-form"
@@ -58,7 +58,7 @@
                     data-insert="{{ key }}"
                     title="{% blocktrans trimmed %}Insert {{ key }}{% endblocktrans %}"
                     {% if not can_edit_email_templates %}disabled{% endif %}
-                >{{ label }}</button>
+                >{{ label|gettext }}</button>
                 {% endfor %}
             </div>
 

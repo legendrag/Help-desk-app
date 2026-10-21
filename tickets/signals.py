@@ -132,12 +132,25 @@ def broadcast_ticket_change(sender, instance, created, **kwargs):
             "created_at": instance.created_at.isoformat() if instance.created_at else None,
             "updated_at": instance.updated_at.isoformat() if instance.updated_at else None,
         }
-        broadcast_ticket_list_event(event_type, payload, branch_id=instance.branch_id, department_id=instance.department_id)
-        
-        if created:
-            notify_new_ticket(instance)
+        branch_id, department_id = instance.branch_id, instance.department_id
+        ticket_id = instance.id
     except Exception:
         logger.exception("Error broadcasting ticket change / notifying for Ticket %s", getattr(instance, "id", None))
+        return
+
+    def _after_commit():
+        # A rolled-back save never reaches here, so nobody hears about a
+        # ticket that doesn't exist.
+        try:
+            broadcast_ticket_list_event(event_type, payload, branch_id=branch_id, department_id=department_id)
+            if created:
+                ticket = Ticket.objects.select_related("department", "branch").filter(pk=ticket_id).first()
+                if ticket is not None:
+                    notify_new_ticket(ticket)
+        except Exception:
+            logger.exception("Error broadcasting ticket change / notifying for Ticket %s", ticket_id)
+
+    transaction.on_commit(_after_commit)
 
 
 @receiver(post_delete, sender=Ticket)

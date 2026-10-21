@@ -1,7 +1,7 @@
 {% load static webpush_notifications i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" class="{% block html_class %}{% endblock html_class %}"{% if user.is_authenticated %} data-user-theme="{{ user.theme }}"{% if user.theme == 'dark' %} data-theme="dark"{% endif %}{% endif %}>
 <head>
     <meta charset="UTF-8">
     <link rel="manifest" href="{% url 'web_manifest' %}">
@@ -20,7 +20,12 @@
 
     // FOUC prevention: apply saved theme and language dir before first paint
     (function () {
-        var theme = localStorage.getItem('theme');
+        // Signed in, the account's theme wins and is kept for the login page.
+        var theme = document.documentElement.getAttribute('data-user-theme');
+        try {
+            if (theme) localStorage.setItem('theme', theme);
+            else theme = localStorage.getItem('theme');
+        } catch (e) {}
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -43,11 +48,12 @@
     <meta name="keywords" content="mlameh, MlamehTicket, support, ticketing, customer service">
     <title>{% block title %}MlamehTicket{% endblock title %}</title>
     <link rel="stylesheet" href="{% static 'fonts/outfit/outfit.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.93">
-    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=2.95">
-    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.51">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5.95">
+    <link rel="stylesheet" href="{% static 'css/modern.css' %}?v=3.05">
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}?v=1.55">
+    <link rel="stylesheet" href="{% static 'css/shifts.css' %}?v=27">
     {% if LANGUAGE_CODE == 'ar' %}
-    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.5">
+    <link rel="stylesheet" href="{% static 'css/rtl.css' %}?v=2.6">
     {% endif %}
     <link rel="stylesheet" href="{% static 'vendor/tom-select.default.min.css' %}">
     <link rel="icon" href="{% static 'images/mlameh-icon-fg.png' %}" type="image/png">
@@ -84,6 +90,18 @@
             pendingAgent: "{% filter escapejs %}{% trans 'Pending Support Agent' %}{% endfilter %}",
             viewAttachment: "{% filter escapejs %}{% trans 'View Attachment' %}{% endfilter %}",
             sent: "{% filter escapejs %}{% trans 'Sent' %}{% endfilter %}",
+            failedToSend: "{% filter escapejs %}{% trans 'Failed to send' %}{% endfilter %}",
+            emptyMessage: "{% filter escapejs %}{% trans 'Type a message first.' %}{% endfilter %}",
+            retry: "{% filter escapejs %}{% trans 'Retry' %}{% endfilter %}",
+            messageEdit: "{% filter escapejs %}{% trans 'Edit' %}{% endfilter %}",
+            messageDelete: "{% filter escapejs %}{% trans 'Delete' %}{% endfilter %}",
+            messageDetails: "{% filter escapejs %}{% trans 'Details' %}{% endfilter %}",
+            messageReply: "{% filter escapejs %}{% trans 'Reply' %}{% endfilter %}",
+            messageOptions: "{% filter escapejs %}{% trans 'Message options' %}{% endfilter %}",
+            messageSender: "{% filter escapejs %}{% trans 'Sender' %}{% endfilter %}",
+            messageTime: "{% filter escapejs %}{% trans 'Time' %}{% endfilter %}",
+            fileTypeNotAllowed: "{% filter escapejs %}{% trans 'File type not allowed. Allowed: {types}' %}{% endfilter %}",
+            fileTooLarge: "{% filter escapejs %}{% trans 'File is too large. Maximum is {size}.' %}{% endfilter %}",
             andOthers: "{% filter escapejs %}{% trans 'and others' %}{% endfilter %}",
             typing: "{% filter escapejs %}{% trans 'typing…' %}{% endfilter %}",
             openMenu: "{% filter escapejs %}{% trans 'Open menu' %}{% endfilter %}",
@@ -145,7 +163,7 @@
             }, true);
         })();
     </script>
-    <script src="{% static 'js/notifications.js' %}?v=1.26" defer></script>
+    <script src="{% static 'js/notifications.js' %}?v=1.32" defer></script>
     {% block extra_head %}{% endblock extra_head %}
 </head>
 
@@ -513,13 +531,14 @@
             </div>
             {% endif %}
             <div id="shell-content" hx-history-elt>
+                {% include "partials/messages.html" %}
                 {% block content %}{% endblock content %}
             </div>
         </main>
 
         <!-- Global Modal Container -->
         <div id="modal-container" class="modal-overlay" onclick="if(event.target == this) closeModal()">
-            <div class="modal-content" id="modal-content">
+            <div class="modal-content" id="modal-content" role="dialog" aria-modal="true">
                 <!-- HTMX will load content here -->
             </div>
         </div>
@@ -617,6 +636,9 @@
                     </svg>
                 </div>
                 <h2 id="push-allow-title" class="push-allow-title">{% trans "Allow notifications" %}</h2>
+                <p class="push-allow-body" data-push-guide="prompt" hidden>
+                    {% trans "Click Allow in the pop-up from your browser." %}
+                </p>
                 <p class="push-allow-body" data-push-guide="site-settings" hidden>
                     <span class="push-allow-site-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -705,6 +727,18 @@
                    hx-trigger="shell-nav"
                    hx-sync="#shell-content:replace"{% endif %}
                    {% if '/kb/' in request.path %}class="active" aria-current="page"{% endif %}>{% trans "Knowledge Base" %}</a>
+                {% endif %}
+                {% if user.is_superuser or user.role.can_manage_shifts or user.user_type == 'support' or user.user_type == 'branch' %}
+                <a href="{% url 'shifts_home' %}"
+                   data-nav-key="shifts"
+                   {% if user.is_authenticated %}data-shell-nav="1"
+                   hx-get="{% url 'shifts_home' %}"
+                   hx-target="#shell-content"
+                   hx-swap="innerHTML show:window:top settle:0"
+                   hx-push-url="true"
+                   hx-trigger="shell-nav"
+                   hx-sync="#shell-content:replace"{% endif %}
+                   {% if '/shifts/' in request.path or request.path == '/shifts' %}class="active" aria-current="page"{% endif %}>{% trans "Shifts" %}</a>
                 {% endif %}
                 {% if user.is_superuser or user.role.can_access_dashboard %}
                 <a href="{% url 'dashboard' %}" data-nav-key="dashboard"
@@ -808,15 +842,15 @@
     </div>
 
     {% if user.is_authenticated %}
-    <script src="{% static 'js/chat.js' %}?v=15" defer></script>
+    <script src="{% static 'js/chat.js' %}?v=19" defer></script>
     <script src="{% static 'js/kb-search.js' %}?v=1.1" defer></script>
     <script src="{% static 'js/email_templates.js' %}?v=12" defer></script>
     {% endif %}
     {% block extra_js %}{% endblock extra_js %}
-    <script src="{% static 'js/app-shell.js' %}?v=9" defer></script>
+    <script src="{% static 'js/app-shell.js' %}?v=18" defer></script>
 
     <!-- Global Loading Interceptor -->
-    <script src="{% static 'js/form-validation.js' %}?v=3" defer></script>
+    <script src="{% static 'js/form-validation.js' %}?v=4" defer></script>
     <script src="{% static 'js/loading.js' %}?v=23" defer></script>
 </body>
 
