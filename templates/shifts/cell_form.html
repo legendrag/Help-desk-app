@@ -27,7 +27,7 @@
             <option value="">{% trans "Choose a shift" %}</option>
             {% endif %}
             {% for row in types %}
-            <option value="{{ row.pk }}"{% if selected_type == row.pk %} selected{% endif %}>{{ row.name }}</option>
+            <option value="{{ row.pk }}"{% if selected_type == row.pk %} selected{% endif %}>{{ row.name }}{% if row.archived %} ({% trans "archived" %}){% endif %}</option>
             {% endfor %}
           </select>
         </div>

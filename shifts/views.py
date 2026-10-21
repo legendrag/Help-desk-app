@@ -925,7 +925,10 @@ def shifts_cell(request):
                 or user.department_id != shift_type.department_id
             ):
                 error = _("Only active support users in this department can be assigned.")
-        if error is None and on >= timezone.localdate() and shift_type.archived:
+        # A shift already on an archived type can still be saved (new times);
+        # only picking an archived type, or giving it to someone else, is refused.
+        picking_type = changing_user or existing.shift_type_id != shift_type.pk
+        if error is None and on >= timezone.localdate() and shift_type.archived and picking_type:
             error = _("Archived shift types cannot be assigned.")
     if error is None:
         use_start = start_t if start_t is not None else shift_type.start_time

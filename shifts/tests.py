@@ -3364,4 +3364,57 @@ class ShiftsRound20Tests(TestCase):
         form = self.client.get(reverse("shifts_cell"), {
             "user": self.agent.pk, "date": "2026-10-01", "department": self.department.pk, "assignment": row.pk,
         }, HTTP_HX_REQUEST="true")
-        self.assertContains(form, f'<option value="{old.pk}" selected>Old IT day</option>', html=False)
+        self.assertContains(form, f'<option value="{old.pk}" selected>Old IT day (archived)</option>', html=False)
+
+
+class ShiftsRound21Tests(TestCase):
+    """R21 at b53bb80: a future shift on an archived type can still be saved."""
+
+    def setUp(self):
+        self.department = make_department("IT")
+        lead_role = make_role("R21 lead", can_manage_shifts=True)
+        self.manager = make_user("r21-lead", "support", self.department, lead_role)
+        self.agent = make_user("r21-agent", "support", self.department)
+        self.other = make_user("r21-other", "support", self.department)
+        self.day = make_shift_type(self.department, name="IT day", start=time(9, 0), end=time(17, 0))
+        self.old = make_shift_type(self.department, name="Old IT late", start=time(12, 0), end=time(20, 0))
+        self.on = timezone.localdate() + timedelta(days=3)
+        self.row = make_assignment(self.agent, self.old, self.on)
+        self.old.archived = True
+        self.old.save()
+        self.client.force_login(self.manager)
+
+    def _save(self, **fields):
+        data = {
+            "user": self.agent.pk, "date": self.on.isoformat(), "department": self.department.pk,
+            "assignment": self.row.pk, "shift_type": self.old.pk,
+        }
+        data.update(fields)
+        return self.client.post(reverse("shifts_cell"), data, HTTP_HX_REQUEST="true")
+
+    def test_unchanged_save_and_new_times_are_allowed(self):
+        self.assertNotContains(self._save(), "Archived shift types cannot be assigned.")
+        self._save(start_time_override="13:00", end_time_override="21:00")
+        self.row.refresh_from_db()
+        self.assertEqual((self.row.shift_type_id, self.row.start_time_override), (self.old.pk, time(13, 0)))
+
+    def test_picking_an_archived_type_is_still_refused(self):
+        fresh = make_assignment(self.agent, self.day, self.on + timedelta(days=1))
+        response = self._save(assignment=fresh.pk, date=fresh.date.isoformat())
+        self.assertContains(response, "Archived shift types cannot be assigned.")
+        fresh.refresh_from_db()
+        self.assertEqual(fresh.shift_type_id, self.day.pk)
+        response = self.client.post(reverse("shifts_cell"), {
+            "user": self.other.pk, "date": self.on.isoformat(), "department": self.department.pk,
+            "shift_type": self.old.pk,
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(response, "Archived shift types cannot be assigned.")
+
+    def test_archived_option_is_labelled(self):
+        form = self.client.get(reverse("shifts_cell"), {
+            "user": self.agent.pk, "date": self.on.isoformat(), "department": self.department.pk,
+            "assignment": self.row.pk,
+        }, HTTP_HX_REQUEST="true")
+        self.assertContains(form, "Old IT late (archived)</option>")
+        self.assertContains(form, "IT day</option>")
+        self.assertNotContains(form, "IT day (archived)")

@@ -100,6 +100,8 @@ python manage.py collectstatic --noinput
 
 Do **not** run `seed_demo_data` on a real customer database unless you intentionally want demo records.
 
+**Rolling back shifts migrations:** don't go back below `shifts 0005`. Going to `0004` or earlier and then forward re-runs 0005's automatic night rule, which overwrites every shift type's night setting, including ones a manager ticked by hand. Rolling back to `0007` or later is safe. If you must go below 0005, note each type's night setting first and re-tick them afterwards.
+
 ---
 
 ## 4. Start production with Daphne

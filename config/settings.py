@@ -81,6 +81,9 @@ TEMPLATES = [
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "tickets_list"
 LOGOUT_REDIRECT_URL = "login"
+# A stale CSRF token (a page left open across a sign-in) gets a reload or a
+# branded page instead of Django's plain one.
+CSRF_FAILURE_VIEW = "core.error_views.csrf_failure"
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"

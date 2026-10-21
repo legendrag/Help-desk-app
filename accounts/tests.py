@@ -583,3 +583,31 @@ class LoginLockoutTests(TestCase):
             self._login(f"nobody-{n}")
         self.assertEqual(LoginThrottle.objects.count(), 5)
         self.assertIsNone(cache.get("login_attempts_nobody-0"))
+
+
+class StaleCsrfLoginTests(TestCase):
+    """R21: a login page left open across another sign-in has a stale CSRF token."""
+
+    def setUp(self):
+        from django.test import Client
+
+        User.objects.create_user(username="r21_csrf", password="str0ng-Passw0rd!")
+        self.browser = Client(enforce_csrf_checks=True)
+        self.browser.get(reverse("login"))
+        self.stale = {"username": "r21_csrf", "password": "str0ng-Passw0rd!",
+                      "csrfmiddlewaretoken": "x" * 64}
+
+    def test_htmx_sign_in_reloads_the_page_with_a_message(self):
+        response = self.browser.post(reverse("login"), self.stale, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["HX-Refresh"], "true")
+        page = self.browser.get(reverse("login"))
+        self.assertContains(page, "Your session changed")
+        self.assertContains(page, "csrfmiddlewaretoken")
+
+    def test_plain_form_gets_a_branded_page(self):
+        response = self.browser.post(reverse("login"), self.stale)
+        self.assertEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, "csrf_failure.html")
+        self.assertContains(response, f'href="{reverse("login")}"', status_code=403)
+        self.assertNotContains(response, "CSRF verification failed", status_code=403)
